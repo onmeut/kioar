@@ -1,0 +1,90 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1776862734840,
+      "tag": "0000_brown_ultragirl",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1776886634983,
+      "tag": "0001_flimsy_ken_ellis",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777900000000,
+      "tag": "0002_link_is_active",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1777900001000,
+      "tag": "0003_link_icon_system",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1777900002000,
+      "tag": "0004_rate_limit_buckets",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777900003000,
+      "tag": "0005_user_ban",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1777072354798,
+      "tag": "0006_profile_views_link_clicks",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777072879660,
+      "tag": "0007_profile_stats_by_day",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777073813483,
+      "tag": "0008_link_stats_by_day",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1777079416880,
+      "tag": "0009_bookings_block",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1777082135876,
+      "tag": "0010_card_design",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1777125519000,
+      "tag": "0011_cheerful_hiroim",
+      "breakpoints": true
+    }
+  ]
+}
