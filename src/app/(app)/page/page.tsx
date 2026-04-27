@@ -9,9 +9,9 @@ import { absoluteUrl } from "@/lib/site";
 import { fetchLinkMetadataAction } from "./actions";
 import {
   autosaveAvatarAction,
-  autosaveLinkImageAction,
   autosaveLinksAction,
   autosaveProfileDetailsAction,
+  reorderBlocksAction,
 } from "./autosave-actions";
 import {
   createBookingBlockAction,
@@ -19,6 +19,16 @@ import {
   toggleBookingBlockActiveAction,
   updateBookingBlockAction,
 } from "@/app/dashboard/bookings/actions";
+import {
+  createFormBlockAction,
+  deleteFormBlockAction,
+  toggleFormBlockActiveAction,
+  updateFormBlockAction,
+} from "@/app/dashboard/forms/actions";
+import { getFormBlocksByUserId } from "@/lib/form-service";
+import { getDb } from "@/db";
+import { formSubmissions } from "@/db/schema";
+import { inArray, sql } from "drizzle-orm";
 
 export default async function DashboardLinksPage() {
   const viewer = await requireCompletedProfile();
@@ -79,6 +89,39 @@ export default async function DashboardLinksPage() {
 
   const providerConnections = await getProviderConnections(viewer.user.id);
 
+  const rawFormBlocks = await getFormBlocksByUserId(viewer.user.id);
+  const formBlockIds = rawFormBlocks.map((b) => b.id);
+  const submissionCounts: Record<string, number> = {};
+  if (formBlockIds.length) {
+    const rows = await getDb()
+      .select({
+        blockId: formSubmissions.blockId,
+        count: sql<number>`COUNT(*)::int`,
+      })
+      .from(formSubmissions)
+      .where(inArray(formSubmissions.blockId, formBlockIds))
+      .groupBy(formSubmissions.blockId);
+    for (const row of rows) {
+      submissionCounts[row.blockId] = Number(row.count);
+    }
+  }
+  const formBlocks = rawFormBlocks.map((b) => ({
+    id: b.id,
+    name: b.name,
+    intro: b.intro,
+    outro: b.outro,
+    isActive: b.isActive,
+    sortOrder: b.sortOrder,
+    submissionsCount: submissionCounts[b.id] ?? 0,
+    fields: b.fields.map((f) => ({
+      id: f.id,
+      kind: f.kind,
+      label: f.label,
+      required: f.required,
+      options: f.options ?? [],
+    })),
+  }));
+
   return (
     <LinksPageClient
       initialProfile={{
@@ -89,9 +132,11 @@ export default async function DashboardLinksPage() {
         publicPhone: profile?.publicPhone ?? "",
         email: profile?.email ?? "",
         avatarUrl: profile?.avatarUrl ?? null,
+        avatarSeed: profile?.avatarSeed ?? null,
       }}
       initialLinks={links}
       initialBookingBlocks={bookingBlocks}
+      initialFormBlocks={formBlocks}
       providerConnections={providerConnections}
       linkClickCounts={clickCounts}
       publicUrl={publicUrl}
@@ -99,11 +144,15 @@ export default async function DashboardLinksPage() {
       autosaveLinksAction={autosaveLinksAction}
       autosaveProfileDetailsAction={autosaveProfileDetailsAction}
       autosaveAvatarAction={autosaveAvatarAction}
-      autosaveLinkImageAction={autosaveLinkImageAction}
+      reorderBlocksAction={reorderBlocksAction}
       createBookingBlockAction={createBookingBlockAction}
       updateBookingBlockAction={updateBookingBlockAction}
       deleteBookingBlockAction={deleteBookingBlockAction}
       toggleBookingBlockActiveAction={toggleBookingBlockActiveAction}
+      createFormBlockAction={createFormBlockAction}
+      updateFormBlockAction={updateFormBlockAction}
+      deleteFormBlockAction={deleteFormBlockAction}
+      toggleFormBlockActiveAction={toggleFormBlockActiveAction}
     />
   );
 }

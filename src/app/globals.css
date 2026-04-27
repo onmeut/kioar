@@ -56,6 +56,26 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  /* Design-system shadow scale */
+  --shadow-card:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9), 0 0 0 0.5px rgba(0, 0, 0, 0.06),
+    0 2px 8px rgba(0, 0, 0, 0.05), 0 20px 60px -4px rgba(0, 0, 0, 0.1);
+  --shadow-nav: 0 14px 36px -18px rgba(15, 23, 42, 0.35);
+  --shadow-primary-glow: 0 16px 34px -14px
+    color-mix(in srgb, var(--primary) 60%, transparent);
+
+  /* ── Marketing / editorial palette ── */
+  --color-paper: var(--paper);
+  --color-paper-soft: var(--paper-soft);
+  --color-paper-muted: var(--paper-muted);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-mute: var(--ink-mute);
+  --color-hairline: var(--hairline);
+  --color-mint: var(--mint);
+  --color-butter: var(--butter);
+  --color-blush: var(--blush);
+  --color-clay: var(--clay);
 }
 
 :root {
@@ -93,6 +113,19 @@
   --sidebar-ring: oklch(0.708 0 0);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
+
+  /* ── Marketing palette (beside-inspired clean SaaS) ── */
+  --paper: oklch(1 0 0);
+  --paper-soft: oklch(0.972 0.002 270);
+  --paper-muted: oklch(0.953 0.003 270);
+  --ink: oklch(0.16 0.005 270);
+  --ink-soft: oklch(0.55 0.005 270);
+  --ink-mute: oklch(0.7 0.005 270);
+  --hairline: oklch(0.91 0.004 270);
+  --mint: oklch(0.86 0.073 162);
+  --butter: oklch(0.92 0.082 92);
+  --blush: oklch(0.88 0.058 32);
+  --clay: oklch(0.78 0.078 50);
 }
 
 @layer base {
@@ -112,6 +145,7 @@
     text-rendering: optimizeLegibility;
     overscroll-behavior-y: none;
     -webkit-overflow-scrolling: touch;
+    font-weight: 500;
   }
 
   a,
@@ -165,7 +199,7 @@
   }
 
   .marketing-shell {
-    @apply mx-auto w-full max-w-5xl px-5 sm:px-6;
+    @apply mx-auto w-full max-w-6xl px-5 sm:px-6;
   }
 
   .marketing-card {
@@ -258,6 +292,173 @@
 
   .text-pretty {
     text-wrap: pretty;
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-nav {
+    box-shadow: var(--shadow-nav);
+  }
+
+  .shadow-primary-glow {
+    box-shadow: var(--shadow-primary-glow);
+  }
+
+  /* ── Editorial marketing utilities ── */
+
+  .bg-paper {
+    background-color: var(--paper);
+  }
+  .bg-paper-soft {
+    background-color: var(--paper-soft);
+  }
+  .bg-ink {
+    background-color: var(--ink);
+  }
+  .bg-mint {
+    background-color: var(--mint);
+  }
+  .bg-butter {
+    background-color: var(--butter);
+  }
+  .bg-blush {
+    background-color: var(--blush);
+  }
+  .bg-clay {
+    background-color: var(--clay);
+  }
+
+  .text-ink {
+    color: var(--ink);
+  }
+  .text-ink-soft {
+    color: var(--ink-soft);
+  }
+
+  .border-ink {
+    border-color: var(--ink);
+  }
+
+  /* Subtle paper grain so the cream surface feels printed, not flat */
+  .grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    background-image:
+      radial-gradient(rgba(60, 50, 30, 0.07) 0.5px, transparent 0.5px),
+      radial-gradient(rgba(0, 0, 0, 0.04) 0.5px, transparent 0.5px);
+    background-size:
+      3px 3px,
+      7px 7px;
+    background-position:
+      0 0,
+      1.5px 1.5px;
+  }
+
+  /* Tiny ornamental dot used between editorial labels */
+  .dotsep::before {
+    content: "·";
+    margin: 0 0.45em;
+    opacity: 0.5;
+  }
+
+  /* Rotating words / marquee tracks */
+  @keyframes marquee-rtl {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(50%);
+    }
+  }
+  .marquee-track {
+    animation: marquee-rtl 38s linear infinite;
+  }
+  .marquee-track-fast {
+    animation: marquee-rtl 22s linear infinite;
+  }
+  .marquee-track:hover,
+  .marquee-track-fast:hover {
+    animation-play-state: paused;
+  }
+
+  /* Float keyframes for hero mock cards */
+  @keyframes float-y {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-8px);
+    }
+  }
+  .float-slow {
+    animation: float-y 6s ease-in-out infinite;
+  }
+  .float-slower {
+    animation: float-y 8s ease-in-out infinite;
+    animation-delay: -2s;
+  }
+  .float-slowest {
+    animation: float-y 9s ease-in-out infinite;
+    animation-delay: -4s;
+  }
+
+  /* Underline-on-hover for editorial nav links */
+  .editorial-link {
+    position: relative;
+  }
+  .editorial-link::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    bottom: -3px;
+    height: 1px;
+    background: currentColor;
+    transform: scaleX(0);
+    transform-origin: 100% 50%;
+    transition: transform 220ms ease;
+  }
+  .editorial-link:hover::after {
+    transform: scaleX(1);
+    transform-origin: 0 50%;
+  }
+
+  /* Soft inner card glow used on persona cards */
+  .shadow-paper {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      0 1px 0 rgba(0, 0, 0, 0.04),
+      0 24px 48px -28px rgba(40, 30, 10, 0.18);
+  }
+
+  /* Sharp ink stamp used for the hero pill / kicker labels */
+  .ink-stamp {
+    color: var(--ink);
+    border: 1px solid color-mix(in oklab, var(--ink) 18%, transparent);
+    background: color-mix(in oklab, var(--paper) 60%, white 40%);
+  }
+
+  /* Section divider — a thin hairline with an ornamental glyph */
+  .rule-with-glyph {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: color-mix(in oklab, var(--ink) 35%, transparent);
+  }
+  .rule-with-glyph::before,
+  .rule-with-glyph::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: color-mix(in oklab, var(--ink) 16%, transparent);
   }
 }
 

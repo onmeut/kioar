@@ -8,6 +8,7 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { profiles, sessions, users } from "@/db/schema";
 import { type ActionState } from "@/lib/action-state";
+import { generateAvatarSeed } from "@/lib/avatar-seed";
 import {
   endImpersonation as endImpersonationHelper,
   requireAdmin,
@@ -103,7 +104,9 @@ export async function adminUpdateUserProfileAction(
   if (existing) {
     await db.update(profiles).set(values).where(eq(profiles.userId, userId));
   } else {
-    await db.insert(profiles).values({ userId, ...values });
+    await db
+      .insert(profiles)
+      .values({ userId, avatarSeed: generateAvatarSeed(), ...values });
   }
 
   log.info("admin.user.profile_updated", {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DesktopMobileQr } from "@/components/public/desktop-mobile-qr";
+import { PublicLinkClickTracker } from "@/components/public/public-link-click-tracker";
 import { PublicProfileCard } from "@/components/public/public-profile-card";
 import { PublicProfileShareButton } from "@/components/public/public-profile-actions";
 import { getDb } from "@/db";
@@ -11,6 +12,7 @@ import { profileStatsByDay } from "@/db/schema";
 import { sql } from "drizzle-orm";
 import { getPublicProfileBySlug } from "@/lib/data";
 import { isIconKey } from "@/lib/link-icons";
+import { submitFormAction } from "@/lib/public-form-actions";
 import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -106,6 +108,7 @@ export default async function PublicProfilePage({
             publicPhone: profile.publicPhone,
             email: profile.email,
             avatarUrl: profile.avatarUrl,
+            avatarSeed: profile.avatarSeed,
             links: profile.links.map((link) => ({
               id: link.id,
               label: link.label,
@@ -134,12 +137,28 @@ export default async function PublicProfilePage({
                 priceCurrency: t.priceCurrency,
               })),
             })),
+            formBlocks: profile.formBlocks.map((b) => ({
+              id: b.id,
+              name: b.name,
+              intro: b.intro,
+              outro: b.outro,
+              sortOrder: b.sortOrder,
+              fields: b.fields.map((f) => ({
+                id: f.id,
+                kind: f.kind,
+                label: f.label,
+                required: f.required,
+                options: f.options ?? [],
+              })),
+            })),
           }}
+          formSubmitAction={submitFormAction}
         />
       </div>
 
       {/* Desktop only: scan-on-mobile QR */}
       <DesktopMobileQr url={publicUrl} />
+      <PublicLinkClickTracker />
     </main>
   );
 }

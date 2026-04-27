@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import { signOutAction } from "@/app/dashboard/actions";
 import { ImpersonationBar } from "@/components/admin/impersonation-bar";
 import {
@@ -25,6 +26,7 @@ const dashboardNavItems: SidebarNavItem[] = [
   { href: "/dashboard", label: "داشبورد", icon: "home", match: "exact" },
   { href: "/dashboard/links", label: "لینک‌ها", icon: "links" },
   { href: "/dashboard/bookings", label: "رزروها", icon: "bookings" },
+  { href: "/dashboard/forms" as Route, label: "ارسال‌های فرم", icon: "forms" },
   { href: "/dashboard/events", label: "رویدادها", icon: "events" },
   { href: "/dashboard/requests/new", label: "درخواست کارت", icon: "requests" },
 ];

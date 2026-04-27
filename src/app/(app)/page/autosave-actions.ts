@@ -164,3 +164,50 @@ export async function autosaveLinkImageAction(
     };
   }
 }
+
+/**
+ * Reorder all blocks (links + booking blocks + form blocks) for the
+ * authenticated profile in a single global ordering. Persists by
+ * assigning sequential `sort_order` values across all three tables.
+ */
+export async function reorderBlocksAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const viewer = await requireCompletedProfile();
+  const raw = String(formData.get("items") || "");
+  let items: Array<{ kind: string; id: string }> = [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      items = parsed
+        .filter(
+          (it): it is { kind: string; id: string } =>
+            !!it &&
+            typeof it === "object" &&
+            typeof (it as { kind?: unknown }).kind === "string" &&
+            typeof (it as { id?: unknown }).id === "string",
+        )
+        .map((it) => ({ kind: it.kind, id: it.id }));
+    }
+  } catch {
+    return { status: "error", message: "ترتیب جدید معتبر نیست." };
+  }
+
+  const filtered = items.filter(
+    (it): it is { kind: "link" | "booking" | "form"; id: string } =>
+      it.kind === "link" || it.kind === "booking" || it.kind === "form",
+  );
+
+  const { reorderBlocksForUser } = await import(
+    "@/lib/block-reorder-service"
+  );
+  const result = await reorderBlocksForUser(viewer.user.id, filtered);
+  if (!result.ok) {
+    return { status: "error", message: result.message };
+  }
+
+  revalidatePath("/dashboard/links");
+  revalidatePath(`/${viewer.profile.slug}`);
+  return { status: "success", message: "ذخیره شد" };
+}

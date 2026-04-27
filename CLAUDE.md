@@ -81,3 +81,73 @@ The base `Input` component is `h-11` on mobile, `md:h-9` on desktop. Inputs >16p
 - Do not render desktop-only tables without a mobile card fallback.
 - Do not ship forms without `inputMode` + `autoComplete` + `enterKeyHint`.
 - Do not hide critical primary actions on mobile — surface them in the bottom nav or sticky CTA.
+
+## Feature Registry Workflow — MANDATORY
+
+Kioar's plan system is feature-based: every gateable capability is a row in the `features` table with a stable `lookup_key`, mapped to plans via `plan_features`. Product code never checks plan names; it only calls `pageHasFeature(pageId, 'lookup_key')`. The registry is the single source of truth.
+
+**This means: every new gateable feature must go through the registry workflow before it is considered done.**
+
+### When the workflow triggers
+
+You must run this workflow when any of the following happen during a session:
+
+1. The user asks you to build a new capability that could plausibly be plan-gated. Examples: a new block type, a new analytics view, a new export, a new integration, a new editor tool, a new public-page rendering branch, a new business workflow (forms, bookings, etc.), any new numeric limit (storage, submissions, etc.).
+2. You discover existing code that looks like a gateable capability but has no corresponding registry entry. (You should sweep for this opportunistically — if you're touching a file and notice an ungated feature, raise it.)
+3. The user explicitly says "add this to the feature registry" or similar.
+
+The trigger is **capability**, not file type. A new React component on its own is not a feature. A new component that exposes a user-facing capability someone might pay for is.
+
+### What the workflow looks like
+
+When triggered, **stop coding** and run these steps in order:
+
+1. **Propose a lookup key.** Use the existing naming convention from `seed-plans.ts` and the matrix in `IMPLEMENTATION_PLAN.md`. Snake_case, lowercase, prefixed by category where applicable (`link_*`, `analytics_*`, `marketing_*`, `business_*`, `support_*`). Stable identifiers — these are referenced in code forever, so pick well.
+
+2. **Propose a category.** Must be one of the existing categories: `core`, `branding`, `design`, `link_types`, `analytics`, `marketing`, `business_tools`, `support`, `limits`. Don't invent new categories without explicit user approval.
+
+3. **Propose a Persian display name and a one-sentence description.** Match the tone of existing rows. The user can edit later in the admin panel; aim for "good enough to ship".
+
+4. **Ask the user three questions, in one batch:**
+
+    a. Which plans get this feature? (`free` / `pro` / `business` — multi-select)
+    b. Is this a boolean entitlement, or does it carry a numeric limit? If a limit, what's the limit per plan?
+    c. Does this need backfill for existing pages? (Almost always yes if it's a "true on Free or Pro" feature, since existing pages already have `page_entitlements` rows seeded from the registry. New `business_tools` features generally don't need backfill since no existing page has Business.)
+
+5. **Wait for the user's answer before writing any code.** Don't guess. Don't pick a default and proceed. The plan-mapping decision is a product decision and only the user can make it.
+
+6. **Once answered, do all of the following in a single commit:**
+
+    - Add the feature row to `seed-plans.ts` (the seeder is insert-only, so adding a new row + re-running it is safe).
+    - Add the appropriate `plan_features` mapping rows to `seed-plans.ts`.
+    - Run `pnpm db:seed:plans` against the dev DB to apply.
+    - If the user said backfill is needed, write a small migration that inserts `page_entitlements` rows for every existing page on a qualifying plan. Don't conflate this with the seeder — the seeder owns the registry, migrations own per-row data.
+    - Wire `pageHasFeature(pageId, '<lookup_key>')` into the actual product code that exposes the capability — both the public renderer (hide entirely) and the editor (locked-with-CTA), per the Phase 5 graceful degradation pattern.
+    - Add the new lookup key to the matrix in `IMPLEMENTATION_PLAN.md` so the matrix stays the source-of-truth document.
+
+7. **Verify before declaring done:**
+
+    - `pnpm typecheck` clean.
+    - `pnpm build` clean.
+    - Grep the codebase for plan-name string comparisons (`=== 'pro'`, `=== 'business'`, `=== 'free'`, `isPro`, `isBusiness`, `userPlan`, `planTier`) — must still return zero hits.
+    - Manually verify in the dev DB: a Free page does not have the new entitlement (or has it with the right limit), a Business page does, the public renderer hides the block on Free, the editor shows it locked.
+
+### When NOT to run the workflow
+
+- Bug fixes that don't change capability surface.
+- Refactors that move code around without exposing new functionality.
+- Internal tooling (admin panel additions, dev scripts, migrations) — these aren't user-facing features, they don't go in the registry.
+- Visual tweaks to existing features (CSS changes, copy edits, layout adjustments).
+- Backend infrastructure (queue workers, cron jobs, webhook handlers) — these support features but aren't features themselves.
+
+If you're unsure whether something is a "feature" in this sense, **ask the user before assuming**. The cost of a clarifying question is one round trip; the cost of a missed gate is a Free user accessing a paid feature in production.
+
+### Bad outcomes this rule prevents
+
+- A new block type ships with no entitlement check; Free users see it and use it.
+- A new analytics view is added to Pro in the matrix but the registry never gets the row; the gate fails open.
+- A `business_*` feature gets added with the wrong category or a typo'd lookup key; admin panel grouping breaks; future features reference the wrong key.
+- The matrix in `IMPLEMENTATION_PLAN.md` and the live registry drift apart; nobody can tell which is correct.
+- Limit values get hardcoded in product code instead of read from `plan_features.limit_value`; changing storage caps requires a deploy instead of an admin edit.
+
+The registry is infrastructure. Treat new entries with the same rigor as new database migrations: small, deliberate, reviewed, traceable.

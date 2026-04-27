@@ -36,8 +36,18 @@ export async function GET(request: Request) {
     },
   );
   if (!res.ok) {
+    let detail: string | undefined;
+    try {
+      const errJson = (await res.json()) as {
+        error?: { message?: string; status?: string };
+      };
+      detail = errJson.error?.message;
+      console.error("[places.autocomplete]", res.status, errJson);
+    } catch {
+      console.error("[places.autocomplete]", res.status);
+    }
     return NextResponse.json(
-      { error: "places_failed", status: res.status },
+      { error: "places_failed", status: res.status, message: detail },
       { status: 502 },
     );
   }
