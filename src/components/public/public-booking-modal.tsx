@@ -24,14 +24,41 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
+import { useIsInMockup } from "@/components/dashboard/mockup-portal-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   getPublicBookingSlotsAction,
   submitPublicBookingAction,
 } from "@/app/[slug]/bookings/actions";
-import { toPersianDigits } from "@/lib/persian";
+import {
+  formatShamsiMonthYear,
+  formatShamsiWeekdayDayMonth,
+  shamsiAddMonths,
+  shamsiDaysInMonth,
+  shamsiIsSameDay,
+  shamsiStartOfMonth,
+  shamsiWeekdayColumn,
+  tehranIsoDate,
+  tehranLocalView,
+  toPersianDigits,
+} from "@/lib/date/persian";
+import {
+  detectUserTimezone,
+  formatOffset,
+  formatShamsiDateTimeInZone,
+  formatShamsiTimeInZone,
+  isValidTimezone,
+} from "@/lib/date/timezone";
+import { buildTimezoneOptions } from "@/lib/timezones";
 import { cn } from "@/lib/utils";
 
 export type PublicBookingTypeData = {
@@ -75,22 +102,26 @@ type Stage =
 
 const WEEKDAY_LABELS = ["ش", "ی", "د", "س", "چ", "پ", "ج"];
 
-// Visual column index (Sat=0) → JS getDay() value.
-const COL_TO_DOW = [6, 0, 1, 2, 3, 4, 5] as const;
-
 export function PublicBookingPill({
   block,
+  defaultOpen = false,
+  className,
 }: {
   block: PublicBookingBlockData;
+  defaultOpen?: boolean;
+  className?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4 transition-colors hover:bg-primary/8 active:bg-primary/12"
+        className={cn(
+          "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4 transition-colors hover:bg-primary/8 active:bg-primary/12",
+          className,
+        )}
       >
         <span className="absolute inset-s-3 inline-flex size-9 items-center justify-center rounded-2xl bg-primary/10 text-primary">
           {block.avatarUrl ? (
@@ -125,7 +156,45 @@ function PublicBookingModal({
   onOpenChange: (v: boolean) => void;
 }) {
   const isMobile = useIsMobile();
+  // See public-form-modal.tsx — same rationale: when rendered inside the
+  // dashboard live-preview phone mockup, always use the fullscreen sheet so
+  // the modal fills the phone canvas instead of a centered desktop dialog.
+  const inMockup = useIsInMockup();
+  const fullscreen = isMobile || inMockup;
   const [stage, setStage] = useState<Stage>({ kind: "types" });
+
+  // Booker timezone — detected on mount, persisted per-block in
+  // localStorage so returning visitors keep their pick. Falls back to
+  // Asia/Tehran if detection fails or the persisted zone is invalid.
+  const tzStorageKey = `kioar:booking-tz:${block.id}`;
+  const [bookerTz, setBookerTz] = useState<string>(block.timezone);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const persisted = window.localStorage.getItem(tzStorageKey);
+      if (persisted && isValidTimezone(persisted)) {
+        setBookerTz(persisted);
+        return;
+      }
+    } catch {
+      // ignore
+    }
+    setBookerTz(detectUserTimezone(block.timezone));
+  }, [tzStorageKey, block.timezone]);
+
+  const onChangeBookerTz = useCallback(
+    (tz: string) => {
+      if (!isValidTimezone(tz)) return;
+      setBookerTz(tz);
+      try {
+        window.localStorage.setItem(tzStorageKey, tz);
+      } catch {
+        // ignore
+      }
+    },
+    [tzStorageKey],
+  );
 
   useEffect(() => {
     if (open) setStage({ kind: "types" });
@@ -202,6 +271,8 @@ function PublicBookingModal({
             block={block}
             type={stage.type}
             dateIso={stage.dateIso}
+            bookerTz={bookerTz}
+            onChangeBookerTz={onChangeBookerTz}
             onPick={(slotIso) =>
               setStage({
                 kind: "form",
@@ -219,6 +290,7 @@ function PublicBookingModal({
             type={stage.type}
             dateIso={stage.dateIso}
             slotIso={stage.slotIso}
+            bookerTz={bookerTz}
             onDone={(guestName) =>
               setStage({
                 kind: "confirmed",
@@ -236,6 +308,7 @@ function PublicBookingModal({
             block={block}
             type={stage.type}
             slotIso={stage.slotIso}
+            bookerTz={bookerTz}
             guestName={stage.guestName}
             onClose={() => onOpenChange(false)}
           />
@@ -244,12 +317,12 @@ function PublicBookingModal({
     </div>
   );
 
-  if (isMobile) {
+  if (fullscreen) {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="h-[92vh] rounded-t-3xl p-0"
+          className="inset-0 h-full max-h-none rounded-none p-0"
           showCloseButton={false}
         >
           <SheetTitle className="sr-only">{title}</SheetTitle>
@@ -348,39 +421,78 @@ function CalendarStep({
   type: PublicBookingTypeData;
   onPick: (dateIso: string) => void;
 }) {
-  const today = new Date();
+  // Anchor everything to Asia/Tehran wall time so the calendar grid is
+  // computed in the Shamsi (Jalali) calendar, not the visitor's local
+  // Gregorian calendar. The backend still receives a Gregorian YYYY-MM-DD
+  // string, but the visible grid (rows, columns, day numbers, month label)
+  // is fully Shamsi.
+  const now = new Date();
   const [monthOffset, setMonthOffset] = useState(0);
 
-  const viewDate = useMemo(() => {
-    const d = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
-    return d;
-  }, [monthOffset, today]);
-
-  const monthLabel = viewDate.toLocaleDateString("fa-IR", {
-    year: "numeric",
-    month: "long",
-  });
-
-  const year = viewDate.getFullYear();
-  const month = viewDate.getMonth();
-  const first = new Date(year, month, 1);
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  // Offset to align first day under the correct column (Sat-first).
-  // getDay() returns 0..6 (Sun..Sat). Our column order is Sat,Sun,Mon,…,Fri.
-  const firstCol = COL_TO_DOW.indexOf(
-    first.getDay() as (typeof COL_TO_DOW)[number],
+  // First day of the displayed Shamsi month, expressed as a Tehran-shifted
+  // "local view" Date (see `tehranLocalView`). We never persist this value
+  // — only format/iterate against it.
+  const viewMonthStart = useMemo(
+    () => shamsiStartOfMonth(shamsiAddMonths(now, monthOffset)),
+    [monthOffset, now],
   );
 
-  const todayIso = toIsoDate(today);
+  const monthLabel = formatShamsiMonthYear(
+    // Convert the Tehran-shifted view back to a real instant for Intl by
+    // taking noon of the same Y/M/D — far from any DST seam.
+    new Date(
+      Date.UTC(
+        viewMonthStart.getFullYear(),
+        viewMonthStart.getMonth(),
+        viewMonthStart.getDate(),
+        9, // 09:00 UTC ≈ 12:30 Tehran
+        0,
+      ),
+    ),
+  );
 
-  const cells: Array<{ dateIso: string | null; day: number | null }> = [];
-  for (let i = 0; i < firstCol; i++) cells.push({ dateIso: null, day: null });
-  for (let d = 1; d <= daysInMonth; d++) {
-    const iso = toIsoDate(new Date(year, month, d));
-    cells.push({ dateIso: iso, day: d });
+  const daysInMonth = shamsiDaysInMonth(viewMonthStart);
+  // Saturday-first column (0=Sat … 6=Fri).
+  const firstCol = shamsiWeekdayColumn(viewMonthStart);
+
+  // Today's Gregorian date in Tehran tz, used both to disable past cells
+  // and to highlight "today".
+  const todayIso = tehranIsoDate(now);
+  const todayShifted = tehranLocalView(now);
+
+  // Build cells for the Shamsi month. Each visible cell carries:
+  //   - dateIso: Gregorian YYYY-MM-DD in Tehran tz (what the backend expects)
+  //   - day: Shamsi day-of-month (1..31) — what the user sees
+  //   - isToday: whether this cell is "today" in Tehran
+  const cells: Array<{
+    dateIso: string | null;
+    day: number | null;
+    isToday: boolean;
+  }> = [];
+  for (let i = 0; i < firstCol; i++) {
+    cells.push({ dateIso: null, day: null, isToday: false });
   }
-  while (cells.length % 7 !== 0) cells.push({ dateIso: null, day: null });
+  for (let d = 1; d <= daysInMonth; d++) {
+    // Shifted Date for the d-th day of the displayed Shamsi month. Because
+    // `viewMonthStart` is a Tehran-shifted local Date, adding `d-1` days in
+    // the local frame keeps us in the same Shamsi month.
+    const shifted = new Date(viewMonthStart);
+    shifted.setDate(shifted.getDate() + (d - 1));
+    // Convert the Tehran-local Y/M/D directly into the YYYY-MM-DD string
+    // — the shift was constructed so local fields == Tehran wall fields.
+    const y = shifted.getFullYear();
+    const m = String(shifted.getMonth() + 1).padStart(2, "0");
+    const day = String(shifted.getDate()).padStart(2, "0");
+    const iso = `${y}-${m}-${day}`;
+    cells.push({
+      dateIso: iso,
+      day: d,
+      isToday: shamsiIsSameDay(shifted, todayShifted),
+    });
+  }
+  while (cells.length % 7 !== 0) {
+    cells.push({ dateIso: null, day: null, isToday: false });
+  }
 
   const canGoBack = monthOffset > 0;
 
@@ -430,9 +542,7 @@ function CalendarStep({
                 isPast
                   ? "text-muted-foreground/30"
                   : "bg-foreground/[0.04] hover:bg-primary/10 hover:text-primary",
-                cell.dateIso === todayIso && !isPast
-                  ? "ring-1 ring-primary"
-                  : null,
+                cell.isToday && !isPast ? "ring-1 ring-primary" : null,
               )}
             >
               {toPersianDigits(cell.day!)}
@@ -454,16 +564,21 @@ function TimesStep({
   block,
   type,
   dateIso,
+  bookerTz,
+  onChangeBookerTz,
   onPick,
 }: {
   block: PublicBookingBlockData;
   type: PublicBookingTypeData;
   dateIso: string;
+  bookerTz: string;
+  onChangeBookerTz: (tz: string) => void;
   onPick: (slotIso: string) => void;
 }) {
   const [slots, setSlots] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -497,19 +612,57 @@ function TimesStep({
     };
   }, [block.id, type.id, dateIso]);
 
-  const dateLabel = new Date(dateIso).toLocaleDateString("fa-IR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
+  // dateIso is a Gregorian YYYY-MM-DD anchored to Tehran. Anchor to noon UTC
+  // so the Tehran-tz formatter never lands on the wrong day for that ISO.
+  const dateLabel = formatShamsiWeekdayDayMonth(
+    new Date(`${dateIso}T09:00:00Z`),
+  );
+
+  const sameTz = bookerTz === block.timezone;
+  const tzOptions = useMemo(() => buildTimezoneOptions(bookerTz), [bookerTz]);
 
   return (
     <div className="space-y-4">
       <div className="rounded-2xl bg-foreground/[0.04] px-4 py-3 text-sm">
         <p className="font-bold">{dateLabel}</p>
-        <p className="text-[12px] text-muted-foreground">
-          ساعت به وقت محلی شما نمایش داده می‌شود
-        </p>
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[12px] text-muted-foreground">
+          <span>
+            ساعت‌ها به وقت <span dir="ltr">{bookerTz}</span> (
+            <span dir="ltr">{formatOffset(bookerTz)}</span>)
+          </span>
+          {pickerOpen ? (
+            <Select
+              value={bookerTz}
+              onValueChange={(v) => {
+                if (!v) return;
+                onChangeBookerTz(v);
+                setPickerOpen(false);
+              }}
+            >
+              <SelectTrigger
+                className="h-8 max-w-[260px] text-[12px]"
+                dir="ltr"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {tzOptions.map((o) => (
+                  <SelectItem key={o.value} value={o.value} dir="ltr">
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="font-bold text-primary underline-offset-2 hover:underline"
+            >
+              تغییر منطقه
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
@@ -520,16 +673,25 @@ function TimesStep({
         <p className="py-8 text-center text-sm text-destructive">{error}</p>
       ) : slots && slots.length > 0 ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-          {slots.map((slotIso) => (
-            <button
-              key={slotIso}
-              type="button"
-              onClick={() => onPick(slotIso)}
-              className="tap-target rounded-xl border bg-background/80 px-3 py-3 text-sm font-bold transition-colors hover:border-primary hover:bg-primary/5"
-            >
-              {formatLocalTime(slotIso)}
-            </button>
-          ))}
+          {slots.map((slotIso) => {
+            const localTime = formatShamsiTimeInZone(slotIso, bookerTz);
+            const hostTime = formatShamsiTimeInZone(slotIso, block.timezone);
+            return (
+              <button
+                key={slotIso}
+                type="button"
+                onClick={() => onPick(slotIso)}
+                title={
+                  sameTz
+                    ? undefined
+                    : `${localTime} به وقت شما · ${hostTime} به وقت میزبان`
+                }
+                className="tap-target rounded-xl border bg-background/80 px-3 py-3 text-sm font-bold transition-colors hover:border-primary hover:bg-primary/5"
+              >
+                {localTime}
+              </button>
+            );
+          })}
         </div>
       ) : (
         <p className="py-8 text-center text-sm text-muted-foreground">
@@ -546,12 +708,14 @@ function FormStep({
   type,
   dateIso,
   slotIso,
+  bookerTz,
   onDone,
 }: {
   block: PublicBookingBlockData;
   type: PublicBookingTypeData;
   dateIso: string;
   slotIso: string;
+  bookerTz: string;
   onDone: (name: string) => void;
 }) {
   const [name, setName] = useState("");
@@ -560,11 +724,6 @@ function FormStep({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-
-  const guestTimezone =
-    typeof Intl !== "undefined"
-      ? Intl.DateTimeFormat().resolvedOptions().timeZone
-      : "UTC";
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -587,7 +746,7 @@ function FormStep({
         guestEmail: email.trim(),
         guestPhone: phone.trim() || null,
         notes: notes.trim() || null,
-        guestTimezone,
+        guestTimezone: bookerTz,
       });
       if (!res.ok) {
         setError(res.message ?? "ثبت رزرو ناموفق بود.");
@@ -597,13 +756,23 @@ function FormStep({
     });
   }
 
+  const sameTz = bookerTz === block.timezone;
+
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="rounded-2xl bg-foreground/[0.04] px-4 py-3 text-sm">
         <p className="font-bold">{type.title}</p>
         <p className="text-[12px] text-muted-foreground">
-          {formatLocalDateTime(slotIso)}
+          {formatShamsiDateTimeInZone(slotIso, bookerTz)}{" "}
+          · به وقت <span dir="ltr">{bookerTz}</span>
         </p>
+        {sameTz ? null : (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            به وقت میزبان:{" "}
+            {formatShamsiDateTimeInZone(slotIso, block.timezone)} (
+            <span dir="ltr">{block.timezone}</span>)
+          </p>
+        )}
       </div>
 
       <div className="space-y-1.5">
@@ -677,15 +846,18 @@ function ConfirmedStep({
   block,
   type,
   slotIso,
+  bookerTz,
   guestName,
   onClose,
 }: {
   block: PublicBookingBlockData;
   type: PublicBookingTypeData;
   slotIso: string;
+  bookerTz: string;
   guestName: string;
   onClose: () => void;
 }) {
+  const sameTz = bookerTz === block.timezone;
   return (
     <div className="flex flex-col items-center gap-4 py-8 text-center">
       <span className="grid size-16 place-items-center rounded-full bg-primary/15 text-primary">
@@ -702,9 +874,21 @@ function ConfirmedStep({
           <span className="text-muted-foreground">نوع</span>
           <span className="font-bold">{type.title}</span>
         </div>
-        <div className="flex items-center justify-between py-1">
+        <div className="flex items-start justify-between gap-3 py-1">
           <span className="text-muted-foreground">زمان</span>
-          <span className="font-bold">{formatLocalDateTime(slotIso)}</span>
+          <span className="text-end font-bold">
+            {formatShamsiDateTimeInZone(slotIso, bookerTz)}
+            <span className="mt-0.5 block text-[11px] font-normal text-muted-foreground">
+              به وقت <span dir="ltr">{bookerTz}</span>
+            </span>
+            {sameTz ? null : (
+              <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
+                میزبان:{" "}
+                {formatShamsiDateTimeInZone(slotIso, block.timezone)} (
+                <span dir="ltr">{block.timezone}</span>)
+              </span>
+            )}
+          </span>
         </div>
         <div className="flex items-center justify-between py-1">
           <span className="text-muted-foreground">مدت</span>
@@ -743,25 +927,5 @@ function ConfirmedStep({
 }
 
 // ---------- Helpers ----------
-function toIsoDate(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function formatLocalTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" });
-}
-
-function formatLocalDateTime(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleString("fa-IR", {
-    weekday: "short",
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+// All Persian/Shamsi date rendering is centralised in `@/lib/date/persian`
+// (Tehran-anchored) and `@/lib/date/timezone` (arbitrary IANA zone).

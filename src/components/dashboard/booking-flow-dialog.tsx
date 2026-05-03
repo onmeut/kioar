@@ -7,15 +7,15 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ClockIcon,
+  EyeOffIcon,
   GlobeIcon,
   Link2Icon,
-  MailIcon,
   MapPinIcon,
   PencilIcon,
+  PlugIcon,
   PlusIcon,
   SearchIcon,
   SparklesIcon,
-  TagIcon,
   Trash2Icon,
   VideoIcon,
   WalletIcon,
@@ -25,6 +25,16 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -52,7 +62,7 @@ import {
 
 type Stage =
   | { kind: "intro"; slide: 0 | 1 | 2 }
-  | { kind: "wizard"; step: 1 | 2 | 3 | 4 }
+  | { kind: "wizard"; step: 1 | 2 | 3 }
   | { kind: "type-editor"; index: number | "new" };
 
 export type BookingFlowDialogProps = {
@@ -72,7 +82,7 @@ export function BookingFlowDialog({
   initial,
   onSubmit,
   submitting,
-  title = "میتینگ",
+  title = "هماهنگ",
   providerConnections = [],
 }: BookingFlowDialogProps) {
   const isMobile = useIsMobile();
@@ -91,7 +101,9 @@ export function BookingFlowDialog({
   const [draft, setDraft] = useState<EditableBookingBlock>(() =>
     initial ? cloneDraft(initial) : cloneDraft(DEFAULT_BOOKING_BLOCK),
   );
-
+  // Reset stage + draft only when the dialog opens or switches create↔edit.
+  // intentionally excludes introSeen — it loading from localStorage must not
+  // wipe a draft the user is actively editing.
   useEffect(() => {
     if (open) {
       setStage(initialStage());
@@ -100,6 +112,14 @@ export function BookingFlowDialog({
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initial]);
+
+  // Once introSeen loads from localStorage (null → false) while the dialog is
+  // already open, switch to the intro carousel without clearing the draft.
+  useEffect(() => {
+    if (open && !initial && introSeen === false) {
+      setStage({ kind: "intro", slide: 0 });
+    }
   }, [open, initial, introSeen]);
 
   const patch = useCallback((p: Partial<EditableBookingBlock>) => {
@@ -139,7 +159,7 @@ export function BookingFlowDialog({
             <div className="h-1 w-full bg-foreground/10">
               <div
                 className="h-full bg-foreground transition-[width] duration-300"
-                style={{ width: `${(stage.step / 4) * 100}%` }}
+                style={{ width: `${(stage.step / 3) * 100}%` }}
               />
             </div>
           ) : null}
@@ -170,8 +190,6 @@ export function BookingFlowDialog({
                 }));
               }}
             />
-          ) : stage.kind === "wizard" && stage.step === 4 ? (
-            <ReviewStep draft={draft} />
           ) : stage.kind === "type-editor" ? (
             <BookingTypeEditor
               initial={
@@ -274,7 +292,7 @@ function BackButton({
         onClick={() =>
           setStage({
             kind: "wizard",
-            step: (stage.step - 1) as 1 | 2 | 3,
+            step: (stage.step - 1) as 1 | 2,
           })
         }
       >
@@ -302,13 +320,13 @@ function BackButton({
 function IntroCarousel({ slide }: { slide: 0 | 1 | 2 }) {
   const slides = [
     {
-      title: "میتینگ‌ها بدون دردسر",
-      body: "بدون ابزار جانبی، یک صفحه‌ی شخصی برای رزرو میتینگ بسازید. مهمان‌ها زمان‌های خالی شما را می‌بینند و انتخاب می‌کنند.",
+      title: "هماهنگی‌ها بدون دردسر",
+      body: "بدون ابزار جانبی، یک صفحه‌ی شخصی برای رزرو هماهنگ بسازید. مهمان‌ها زمان‌های خالی شما را می‌بینند و انتخاب می‌کنند.",
       emoji: "📅",
     },
     {
       title: "وقت = پول",
-      body: "برای هر نوع میتینگ مدت و قیمت تعیین کنید. مشاوره‌ی رایگان، جلسه‌ی پولی، تماس فالوآپ — همه در یک صفحه.",
+      body: "برای هر نوع هماهنگ مدت و قیمت تعیین کنید. مشاوره‌ی رایگان، جلسه‌ی پولی، تماس فالوآپ — همه در یک صفحه.",
       emoji: "💸",
     },
     {
@@ -348,75 +366,38 @@ function IntroCarousel({ slide }: { slide: 0 | 1 | 2 }) {
 // Step 1 — Location
 // ────────────────────────────────────────────────────────────────────────
 
-type MeetingProvider =
-  | "google_meet"
-  | "zoom"
-  | "skyroom"
-  | "lahzenegar"
-  | "custom";
+type MeetingProvider = "google_meet" | "zoom" | "custom";
 
 const PROVIDER_DEFS: Record<
-  MeetingProvider,
+  Exclude<MeetingProvider, "custom">,
   {
     label: string;
-    badge?: string;
-    placeholder: string;
-    helper: string;
     icon: React.ComponentType<{ className?: string }>;
-    autoCreate: boolean;
+    description: string;
   }
 > = {
   google_meet: {
     label: "Google Meet",
-    placeholder: "https://meet.google.com/abc-defg-hij",
-    helper:
-      "با اتصال به Google، برای هر رزرو به‌صورت خودکار یک لینک Meet ساخته و به تقویم‌تان اضافه می‌شود. اگر متصل نیستید، یک لینک ثابت وارد کنید.",
     icon: VideoIcon,
-    autoCreate: true,
+    description:
+      "با اتصال، خودکار رویداد در Google Calendar ساخته می‌شود و لینک Google Meet به آن چسبانده می‌شود.",
   },
   zoom: {
     label: "Zoom",
-    placeholder: "https://us02web.zoom.us/j/1234567890",
-    helper:
-      "با اتصال به Zoom، برای هر رزرو به‌صورت خودکار یک میتینگ ساخته می‌شود. در غیر این‌صورت Personal Meeting Link خود را وارد کنید.",
     icon: VideoIcon,
-    autoCreate: true,
-  },
-  skyroom: {
-    label: "Skyroom",
-    placeholder: "https://www.skyroom.online/ch/your-room",
-    helper:
-      "با واردکردن API Key اسکای‌روم، برای هر رزرو به‌صورت خودکار یک کلاس ساخته می‌شود.",
-    icon: VideoIcon,
-    autoCreate: true,
-  },
-  lahzenegar: {
-    label: "لحظه‌نگار",
-    placeholder: "https://lahzenegar.com/...",
-    helper: "لینک جلسه‌ی لحظه‌نگار را وارد کنید.",
-    icon: VideoIcon,
-    autoCreate: false,
-  },
-  custom: {
-    label: "لینک سفارشی",
-    placeholder: "https://example.com/meeting",
-    helper: "هر سرویس دیگر: Microsoft Teams، Jitsi، یا لینک شخصی شما.",
-    icon: Link2Icon,
-    autoCreate: false,
+    description:
+      "با اتصال، برای هر رزرو خودکار یک Zoom Meeting ساخته و لینکش به مهمان ارسال می‌شود.",
   },
 };
 
 function detectProviderFromUrl(
-  url: string | null | undefined,
+  _url: string | null | undefined,
 ): MeetingProvider {
-  if (!url) return "google_meet";
-  const u = url.toLowerCase();
-  if (u.includes("meet.google.com")) return "google_meet";
-  if (u.includes("zoom.us")) return "zoom";
-  if (u.includes("skyroom")) return "skyroom";
-  if (u.includes("lahzenegar")) return "lahzenegar";
+  // Intentionally unused — we no longer infer provider from a free-form static
+  // link. The provider is only set by the user clicking a provider tile.
   return "custom";
 }
+void detectProviderFromUrl;
 
 function LocationStep({
   draft,
@@ -427,36 +408,70 @@ function LocationStep({
   patch: (p: Partial<EditableBookingBlock>) => void;
   providerConnections: ProviderConnection[];
 }) {
-  // The selected provider is persisted on `draft.meetingProvider`. We mirror
-  // it into local state for the picker UI, but always write back through
-  // `patch` so the final saved block carries the choice.
   const provider: MeetingProvider =
     draft.locationType === "online"
-      ? draft.meetingProvider === "custom"
-        ? detectProviderFromUrl(draft.meetingLink)
-        : (draft.meetingProvider as MeetingProvider)
+      ? draft.meetingProvider === "google_meet" ||
+        draft.meetingProvider === "zoom"
+        ? draft.meetingProvider
+        : "custom"
       : "custom";
 
-  const setProvider = (p: MeetingProvider) => patch({ meetingProvider: p });
+  // Selecting again toggles back to "custom" (no provider). When set to a
+  // provider, we clear any stale meetingLink so the connect-card UX is
+  // unambiguous.
+  const setProvider = (p: MeetingProvider) => {
+    if (p === provider) {
+      patch({ meetingProvider: "custom" });
+    } else {
+      patch({ meetingProvider: p });
+    }
+  };
 
   return (
     <div className="space-y-6 p-4">
-      <div>
-        <h2 className="text-xl font-bold">مکان میتینگ</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          مهمان‌ها این میتینگ را کجا با شما خواهند داشت؟
+      <div className="space-y-2">
+        <Label htmlFor="bk-name" className="flex items-center gap-1">
+          نام صفحه‌ی هماهنگ
+          <span aria-hidden className="text-foreground">
+            *
+          </span>
+          <span className="sr-only">(الزامی)</span>
+        </Label>
+        <Input
+          id="bk-name"
+          value={draft.name}
+          enterKeyHint="next"
+          onChange={(e) => patch({ name: e.target.value })}
+          placeholder="مثلاً: مشاوره‌ی رشد محصول، یا نشست با احمد"
+          aria-required="true"
+          aria-invalid={undefined}
+          autoFocus={!draft.name}
+        />
+        <p className="text-[11px] text-muted-foreground">
+          این نام در پروفایل عمومی شما به مهمان‌ها نمایش داده می‌شود.
         </p>
       </div>
 
       <div className="space-y-2">
-        <Label>نوع میتینگ</Label>
+        <Label htmlFor="bk-desc">توضیح کوتاه</Label>
+        <Textarea
+          id="bk-desc"
+          rows={3}
+          value={draft.description ?? ""}
+          onChange={(e) => patch({ description: e.target.value || null })}
+          placeholder="چه اتفاقی در این هماهنگ می‌افتد؟ مثلاً: «۳۰ دقیقه گفتگو درباره‌ی استراتژی برند»"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label>نوع هماهنگ</Label>
         <div className="grid gap-2">
           <LocationTypeCard
             active={draft.locationType === "online"}
             onClick={() => patch({ locationType: "online" })}
             icon={<VideoIcon className="size-5" />}
             title="آنلاین"
-            desc="میتینگ مجازی — لینک به مهمان فرستاده می‌شود."
+            desc="هماهنگ مجازی — لینک به مهمان فرستاده می‌شود."
           />
           <LocationTypeCard
             active={draft.locationType === "in_person"}
@@ -474,12 +489,6 @@ function LocationStep({
           setProvider={setProvider}
           link={draft.meetingLink}
           onLinkChange={(link) => patch({ meetingLink: link })}
-          skyroomApiKey={draft.skyroomApiKey}
-          onSkyroomApiKeyChange={(v) => patch({ skyroomApiKey: v })}
-          skyroomRoomNamePrefix={draft.skyroomRoomNamePrefix}
-          onSkyroomRoomNamePrefixChange={(v) =>
-            patch({ skyroomRoomNamePrefix: v })
-          }
           providerConnections={providerConnections}
         />
       ) : (
@@ -496,12 +505,6 @@ function LocationStep({
           }
         />
       )}
-
-      <CalendarConnectField
-        value={draft.calendarEmail}
-        onChange={(v) => patch({ calendarEmail: v })}
-        providerConnections={providerConnections}
-      />
     </div>
   );
 }
@@ -554,37 +557,26 @@ function OnlineProviderPicker({
   setProvider,
   link,
   onLinkChange,
-  skyroomApiKey,
-  onSkyroomApiKeyChange,
-  skyroomRoomNamePrefix,
-  onSkyroomRoomNamePrefixChange,
   providerConnections,
 }: {
   provider: MeetingProvider;
   setProvider: (p: MeetingProvider) => void;
   link: string | null;
   onLinkChange: (v: string | null) => void;
-  skyroomApiKey: string | null;
-  onSkyroomApiKeyChange: (v: string | null) => void;
-  skyroomRoomNamePrefix: string | null;
-  onSkyroomRoomNamePrefixChange: (v: string | null) => void;
   providerConnections: ProviderConnection[];
 }) {
-  const def = PROVIDER_DEFS[provider];
-  const providers: MeetingProvider[] = [
-    "google_meet",
-    "zoom",
-    "skyroom",
-    "lahzenegar",
-    "custom",
-  ];
-
   const googleConn = providerConnections.find((c) => c.provider === "google");
   const zoomConn = providerConnections.find((c) => c.provider === "zoom");
+  const providers = ["google_meet", "zoom"] as const;
 
   return (
     <div className="space-y-3">
-      <Label>سرویس میتینگ</Label>
+      <Label>سرویس هماهنگ (اختیاری)</Label>
+      <p className="text-[11px] text-muted-foreground">
+        یکی از سرویس‌ها را انتخاب کنید تا برای هر رزرو خودکار لینک ساخته شود، یا
+        هیچ‌کدام را انتخاب نکنید و در پایین یک لینک ثابت بگذارید (یا خالی
+        بماند).
+      </p>
       <div className="grid grid-cols-2 gap-2">
         {providers.map((p) => {
           const d = PROVIDER_DEFS[p];
@@ -595,20 +587,19 @@ function OnlineProviderPicker({
               key={p}
               type="button"
               onClick={() => setProvider(p)}
+              aria-pressed={active}
               className={cn(
-                "relative flex items-start gap-2 rounded-2xl border p-3 text-start transition-colors",
+                "relative flex items-center gap-2 rounded-2xl border p-3 text-start transition-colors",
                 active
                   ? "border-primary bg-primary/5"
                   : "border-border bg-card hover:bg-foreground/5",
               )}
             >
               <Icon className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{d.label}</p>
-              </div>
-              {active ? (
-                <CheckIcon className="absolute inset-e-2 top-2 size-4 text-primary" />
-              ) : null}
+              <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                {d.label}
+              </span>
+              {active ? <CheckIcon className="size-4 text-primary" /> : null}
             </button>
           );
         })}
@@ -619,7 +610,7 @@ function OnlineProviderPicker({
           provider="google"
           label="Google"
           status={googleConn}
-          description="با اتصال، خودکار رویداد در Google Calendar ساخته می‌شود و لینک Google Meet به آن چسبانده می‌شود."
+          description={PROVIDER_DEFS.google_meet.description}
         />
       ) : null}
 
@@ -628,59 +619,13 @@ function OnlineProviderPicker({
           provider="zoom"
           label="Zoom"
           status={zoomConn}
-          description="با اتصال، برای هر رزرو خودکار یک Zoom Meeting ساخته و لینکش برای مهمان ارسال می‌شود."
+          description={PROVIDER_DEFS.zoom.description}
         />
-      ) : null}
-
-      {provider === "skyroom" ? (
-        <div className="space-y-3 rounded-2xl border border-dashed bg-muted/30 p-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="bk-skyroom-key">Skyroom API Key</Label>
-            <Input
-              id="bk-skyroom-key"
-              type="password"
-              dir="ltr"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              autoComplete="off"
-              placeholder="••••••••••"
-              value={skyroomApiKey ?? ""}
-              onChange={(e) =>
-                onSkyroomApiKeyChange(e.target.value.trim() || null)
-              }
-            />
-            <p className="text-[11px] text-muted-foreground">
-              از پنل Skyroom &lt; API دریافت کنید. این کلید رمزگذاری‌شده ذخیره
-              می‌شود و فقط برای ساخت کلاس به‌کار می‌رود.
-            </p>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="bk-skyroom-prefix" className="text-xs">
-              پیشوند نام کلاس (اختیاری)
-            </Label>
-            <Input
-              id="bk-skyroom-prefix"
-              dir="ltr"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              placeholder="meeting"
-              value={skyroomRoomNamePrefix ?? ""}
-              onChange={(e) =>
-                onSkyroomRoomNamePrefixChange(e.target.value.trim() || null)
-              }
-            />
-            <p className="text-[11px] text-muted-foreground">
-              نام هر کلاس به شکل {"{پیشوند}-{شناسه‌ی رزرو}"} تولید می‌شود.
-            </p>
-          </div>
-        </div>
       ) : null}
 
       <div className="space-y-2">
         <Label htmlFor="bk-meeting-link">
-          {def.autoCreate ? "لینک پشتیبان (اختیاری)" : "لینک میتینگ"}
+          {provider === "custom" ? "لینک ثابت (اختیاری)" : "لینک ثابت"}
         </Label>
         <Input
           id="bk-meeting-link"
@@ -690,11 +635,21 @@ function OnlineProviderPicker({
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          placeholder={def.placeholder}
+          placeholder={
+            provider === "google_meet"
+              ? "https://meet.google.com/abc-defg-hij"
+              : provider === "zoom"
+                ? "https://us02web.zoom.us/j/1234567890"
+                : "https://example.com/meeting"
+          }
           value={link ?? ""}
           onChange={(e) => onLinkChange(e.target.value.trim() || null)}
         />
-        <p className="text-xs text-muted-foreground">{def.helper}</p>
+        <p className="text-xs text-muted-foreground">
+          {provider === "custom"
+            ? "هر لینک دیگری (Teams، Webex، Google Meet، …) — اینجا بگذارید. خالی هم می‌تواند بماند؛ لینک نهایی را بعد از تأیید رزرو برای مهمان می‌فرستید."
+            : "اگر هنوز اتصال انجام نشده، این لینک ثابت پشتیبان به مهمان فرستاده می‌شود."}
+        </p>
       </div>
     </div>
   );
@@ -713,15 +668,22 @@ function ProviderConnectCard({
 }) {
   const connected = status?.connected ?? false;
   const available = status?.available ?? false;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const returnTo =
     typeof window !== "undefined"
       ? window.location.pathname + window.location.search
-      : "/dashboard/links";
+      : "/page";
   const startHref = `/api/oauth/${provider}/start?returnTo=${encodeURIComponent(returnTo)}`;
 
   async function disconnect() {
-    await fetch(`/api/oauth/${provider}/disconnect`, { method: "POST" });
-    if (typeof window !== "undefined") window.location.reload();
+    setDisconnecting(true);
+    try {
+      await fetch(`/api/oauth/${provider}/disconnect`, { method: "POST" });
+      if (typeof window !== "undefined") window.location.reload();
+    } finally {
+      setDisconnecting(false);
+    }
   }
 
   if (!available) {
@@ -738,6 +700,109 @@ function ProviderConnectCard({
     );
   }
 
+  if (connected) {
+    return (
+      <>
+        <div className="space-y-1.5">
+          <p className="text-xs font-semibold text-muted-foreground">
+            حساب متصل
+          </p>
+          <div className="flex items-center gap-3 rounded-2xl border bg-card p-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted">
+              {provider === "google" ? <GoogleCalendarMark /> : <ZoomMark />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">
+                {provider === "google" ? "Google Calendar" : "Zoom"}
+              </p>
+              <p
+                className="mt-0.5 truncate text-xs text-muted-foreground"
+                dir="ltr"
+              >
+                {status?.email ?? "—"}
+              </p>
+            </div>
+            <button
+              type="button"
+              aria-label={`قطع اتصال ${label}`}
+              onClick={() => setConfirmOpen(true)}
+              className="rounded-lg p-2 text-muted-foreground hover:bg-foreground/5"
+            >
+              <Trash2Icon className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>قطع اتصال {label}</AlertDialogTitle>
+              <AlertDialogDescription className="sr-only">
+                پیامدهای قطع اتصال را مرور کنید و در صورت تمایل تأیید کنید.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <ul className="space-y-3 py-2 text-sm">
+              <li className="flex items-start gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
+                  <CalendarIcon className="size-4 text-muted-foreground" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold">
+                    هماهنگی‌های فعلی در تقویم شما باقی می‌مانند
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    اگر نمی‌توانید در هماهنگی شرکت کنید، خودتان به مهمان اطلاع
+                    دهید.
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
+                  <PlugIcon className="size-4 text-muted-foreground" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold">
+                    هر زمان خواستید دوباره وصل کنید
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    می‌توانید در آینده دوباره به این حساب متصل شوید.
+                  </p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
+                  <EyeOffIcon className="size-4 text-muted-foreground" />
+                </span>
+                <div className="min-w-0">
+                  <p className="font-semibold">لینک رزرو فعلاً پنهان می‌شود</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    تا وقتی دوباره متصل نشوید، مهمان‌ها این هماهنگ را در پروفایل
+                    شما نمی‌بینند.
+                  </p>
+                </div>
+              </li>
+            </ul>
+            <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault();
+                  void disconnect();
+                }}
+                disabled={disconnecting}
+                className="h-12 w-full rounded-full bg-destructive text-base text-destructive-foreground hover:bg-destructive/90"
+              >
+                {disconnecting ? "در حال قطع اتصال…" : "بله، قطع شود"}
+              </AlertDialogAction>
+              <AlertDialogCancel className="h-12 w-full rounded-full text-base">
+                انصراف
+              </AlertDialogCancel>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    );
+  }
+
   return (
     <div className="rounded-2xl border bg-muted/30 p-3">
       <div className="flex items-start gap-3">
@@ -749,37 +814,39 @@ function ProviderConnectCard({
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold">
-            {connected ? `${label} متصل است` : `اتصال به ${label}`}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {connected ? (
-              <>
-                حساب: <span dir="ltr">{status?.email ?? "—"}</span>
-              </>
-            ) : (
-              description
-            )}
-          </p>
+          <p className="text-sm font-semibold">اتصال به {label}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
         </div>
-        {connected ? (
-          <button
-            type="button"
-            onClick={disconnect}
-            className="rounded-full border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-foreground/5"
-          >
-            قطع اتصال
-          </button>
-        ) : (
-          <a
-            href={startHref}
-            className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
-          >
-            اتصال
-          </a>
-        )}
+        <a
+          href={startHref}
+          className="rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
+        >
+          اتصال
+        </a>
       </div>
     </div>
+  );
+}
+
+function GoogleCalendarMark() {
+  return (
+    <span
+      aria-hidden
+      className="grid size-7 place-items-center rounded-md bg-white text-[10px] font-extrabold text-[#1a73e8] shadow-sm ring-1 ring-black/5"
+    >
+      31
+    </span>
+  );
+}
+
+function ZoomMark() {
+  return (
+    <span
+      aria-hidden
+      className="grid size-7 place-items-center rounded-md bg-[#2D8CFF] text-white"
+    >
+      <VideoIcon className="size-4" />
+    </span>
   );
 }
 
@@ -804,6 +871,7 @@ function InPersonLocation({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [notConfigured, setNotConfigured] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [sessionToken] = useState(() =>
     typeof crypto !== "undefined" && "randomUUID" in crypto
       ? crypto.randomUUID()
@@ -814,11 +882,13 @@ function InPersonLocation({
   useEffect(() => {
     if (!query.trim() || query === address) {
       setPredictions([]);
+      setSearchError(null);
       return;
     }
     const ctrl = new AbortController();
     const t = setTimeout(async () => {
       setLoading(true);
+      setSearchError(null);
       try {
         const res = await fetch(
           `/api/places/autocomplete?q=${encodeURIComponent(query)}&session=${sessionToken}`,
@@ -827,10 +897,16 @@ function InPersonLocation({
         if (res.status === 501) {
           setNotConfigured(true);
           setPredictions([]);
+          setOpen(true); // still open so user sees "use as text"
           return;
         }
         if (!res.ok) {
+          const errJson = (await res.json().catch(() => null)) as {
+            message?: string;
+          } | null;
+          setSearchError(errJson?.message ?? "جستجوی نقشه در دسترس نیست.");
           setPredictions([]);
+          setOpen(true);
           return;
         }
         const json = (await res.json()) as {
@@ -891,6 +967,17 @@ function InPersonLocation({
     }
   }
 
+  function useAsPlainText() {
+    const text = query.trim();
+    if (!text) return;
+    setOpen(false);
+    onSelect({ address: text, lat: null, lng: null, placeId: null });
+  }
+
+  const trimmed = query.trim();
+  const showDropdown =
+    open && trimmed.length > 0 && (predictions.length > 0 || !placeId);
+
   return (
     <div className="space-y-2">
       <Label htmlFor="bk-address">آدرس محل ملاقات</Label>
@@ -899,7 +986,7 @@ function InPersonLocation({
         <Input
           id="bk-address"
           className="pe-9"
-          placeholder="جستجو در نقشه‌ی گوگل — مثلاً «کافه دوباره تهران»"
+          placeholder="نام مکان یا آدرس — مثلاً «کافه دوباره تهران»"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -912,12 +999,29 @@ function InPersonLocation({
                 placeId: null,
               });
           }}
-          onFocus={() => predictions.length && setOpen(true)}
-          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onFocus={() => trimmed.length && setOpen(true)}
+          onBlur={() => setTimeout(() => setOpen(false), 200)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              useAsPlainText();
+            }
+          }}
+          // Defeat password-manager / browser autofill on this free-form
+          // location field.
+          name="search-location"
+          type="search"
+          inputMode="search"
           autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          data-form-type="other"
+          data-1p-ignore
+          data-lpignore="true"
         />
-        {open && predictions.length ? (
-          <ul className="absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-auto rounded-xl border bg-popover p-1 shadow-md">
+        {showDropdown ? (
+          <ul className="absolute inset-x-0 top-full z-20 mt-1 max-h-72 overflow-auto rounded-xl border bg-popover p-1 shadow-md">
             {predictions.map((p) => (
               <li key={p.placeId}>
                 <button
@@ -940,6 +1044,27 @@ function InPersonLocation({
                 </button>
               </li>
             ))}
+            {predictions.length > 0 ? (
+              <li className="my-1 h-px bg-border" aria-hidden />
+            ) : null}
+            <li>
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={useAsPlainText}
+                className="flex w-full items-start gap-2 rounded-lg px-3 py-2 text-start hover:bg-foreground/5"
+              >
+                <PencilIcon className="mt-0.5 size-4 shrink-0 text-primary" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-semibold text-primary">
+                    استفاده‌ی همین متن به‌عنوان آدرس
+                  </span>
+                  <span className="mt-0.5 block truncate text-xs text-muted-foreground">
+                    «{trimmed}»
+                  </span>
+                </span>
+              </button>
+            </li>
           </ul>
         ) : null}
       </div>
@@ -950,59 +1075,40 @@ function InPersonLocation({
         </p>
       ) : notConfigured ? (
         <p className="text-[11px] text-muted-foreground">
-          جستجوی نقشه فعال نیست — آدرس را به‌صورت متنی وارد کنید.
+          جستجوی نقشه فعال نیست — هرچه می‌نویسید همان به‌عنوان آدرس ذخیره می‌شود
+          (Enter یا گزینه‌ی پایین لیست).
+        </p>
+      ) : searchError ? (
+        <p
+          className="text-[11px] text-amber-700 dark:text-amber-400"
+          dir="ltr"
+          title={searchError}
+        >
+          {searchError.length > 120
+            ? `${searchError.slice(0, 120)}…`
+            : searchError}
         </p>
       ) : (
         <p className="text-[11px] text-muted-foreground">
           {loading
             ? "در حال جستجو…"
-            : "از پیشنهادها یکی را انتخاب کنید تا مختصات هم ذخیره شود."}
+            : "از پیشنهادها یکی را انتخاب کنید، یا Enter بزنید تا همان متن به‌عنوان آدرس ذخیره شود."}
         </p>
       )}
     </div>
   );
 }
 
-function CalendarConnectField({
-  value,
-  onChange,
-  providerConnections,
-}: {
+function CalendarConnectField(_props: {
   value: string | null;
   onChange: (v: string | null) => void;
   providerConnections: ProviderConnection[];
 }) {
-  const google = providerConnections.find((c) => c.provider === "google");
-  return (
-    <div className="space-y-2">
-      <Label>اتصال به تقویم</Label>
-      <ProviderConnectCard
-        provider="google"
-        label="Google Calendar"
-        status={google}
-        description="رزروها خودکار به تقویم‌تان اضافه می‌شوند و به مهمان دعوت‌نامه‌ی Google ارسال می‌شود."
-      />
-      <div className="space-y-1.5">
-        <Label htmlFor="bk-cal-email" className="text-xs text-muted-foreground">
-          ایمیل اطلاع‌رسانی (اختیاری)
-        </Label>
-        <Input
-          id="bk-cal-email"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          dir="ltr"
-          placeholder="example@gmail.com"
-          value={value ?? ""}
-          onChange={(e) => onChange(e.target.value.trim() || null)}
-        />
-        <p className="text-[11px] text-muted-foreground">
-          صرف‌نظر از اتصال تقویم، اعلان‌های متنی به این ایمیل ارسال می‌شوند.
-        </p>
-      </div>
-    </div>
-  );
+  // Deprecated — kept as a no-op stub to avoid stale imports while the dialog
+  // moves the Google Calendar connection inline with the Meet provider card.
+  return null;
 }
+void CalendarConnectField;
 
 // ────────────────────────────────────────────────────────────────────────
 // Step 2 — Availability
@@ -1047,7 +1153,7 @@ function AvailabilityStep({
       <div>
         <h2 className="text-xl font-bold">دسترس‌پذیری</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          ساعت‌های هفتگی که برای میتینگ آماده‌اید را مشخص کنید.
+          ساعت‌های هفتگی که برای هماهنگ آماده‌اید را مشخص کنید.
         </p>
       </div>
 
@@ -1055,6 +1161,12 @@ function AvailabilityStep({
         value={draft.timezone}
         onChange={(v) => patch({ timezone: v })}
       />
+
+      <div className="rounded-lg border border-dashed bg-muted/40 p-3 text-xs leading-6 text-muted-foreground">
+        ساعت‌های دسترس‌پذیری شما در منطقهٔ زمانی بالا ذخیره می‌شود. مهمان‌ها
+        ساعت‌های شما را به‌صورت خودکار به منطقهٔ زمانی خودشان تبدیل‌شده
+        می‌بینند.
+      </div>
 
       <div className="space-y-2">
         <Label>ساعت‌های هفتگی</Label>
@@ -1079,15 +1191,15 @@ function AvailabilityStep({
       </div>
 
       <div className="space-y-3">
-        <Label>فاصله بین میتینگ‌ها</Label>
+        <Label>فاصله بین هماهنگی‌ها</Label>
         <div className="grid grid-cols-2 gap-3">
           <BufferField
-            label="قبل از هر میتینگ"
+            label="قبل از هر هماهنگ"
             value={draft.bufferBeforeMin}
             onChange={(v) => patch({ bufferBeforeMin: v })}
           />
           <BufferField
-            label="بعد از هر میتینگ"
+            label="بعد از هر هماهنگ"
             value={draft.bufferAfterMin}
             onChange={(v) => patch({ bufferAfterMin: v })}
           />
@@ -1262,7 +1374,7 @@ function TimezoneField({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex h-11 w-full items-center justify-between gap-2 rounded-2xl border bg-card px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring"
+          className="flex h-11 w-full items-center justify-between gap-2 rounded-2xl border bg-card px-3 text-sm focus-visible:outline-2 focus-visible:outline-ring md:h-9"
         >
           <span className="inline-flex items-center gap-2 truncate">
             <GlobeIcon className="size-4 shrink-0 text-muted-foreground" />
@@ -1353,7 +1465,7 @@ function TimeSelect({
     <div className="relative">
       <select
         dir="ltr"
-        className="h-10 w-full appearance-none rounded-xl border bg-card px-3 pe-8 text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-ring"
+        className="h-11 w-full appearance-none rounded-xl border bg-card px-3 text-center text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-ring md:h-9"
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
       >
@@ -1383,7 +1495,7 @@ function BufferField({
       <div className="relative">
         <select
           dir="rtl"
-          className="h-10 w-full appearance-none rounded-xl border bg-card px-3 pe-8 text-start text-sm focus-visible:outline-2 focus-visible:outline-ring"
+          className="h-11 w-full appearance-none rounded-xl border bg-card px-3 pe-8 text-start text-sm focus-visible:outline-2 focus-visible:outline-ring md:h-9"
           value={value}
           onChange={(e) => onChange(Number(e.target.value))}
         >
@@ -1423,49 +1535,24 @@ function DetailsStep({
   return (
     <div className="space-y-5 p-4">
       <div>
-        <h2 className="text-xl font-bold">معرفی صفحه‌ی میتینگ</h2>
+        <h2 className="text-xl font-bold">گزینه‌های میت</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          این اطلاعات روی پروفایل عمومی به مهمان‌ها نشان داده می‌شود.
+          مهمان‌ها از بین این گزینه‌ها (با مدت / قیمت متفاوت) یکی را انتخاب
+          می‌کنند.
         </p>
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="bk-name">نام صفحه‌ی میتینگ</Label>
-        <Input
-          id="bk-name"
-          value={draft.name}
-          enterKeyHint="next"
-          onChange={(e) => patch({ name: e.target.value })}
-          placeholder="مثلاً: مشاوره‌ی رشد محصول، یا نشست با احمد"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="bk-desc">توضیح کوتاه</Label>
-        <Textarea
-          id="bk-desc"
-          rows={3}
-          value={draft.description ?? ""}
-          onChange={(e) => patch({ description: e.target.value || null })}
-          placeholder="چه اتفاقی در این میتینگ می‌افتد؟ مثلاً: «۳۰ دقیقه گفتگو درباره‌ی استراتژی برند»"
-        />
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <Label>گزینه‌های میتینگ</Label>
+          <Label className="sr-only">گزینه‌های میت</Label>
           <span className="text-xs text-muted-foreground">
             {toPersianDigits(draft.types.length)} گزینه
           </span>
         </div>
-        <p className="text-xs text-muted-foreground">
-          مهمان‌ها از بین این گزینه‌ها (با مدت / قیمت متفاوت) یکی را انتخاب
-          می‌کنند.
-        </p>
 
         {draft.types.length === 0 ? (
           <div className="rounded-2xl border border-dashed bg-foreground/2 p-4 text-center text-sm text-muted-foreground">
-            برای ادامه حداقل یک گزینه‌ی میتینگ اضافه کنید.
+            برای ادامه حداقل یک گزینه‌ی هماهنگ اضافه کنید.
           </div>
         ) : (
           <ul className="space-y-2">
@@ -1506,14 +1593,14 @@ function DetailsStep({
           </ul>
         )}
 
-        <button
+        <Button
           type="button"
-          className="flex items-center gap-2 text-sm font-semibold text-primary"
+          className="w-full"
           onClick={() => onOpenTypeEditor("new")}
         >
           <PlusIcon className="size-4" />
-          افزودن گزینه‌ی میتینگ
-        </button>
+          افزودن گزینه‌ی میت
+        </Button>
       </div>
     </div>
   );
@@ -1521,150 +1608,6 @@ function DetailsStep({
 
 function currencyLabel(code: string) {
   return CURRENCY_OPTIONS.find((c) => c.code === code)?.label ?? code;
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Step 4 — Review
-// ────────────────────────────────────────────────────────────────────────
-
-function ReviewStep({ draft }: { draft: EditableBookingBlock }) {
-  const daysSummary = useMemo(() => {
-    const byDay = new Map<number, Array<{ start: number; end: number }>>();
-    for (const a of draft.availability) {
-      const arr = byDay.get(a.dayOfWeek) ?? [];
-      arr.push({ start: a.startMinute, end: a.endMinute });
-      byDay.set(a.dayOfWeek, arr);
-    }
-    return FA_DAY_ORDER.map((dow, i) => ({
-      label: WEEKDAY_LABELS_FA[i],
-      windows: byDay.get(dow) ?? [],
-    }));
-  }, [draft.availability]);
-
-  return (
-    <div className="space-y-4 p-4">
-      <div>
-        <h2 className="text-xl font-bold">بازبینی</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          همه چیز را یک بار مرور کنید. بعداً هم می‌توانید ویرایش کنید.
-        </p>
-      </div>
-
-      <ReviewCard
-        icon={<MailIcon className="size-4" />}
-        title={draft.name || "بدون نام"}
-        desc={draft.description ?? "بدون توضیح"}
-      />
-
-      <ReviewCard
-        icon={
-          draft.locationType === "online" ? (
-            <VideoIcon className="size-4" />
-          ) : (
-            <MapPinIcon className="size-4" />
-          )
-        }
-        title={draft.locationType === "online" ? "آنلاین" : "حضوری"}
-        desc={
-          draft.locationType === "online"
-            ? (draft.meetingLink ?? "لینک میتینگ بعداً تنظیم می‌شود")
-            : (draft.locationAddress ?? "آدرسی وارد نشده")
-        }
-        ltrDesc={draft.locationType === "online" && !!draft.meetingLink}
-      />
-
-      <ReviewCard
-        icon={<GlobeIcon className="size-4" />}
-        title="منطقه‌ی زمانی"
-        desc={
-          <span dir="ltr">
-            {draft.timezone} · {formatOffset(draft.timezone)}
-          </span>
-        }
-      />
-
-      <ReviewCard
-        icon={<CalendarIcon className="size-4" />}
-        title="ساعت‌های هفتگی"
-        desc={
-          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[13px]">
-            {daysSummary.every((d) => d.windows.length === 0) ? (
-              <span className="text-muted-foreground">
-                هنوز ساعتی تعریف نشده.
-              </span>
-            ) : (
-              daysSummary.map((d, i) =>
-                d.windows.length ? (
-                  <span key={i}>
-                    <span className="font-bold">{d.label}</span>
-                    <span className="mx-1 text-muted-foreground">·</span>
-                    <span dir="ltr" className="tabular-nums">
-                      {d.windows
-                        .map(
-                          (w) =>
-                            `${formatMinute(w.start)}–${formatMinute(w.end)}`,
-                        )
-                        .join("، ")}
-                    </span>
-                  </span>
-                ) : null,
-              )
-            )}
-          </div>
-        }
-      />
-
-      <ReviewCard
-        icon={<TagIcon className="size-4" />}
-        title="گزینه‌های میتینگ"
-        desc={
-          <ul className="space-y-1.5">
-            {draft.types.map((t, i) => (
-              <li key={i} className="flex items-center justify-between gap-2">
-                <span className="font-semibold">{t.title}</span>
-                <span
-                  dir="ltr"
-                  className="text-xs text-muted-foreground tabular-nums"
-                >
-                  {t.durationMin}min ·{" "}
-                  {t.priceAmount === 0
-                    ? "Free"
-                    : `${t.priceAmount} ${t.priceCurrency}`}
-                </span>
-              </li>
-            ))}
-          </ul>
-        }
-      />
-    </div>
-  );
-}
-
-function ReviewCard({
-  icon,
-  title,
-  desc,
-  ltrDesc,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: React.ReactNode;
-  ltrDesc?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl bg-muted/50 p-3">
-      <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-muted-foreground">
-        {icon}
-        {title}
-      </div>
-      <div
-        className="text-sm text-foreground/90"
-        dir={ltrDesc ? "ltr" : undefined}
-      >
-        {desc}
-      </div>
-    </div>
-  );
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1705,7 +1648,7 @@ function BookingTypeEditor({
     >
       <div>
         <h2 className="text-xl font-bold">
-          {initial ? "ویرایش گزینه‌ی میتینگ" : "افزودن گزینه‌ی میتینگ"}
+          {initial ? "ویرایش گزینه‌ی هماهنگ" : "افزودن گزینه‌ی هماهنگ"}
         </h2>
       </div>
 
@@ -1726,7 +1669,7 @@ function BookingTypeEditor({
         <div className="relative">
           <select
             dir="rtl"
-            className="h-11 w-full appearance-none rounded-xl border bg-card px-3 pe-8 text-start text-sm focus-visible:outline-2 focus-visible:outline-ring"
+            className="h-11 w-full appearance-none rounded-xl border bg-card px-3 pe-8 text-start text-sm focus-visible:outline-2 focus-visible:outline-ring md:h-9"
             value={duration}
             onChange={(e) => setDuration(Number(e.target.value))}
           >
@@ -1756,7 +1699,7 @@ function BookingTypeEditor({
           <div className="relative">
             <select
               dir="rtl"
-              className="h-11 appearance-none rounded-xl border bg-card px-3 pe-8 text-start text-sm focus-visible:outline-2 focus-visible:outline-ring"
+              className="h-11 appearance-none rounded-xl border bg-card px-3 pe-8 text-start text-sm focus-visible:outline-2 focus-visible:outline-ring md:h-9"
               value={priceCurrency}
               onChange={(e) => setPriceCurrency(e.target.value)}
             >
@@ -1770,7 +1713,7 @@ function BookingTypeEditor({
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          برای میتینگ رایگان، مبلغ را روی صفر بگذارید.
+          برای هماهنگ رایگان، مبلغ را روی صفر بگذارید.
         </p>
       </div>
     </form>
@@ -1831,8 +1774,8 @@ function FooterActions({
   }
 
   const step = stage.step;
-  const isLast = step === 4;
-  const canContinue = validateStep(step, draft);
+  const isLast = step === 3;
+  const canContinue = getStepIssues(step, draft).length === 0;
 
   return (
     <Button
@@ -1840,7 +1783,7 @@ function FooterActions({
       disabled={!canContinue || submitting}
       onClick={async () => {
         if (isLast) await onFinalize();
-        else setStage({ kind: "wizard", step: (step + 1) as 2 | 3 | 4 });
+        else setStage({ kind: "wizard", step: (step + 1) as 2 | 3 });
       }}
     >
       {isLast ? (submitting ? "در حال ذخیره…" : "ذخیره و ساخت") : "ادامه"}
@@ -1848,17 +1791,53 @@ function FooterActions({
   );
 }
 
-function validateStep(step: 1 | 2 | 3 | 4, d: EditableBookingBlock): boolean {
+type StepIssue = { step: 1 | 2 | 3; field: string; message: string };
+
+function getStepIssues(step: 1 | 2 | 3, d: EditableBookingBlock): StepIssue[] {
+  const issues: StepIssue[] = [];
   if (step === 1) {
-    if (d.locationType === "in_person") {
-      return !!d.locationAddress && d.locationAddress.trim().length > 0;
+    if (!d.name.trim()) {
+      issues.push({
+        step: 1,
+        field: "name",
+        message: "نام صفحه‌ی هماهنگ را وارد کنید.",
+      });
     }
-    return true;
+    if (
+      d.locationType === "in_person" &&
+      !(d.locationAddress && d.locationAddress.trim().length > 0)
+    ) {
+      issues.push({
+        step: 1,
+        field: "address",
+        message: "آدرس محل ملاقات را وارد کنید.",
+      });
+    }
+    return issues;
   }
   if (step === 2) {
-    if (!d.availability.length) return false;
-    return d.availability.every((w) => w.endMinute > w.startMinute);
+    if (!d.availability.length) {
+      issues.push({
+        step: 2,
+        field: "availability",
+        message: "حداقل برای یک روز ساعت کاری اضافه کنید.",
+      });
+    } else if (!d.availability.every((w) => w.endMinute > w.startMinute)) {
+      issues.push({
+        step: 2,
+        field: "availability",
+        message: "ساعت پایان باید بعد از ساعت شروع باشد.",
+      });
+    }
+    return issues;
   }
-  if (step === 3) return d.name.trim().length > 0 && d.types.length > 0;
-  return d.types.length > 0;
+  // step 3
+  if (d.types.length === 0) {
+    issues.push({
+      step: 3,
+      field: "types",
+      message: "حداقل یک گزینه‌ی میت اضافه کنید.",
+    });
+  }
+  return issues;
 }

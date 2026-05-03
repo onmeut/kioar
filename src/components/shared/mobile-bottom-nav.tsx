@@ -5,12 +5,14 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
 import {
+  BarChart3Icon,
   CalendarClockIcon,
   CalendarDaysIcon,
   CreditCardIcon,
-  GaugeIcon,
+  FormInputIcon,
+  GlobeIcon,
+  HomeIcon,
   LayoutGridIcon,
-  Link2Icon,
   PlusSquareIcon,
   ShieldCheckIcon,
   UsersIcon,
@@ -27,20 +29,16 @@ type NavItem = {
 };
 
 const dashboardItems: NavItem[] = [
-  { href: "/dashboard", label: "داشبورد", icon: GaugeIcon, match: "exact" },
-  { href: "/dashboard/bookings", label: "رزروها", icon: CalendarClockIcon },
+  { href: "/dashboard", label: "داشبورد", icon: HomeIcon, match: "exact" },
+  { href: "/bookings", label: "هماهنگی‌ها", icon: CalendarClockIcon },
   {
-    href: "/dashboard/links",
-    label: "لینک‌ها",
-    icon: Link2Icon,
+    href: "/me" as Route,
+    label: "صفحه",
+    icon: GlobeIcon,
     primary: true,
   },
-  { href: "/dashboard/events", label: "رویدادها", icon: CalendarDaysIcon },
-  {
-    href: "/dashboard/requests/new",
-    label: "کارت",
-    icon: CreditCardIcon,
-  },
+  { href: "/my-events", label: "رویدادها", icon: CalendarDaysIcon },
+  { href: "/forms" as Route, label: "فرم‌ها", icon: FormInputIcon },
 ];
 
 const adminItems: NavItem[] = [

@@ -202,6 +202,65 @@
     @apply mx-auto w-full max-w-6xl px-5 sm:px-6;
   }
 
+  /*
+   * Hero mockup animated background — intentional gradient per designer request.
+   * Very low chroma (max 0.010) so it reads as near-white with the faintest
+   * brand-green breath — inspired by the "barely there" glow in the reference.
+   */
+  @keyframes hero-mockup-shift {
+    0%,
+    100% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+  }
+
+  .hero-mockup-bg {
+    background: linear-gradient(
+      135deg,
+      oklch(0.998 0.001 165) 0%,
+      oklch(0.992 0.005 165) 35%,
+      oklch(0.985 0.01 165) 50%,
+      oklch(0.992 0.005 165) 65%,
+      oklch(0.998 0.001 165) 100%
+    );
+    background-size: 300% 300%;
+    animation: hero-mockup-shift 10s ease infinite;
+  }
+
+  /*
+   * Claim-form animated border — pulses with brand green to attract attention.
+   * Uses box-shadow (not a background gradient) to stay compliant with the
+   * no-bg-gradient rule while still achieving the shimmer effect.
+   */
+  @keyframes claim-border-glow {
+    0%,
+    100% {
+      box-shadow: none;
+      border-color: var(--hairline);
+    }
+    50% {
+      box-shadow:
+        0 0 0 3px oklch(0.508 0.118 165.612 / 0.14),
+        0 8px 28px -8px oklch(0.508 0.118 165.612 / 0.22);
+      border-color: oklch(0.508 0.118 165.612 / 0.5);
+    }
+  }
+
+  .claim-form-border {
+    animation: claim-border-glow 3.5s ease-in-out infinite;
+  }
+
+  .claim-form-border:focus-within {
+    animation: none;
+    border-color: oklch(0.508 0.118 165.612 / 0.65);
+    box-shadow:
+      0 0 0 4px oklch(0.508 0.118 165.612 / 0.13),
+      0 8px 28px -8px oklch(0.508 0.118 165.612 / 0.18);
+  }
+
   .marketing-card {
     @apply rounded-4xl bg-card border border-border;
   }
@@ -408,6 +467,150 @@
   .float-slowest {
     animation: float-y 9s ease-in-out infinite;
     animation-delay: -4s;
+  }
+
+  /* ----------------------------------------------------------------- */
+  /* Block "Spotlight" animations — applied to public link/form/booking */
+  /* pills when the creator picks an animation style. Loop forever, but */
+  /* respect prefers-reduced-motion.                                    */
+  /* ----------------------------------------------------------------- */
+  @keyframes block-buzz {
+    0%,
+    100% {
+      transform: translate(0, 0) rotate(0deg);
+    }
+    10% {
+      transform: translate(-1px, 0) rotate(-1deg);
+    }
+    20% {
+      transform: translate(1px, 0) rotate(1deg);
+    }
+    30% {
+      transform: translate(-1px, 1px) rotate(-1deg);
+    }
+    40% {
+      transform: translate(1px, -1px) rotate(1deg);
+    }
+    50% {
+      transform: translate(-1px, 0) rotate(-0.5deg);
+    }
+    60% {
+      transform: translate(1px, 0) rotate(0.5deg);
+    }
+    70% {
+      transform: translate(-1px, 1px) rotate(-1deg);
+    }
+    80% {
+      transform: translate(1px, -1px) rotate(1deg);
+    }
+    90% {
+      transform: translate(-1px, 0) rotate(-0.5deg);
+    }
+  }
+  @keyframes block-wobble {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    15% {
+      transform: rotate(-3deg);
+    }
+    30% {
+      transform: rotate(2deg);
+    }
+    45% {
+      transform: rotate(-2deg);
+    }
+    60% {
+      transform: rotate(1.5deg);
+    }
+    75% {
+      transform: rotate(-1deg);
+    }
+  }
+  @keyframes block-pop {
+    0%,
+    100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+  @keyframes block-swipe {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(8px);
+    }
+  }
+  [dir="rtl"] .anim-block-swipe {
+    animation-name: block-swipe-rtl;
+  }
+  @keyframes block-swipe-rtl {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    50% {
+      transform: translateX(-8px);
+    }
+  }
+  .anim-block-buzz {
+    animation: block-buzz 1.6s ease-in-out infinite;
+    animation-delay: 0.6s;
+  }
+  .anim-block-wobble {
+    animation: block-wobble 2s ease-in-out infinite;
+    animation-delay: 0.6s;
+    transform-origin: 50% 50%;
+  }
+  .anim-block-pop {
+    animation: block-pop 1.8s ease-in-out infinite;
+    animation-delay: 0.6s;
+  }
+  .anim-block-swipe {
+    animation: block-swipe 2.2s ease-in-out infinite;
+    animation-delay: 0.6s;
+  }
+  /* One-shot variants — play once, then stop. Used for JS-controlled   */
+  /* periodic triggers (public page blocks every 10 s, sidebar every    */
+  /* 60 s). Class is removed after animationend and re-added by JS.     */
+  .anim-block-buzz-once {
+    animation: block-buzz 1.6s ease-in-out 1;
+    animation-delay: 0.4s;
+  }
+  .anim-block-wobble-once {
+    animation: block-wobble 2s ease-in-out 1;
+    animation-delay: 0.4s;
+    transform-origin: 50% 50%;
+  }
+  .anim-block-pop-once {
+    animation: block-pop 1.8s ease-in-out 1;
+    animation-delay: 0.4s;
+  }
+  .anim-block-swipe-once {
+    animation: block-swipe 2.2s ease-in-out 1;
+    animation-delay: 0.4s;
+  }
+  [dir="rtl"] .anim-block-swipe-once {
+    animation-name: block-swipe-rtl;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .anim-block-buzz,
+    .anim-block-wobble,
+    .anim-block-pop,
+    .anim-block-swipe {
+      animation: none !important;
+    }
+    .anim-block-buzz-once,
+    .anim-block-wobble-once,
+    .anim-block-pop-once,
+    .anim-block-swipe-once {
+      animation: none !important;
+    }
   }
 
   /* Underline-on-hover for editorial nav links */

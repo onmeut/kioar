@@ -206,7 +206,13 @@ export async function safeFetch(
   if (!initial.ok) return { ok: false, reason: initial.reason };
 
   const requestHeaders: Record<string, string> = {
-    "User-Agent": "Mozilla/5.0 (compatible; KioarBot/1.0)",
+    // Identify as a real browser + the well-known OG-card crawler. Many
+    // hosts (Cloudflare, Vercel, dub.co, etc.) silently strip Open Graph
+    // meta from "unknown bot" responses but whitelist these UAs because
+    // they're what Facebook / Twitter / Slack send. Keep the suffix so
+    // server logs can still identify our crawler.
+    "User-Agent":
+      "Mozilla/5.0 (compatible; facebookexternalhit/1.1; KioarBot/1.0; +https://kioar.com/)",
     ...headers,
   };
   if (accept) requestHeaders.Accept = accept;

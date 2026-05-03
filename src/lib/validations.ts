@@ -2,6 +2,8 @@ import { z } from "zod";
 
 import { normalizeIranianPhone } from "@/lib/phone";
 import { toEnglishDigits } from "@/lib/persian";
+import { isIconKey } from "@/lib/link-icons";
+import { DEFAULT_PROFILE_DOMAIN, isProfileDomain } from "@/lib/profile-domains";
 import { isReservedSlug, normalizeSlug } from "@/lib/slug";
 
 const optionalString = z.string().trim().optional().default("");
@@ -30,35 +32,93 @@ export const verifyOtpSchema = z.object({
   code: otpCodeSchema,
 });
 
-// Only http(s) URLs are safe to render as <a href> or <Image src>.
-// Accepting `javascript:`, `data:`, `file:`, `vbscript:` etc. would allow XSS
-// when the URL is rendered on the public profile page.
-const HTTP_URL_PROTOCOLS = new Set(["http:", "https:"]);
+// Allowed link protocols. http(s) for normal links, mailto/tel/sms for
+// contact presets in the add-link dialog (email, phone). Accepting
+// `javascript:`, `data:`, `file:`, `vbscript:` etc. would allow XSS when
+// the URL is rendered as <a href> on the public profile page.
+const SAFE_LINK_PROTOCOLS = new Set([
+  "http:",
+  "https:",
+  "mailto:",
+  "tel:",
+  "sms:",
+]);
+// Image / icon URLs always go through <img>/<Image>, so they must be http(s).
+const HTTP_IMAGE_PROTOCOLS = new Set(["http:", "https:"]);
 
-function isSafeHttpUrl(value: string): boolean {
+/**
+ * Returns true when `value` is a fully-formed URL we're willing to render.
+ *
+ * - Rejects bare prefixes like `https://` / `mailto:` / `tel:` (an empty
+ *   host *and* empty path is what the add-link dialog seeds when the user
+ *   hasn't typed anything yet — those must not slip through autosave).
+ * - Rejects any protocol outside `allowed`.
+ */
+function isSafeUrl(value: string, allowed: Set<string>): boolean {
   try {
     const parsed = new URL(value);
-    return HTTP_URL_PROTOCOLS.has(parsed.protocol);
+    if (!allowed.has(parsed.protocol)) return false;
+    if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+      // Require a hostname — `https://` alone parses but is useless.
+      if (!parsed.hostname) return false;
+    } else {
+      // mailto:/tel:/sms: have an empty hostname; the meaningful part lives
+      // in `pathname`. Reject `mailto:` / `tel:` with no recipient.
+      if (!parsed.pathname || parsed.pathname.trim().length === 0) return false;
+    }
+    return true;
   } catch {
     return false;
   }
 }
 
-const httpUrlSchema = z
+export function isSafeLinkUrl(value: string): boolean {
+  return isSafeUrl(normalizeLinkUrl(value), SAFE_LINK_PROTOCOLS);
+}
+
+/**
+ * Normalize a URL the user typed into the dashboard. If they typed
+ * `google.com` we silently prepend `https://` so the rest of the system
+ * (validation, autosave, public renderer) can rely on a fully-qualified
+ * URL. mailto:/tel:/sms: and any other scheme are passed through.
+ */
+export function normalizeLinkUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+const linkUrlSchema = z
   .string()
   .trim()
-  .url("نشانی لینک معتبر نیست.")
-  .refine(isSafeHttpUrl, { message: "فقط نشانی http یا https مجاز است." });
+  .min(1, "نشانی لینک لازم است.")
+  .transform(normalizeLinkUrl)
+  .refine((v) => isSafeUrl(v, SAFE_LINK_PROTOCOLS), {
+    message: "نشانی لینک معتبر نیست.",
+  });
 
 const optionalHttpUrlSchema = z
-  .union([z.literal(""), httpUrlSchema])
+  .union([
+    z.literal(""),
+    z
+      .string()
+      .trim()
+      // Root-relative URLs (e.g. `/uploads/...` from local storage in dev)
+      // are passed through verbatim; they're already safe and don't need
+      // the `https://` prefix.
+      .transform((v) => (v.startsWith("/") ? v : normalizeLinkUrl(v)))
+      .refine((v) => v.startsWith("/") || isSafeUrl(v, HTTP_IMAGE_PROTOCOLS), {
+        message: "نشانی معتبر نیست.",
+      }),
+  ])
   .optional()
   .nullable()
   .transform((v) => (v && v.length ? v : null));
 
 export const profileLinkSchema = z.object({
   label: z.string().trim().min(1, "عنوان لینک لازم است.").max(40),
-  url: httpUrlSchema,
+  url: linkUrlSchema,
   description: z
     .string()
     .trim()
@@ -75,11 +135,90 @@ export const profileLinkSchema = z.object({
   iconUrl: optionalHttpUrlSchema,
   sortOrder: z.number().int().nonnegative(),
   isActive: z.boolean().optional().default(true),
+  spotlight: z.enum(["none", "pin", "animate"]).optional().default("none"),
+  animationStyle: z
+    .enum(["buzz", "wobble", "pop", "swipe"])
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
 });
 
 export const profileLinksArraySchema = z
   .array(profileLinkSchema)
   .max(8, "حداکثر ۸ لینک قابل ثبت است.");
+
+// ---------------------------------------------------------------------------
+// Form blocks
+// ---------------------------------------------------------------------------
+
+export const FORM_FIELD_KINDS = [
+  "name",
+  "email",
+  "phone",
+  "country",
+  "short_answer",
+  "paragraph",
+  "single_choice",
+  "checkboxes",
+  "dropdown",
+  "date",
+] as const;
+
+export type FormFieldKind = (typeof FORM_FIELD_KINDS)[number];
+
+export const FIELD_KINDS_WITH_OPTIONS: FormFieldKind[] = [
+  "single_choice",
+  "checkboxes",
+  "dropdown",
+];
+
+export const formFieldSchema = z
+  .object({
+    id: z.string().optional().nullable(),
+    kind: z.enum(FORM_FIELD_KINDS),
+    label: z.string().trim().min(1, "عنوان فیلد لازم است.").max(200),
+    required: z.boolean().optional().default(false),
+    options: z
+      .array(z.string().trim().min(1).max(200))
+      .max(50)
+      .optional()
+      .nullable(),
+    sortOrder: z.number().int().nonnegative(),
+  })
+  .superRefine((value, ctx) => {
+    if (FIELD_KINDS_WITH_OPTIONS.includes(value.kind)) {
+      const opts = value.options ?? [];
+      if (opts.length < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "حداقل یک گزینه لازم است.",
+          path: ["options"],
+        });
+      }
+    }
+  });
+
+export const formBlockSchema = z.object({
+  name: z.string().trim().min(1, "نام فرم لازم است.").max(80),
+  intro: z
+    .string()
+    .trim()
+    .max(500)
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  outro: z
+    .string()
+    .trim()
+    .max(200)
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : "Thanks for submitting!")),
+  fields: z.array(formFieldSchema).min(1, "حداقل یک فیلد لازم است.").max(20),
+});
+
+export type FormBlockInput = z.infer<typeof formBlockSchema>;
+export type FormFieldInput = z.infer<typeof formFieldSchema>;
 
 export const profileDetailsFormSchema = z.object({
   fullName: z
@@ -106,15 +245,137 @@ export const profileDetailsFormSchema = z.object({
   email: z
     .union([z.literal(""), z.string().trim().email("ایمیل معتبر نیست.")])
     .default(""),
+  domain: z
+    .string()
+    .trim()
+    .default(DEFAULT_PROFILE_DOMAIN)
+    .refine((value) => isProfileDomain(value), {
+      message: "این دامنه پشتیبانی نمی‌شود.",
+    }),
+  seoTitle: z
+    .string()
+    .trim()
+    .max(70, "عنوان سئو حداکثر ۷۰ کاراکتر می‌تواند باشد.")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  seoDescription: z
+    .string()
+    .trim()
+    .max(200, "توضیح سئو حداکثر ۲۰۰ کاراکتر می‌تواند باشد.")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  indexEnabled: z
+    .union([z.literal("on"), z.literal("off"), z.boolean()])
+    .default(true)
+    .transform((v) => (typeof v === "boolean" ? v : v === "on" ? true : false)),
+  appIconKey: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null))
+    .refine((v) => v === null || isIconKey(v), {
+      message: "آیکون نامعتبر است.",
+    }),
+  appIconColor: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null))
+    .refine((v) => v === null || /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v), {
+      message: "رنگ نامعتبر است.",
+    }),
 });
 
 export const profileFormSchema = profileDetailsFormSchema.extend({
   links: profileLinksArraySchema,
 });
 
+/**
+ * Validates the fields the "Page Settings" sheet manages.
+ */
+export const pageSettingsFormSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(1, "نام صفحه را وارد کنید.")
+    .max(80, "نام صفحه حداکثر ۸۰ کاراکتر می‌تواند باشد."),
+  title: z
+    .string()
+    .trim()
+    .max(80, "عنوان حداکثر ۸۰ کاراکتر می‌تواند باشد.")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  bio: z
+    .string()
+    .trim()
+    .max(280, "بیو حداکثر ۲۸۰ کاراکتر می‌تواند باشد.")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  slug: z
+    .string()
+    .trim()
+    .min(3, "شناسه عمومی خیلی کوتاه است.")
+    .transform((value) => normalizeSlug(value))
+    .refine((value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value), {
+      message: "شناسه باید با حروف انگلیسی، عدد و خط تیره باشد.",
+    })
+    .refine((value) => !isReservedSlug(value), {
+      message: "این شناسه رزرو شده است. لطفاً شناسه دیگری انتخاب کنید.",
+    }),
+  domain: z
+    .string()
+    .trim()
+    .default(DEFAULT_PROFILE_DOMAIN)
+    .refine((value) => isProfileDomain(value), {
+      message: "این دامنه پشتیبانی نمی‌شود.",
+    }),
+  seoTitle: z
+    .string()
+    .trim()
+    .max(70, "عنوان سئو حداکثر ۷۰ کاراکتر می‌تواند باشد.")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  seoDescription: z
+    .string()
+    .trim()
+    .max(200, "توضیح سئو حداکثر ۲۰۰ کاراکتر می‌تواند باشد.")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  indexEnabled: z
+    .union([z.literal("on"), z.literal("off"), z.boolean()])
+    .default(true)
+    .transform((v) => (typeof v === "boolean" ? v : v === "on" ? true : false)),
+  appIconKey: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null))
+    .refine((v) => v === null || isIconKey(v), {
+      message: "آیکون نامعتبر است.",
+    }),
+  appIconColor: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null))
+    .refine((v) => v === null || /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v), {
+      message: "رنگ نامعتبر است.",
+    }),
+});
+
 // Onboarding is intentionally the tiniest first-run flow: just enough data to
 // claim a slug and name the card. Avatar, bio, contact methods, links, etc.
-// are deferred to the dashboard so users can reach `/dashboard/links` fast.
+// are deferred to the dashboard so users can reach `/page` fast.
 export const onboardingProfileSchema = z.object({
   firstName: z.string().trim().min(1, "نام را وارد کنید.").max(40),
   lastName: z.string().trim().min(1, "نام خانوادگی را وارد کنید.").max(40),
@@ -361,3 +622,196 @@ export const publicBookingSubmitSchema = z.object({
 });
 
 export type PublicBookingSubmit = z.infer<typeof publicBookingSubmitSchema>;
+
+// ---------------------------------------------------------------------------
+// Product blocks (universal "محصولات و خدمات")
+// ---------------------------------------------------------------------------
+//
+// Universal listing model used for menus, e-commerce items with outbound
+// links, services, packages, portfolio. The `preset` field is purely a UI
+// hint at create time; the data model never branches on it.
+//
+// Money is in **minor units** (rials for IRT, cents for USD/EUR).
+
+export const PRODUCT_BLOCK_LAYOUTS = ["list", "grid", "cards"] as const;
+export type ProductBlockLayout = (typeof PRODUCT_BLOCK_LAYOUTS)[number];
+
+export const PRODUCT_BLOCK_DISPLAY_MODES = ["pill", "inline"] as const;
+export type ProductBlockDisplayMode =
+  (typeof PRODUCT_BLOCK_DISPLAY_MODES)[number];
+
+export const PRODUCT_ITEM_PRICE_TYPES = [
+  "fixed",
+  "from",
+  "range",
+  "on_request",
+  "free",
+] as const;
+export type ProductItemPriceType = (typeof PRODUCT_ITEM_PRICE_TYPES)[number];
+
+export const PRODUCT_ITEM_AVAILABILITY = [
+  "available",
+  "sold_out",
+  "hidden",
+] as const;
+export type ProductItemAvailability =
+  (typeof PRODUCT_ITEM_AVAILABILITY)[number];
+
+export const PRODUCT_BLOCK_CURRENCIES = ["IRT", "USD", "EUR"] as const;
+export type ProductBlockCurrency = (typeof PRODUCT_BLOCK_CURRENCIES)[number];
+
+export const PRODUCT_BLOCK_PRESETS = [
+  "menu",
+  "shop",
+  "services",
+  "packages",
+  "portfolio",
+  "custom",
+] as const;
+export type ProductBlockPreset = (typeof PRODUCT_BLOCK_PRESETS)[number];
+
+/** Soft + hard caps. UI warns at soft, server rejects at hard. */
+export const PRODUCT_ITEMS_HARD_CAP = 300;
+export const PRODUCT_ITEMS_SOFT_CAP = 240;
+export const PRODUCT_SECTIONS_MAX = 30;
+
+export const productSectionInputSchema = z.object({
+  id: z.string().uuid().optional().nullable(),
+  title: z.string().trim().min(1, "عنوان دسته لازم است.").max(80),
+});
+
+export const productItemInputSchema = z
+  .object({
+    id: z.string().uuid().optional().nullable(),
+    /** Stable client-side id of the section this item belongs to (when
+     * the user reorders unsaved drafts). Server resolves this back to a
+     * persisted `section_id` after sections are inserted. */
+    sectionRef: z.string().optional().nullable(),
+    title: z.string().trim().min(1, "عنوان لازم است.").max(120),
+    description: z
+      .string()
+      .trim()
+      .max(280)
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length ? v : null)),
+    imageUrl: optionalHttpUrlSchema,
+    priceType: z.enum(PRODUCT_ITEM_PRICE_TYPES).default("fixed"),
+    priceAmount: z
+      .number()
+      .int()
+      .min(0)
+      .max(MAX_PRICE_MINOR_UNITS, "قیمت معتبر نیست.")
+      .default(0),
+    priceAmountMax: z
+      .number()
+      .int()
+      .min(0)
+      .max(MAX_PRICE_MINOR_UNITS, "قیمت معتبر نیست.")
+      .optional()
+      .nullable(),
+    availability: z.enum(PRODUCT_ITEM_AVAILABILITY).default("available"),
+    externalUrl: optionalHttpUrlSchema,
+    badge: z
+      .string()
+      .trim()
+      .max(40)
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length ? v : null)),
+    sku: z
+      .string()
+      .trim()
+      .max(64)
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length ? v : null)),
+  })
+  .superRefine((value, ctx) => {
+    if (value.priceType === "range") {
+      if (value.priceAmountMax === null || value.priceAmountMax === undefined) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "بازه قیمت را کامل وارد کنید.",
+          path: ["priceAmountMax"],
+        });
+      } else if (value.priceAmountMax <= value.priceAmount) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "سقف بازه باید بیشتر از کف باشد.",
+          path: ["priceAmountMax"],
+        });
+      }
+    }
+    if (value.priceType === "from" && value.priceAmount <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "قیمت پایه را وارد کنید.",
+        path: ["priceAmount"],
+      });
+    }
+    if (value.priceType === "fixed" && value.priceAmount < 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "قیمت معتبر نیست.",
+        path: ["priceAmount"],
+      });
+    }
+  });
+
+export const productBlockInputSchema = z.object({
+  id: z.string().uuid().optional().nullable(),
+  name: z.string().trim().min(1, "عنوان لازم است.").max(80),
+  description: z
+    .string()
+    .trim()
+    .max(280)
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  preset: z
+    .enum(PRODUCT_BLOCK_PRESETS)
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
+  layout: z.enum(PRODUCT_BLOCK_LAYOUTS).default("list"),
+  itemLabel: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  currency: z.enum(PRODUCT_BLOCK_CURRENCIES).default("IRT"),
+  showPrices: z.boolean().default(true),
+  displayMode: z.enum(PRODUCT_BLOCK_DISPLAY_MODES).default("pill"),
+  pillLabel: z
+    .string()
+    .trim()
+    .max(40)
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  iconKey: z
+    .union([z.literal(""), z.string().trim().max(32)])
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  iconUrl: optionalHttpUrlSchema,
+  imageUrl: optionalHttpUrlSchema,
+  sections: z
+    .array(productSectionInputSchema)
+    .max(PRODUCT_SECTIONS_MAX, "تعداد دسته‌ها زیاد است.")
+    .default([]),
+  items: z
+    .array(productItemInputSchema)
+    .max(
+      PRODUCT_ITEMS_HARD_CAP,
+      `حداکثر ${PRODUCT_ITEMS_HARD_CAP} مورد قابل ثبت است.`,
+    )
+    .default([]),
+});
+
+export type ProductBlockInput = z.infer<typeof productBlockInputSchema>;
+export type ProductSectionInput = z.infer<typeof productSectionInputSchema>;
+export type ProductItemInput = z.infer<typeof productItemInputSchema>;

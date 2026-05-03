@@ -1,0 +1,24 @@
+# Caddy automatically provisions TLS via Let's Encrypt for $APP_DOMAIN.
+# Reverse-proxies all traffic to the standalone Next.js server.
+#
+# Set APP_DOMAIN in .env.production (e.g. APP_DOMAIN=app.example.com).
+
+{$APP_DOMAIN} {
+	encode zstd gzip
+
+	# Long cache for hashed Next.js static assets.
+	@nextStatic path /_next/static/*
+	header @nextStatic Cache-Control "public, max-age=31536000, immutable"
+
+	# Long cache for locally-served uploads (when S3 is not configured).
+	@uploads path /uploads/*
+	header @uploads Cache-Control "public, max-age=31536000, immutable"
+
+	# Rate-limit raw requests at the edge as a coarse first line of defense.
+	# (Per-route limits inside the app remain the source of truth.)
+	reverse_proxy app:3000 {
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Real-IP {remote_host}
+	}
+}

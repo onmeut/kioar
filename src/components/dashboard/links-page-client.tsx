@@ -29,33 +29,54 @@ import {
   CameraIcon,
   Check,
   EyeIcon,
-  GripVerticalIcon,
-  ImageIcon,
   MousePointerClickIcon,
-  PencilIcon,
   PlusIcon,
-  Trash2Icon,
+  Settings2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { AddLinkDialog } from "@/components/dashboard/add-link-dialog";
 import { BookingBlockRow } from "@/components/dashboard/booking-block-row";
+import { BlockCard } from "@/components/dashboard/block-card";
 import { BookingFlowDialog } from "@/components/dashboard/booking-flow-dialog";
 import type {
+  EditableBookingBlock,
   EditableBookingBlockWithId,
   ProviderConnection,
 } from "@/components/dashboard/booking.types";
 import {
-  LinkIconBubble,
-  LinkIconPicker,
-  type LinkIconPickerValue,
-} from "@/components/dashboard/link-icon-picker";
+  FormBuilderDialog,
+  type FormBlockDraft,
+} from "@/components/dashboard/form-builder-dialog";
+import {
+  FormBlockRow,
+  type EditableFormBlockWithId,
+} from "@/components/dashboard/form-block-row";
+import {
+  ProductBuilderDialog,
+  type ProductBlockSubmit,
+} from "@/components/dashboard/product-builder-dialog";
+import {
+  ProductBlockRow,
+  type EditableProductBlockWithId,
+} from "@/components/dashboard/product-block-row";
+import { type LinkIconPickerValue } from "@/components/dashboard/link-icon-picker";
+import { LinkIconPickerButton } from "@/components/dashboard/link-icon-picker-button";
+import { SpotlightStarButton } from "@/components/dashboard/spotlight-star-button";
+import type {
+  BlockAnimationStyle,
+  BlockSpotlight,
+} from "@/lib/block-spotlight";
 import type { EditableLink } from "@/components/dashboard/links-manager.types";
 import { ProfileAvatarModal } from "@/components/dashboard/profile-avatar-modal";
+import { PhoneMockupFrame } from "@/components/dashboard/phone-mockup-frame";
 import { ProfilePreviewMock } from "@/components/dashboard/profile-preview-mock";
-import { ProfileTitleBioModal } from "@/components/dashboard/profile-title-bio-modal";
+import {
+  PageSettingsSheet,
+  type PageSettingsValues,
+} from "@/components/dashboard/page-settings-sheet";
 import { PublicShareBar } from "@/components/dashboard/public-share-bar";
+import { BoringAvatar } from "@/components/shared/boring-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -66,14 +87,14 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { idleState, type ActionState } from "@/lib/action-state";
 import type { LinkMetadata } from "@/lib/link-metadata";
-import { toPersianDigits } from "@/lib/persian";
-import { cn } from "@/lib/utils";
+import { submitFormAction as publicSubmitFormAction } from "@/lib/public-form-actions";
+import { isSafeLinkUrl } from "@/lib/validations";
 
 type ProfileSnapshot = {
+  id: string;
   fullName: string;
   title: string;
   bio: string;
@@ -81,12 +102,23 @@ type ProfileSnapshot = {
   publicPhone: string;
   email: string;
   avatarUrl: string | null;
+  /** Seed for the boring-avatars fallback when `avatarUrl` is null. */
+  avatarSeed: string | null;
+  domain: string;
+  seoTitle: string;
+  seoDescription: string;
+  ogImageUrl: string | null;
+  indexEnabled: boolean;
+  appIconKey: string | null;
+  appIconColor: string;
 };
 
 type LinksPageClientProps = {
   initialProfile: ProfileSnapshot;
   initialLinks: EditableLink[];
   initialBookingBlocks: EditableBookingBlockWithId[];
+  initialFormBlocks: EditableFormBlockWithId[];
+  initialProductBlocks: EditableProductBlockWithId[];
   providerConnections: ProviderConnection[];
   /** All-time click counts keyed by link id. */
   linkClickCounts: Record<string, number>;
@@ -100,7 +132,7 @@ type LinksPageClientProps = {
     state: ActionState,
     formData: FormData,
   ) => Promise<ActionState>;
-  autosaveProfileDetailsAction: (
+  savePageSettingsAction: (
     state: ActionState,
     formData: FormData,
   ) => Promise<ActionState>;
@@ -108,10 +140,14 @@ type LinksPageClientProps = {
     state: ActionState,
     formData: FormData,
   ) => Promise<ActionState>;
-  autosaveLinkImageAction: (
-    state: ActionState & { url?: string | null; folder?: string },
+  deleteAvatarAction: (
+    state: ActionState,
     formData: FormData,
-  ) => Promise<ActionState & { url?: string | null; folder?: string }>;
+  ) => Promise<ActionState>;
+  reorderBlocksAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
   createBookingBlockAction: (
     state: ActionState & { id?: string },
     formData: FormData,
@@ -128,31 +164,102 @@ type LinksPageClientProps = {
     state: ActionState,
     formData: FormData,
   ) => Promise<ActionState>;
+  createFormBlockAction: (
+    state: ActionState & { id?: string },
+    formData: FormData,
+  ) => Promise<ActionState & { id?: string }>;
+  updateFormBlockAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  deleteFormBlockAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  toggleFormBlockActiveAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  createProductBlockAction: (
+    state: ActionState & { id?: string },
+    formData: FormData,
+  ) => Promise<ActionState & { id?: string }>;
+  updateProductBlockAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  deleteProductBlockAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  toggleProductBlockActiveAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  uploadProductItemImageAction: (
+    state: ActionState & { url?: string | null },
+    formData: FormData,
+  ) => Promise<ActionState & { url?: string | null }>;
+  /** Phase 5: when the page lacks the booking entitlement, render existing
+   * booking blocks read-only with an upgrade CTA instead of editable rows. */
+  bookingsLocked?: boolean;
+  /** Phase 5: same idea for form blocks (`business_lead_capture_form`). */
+  formsLocked?: boolean;
+  /** Phase 5: same idea for product blocks (`products_block`). */
+  productsLocked?: boolean;
+  /** Per-block items cap from the page's entitlement
+   * (`products_max_items_per_block`). Falls back to the absolute hard cap
+   * (300) when unset. */
+  productItemsCap?: number;
+  /** Phase 6 — Spotlight gating. */
+  pinAllowed?: boolean;
+  animateAllowed?: boolean;
+  setBlockSpotlightAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
 };
 
-function getInitials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (!parts.length) return "·";
-  if (parts.length === 1) return parts[0].slice(0, 2);
-  return (parts[0][0] + parts[parts.length - 1][0]).slice(0, 2);
+/** Stable dnd-kit id for an item in the unified blocks list. */
+function itemKey(ref: { kind: string; id: string }) {
+  return `${ref.kind}:${ref.id}`;
 }
 
 export function LinksPageClient({
   initialProfile,
   initialLinks,
   initialBookingBlocks,
+  initialFormBlocks,
+  initialProductBlocks,
   providerConnections,
   linkClickCounts,
   publicUrl,
-  autosaveLinkImageAction,
   fetchMetadataAction,
   autosaveLinksAction,
-  autosaveProfileDetailsAction,
+  savePageSettingsAction,
   autosaveAvatarAction,
+  deleteAvatarAction,
+  reorderBlocksAction,
   createBookingBlockAction,
   updateBookingBlockAction,
   deleteBookingBlockAction,
   toggleBookingBlockActiveAction,
+  createFormBlockAction,
+  updateFormBlockAction,
+  deleteFormBlockAction,
+  toggleFormBlockActiveAction,
+  createProductBlockAction,
+  updateProductBlockAction,
+  deleteProductBlockAction,
+  toggleProductBlockActiveAction,
+  uploadProductItemImageAction,
+  bookingsLocked = false,
+  formsLocked = false,
+  productsLocked = false,
+  productItemsCap,
+  pinAllowed = false,
+  animateAllowed = false,
+  setBlockSpotlightAction,
 }: LinksPageClientProps) {
   const router = useRouter();
 
@@ -160,6 +267,10 @@ export function LinksPageClient({
   const [links, setLinks] = useState<EditableLink[]>(initialLinks);
   const [bookingBlocks, setBookingBlocks] =
     useState<EditableBookingBlockWithId[]>(initialBookingBlocks);
+  const [formBlocks, setFormBlocks] =
+    useState<EditableFormBlockWithId[]>(initialFormBlocks);
+  const [productBlocks, setProductBlocks] =
+    useState<EditableProductBlockWithId[]>(initialProductBlocks);
 
   // Re-sync from the server when the parent route revalidates (e.g. after
   // creating a booking block). Without this the UI keeps showing the stale
@@ -167,11 +278,31 @@ export function LinksPageClient({
   useEffect(() => {
     setBookingBlocks(initialBookingBlocks);
   }, [initialBookingBlocks]);
+  useEffect(() => {
+    setFormBlocks(initialFormBlocks);
+  }, [initialFormBlocks]);
+  useEffect(() => {
+    setProductBlocks(initialProductBlocks);
+  }, [initialProductBlocks]);
   const [addOpen, setAddOpen] = useState(false);
   const [bookingFlowOpen, setBookingFlowOpen] = useState(false);
   const [creatingBooking, setCreatingBooking] = useState(false);
-  const [titleBioOpen, setTitleBioOpen] = useState(false);
+  const [formBuilderOpen, setFormBuilderOpen] = useState(false);
+  const [editingFormBlock, setEditingFormBlock] =
+    useState<EditableFormBlockWithId | null>(null);
+  const [savingForm, setSavingForm] = useState(false);
+  const [productBuilderOpen, setProductBuilderOpen] = useState(false);
+  const [editingProductBlock, setEditingProductBlock] =
+    useState<EditableProductBlockWithId | null>(null);
+  const [savingProduct, setSavingProduct] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    const handler = () => setSettingsOpen(true);
+    window.addEventListener("open-page-settings", handler);
+    return () => window.removeEventListener("open-page-settings", handler);
+  }, []);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -197,14 +328,24 @@ export function LinksPageClient({
           imageUrl: link.imageUrl,
           sortOrder: index,
           isActive: link.isActive,
+          spotlight: link.spotlight,
+          animationStyle: link.animationStyle,
         })),
       ),
     [links],
   );
 
-  // Autosave links (debounced)
+  // Autosave links (debounced). We skip the save when *any* link in the
+  // draft has an invalid URL — the user is mid-typing inline and the
+  // server schema would reject the whole array. Without this the toast
+  // spams "نشانی لینک معتبر نیست" on every keystroke and `lastSavedPayload`
+  // never advances, leaving newly-added valid links unpersisted on refresh.
   const lastSavedPayload = useRef(linksPayload);
   const firstRun = useRef(true);
+  const linksPayloadValid = useMemo(
+    () => links.every((l) => isSafeLinkUrl((l.url ?? "").trim())),
+    [links],
+  );
   useEffect(() => {
     if (firstRun.current) {
       firstRun.current = false;
@@ -212,6 +353,7 @@ export function LinksPageClient({
       return;
     }
     if (lastSavedPayload.current === linksPayload) return;
+    if (!linksPayloadValid) return;
     const timer = window.setTimeout(() => {
       lastSavedPayload.current = linksPayload;
       const fd = new FormData();
@@ -221,7 +363,7 @@ export function LinksPageClient({
       });
     }, 500);
     return () => window.clearTimeout(timer);
-  }, [linksPayload, linksFormAction]);
+  }, [linksPayload, linksPayloadValid, linksFormAction]);
 
   // Toast on server error
   const lastLinksToast = useRef<string | null>(null);
@@ -235,16 +377,109 @@ export function LinksPageClient({
     }
   }, [linksState.status, linksState.message]);
 
+  /* ---------- Unified blocks order (links + bookings + forms + products) ---------- */
+  type BlockRef = {
+    kind: "link" | "booking" | "form" | "product";
+    id: string;
+  };
+
+  function buildInitialOrder(): BlockRef[] {
+    const all: Array<BlockRef & { sortOrder: number }> = [
+      ...links.map((l, i) => ({
+        kind: "link" as const,
+        id: l.id,
+        sortOrder: l.sortOrder ?? i,
+      })),
+      ...bookingBlocks.map((b, i) => ({
+        kind: "booking" as const,
+        id: b.id,
+        // Public card uses 1_000_000+i for unsorted bookings; mirror that
+        // to keep ordering deterministic until first reorder.
+        sortOrder: b.sortOrder ?? 1_000_000 + i,
+      })),
+      ...formBlocks.map((f, i) => ({
+        kind: "form" as const,
+        id: f.id,
+        sortOrder: f.sortOrder ?? 2_000_000 + i,
+      })),
+      ...productBlocks.map((p, i) => ({
+        kind: "product" as const,
+        id: p.id,
+        sortOrder: p.sortOrder ?? 3_000_000 + i,
+      })),
+    ];
+    all.sort((a, b) => a.sortOrder - b.sortOrder);
+    return all.map(({ kind, id }) => ({ kind, id }));
+  }
+
+  const [blocksOrder, setBlocksOrder] = useState<BlockRef[]>(buildInitialOrder);
+
+  // Reconcile when underlying lists change (add / remove). Preserves the
+  // existing relative order; new items are appended; deleted items drop.
+  useEffect(() => {
+    setBlocksOrder((current) => {
+      const linkIds = new Set(links.map((l) => l.id));
+      const bookingIds = new Set(bookingBlocks.map((b) => b.id));
+      const formIds = new Set(formBlocks.map((f) => f.id));
+      const productIds = new Set(productBlocks.map((p) => p.id));
+
+      const seen = new Set<string>();
+      const kept: BlockRef[] = [];
+      for (const ref of current) {
+        const owns =
+          (ref.kind === "link" && linkIds.has(ref.id)) ||
+          (ref.kind === "booking" && bookingIds.has(ref.id)) ||
+          (ref.kind === "form" && formIds.has(ref.id)) ||
+          (ref.kind === "product" && productIds.has(ref.id));
+        if (owns) {
+          kept.push(ref);
+          seen.add(`${ref.kind}:${ref.id}`);
+        }
+      }
+      const append = (kind: BlockRef["kind"], id: string) => {
+        if (!seen.has(`${kind}:${id}`)) kept.push({ kind, id });
+      };
+      for (const l of links) append("link", l.id);
+      for (const b of bookingBlocks) append("booking", b.id);
+      for (const f of formBlocks) append("form", f.id);
+      for (const p of productBlocks) append("product", p.id);
+      return kept;
+    });
+  }, [links, bookingBlocks, formBlocks, productBlocks]);
+
+  // Persist global order (debounced). Skip on first run.
+  const [, startReorderTransition] = useTransition();
+  const lastSavedOrder = useRef<string>(JSON.stringify(buildInitialOrder()));
+  const firstOrderRun = useRef(true);
+  useEffect(() => {
+    if (firstOrderRun.current) {
+      firstOrderRun.current = false;
+      lastSavedOrder.current = JSON.stringify(blocksOrder);
+      return;
+    }
+    const serialized = JSON.stringify(blocksOrder);
+    if (serialized === lastSavedOrder.current) return;
+    const timer = window.setTimeout(() => {
+      lastSavedOrder.current = serialized;
+      const fd = new FormData();
+      fd.set("items", serialized);
+      startReorderTransition(() => {
+        reorderBlocksAction({ status: "idle" }, fd).catch(() => {
+          /* surfaced via toast below if needed */
+        });
+      });
+    }, 500);
+    return () => window.clearTimeout(timer);
+  }, [blocksOrder, reorderBlocksAction]);
+
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    setLinks((current) => {
-      const oldIndex = current.findIndex((item) => item.id === active.id);
-      const newIndex = current.findIndex((item) => item.id === over.id);
-      return arrayMove(current, oldIndex, newIndex).map((item, index) => ({
-        ...item,
-        sortOrder: index,
-      }));
+    setBlocksOrder((current) => {
+      const oldIndex = current.findIndex((it) => itemKey(it) === active.id);
+      const newIndex = current.findIndex((it) => itemKey(it) === over.id);
+      if (oldIndex < 0 || newIndex < 0) return current;
+      return arrayMove(current, oldIndex, newIndex);
     });
   }
 
@@ -270,25 +505,106 @@ export function LinksPageClient({
     if (editingId === id) setEditingId(null);
   }
 
-  // -------- Booking block handlers --------
-  async function handleCreateBooking(
-    draft: Omit<EditableBookingBlockWithId, "id" | "sortOrder" | "isActive"> & {
-      id?: string | null;
+  // -------- Spotlight handler (links + bookings + forms + products) --------
+  async function handleSpotlightChange(
+    blockKind: "link" | "form" | "booking" | "product",
+    blockId: string,
+    next: {
+      spotlight: import("@/lib/block-spotlight").BlockSpotlight;
+      animationStyle:
+        | import("@/lib/block-spotlight").BlockAnimationStyle
+        | null;
     },
   ) {
+    // Optimistic local update
+    if (blockKind === "link") {
+      setLinks((curr) =>
+        curr.map((l) =>
+          l.id === blockId
+            ? {
+                ...l,
+                spotlight: next.spotlight,
+                animationStyle: next.animationStyle,
+              }
+            : l,
+        ),
+      );
+    } else if (blockKind === "booking") {
+      setBookingBlocks((curr) =>
+        curr.map((b) =>
+          b.id === blockId
+            ? {
+                ...b,
+                spotlight: next.spotlight,
+                animationStyle: next.animationStyle,
+              }
+            : b,
+        ),
+      );
+    } else if (blockKind === "product") {
+      setProductBlocks((curr) =>
+        curr.map((p) =>
+          p.id === blockId
+            ? {
+                ...p,
+                spotlight: next.spotlight,
+                animationStyle: next.animationStyle,
+              }
+            : p,
+        ),
+      );
+    } else {
+      setFormBlocks((curr) =>
+        curr.map((f) =>
+          f.id === blockId
+            ? {
+                ...f,
+                spotlight: next.spotlight,
+                animationStyle: next.animationStyle,
+              }
+            : f,
+        ),
+      );
+    }
+    const fd = new FormData();
+    fd.set("blockKind", blockKind);
+    fd.set("blockId", blockId);
+    fd.set("spotlight", next.spotlight);
+    if (next.animationStyle) fd.set("animationStyle", next.animationStyle);
+    const result = await setBlockSpotlightAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "ذخیره نشد.");
+      router.refresh();
+    } else {
+      toast.success("ذخیره شد");
+    }
+  }
+
+  // -------- Booking block handlers --------
+  async function handleCreateBooking(draft: EditableBookingBlock) {
     setCreatingBooking(true);
     try {
       const fd = new FormData();
-      fd.set("payload", JSON.stringify(draft));
+      fd.set(
+        "payload",
+        JSON.stringify({
+          ...draft,
+          spotlight: "none",
+          animationStyle: null,
+        }),
+      );
       const result = await createBookingBlockAction(
         { status: "idle" as const },
         fd,
       );
       if (result.status === "error") {
-        toast.error(result.message ?? "ساخت میتینگ با خطا مواجه شد.");
+        if (process.env.NODE_ENV !== "production" && result.fieldErrors) {
+          console.error("[booking] field errors:", result.fieldErrors);
+        }
+        toast.error(result.message ?? "ساخت هماهنگ با خطا مواجه شد.");
         return;
       }
-      toast.success("میتینگ ساخته شد.");
+      toast.success("هماهنگ ساخته شد.");
       setBookingFlowOpen(false);
       router.refresh();
     } finally {
@@ -341,28 +657,173 @@ export function LinksPageClient({
     }
   }
 
-  async function handleProfileDetailsSave(next: {
-    fullName: string;
-    title: string;
-    bio: string;
-  }) {
-    setProfile((p) => ({ ...p, ...next }));
-
-    const fd = new FormData();
-    fd.set("fullName", next.fullName);
-    fd.set("title", next.title);
-    fd.set("bio", next.bio);
-    fd.set("slug", profile.slug);
-    fd.set("publicPhone", profile.publicPhone);
-    fd.set("email", profile.email);
-
-    const result = await autosaveProfileDetailsAction(idleState, fd);
-    if (result.status === "error") {
-      toast.error(result.message ?? "ذخیره نشد.");
-      return { ok: false as const, fieldErrors: result.fieldErrors };
+  // -------- Form block handlers --------
+  async function handleSaveForm(draft: FormBlockDraft) {
+    setSavingForm(true);
+    try {
+      const fd = new FormData();
+      fd.set(
+        "payload",
+        JSON.stringify({
+          name: draft.name,
+          intro: draft.intro,
+          outro: draft.outro,
+          fields: draft.fields.map((f, idx) => ({
+            id: f.id ?? null,
+            kind: f.kind,
+            label: f.label,
+            required: f.required,
+            options: f.options,
+            sortOrder: idx,
+          })),
+        }),
+      );
+      if (editingFormBlock) {
+        fd.set("blockId", editingFormBlock.id);
+        const result = await updateFormBlockAction(idleState, fd);
+        if (result.status === "error") {
+          toast.error(result.message ?? "ذخیره نشد.");
+          return;
+        }
+        toast.success("فرم به‌روز شد.");
+      } else {
+        const result = await createFormBlockAction(
+          { status: "idle" as const },
+          fd,
+        );
+        if (result.status === "error") {
+          toast.error(result.message ?? "ساخت فرم با خطا مواجه شد.");
+          return;
+        }
+        toast.success("فرم ساخته شد.");
+      }
+      setFormBuilderOpen(false);
+      setEditingFormBlock(null);
+      router.refresh();
+    } finally {
+      setSavingForm(false);
     }
-    router.refresh();
-    return { ok: true as const };
+  }
+
+  async function handleDeleteFormBlock(id: string) {
+    const prev = formBlocks;
+    setFormBlocks((curr) => curr.filter((b) => b.id !== id));
+    const fd = new FormData();
+    fd.set("blockId", id);
+    const result = await deleteFormBlockAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "حذف نشد.");
+      setFormBlocks(prev);
+    } else {
+      toast.success("حذف شد");
+      router.refresh();
+    }
+  }
+
+  async function handleToggleFormActive(id: string, isActive: boolean) {
+    setFormBlocks((curr) =>
+      curr.map((b) => (b.id === id ? { ...b, isActive } : b)),
+    );
+    const fd = new FormData();
+    fd.set("blockId", id);
+    fd.set("isActive", String(isActive));
+    const result = await toggleFormBlockActiveAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "تغییر وضعیت ناموفق بود.");
+      router.refresh();
+    }
+  }
+
+  // -------- Product block handlers --------
+  async function handleSaveProduct(payload: ProductBlockSubmit) {
+    setSavingProduct(true);
+    try {
+      const fd = new FormData();
+      fd.set("payload", JSON.stringify(payload));
+      if (editingProductBlock) {
+        fd.set("blockId", editingProductBlock.id);
+        const result = await updateProductBlockAction(idleState, fd);
+        if (result.status === "error") {
+          toast.error(result.message ?? "ذخیره نشد.");
+          return;
+        }
+        toast.success("به‌روز شد.");
+      } else {
+        const result = await createProductBlockAction(
+          { status: "idle" as const },
+          fd,
+        );
+        if (result.status === "error") {
+          toast.error(result.message ?? "ساخت بلوک با خطا مواجه شد.");
+          return;
+        }
+        toast.success("بلوک ساخته شد.");
+      }
+      setProductBuilderOpen(false);
+      setEditingProductBlock(null);
+      router.refresh();
+    } finally {
+      setSavingProduct(false);
+    }
+  }
+
+  /** Silent auto-save — called by the builder for reorder/item edits while
+   * the modal is still open. No toast, no close. */
+  async function handleAutoSaveProduct(payload: ProductBlockSubmit) {
+    if (!editingProductBlock) return;
+    const fd = new FormData();
+    fd.set("payload", JSON.stringify(payload));
+    fd.set("blockId", editingProductBlock.id);
+    const result = await updateProductBlockAction(idleState, fd);
+    if (result.status === "error") {
+      // Surface errors quietly so the user can retry via the Save button.
+      toast.error(result.message ?? "ذخیره نشد.");
+    } else {
+      router.refresh();
+    }
+  }
+
+  async function handleDeleteProductBlock(id: string) {
+    const prev = productBlocks;
+    setProductBlocks((curr) => curr.filter((b) => b.id !== id));
+    const fd = new FormData();
+    fd.set("blockId", id);
+    const result = await deleteProductBlockAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "حذف نشد.");
+      setProductBlocks(prev);
+    } else {
+      toast.success("حذف شد");
+      router.refresh();
+    }
+  }
+
+  async function handleToggleProductActive(id: string, isActive: boolean) {
+    setProductBlocks((curr) =>
+      curr.map((b) => (b.id === id ? { ...b, isActive } : b)),
+    );
+    const fd = new FormData();
+    fd.set("blockId", id);
+    fd.set("isActive", String(isActive));
+    const result = await toggleProductBlockActiveAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "تغییر وضعیت ناموفق بود.");
+      router.refresh();
+    }
+  }
+
+  async function handleUploadProductImage(file: File): Promise<string | null> {
+    const fd = new FormData();
+    fd.set("file", file);
+    const result = await uploadProductItemImageAction(
+      { status: "idle" as const, url: null },
+      fd,
+    );
+    if (result.status === "error" || !result.url) {
+      toast.error(result.message ?? "آپلود ناموفق بود.");
+      return null;
+    }
+    return result.url;
   }
 
   async function handleAvatarSave(file: File) {
@@ -377,23 +838,66 @@ export function LinksPageClient({
     return { ok: true as const };
   }
 
-  async function uploadLinkImage(
-    file: File,
-    folder: "link-covers" | "link-icons",
-  ): Promise<string | null> {
-    const fd = new FormData();
-    fd.set("file", file);
-    fd.set("folder", folder);
-    const result = await autosaveLinkImageAction(idleState, fd);
-    if (result.status === "error" || !result.url) {
-      toast.error(result.message ?? "آپلود نشد.");
-      return null;
+  async function handleAvatarDelete() {
+    const result = await deleteAvatarAction(idleState, new FormData());
+    if (result.status === "error") {
+      toast.error(result.message ?? "حذف نشد.");
+      return { ok: false as const };
     }
-    return result.url;
+    setProfile((p) => ({ ...p, avatarUrl: null }));
+    router.refresh();
+    return { ok: true as const };
+  }
+
+  async function handleSettingsSave(
+    next: PageSettingsValues & {
+      ogImageFile?: File | null;
+      ogImageRemove?: boolean;
+    },
+  ) {
+    const fd = new FormData();
+    fd.set("fullName", next.fullName);
+    fd.set("title", next.title);
+    fd.set("bio", next.bio);
+    fd.set("slug", next.slug);
+    fd.set("domain", next.domain);
+    fd.set("seoTitle", next.seoTitle);
+    fd.set("seoDescription", next.seoDescription);
+    fd.set("indexEnabled", next.indexEnabled ? "on" : "off");
+    fd.set("appIconKey", next.appIconKey ?? "");
+    fd.set("appIconColor", next.appIconColor ?? "");
+    if (next.ogImageRemove) fd.set("ogImageRemove", "1");
+    if (next.ogImageFile) fd.set("ogImage", next.ogImageFile);
+
+    const result = await savePageSettingsAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "ذخیره نشد.");
+      return { ok: false as const, fieldErrors: result.fieldErrors };
+    }
+
+    setProfile((p) => ({
+      ...p,
+      fullName: next.fullName,
+      title: next.title,
+      bio: next.bio,
+      slug: next.slug,
+      domain: next.domain,
+      seoTitle: next.seoTitle,
+      seoDescription: next.seoDescription,
+      ogImageUrl: next.ogImageRemove
+        ? null
+        : next.ogImageFile
+          ? p.ogImageUrl /* server returns updated url after refresh */
+          : p.ogImageUrl,
+      indexEnabled: next.indexEnabled,
+      appIconKey: next.appIconKey,
+      appIconColor: next.appIconColor,
+    }));
+    router.refresh();
+    return { ok: true as const };
   }
 
   const canAdd = links.length < 8;
-  const initials = getInitials(profile.fullName);
   const activeLinks = links.filter((l) => l.isActive);
   const previewProfile = {
     fullName: profile.fullName,
@@ -403,6 +907,7 @@ export function LinksPageClient({
     publicPhone: profile.publicPhone,
     email: profile.email,
     avatarUrl: profile.avatarUrl,
+    avatarSeed: profile.avatarSeed,
     links: activeLinks.map((l) => ({
       id: l.id,
       label: l.label || "بدون عنوان",
@@ -412,6 +917,78 @@ export function LinksPageClient({
       description: l.description,
       imageUrl: l.imageUrl,
     })),
+    bookingBlocks: bookingBlocks
+      .filter((b) => b.isActive)
+      .map((b) => ({
+        id: b.id,
+        name: b.name,
+        description: b.description,
+        avatarUrl: b.avatarUrl,
+        locationType: b.locationType,
+        locationAddress: b.locationAddress,
+        meetingLink: b.meetingLink,
+        timezone: b.timezone,
+        sortOrder: b.sortOrder,
+        types: b.types.map((t) => ({
+          id: t.id ?? "",
+          title: t.title,
+          durationMin: t.durationMin,
+          priceAmount: t.priceAmount,
+          priceCurrency: t.priceCurrency,
+        })),
+      })),
+    formBlocks: formBlocks
+      .filter((f) => f.isActive)
+      .map((f) => ({
+        id: f.id,
+        name: f.name,
+        intro: f.intro,
+        outro: f.outro,
+        sortOrder: f.sortOrder,
+        fields: f.fields.map((field) => ({
+          id: field.id ?? "",
+          kind: field.kind,
+          label: field.label,
+          required: field.required,
+          options: field.options ?? [],
+        })),
+      })),
+    productBlocks: productBlocks
+      .filter((p) => p.isActive)
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        preset: p.preset,
+        layout: p.layout,
+        itemLabel: p.itemLabel,
+        currency: p.currency,
+        showPrices: p.showPrices,
+        displayMode: p.displayMode,
+        pillLabel: p.pillLabel,
+        iconKey: p.iconKey ?? null,
+        iconUrl: p.iconUrl ?? null,
+        imageUrl: p.imageUrl ?? null,
+        sortOrder: p.sortOrder,
+        sections: p.sections.map((s) => ({
+          id: s.id ?? "",
+          title: s.title,
+        })),
+        items: p.items.map((it) => ({
+          id: it.id ?? "",
+          sectionId: null,
+          title: it.title,
+          description: it.description,
+          imageUrl: it.imageUrl,
+          priceType: it.priceType,
+          priceAmount: 0,
+          priceAmountMax: null,
+          availability: it.availability,
+          externalUrl: it.externalUrl,
+          badge: it.badge,
+          sku: it.sku,
+        })),
+      })),
   };
 
   return (
@@ -426,7 +1003,7 @@ export function LinksPageClient({
                 type="button"
                 onClick={() => setAvatarOpen(true)}
                 aria-label="ویرایش تصویر"
-                className="group relative size-20 shrink-0 overflow-hidden rounded-full bg-primary/90 text-primary-foreground ring-2 ring-background"
+                className="group relative size-20 shrink-0 overflow-hidden rounded-full border border-foreground/10 bg-card"
               >
                 {profile.avatarUrl ? (
                   <Image
@@ -437,9 +1014,7 @@ export function LinksPageClient({
                     sizes="80px"
                   />
                 ) : (
-                  <span className="flex h-full w-full items-center justify-center text-base font-bold">
-                    {initials}
-                  </span>
+                  <BoringAvatar seed={profile.avatarSeed} size={80} />
                 )}
                 <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
                   <CameraIcon className="size-5 text-white" />
@@ -447,11 +1022,7 @@ export function LinksPageClient({
               </button>
 
               <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => setTitleBioOpen(true)}
-                  className="group flex w-full items-start gap-2 rounded-3xl p-1 text-start transition-colors hover:bg-muted/60"
-                >
+                <div className="flex w-full items-start gap-2 p-1">
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="truncate text-lg font-bold">
                       {profile.fullName || "نام شما"}
@@ -471,19 +1042,28 @@ export function LinksPageClient({
                       </p>
                     )}
                   </div>
-                  <PencilIcon className="mt-1 size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-foreground" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setSettingsOpen(true)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-muted"
+                  >
+                    <Settings2Icon className="size-3.5" />
+                    تنظیمات صفحه
+                  </button>
+                </div>
               </div>
             </div>
           </section>
 
           {/* Compact share pill (shown on all breakpoints, tight). */}
-          <PublicShareBar
-            publicUrl={publicUrl}
-            slug={profile.slug}
-            displayName={profile.fullName || "کارت"}
-            className="lg:hidden"
-          />
+          <div className="flex items-center gap-2 lg:hidden">
+            <PublicShareBar
+              publicUrl={publicUrl}
+              slug={profile.slug}
+              displayName={profile.fullName || "کارت"}
+              host={`${profile.domain}/${profile.slug}`}
+            />
+          </div>
 
           {/* Add button */}
           <div>
@@ -494,7 +1074,7 @@ export function LinksPageClient({
               className="h-12 w-full text-sm font-bold"
             >
               <PlusIcon className="size-4" />
-              افزودن لینک
+              افزودن بلاک
             </Button>
             {!canAdd ? (
               <p className="mt-2 text-center text-xs text-muted-foreground">
@@ -503,35 +1083,132 @@ export function LinksPageClient({
             ) : null}
           </div>
 
-          {/* Sortable list */}
-          {links.length ? (
+          {/* Unified blocks list (links + bookings + forms in one order) */}
+          {blocksOrder.length ? (
             <DndContext
-              id="dashboard-links-dnd"
+              id="dashboard-blocks-dnd"
               sensors={sensors}
               collisionDetection={closestCenter}
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={links.map((l) => l.id)}
+                items={blocksOrder.map(itemKey)}
                 strategy={verticalListSortingStrategy}
               >
                 <ul className="space-y-2.5">
-                  {links.map((link) => (
-                    <SortableLinkRow
-                      key={link.id}
-                      link={link}
-                      clickCount={linkClickCounts[link.id] ?? 0}
-                      isEditing={editingId === link.id}
-                      onToggleEdit={() =>
-                        setEditingId((curr) =>
-                          curr === link.id ? null : link.id,
-                        )
-                      }
-                      onChange={(patch) => updateLink(link.id, patch)}
-                      onRemove={() => removeLink(link.id)}
-                      uploadImage={uploadLinkImage}
-                    />
-                  ))}
+                  {blocksOrder.map((ref) => {
+                    if (ref.kind === "link") {
+                      const link = links.find((l) => l.id === ref.id);
+                      if (!link) return null;
+                      return (
+                        <SortableLinkBlock
+                          key={itemKey(ref)}
+                          itemId={itemKey(ref)}
+                          link={link}
+                          clickCount={linkClickCounts[link.id] ?? 0}
+                          isEditing={editingId === link.id}
+                          onToggleEdit={() =>
+                            setEditingId((curr) =>
+                              curr === link.id ? null : link.id,
+                            )
+                          }
+                          onChange={(patch) => updateLink(link.id, patch)}
+                          onRefetch={async () => {
+                            if (!link.url) return;
+                            const result = await fetchMetadataAction(link.url);
+                            if (!result.ok) return;
+                            const patch: Partial<EditableLink> = {};
+                            if (result.data.image)
+                              patch.imageUrl = result.data.image;
+                            if (result.data.title && !link.label)
+                              patch.label = result.data.title;
+                            if (result.data.description && !link.description)
+                              patch.description = result.data.description;
+                            if (Object.keys(patch).length)
+                              updateLink(link.id, patch);
+                          }}
+                          onRemove={() => removeLink(link.id)}
+                          pinAllowed={pinAllowed}
+                          animateAllowed={animateAllowed}
+                          onSpotlightChange={(next) =>
+                            handleSpotlightChange("link", link.id, next)
+                          }
+                        />
+                      );
+                    }
+                    if (ref.kind === "booking") {
+                      const block = bookingBlocks.find((b) => b.id === ref.id);
+                      if (!block) return null;
+                      return (
+                        <SortableBookingBlock
+                          key={itemKey(ref)}
+                          itemId={itemKey(ref)}
+                          block={block}
+                          providerConnections={providerConnections}
+                          onUpdate={handleUpdateBooking}
+                          onDelete={() => handleDeleteBooking(block.id)}
+                          onToggleActive={(v) =>
+                            handleToggleBookingActive(block.id, v)
+                          }
+                          locked={bookingsLocked}
+                          pinAllowed={pinAllowed}
+                          animateAllowed={animateAllowed}
+                          onSpotlightChange={(next) =>
+                            handleSpotlightChange("booking", block.id, next)
+                          }
+                        />
+                      );
+                    }
+                    if (ref.kind === "form") {
+                      const block = formBlocks.find((f) => f.id === ref.id);
+                      if (!block) return null;
+                      return (
+                        <SortableFormBlock
+                          key={itemKey(ref)}
+                          itemId={itemKey(ref)}
+                          block={block}
+                          submissionsCount={block.submissionsCount}
+                          onEdit={() => {
+                            setEditingFormBlock(block);
+                            setFormBuilderOpen(true);
+                          }}
+                          onDelete={() => handleDeleteFormBlock(block.id)}
+                          onToggleActive={(v) =>
+                            handleToggleFormActive(block.id, v)
+                          }
+                          locked={formsLocked}
+                          pinAllowed={pinAllowed}
+                          animateAllowed={animateAllowed}
+                          onSpotlightChange={(next) =>
+                            handleSpotlightChange("form", block.id, next)
+                          }
+                        />
+                      );
+                    }
+                    const product = productBlocks.find((p) => p.id === ref.id);
+                    if (!product) return null;
+                    return (
+                      <SortableProductBlock
+                        key={itemKey(ref)}
+                        itemId={itemKey(ref)}
+                        block={product}
+                        onEdit={() => {
+                          setEditingProductBlock(product);
+                          setProductBuilderOpen(true);
+                        }}
+                        onDelete={() => handleDeleteProductBlock(product.id)}
+                        onToggleActive={(v) =>
+                          handleToggleProductActive(product.id, v)
+                        }
+                        locked={productsLocked}
+                        pinAllowed={pinAllowed}
+                        animateAllowed={animateAllowed}
+                        onSpotlightChange={(next) =>
+                          handleSpotlightChange("product", product.id, next)
+                        }
+                      />
+                    );
+                  })}
                 </ul>
               </SortableContext>
             </DndContext>
@@ -542,7 +1219,7 @@ export function LinksPageClient({
               className="flex w-full flex-col items-center gap-2 rounded-4xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5"
             >
               <PlusIcon className="size-5 text-primary" />
-              اولین لینک خود را اضافه کنید.
+              اولین بلوک خود را اضافه کنید.
             </button>
           )}
 
@@ -552,51 +1229,31 @@ export function LinksPageClient({
               ذخیره شد
             </p>
           ) : null}
-
-          {/* Booking blocks */}
-          {bookingBlocks.length ? (
-            <section className="space-y-2.5 pt-2">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold text-muted-foreground">
-                  میتینگ‌ها
-                </h2>
-                <span className="text-xs text-muted-foreground">
-                  {toPersianDigits(bookingBlocks.length)} بلوک
-                </span>
-              </div>
-              <ul className="space-y-2.5">
-                {bookingBlocks.map((block) => (
-                  <BookingBlockRow
-                    key={block.id}
-                    block={block}
-                    providerConnections={providerConnections}
-                    onUpdate={handleUpdateBooking}
-                    onDelete={() => handleDeleteBooking(block.id)}
-                    onToggleActive={(v) =>
-                      handleToggleBookingActive(block.id, v)
-                    }
-                  />
-                ))}
-              </ul>
-            </section>
-          ) : null}
         </div>
       </div>
 
       {/* Desktop preview column */}
       <aside className="hidden lg:block bg-sidebar-accent/30">
-        <div className="sticky top-0 flex h-[calc(100dvh-var(--promo-bar-height,0px)-4rem)] flex-col">
-          <div className="flex justify-center p-3">
+        <div className="sticky top-0 flex h-[calc(100dvh-var(--promo-bar-height,0)-4rem)] flex-col">
+          <div className="flex items-center justify-center gap-2 p-3">
             <PublicShareBar
               publicUrl={publicUrl}
               slug={profile.slug}
               displayName={profile.fullName || "کارت"}
+              host={`${profile.domain}/${profile.slug}`}
             />
           </div>
-          <div className="flex flex-1 items-start justify-center overflow-y-auto px-6 pb-6">
-            <div className="w-full max-w-88">
-              <ProfilePreviewMock profile={previewProfile} />
-            </div>
+          <div className="flex min-h-0 flex-1 flex-col items-center overflow-hidden px-6 pb-6">
+            {/* Phone frame — fills remaining column height (flex-1 in a flex-col
+                parent is cross-browser reliable; h-full against items-stretch
+                breaks in WebKit). translateZ(0) makes it the containing block
+                for position:fixed portaled modals. */}
+            <PhoneMockupFrame>
+              <ProfilePreviewMock
+                profile={previewProfile}
+                formSubmitAction={publicSubmitFormAction}
+              />
+            </PhoneMockupFrame>
           </div>
         </div>
       </aside>
@@ -629,7 +1286,10 @@ export function LinksPageClient({
           </SheetHeader>
           <div className="overflow-y-auto px-3 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <div className="mx-auto w-full max-w-md">
-              <ProfilePreviewMock profile={previewProfile} />
+              <ProfilePreviewMock
+                profile={previewProfile}
+                formSubmitAction={publicSubmitFormAction}
+              />
             </div>
           </div>
         </SheetContent>
@@ -640,17 +1300,67 @@ export function LinksPageClient({
         onOpenChange={setAddOpen}
         onSubmit={addLink}
         fetchMetadataAction={fetchMetadataAction}
-        uploadImage={uploadLinkImage}
         onAddBooking={() => {
           setAddOpen(false);
           setBookingFlowOpen(true);
         }}
+        onAddForm={() => {
+          setAddOpen(false);
+          setEditingFormBlock(null);
+          setFormBuilderOpen(true);
+        }}
+        onAddProduct={() => {
+          setAddOpen(false);
+          setEditingProductBlock(null);
+          setProductBuilderOpen(true);
+        }}
+      />
+
+      <FormBuilderDialog
+        open={formBuilderOpen}
+        onOpenChange={(o) => {
+          setFormBuilderOpen(o);
+          if (!o) setEditingFormBlock(null);
+        }}
+        initial={
+          editingFormBlock
+            ? {
+                id: editingFormBlock.id,
+                name: editingFormBlock.name,
+                intro: editingFormBlock.intro,
+                outro: editingFormBlock.outro,
+                fields: editingFormBlock.fields.map((f) => ({
+                  id: f.id ?? null,
+                  kind: f.kind,
+                  label: f.label,
+                  required: f.required,
+                  options: f.options,
+                })),
+              }
+            : null
+        }
+        onSubmit={handleSaveForm}
+        submitting={savingForm}
+      />
+
+      <ProductBuilderDialog
+        open={productBuilderOpen}
+        onOpenChange={(o) => {
+          setProductBuilderOpen(o);
+          if (!o) setEditingProductBlock(null);
+        }}
+        initial={editingProductBlock}
+        itemsCap={productItemsCap}
+        onSubmit={handleSaveProduct}
+        onAutoSave={handleAutoSaveProduct}
+        onUploadItemImage={handleUploadProductImage}
+        submitting={savingProduct}
       />
 
       <BookingFlowDialog
         open={bookingFlowOpen}
         onOpenChange={setBookingFlowOpen}
-        title="میتینگ"
+        title="هماهنگ"
         submitting={creatingBooking}
         providerConnections={providerConnections}
         onSubmit={handleCreateBooking}
@@ -660,43 +1370,74 @@ export function LinksPageClient({
         open={avatarOpen}
         onOpenChange={setAvatarOpen}
         currentUrl={profile.avatarUrl}
+        avatarSeed={profile.avatarSeed}
         displayName={profile.fullName ?? ""}
         onUpload={handleAvatarSave}
+        onDelete={handleAvatarDelete}
       />
 
-      <ProfileTitleBioModal
-        open={titleBioOpen}
-        onOpenChange={setTitleBioOpen}
+      <PageSettingsSheet
+        open={settingsOpen}
+        onOpenChange={setSettingsOpen}
+        pageId={profile.id}
         initial={{
+          fullName: profile.fullName ?? "",
+          title: profile.title ?? "",
+          bio: profile.bio ?? "",
+          slug: profile.slug,
+          // ProfileSnapshot.domain is a string; PageSettings expects ProfileDomain.
+          // Caller (server) ensures it's one of PROFILE_DOMAINS.
+          domain: profile.domain as PageSettingsValues["domain"],
+          seoTitle: profile.seoTitle,
+          seoDescription: profile.seoDescription,
+          ogImageUrl: profile.ogImageUrl,
+          indexEnabled: profile.indexEnabled,
+          appIconKey: profile.appIconKey,
+          appIconColor: profile.appIconColor,
+        }}
+        preview={{
           fullName: profile.fullName,
           title: profile.title,
-          bio: profile.bio,
+          avatarUrl: profile.avatarUrl,
         }}
-        onSave={handleProfileDetailsSave}
+        onSave={handleSettingsSave}
       />
     </div>
   );
 }
 
-function SortableLinkRow({
+/**
+ * Sortable wrapper around a single link block. Uses {@link BlockCard} so
+ * its visual matches booking and form blocks. Inline edit form expands
+ * below the card when `isEditing` is true.
+ */
+function SortableLinkBlock({
+  itemId,
   link,
   clickCount,
   isEditing,
   onToggleEdit,
   onChange,
+  onRefetch,
   onRemove,
-  uploadImage,
+  pinAllowed,
+  animateAllowed,
+  onSpotlightChange,
 }: {
+  itemId: string;
   link: EditableLink;
   clickCount: number;
   isEditing: boolean;
   onToggleEdit: () => void;
   onChange: (patch: Partial<EditableLink>) => void;
+  onRefetch: () => void;
   onRemove: () => void;
-  uploadImage: (
-    file: File,
-    folder: "link-covers" | "link-icons",
-  ) => Promise<string | null>;
+  pinAllowed: boolean;
+  animateAllowed: boolean;
+  onSpotlightChange: (next: {
+    spotlight: BlockSpotlight;
+    animationStyle: BlockAnimationStyle | null;
+  }) => Promise<void> | void;
 }) {
   const {
     attributes,
@@ -705,217 +1446,282 @@ function SortableLinkRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: link.id });
+  } = useSortable({ id: itemId });
+
+  const dragProps = {
+    ...attributes,
+    ...listeners,
+  } as React.HTMLAttributes<HTMLButtonElement>;
 
   return (
     <li
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={cn(
-        "min-w-0 rounded-3xl border border-border bg-background/80",
-        isDragging && "shadow-lg",
-        !link.isActive && "opacity-60",
-      )}
+      className="min-w-0"
     >
-      <div className="flex min-w-0 items-center gap-1.5 p-2 sm:gap-2 sm:p-3">
-        <button
-          type="button"
-          className="tap-target shrink-0 rounded-2xl text-muted-foreground"
-          aria-label="جابه‌جایی"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVerticalIcon className="size-4" />
-        </button>
-
-        <LinkIconBubble
-          iconKey={link.iconKey}
-          iconUrl={link.iconUrl}
-          imageUrl={link.imageUrl}
-          url={link.url}
-          size={40}
-          className="rounded-2xl"
-        />
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <span className="truncate text-sm font-bold">
-            {link.label || "بدون عنوان"}
-          </span>
-          <span className="truncate text-xs text-muted-foreground" dir="ltr">
-            {link.url || "—"}
-          </span>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-1.5">
+      <BlockCard
+        dragProps={dragProps}
+        isDragging={isDragging}
+        icon={
+          <LinkIconPickerButton
+            url={link.url}
+            iconKey={link.iconKey}
+            iconUrl={link.iconUrl}
+            imageUrl={link.imageUrl}
+            size={40}
+            onChange={(next: LinkIconPickerValue) => onChange(next)}
+            onRefetch={onRefetch}
+          />
+        }
+        title={link.label || "بدون عنوان"}
+        meta={undefined}
+        trailing={
           <span
             className="inline-flex items-center gap-1 rounded-xl bg-muted px-2 py-1 text-[11px] font-bold text-muted-foreground"
             title="تعداد کلیک"
           >
             <MousePointerClickIcon className="size-3" />
-            {clickCount}
+            <span className="mt-0.5">{clickCount}</span>
           </span>
-        </div>
-
-        <div className="flex shrink-0 items-center gap-0.5">
-          <Switch
-            checked={link.isActive}
-            onCheckedChange={(v) => onChange({ isActive: v })}
-            aria-label={link.isActive ? "غیرفعال کردن" : "فعال کردن"}
+        }
+        spotlightSlot={
+          <SpotlightStarButton
+            blockKind="link"
+            spotlight={link.spotlight}
+            animationStyle={link.animationStyle}
+            pinAllowed={pinAllowed}
+            animateAllowed={animateAllowed}
+            onChange={onSpotlightChange}
           />
-          <Button
-            type="button"
-            size="icon-sm"
-            variant="ghost"
-            className="rounded-2xl"
-            onClick={onToggleEdit}
-            aria-label="ویرایش"
-          >
-            <PencilIcon className="size-4" />
-          </Button>
-          <ConfirmDialog
-            title="حذف لینک؟"
-            description="این لینک برای همیشه حذف می‌شود."
-            confirmLabel="حذف"
-            destructive
-            onConfirm={onRemove}
-          >
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              className="rounded-2xl text-muted-foreground hover:text-destructive"
-              aria-label="حذف"
-            >
-              <Trash2Icon className="size-4" />
-            </Button>
-          </ConfirmDialog>
-        </div>
-      </div>
-
-      {isEditing ? (
-        <div className="grid min-w-0 gap-3 border-t border-border/70 p-3">
-          <div className="min-w-0 space-y-1.5">
-            <Label>عنوان</Label>
-            <Input
-              value={link.label}
-              onChange={(event) => onChange({ label: event.target.value })}
-              enterKeyHint="next"
-              className="h-11"
-            />
+        }
+        isActive={link.isActive}
+        onToggleActive={(v) => onChange({ isActive: v })}
+        onEdit={onToggleEdit}
+        onDelete={onRemove}
+        deleteTitle="حذف لینک؟"
+        deleteDescription="این لینک برای همیشه حذف می‌شود."
+      >
+        {isEditing ? (
+          <div className="grid min-w-0 gap-3 border-t border-border/70 p-3">
+            <div className="min-w-0 space-y-1.5">
+              <Label>عنوان</Label>
+              <Input
+                value={link.label}
+                onChange={(event) => onChange({ label: event.target.value })}
+                enterKeyHint="next"
+                className="h-11"
+              />
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <Label>لینک</Label>
+              <Input
+                value={link.url}
+                onChange={(event) => onChange({ url: event.target.value })}
+                type="url"
+                inputMode="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                dir="ltr"
+                className="h-11"
+              />
+            </div>
+            <div className="min-w-0 space-y-1.5">
+              <Label>توضیحات (اختیاری)</Label>
+              <Textarea
+                value={link.description ?? ""}
+                onChange={(event) =>
+                  onChange({ description: event.target.value || null })
+                }
+                className="min-h-16"
+                maxLength={160}
+              />
+            </div>
           </div>
-          <div className="min-w-0 space-y-1.5">
-            <Label>لینک</Label>
-            <Input
-              value={link.url}
-              onChange={(event) => onChange({ url: event.target.value })}
-              type="url"
-              inputMode="url"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              dir="ltr"
-              className="h-11"
-            />
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <Label>توضیحات (اختیاری)</Label>
-            <Textarea
-              value={link.description ?? ""}
-              onChange={(event) =>
-                onChange({ description: event.target.value || null })
-              }
-              className="min-h-16"
-              maxLength={160}
-            />
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <Label>آیکون</Label>
-            <LinkIconPicker
-              url={link.url}
-              value={{ iconKey: link.iconKey, iconUrl: link.iconUrl }}
-              onChange={(next: LinkIconPickerValue) => onChange(next)}
-              uploadIcon={(file) => uploadImage(file, "link-icons")}
-            />
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <Label>کاور (اختیاری)</Label>
-            <LinkCoverField
-              value={link.imageUrl}
-              onChange={(next) => onChange({ imageUrl: next })}
-              uploadCover={(file) => uploadImage(file, "link-covers")}
-            />
-          </div>
-        </div>
-      ) : null}
+        ) : null}
+      </BlockCard>
     </li>
   );
 }
 
-function LinkCoverField({
-  value,
-  onChange,
-  uploadCover,
+/** Sortable wrapper around {@link BookingBlockRow}. */
+function SortableBookingBlock({
+  itemId,
+  block,
+  providerConnections,
+  onUpdate,
+  onDelete,
+  onToggleActive,
+  locked,
+  pinAllowed,
+  animateAllowed,
+  onSpotlightChange,
 }: {
-  value: string | null;
-  onChange: (next: string | null) => void;
-  uploadCover: (file: File) => Promise<string | null>;
+  itemId: string;
+  block: EditableBookingBlockWithId;
+  providerConnections: ProviderConnection[];
+  onUpdate: (next: EditableBookingBlockWithId) => Promise<void> | void;
+  onDelete: () => Promise<void> | void;
+  onToggleActive: (next: boolean) => Promise<void> | void;
+  locked?: boolean;
+  pinAllowed: boolean;
+  animateAllowed: boolean;
+  onSpotlightChange: (next: {
+    spotlight: BlockSpotlight;
+    animationStyle: BlockAnimationStyle | null;
+  }) => Promise<void> | void;
 }) {
-  const inputRef = useRef<HTMLInputElement | null>(null);
-  const [uploading, setUploading] = useState(false);
-
-  async function handleFile(file: File) {
-    setUploading(true);
-    try {
-      const url = await uploadCover(file);
-      if (url) onChange(url);
-    } finally {
-      setUploading(false);
-    }
-  }
-
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: itemId });
+  const dragProps = {
+    ...attributes,
+    ...listeners,
+  } as React.HTMLAttributes<HTMLButtonElement>;
   return (
-    <div className="flex items-center gap-3">
-      <div className="relative inline-flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-muted">
-        {value ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={value} alt="" className="size-full object-cover" />
-        ) : (
-          <ImageIcon className="size-5 text-muted-foreground" />
-        )}
-      </div>
-      <div className="flex flex-col gap-1.5">
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          className="h-9"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-        >
-          {uploading ? "در حال آپلود…" : "بارگذاری کاور"}
-        </Button>
-        {value ? (
-          <Button
-            type="button"
-            size="sm"
-            variant="ghost"
-            className="h-8 text-muted-foreground"
-            onClick={() => onChange(null)}
-          >
-            حذف کاور
-          </Button>
-        ) : null}
-      </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(event) => {
-          const f = event.target.files?.[0];
-          event.target.value = "";
-          if (f) handleFile(f);
-        }}
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className="min-w-0"
+    >
+      <BookingBlockRow
+        block={block}
+        providerConnections={providerConnections}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+        onToggleActive={onToggleActive}
+        dragProps={dragProps}
+        isDragging={isDragging}
+        locked={locked}
+        pinAllowed={pinAllowed}
+        animateAllowed={animateAllowed}
+        onSpotlightChange={onSpotlightChange}
       />
-    </div>
+    </li>
+  );
+}
+
+/** Sortable wrapper around {@link FormBlockRow}. */
+function SortableFormBlock({
+  itemId,
+  block,
+  submissionsCount,
+  onEdit,
+  onDelete,
+  onToggleActive,
+  locked,
+  pinAllowed,
+  animateAllowed,
+  onSpotlightChange,
+}: {
+  itemId: string;
+  block: EditableFormBlockWithId;
+  submissionsCount?: number;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleActive: (next: boolean) => void;
+  locked?: boolean;
+  pinAllowed: boolean;
+  animateAllowed: boolean;
+  onSpotlightChange: (next: {
+    spotlight: BlockSpotlight;
+    animationStyle: BlockAnimationStyle | null;
+  }) => Promise<void> | void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: itemId });
+  const dragProps = {
+    ...attributes,
+    ...listeners,
+  } as React.HTMLAttributes<HTMLButtonElement>;
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className="min-w-0"
+    >
+      <FormBlockRow
+        block={block}
+        submissionsCount={submissionsCount}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleActive={onToggleActive}
+        dragProps={dragProps}
+        isDragging={isDragging}
+        locked={locked}
+        pinAllowed={pinAllowed}
+        animateAllowed={animateAllowed}
+        onSpotlightChange={onSpotlightChange}
+      />
+    </li>
+  );
+}
+
+function SortableProductBlock({
+  itemId,
+  block,
+  onEdit,
+  onDelete,
+  onToggleActive,
+  locked,
+  pinAllowed,
+  animateAllowed,
+  onSpotlightChange,
+}: {
+  itemId: string;
+  block: EditableProductBlockWithId;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleActive: (next: boolean) => void;
+  locked?: boolean;
+  pinAllowed: boolean;
+  animateAllowed: boolean;
+  onSpotlightChange: (next: {
+    spotlight: BlockSpotlight;
+    animationStyle: BlockAnimationStyle | null;
+  }) => Promise<void> | void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: itemId });
+  const dragProps = {
+    ...attributes,
+    ...listeners,
+  } as React.HTMLAttributes<HTMLButtonElement>;
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className="min-w-0"
+    >
+      <ProductBlockRow
+        block={block}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleActive={onToggleActive}
+        dragProps={dragProps}
+        isDragging={isDragging}
+        locked={locked}
+        pinAllowed={pinAllowed}
+        animateAllowed={animateAllowed}
+        onSpotlightChange={onSpotlightChange}
+      />
+    </li>
   );
 }

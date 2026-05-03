@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import type { Route } from "next";
 
 import { type ActionState } from "@/lib/action-state";
 import {
@@ -33,11 +34,17 @@ export async function saveOnboardingProfileAction(
   await clearPendingSlug();
 
   // Honor a pre-auth event intent if one exists; otherwise drop the user
-  // directly on the links editor to finish building their card.
+  // directly on the trial screen if this is their FIRST page (Phase 8 —
+  // matches the Linktree-style "Claim a free 7-day trial" timeline). For
+  // edits to an existing page we go straight to the editor to avoid an
+  // unwanted detour.
   const pendingEvent = await getPendingEventRegistration();
   if (pendingEvent) {
     await continuePendingEventRegistrationOrRedirect(viewer.user.id);
   }
 
-  redirect("/dashboard/links");
+  if (result.isFirstPage) {
+    redirect(`/dashboard/pages/${result.pageId}/trial` as Route);
+  }
+  redirect("/me");
 }

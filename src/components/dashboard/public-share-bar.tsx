@@ -19,6 +19,8 @@ type PublicShareBarProps = {
   publicUrl: string;
   slug: string;
   displayName: string;
+  /** "{domain}/{slug}" — controls the host shown in the pill. */
+  host?: string;
   className?: string;
 };
 
@@ -26,34 +28,51 @@ export function PublicShareBar({
   publicUrl,
   slug,
   displayName,
+  host,
   className,
 }: PublicShareBarProps) {
   const [open, setOpen] = useState(false);
-  const displayHost = `kioar.com/${slug}`;
+  const displayHost = host ?? `kioar.com/${slug}`;
 
   return (
     <>
       <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") setOpen(true);
+        }}
         className={cn(
-          "inline-flex max-w-full items-center gap-1.5 rounded-full border border-border/70 bg-background/90 py-1 ps-3 pe-1 text-xs shadow-sm backdrop-blur",
+          "relative mt-3 flex w-full max-w-62.5 cursor-pointer items-center justify-center rounded-full border border-border bg-background/90 px-3 py-2.5 text-sm backdrop-blur transition-colors hover:bg-muted/60",
           className,
         )}
         dir="ltr"
       >
         <span
-          className="truncate font-semibold text-foreground/80"
+          className="truncate text-center font-semibold text-foreground/80"
           title={publicUrl}
         >
           {displayHost}
         </span>
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
+        <div
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.stopPropagation();
+              setOpen(true);
+            }
+          }}
+          role="button"
+          tabIndex={0}
           aria-label="اشتراک‌گذاری"
-          className="inline-flex size-7 items-center justify-center rounded-full text-foreground hover:bg-muted"
+          className="absolute inset-y-0 right-5 flex items-center rounded-full text-foreground"
         >
-          <ShareIcon className="size-3.5" />
-        </button>
+          <ShareIcon className="size-4" />
+        </div>
       </div>
 
       <ShareDialog

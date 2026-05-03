@@ -22,6 +22,8 @@ interface SlugInputProps {
   onChange?: (value: string) => void;
   /** Size variant */
   size?: "sm" | "md";
+  /** Visual variant — "muted" matches the muted phone-input style */
+  variant?: "default" | "muted";
   className?: string;
 }
 
@@ -32,6 +34,7 @@ export function SlugInput({
   enterKeyHint,
   onChange,
   size = "md",
+  variant = "default",
   className,
 }: SlugInputProps) {
   const [value, setValue] = useState(defaultValue);
@@ -87,20 +90,21 @@ export function SlugInput({
     return null;
   })();
 
-  const inputHeight = size === "sm" ? "h-11 md:h-9" : "h-16";
+  const inputHeight = size === "sm" ? "h-14" : "h-16";
 
   return (
     <div className={cn("grid gap-1", className)}>
       <div
         dir="ltr"
         className={cn(
-          "relative flex items-center rounded-full border bg-background",
-          "ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
+          "relative flex items-center rounded-full border",
+          variant === "muted"
+            ? "bg-muted border-transparent focus-within:ring-3 focus-within:ring-ring/20"
+            : "bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
           status === "available" &&
             "border-emerald-400 focus-within:ring-emerald-300",
-          status === "taken" || status === "reserved"
-            ? "border-destructive/50 focus-within:ring-destructive/30"
-            : "",
+          (status === "taken" || status === "reserved") &&
+            "border-destructive/50 focus-within:ring-destructive/30",
         )}
       >
         <span className="ps-5 font-mono text-lg font-bold text-muted-foreground whitespace-nowrap">
@@ -130,7 +134,7 @@ export function SlugInput({
           )}
         />
         {icon && (
-          <span className="absolute end-4 top-1/2 -translate-y-1/2">
+          <span className="absolute inset-e-4 top-1/2 -translate-y-1/2">
             {icon}
           </span>
         )}

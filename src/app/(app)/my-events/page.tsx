@@ -28,7 +28,7 @@ export default async function DashboardEventsPage() {
         <EmptyState
           icon={CalendarDaysIcon}
           title="هنوز در رویدادی ثبت‌نام نکرده‌اید"
-          description="رویدادهای فعال کیوآر را مرور کنید و با همان پروفایل ثبت‌نام کنید."
+          description="رویدادهای فعال کی‌یو‌آر را مرور کنید و با همان پروفایل ثبت‌نام کنید."
           cta={{ href: "/events", label: "مشاهده رویدادها" }}
         />
       </div>
@@ -96,7 +96,7 @@ function EventRow({
   return (
     <li>
       <Link
-        href={`/dashboard/events/${event.slug}` as Route}
+        href={`/my-events/${event.slug}` as Route}
         className="group flex h-full flex-col gap-3 rounded-4xl bg-card p-4 border border-border transition-colors hover:bg-muted/40"
       >
         <div className="flex items-center gap-2">

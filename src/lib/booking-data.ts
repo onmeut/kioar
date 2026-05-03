@@ -17,6 +17,7 @@ import {
   type GeneratedSlot,
   generateBookingSlots,
 } from "@/lib/booking-slots";
+import { resolveCurrentPageForOwner } from "@/lib/pages";
 
 export type BookingBlockRow = typeof profileBookingBlocks.$inferSelect;
 export type BookingTypeRow = typeof bookingTypes.$inferSelect;
@@ -61,10 +62,9 @@ export async function getBookingBlocksByProfileId(
 }
 
 export async function getBookingBlocksByUserId(userId: string) {
-  const db = getDb();
-  const profile = await db.query.profiles.findFirst({
-    where: eq(profiles.userId, userId),
-  });
+  // Resolve the user's currently-edited page; multi-page accounts may
+  // have several and the dashboard always works against one at a time.
+  const profile = await resolveCurrentPageForOwner(userId);
   if (!profile) return [];
   return getBookingBlocksByProfileId(profile.id);
 }
@@ -243,9 +243,9 @@ export async function getIncomingBookingsForUser(
   userId: string,
 ): Promise<EnrichedBooking[]> {
   const db = getDb();
-  const profile = await db.query.profiles.findFirst({
-    where: eq(profiles.userId, userId),
-  });
+  // Bookings are scoped to the currently-edited page; switching the page
+  // switches the bookings inbox, exactly like Linktree's per-page model.
+  const profile = await resolveCurrentPageForOwner(userId);
   if (!profile) return [];
 
   const blockRows = await db

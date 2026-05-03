@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { cancelBookingAction } from "@/app/dashboard/bookings/actions";
+import { cancelBookingAction } from "@/app/(app)/bookings/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,9 +105,9 @@ export function BookingsListClient({
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">رزروها</h1>
+        <h1 className="text-2xl font-semibold">هماهنگی‌ها</h1>
         <p className="text-sm text-muted-foreground">
-          مدیریت جلسات و رزروهایی که دریافت کرده‌اید یا در صفحات دیگران
+          مدیریت جلسات و هماهنگی‌هایی که دریافت کرده‌اید یا در صفحات دیگران
           گذاشته‌اید.
         </p>
       </header>
@@ -125,7 +125,7 @@ export function BookingsListClient({
           </TabsTrigger>
           <TabsTrigger value="outgoing" className="gap-2">
             <SendIcon className="size-4" />
-            رزروهای من
+            هماهنگی‌های من
             {outgoingSplit.upcoming.length > 0 ? (
               <span className="rounded-full bg-foreground/10 px-1.5 text-xs tabular-nums">
                 {toPersianDigits(outgoingSplit.upcoming.length)}

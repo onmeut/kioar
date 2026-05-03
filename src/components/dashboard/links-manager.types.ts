@@ -1,4 +1,8 @@
 import type { IconKey } from "@/lib/link-icons";
+import type {
+  BlockAnimationStyle,
+  BlockSpotlight,
+} from "@/lib/block-spotlight";
 
 export type EditableLink = {
   id: string;
@@ -10,4 +14,6 @@ export type EditableLink = {
   iconUrl: string | null;
   sortOrder: number;
   isActive: boolean;
+  spotlight: BlockSpotlight;
+  animationStyle: BlockAnimationStyle | null;
 };

@@ -55,17 +55,29 @@ export default async function AdminUserDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; impersonate?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    impersonate?: string;
+    pageId?: string;
+  }>;
 }) {
   const viewer = await requireAdmin();
   const { id } = await params;
-  const { saved, impersonate } = await searchParams;
+  const { saved, impersonate, pageId: pageIdParam } = await searchParams;
 
-  const detail = await getAdminUserDetail(id);
+  const detail = await getAdminUserDetail(id, pageIdParam);
   if (!detail) notFound();
 
-  const { user, profile, links, registrations, cardRequests, recentSessions } =
-    detail;
+  const {
+    user,
+    profile,
+    pages,
+    pagePlans,
+    links,
+    registrations,
+    cardRequests,
+    recentSessions,
+  } = detail;
 
   const displayName = profile?.fullName || user.phone;
   const isSelf = user.id === viewer.user.id;
@@ -219,17 +231,157 @@ export default async function AdminUserDetailPage({
         </div>
       </section>
 
-      {/* Edit basic info */}
-      {profile ? (
+      {/* User pages — directory of every page owned by this user, with
+          quick links to the per-page billing/subscription workshop. */}
+      {pagePlans.length > 0 ? (
         <section className="rounded-4xl bg-card p-5 border border-border">
           <header className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-base font-bold">صفحه‌های این کاربر</h3>
+            <span className="text-xs text-muted-foreground">
+              {toPersianDigits(pagePlans.length)} صفحه
+            </span>
+          </header>
+          <ul className="grid gap-2">
+            {pagePlans.map((p) => (
+              <li
+                key={p.pageId}
+                className="flex flex-col gap-3 rounded-3xl border border-border bg-background/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0 space-y-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Link
+                      href={`/${p.slug}` as Route}
+                      target="_blank"
+                      className="inline-flex items-center gap-1 font-mono text-sm font-semibold text-primary"
+                      dir="ltr"
+                    >
+                      /{p.slug}
+                      <ExternalLinkIcon className="size-3" />
+                    </Link>
+                    <Badge
+                      className={cn(
+                        "rounded-full",
+                        p.planKey === "business"
+                          ? "bg-violet-500/12 text-violet-700"
+                          : p.planKey === "pro"
+                            ? "bg-emerald-500/12 text-emerald-700"
+                            : "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {p.planNameFa}
+                    </Badge>
+                    <Badge
+                      className={cn(
+                        "rounded-full",
+                        p.status === "trialing"
+                          ? "bg-amber-500/12 text-amber-700"
+                          : p.status === "grace"
+                            ? "bg-rose-500/12 text-rose-700"
+                            : p.status === "expired" || p.status === "canceled"
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-emerald-500/12 text-emerald-700",
+                      )}
+                    >
+                      {p.status === "active"
+                        ? "فعال"
+                        : p.status === "trialing"
+                          ? "آزمایشی"
+                          : p.status === "pending_renewal"
+                            ? "در انتظار تمدید"
+                            : p.status === "grace"
+                              ? "مهلت پرداخت"
+                              : p.status === "expired"
+                                ? "منقضی"
+                                : "لغو شده"}
+                    </Badge>
+                    {p.cancelAtPeriodEnd ? (
+                      <Badge className="rounded-full bg-muted text-[11px]">
+                        لغو در پایان دوره
+                      </Badge>
+                    ) : null}
+                  </div>
+                  {p.fullName ? (
+                    <p className="truncate text-xs text-muted-foreground">
+                      {p.fullName}
+                    </p>
+                  ) : null}
+                  {p.currentPeriodEnd ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      پایان دوره: {formatPersianDate(p.currentPeriodEnd)}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/admin/billing/invoices?userId=${user.id}` as Route}
+                    className={cn(
+                      buttonVariants({
+                        size: "sm",
+                        variant: "ghost",
+                        className: "h-8 rounded-full text-xs",
+                      }),
+                    )}
+                  >
+                    فاکتورها
+                  </Link>
+                  <Link
+                    href={`/admin/billing/pages/${p.pageId}` as Route}
+                    className={cn(
+                      buttonVariants({
+                        size: "sm",
+                        className: "h-8 rounded-full text-xs",
+                      }),
+                    )}
+                  >
+                    مدیریت پلن و دوره
+                    <ExternalLinkIcon className="size-3" />
+                  </Link>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[11px] leading-5 text-muted-foreground">
+            تغییر پلن، اعطای قابلیت، تمدید دوره و فاکتورهای هر صفحه از داشبورد
+            صفحه قابل دسترسی است.
+          </p>
+        </section>
+      ) : null}
+
+      {/* Edit basic info */}
+      {profile ? (
+        <section
+          key={profile.id}
+          className="rounded-4xl bg-card p-5 border border-border"
+        >
+          <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h3 className="text-base font-bold">ویرایش اطلاعات پایه</h3>
+            {pages.length > 1 ? (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[11px] text-muted-foreground">صفحه:</span>
+                {pages.map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/admin/users/${user.id}?pageId=${p.id}` as Route}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-[11px] font-semibold",
+                      p.id === profile.id
+                        ? "bg-foreground text-background"
+                        : "bg-muted text-muted-foreground",
+                    )}
+                    dir="ltr"
+                  >
+                    /{p.slug}
+                  </Link>
+                ))}
+              </div>
+            ) : null}
           </header>
           <form
             action={adminUpdateUserProfileRedirectAction}
             className="grid grid-cols-1 gap-4 sm:grid-cols-2"
           >
             <input type="hidden" name="userId" value={user.id} />
+            <input type="hidden" name="pageId" value={profile.id} />
             <Field
               id="fullName"
               label="نام کامل"

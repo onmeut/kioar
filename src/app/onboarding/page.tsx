@@ -30,7 +30,7 @@ export default async function OnboardingPage() {
       <div className="mx-auto w-full max-w-xl space-y-6 py-6">
         <div className="space-y-3">
           <p className="text-sm font-semibold text-primary">
-            مرحله اول از تجربه کیوآر
+            مرحله اول از تجربه کی‌یو‌آر
           </p>
           <h1 className="text-3xl font-bold sm:text-4xl">
             نام کاربری‌ات را بگیر.

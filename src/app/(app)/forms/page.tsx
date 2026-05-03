@@ -2,7 +2,7 @@ import type { Route } from "next";
 import { redirect } from "next/navigation";
 
 import { FormsSubmissionsClient } from "@/components/dashboard/forms-submissions-client";
-import { deleteSubmissionAction } from "@/app/dashboard/forms/actions";
+import { deleteSubmissionAction } from "@/app/(app)/forms/actions";
 import { requireCompletedProfile } from "@/lib/auth/session";
 import { getFormBlocksByUserId, getSubmissions } from "@/lib/form-service";
 
@@ -22,13 +22,14 @@ export default async function FormsSubmissionsPage({
         <div className="mx-auto max-w-md text-center">
           <h1 className="text-xl font-bold">هنوز فرمی نساخته‌اید</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            از صفحه‌ی لینک‌ها یک فرم بسازید تا ارسال‌ها اینجا نمایش داده شوند.
+            از صفحه‌ی خودتان یک بلاک فرم بسازید تا ارسال‌ها اینجا نمایش داده
+            شوند.
           </p>
           <a
-            href="/dashboard/links"
+            href="/me"
             className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground"
           >
-            رفتن به لینک‌ها
+            رفتن به صفحه‌ی من
           </a>
         </div>
       </div>
@@ -45,7 +46,7 @@ export default async function FormsSubmissionsPage({
     limit: 200,
   });
 
-  if (!submissions) redirect("/dashboard/forms" as Route);
+  if (!submissions) redirect("/forms" as Route);
 
   const selectedBlock = blocks.find((b) => b.id === selectedId)!;
 

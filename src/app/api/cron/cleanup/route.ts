@@ -10,14 +10,25 @@ export const dynamic = "force-dynamic";
 
 /**
  * Housekeeping endpoint. Intended to be called every ~15 minutes by an
- * external cron (systemd timer / PM2 cron / container orchestrator) with:
+ * external cron (systemd timer, PM2 cron, container orchestrator, GitHub
+ * Actions, cron-job.org, etc.) with:
  *
  *   Authorization: Bearer <CRON_SECRET>
  *
- * We avoid a shared database cleanup job running on boot because multiple
- * app instances would race; a single cron ping is simpler and deterministic.
+ * Both POST and GET are accepted because some cron providers only emit GET.
+ *
+ * Concurrency:
+ *   A `pg_try_advisory_lock` guards the body so overlapping invocations
+ *   (cron retries, multi-region pings) exit cleanly with `skipped: true`
+ *   instead of doing duplicate DELETEs and burning IO.
  */
-export async function POST(request: Request) {
+
+// Stable, arbitrary 64-bit identifier for the advisory lock namespace.
+// Hard-coded — never recomputed at runtime. Sent as a bigint to Postgres
+// because `pg_advisory_lock` expects an int8.
+const CLEANUP_LOCK_KEY = BigInt("7427301519462395");
+
+async function handle(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     // Fail closed when the secret is missing so a misconfigured deployment
@@ -32,45 +43,69 @@ export async function POST(request: Request) {
   }
 
   const db = getDb();
-  const deletedOtps = await db
-    .delete(otpCodes)
-    .where(
-      or(
-        lt(otpCodes.expiresAt, sql`now() - interval '1 day'`),
-        and(
-          isNotNull(otpCodes.consumedAt),
-          lt(otpCodes.consumedAt, sql`now() - interval '1 day'`),
+
+  const lockRows = await db.execute<{ locked: boolean }>(
+    sql`select pg_try_advisory_lock(${CLEANUP_LOCK_KEY}) as locked`,
+  );
+  const locked = Boolean(
+    (lockRows as unknown as Array<{ locked: boolean }>)[0]?.locked,
+  );
+  if (!locked) {
+    log.info("cron.cleanup.skipped", { reason: "lock_held" });
+    return NextResponse.json({ ok: true, skipped: true });
+  }
+
+  try {
+    const deletedOtps = await db
+      .delete(otpCodes)
+      .where(
+        or(
+          lt(otpCodes.expiresAt, sql`now() - interval '1 day'`),
+          and(
+            isNotNull(otpCodes.consumedAt),
+            lt(otpCodes.consumedAt, sql`now() - interval '1 day'`),
+          ),
         ),
-      ),
-    )
-    .returning({ id: otpCodes.id });
+      )
+      .returning({ id: otpCodes.id });
 
-  const deletedSessions = await db
-    .delete(sessions)
-    .where(
-      or(
-        lt(sessions.expiresAt, new Date()),
-        and(
-          isNotNull(sessions.revokedAt),
-          lt(sessions.revokedAt, sql`now() - interval '7 days'`),
+    const deletedSessions = await db
+      .delete(sessions)
+      .where(
+        or(
+          lt(sessions.expiresAt, new Date()),
+          and(
+            isNotNull(sessions.revokedAt),
+            lt(sessions.revokedAt, sql`now() - interval '7 days'`),
+          ),
         ),
-      ),
-    )
-    .returning({ id: sessions.id });
+      )
+      .returning({ id: sessions.id });
 
-  const deletedBuckets = await db
-    .delete(rateLimitBuckets)
-    .where(lt(rateLimitBuckets.windowStart, sql`now() - interval '2 days'`))
-    .returning({ key: rateLimitBuckets.key });
+    const deletedBuckets = await db
+      .delete(rateLimitBuckets)
+      .where(lt(rateLimitBuckets.windowStart, sql`now() - interval '2 days'`))
+      .returning({ key: rateLimitBuckets.key });
 
-  const summary = {
-    otps: deletedOtps.length,
-    sessions: deletedSessions.length,
-    rateLimitBuckets: deletedBuckets.length,
-  };
+    const summary = {
+      otps: deletedOtps.length,
+      sessions: deletedSessions.length,
+      rateLimitBuckets: deletedBuckets.length,
+    };
 
-  log.info("cron.cleanup", summary);
-  return NextResponse.json({ ok: true, ...summary });
+    log.info("cron.cleanup", summary);
+    return NextResponse.json({ ok: true, ...summary });
+  } finally {
+    await db.execute(sql`select pg_advisory_unlock(${CLEANUP_LOCK_KEY})`);
+  }
+}
+
+export async function POST(request: Request) {
+  return handle(request);
+}
+
+export async function GET(request: Request) {
+  return handle(request);
 }
 
 function timingSafeEqual(a: string, b: string): boolean {

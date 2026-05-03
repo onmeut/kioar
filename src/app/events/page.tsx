@@ -63,7 +63,7 @@ function EventCard({
       href={`/events/${event.slug}` as Route}
       className="marketing-card group relative grid gap-4 overflow-hidden p-3 transition hover:-translate-y-0.5 hover:shadow-[0_40px_80px_-50px_rgba(15,23,42,0.4)] sm:grid-cols-[14rem_1fr] sm:p-4"
     >
-      <div className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] bg-[linear-gradient(135deg,#d9efe7,#f4e5c8)] sm:aspect-square">
+      <div className="relative aspect-[4/3] overflow-hidden rounded-[1.4rem] bg-[#e9f2ec] sm:aspect-square">
         {event.coverUrl ? (
           <Image
             src={event.coverUrl}
@@ -142,14 +142,12 @@ export default async function EventsPage() {
       <main className="overflow-hidden bg-[#fcfbf8] text-foreground#0f1318]">
         <section className="relative overflow-hidden border-b border-black/6">
           <div className="marketing-grid pointer-events-none absolute inset-0 opacity-65" />
-          <div className="pointer-events-none absolute top-[-14%] left-[-4%] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,_rgba(101,159,240,0.12),_transparent_68%)],_rgba(54,84,122,0.2),_transparent_70%)]" />
-          <div className="pointer-events-none absolute right-[-6%] bottom-[-20%] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,_rgba(243,201,138,0.14),_transparent_68%)],_rgba(126,90,50,0.2),_transparent_72%)]" />
 
           <div className="marketing-shell relative py-14 sm:py-18">
             <div className="mx-auto max-w-3xl text-center">
               <div className="marketing-pill mx-auto w-fit">
                 <CalendarDaysIcon className="size-4 text-primary" />
-                <span>رویدادهای کیوآر</span>
+                <span>رویدادهای کی‌یو‌آر</span>
               </div>
               <h1 className="mt-6 text-5xl leading-[1.1] font-bold headline-balance sm:text-6xl">
                 رویدادهایی که می‌توانید همین الآن در آن‌ها حضور داشته باشید

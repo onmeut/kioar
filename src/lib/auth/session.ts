@@ -8,6 +8,8 @@ import { redirect } from "next/navigation";
 import { getDb } from "@/db";
 import { eventRegistrations, events, sessions, users } from "@/db/schema";
 import { getRequiredEnv } from "@/lib/env";
+import { log } from "@/lib/log";
+import { resolveCurrentPageForOwner } from "@/lib/pages";
 
 import {
   clearPendingEventRegistration,
@@ -102,11 +104,7 @@ export const getCurrentViewer = cache(async () => {
       isNull(sessions.revokedAt),
     ),
     with: {
-      user: {
-        with: {
-          profile: true,
-        },
-      },
+      user: true,
     },
   });
 
@@ -148,10 +146,16 @@ export const getCurrentViewer = cache(async () => {
     }
   }
 
+  // A user can own many pages now. `profile` here is the *current* page —
+  // the one selected via the `kioar_page_id` cookie, with the user's first
+  // page as a stable fallback. Most callers want this single "current"
+  // surface; multi-page-aware code reaches for `lib/pages.ts` directly.
+  const currentPage = await resolveCurrentPageForOwner(session.user.id);
+
   return {
     session,
     user: session.user,
-    profile: session.user.profile,
+    profile: currentPage,
     impersonator,
   };
 });
@@ -169,11 +173,15 @@ export async function requireUser() {
 export async function requireCompletedProfile() {
   const viewer = await requireUser();
 
-  if (!viewer.profile?.isComplete) {
+  const profile = viewer.profile;
+  if (!profile || !profile.isComplete) {
     redirect("/onboarding");
   }
 
-  return viewer;
+  // After the guard the current page is non-null and complete; narrow the
+  // return type so every dashboard call site can read `viewer.profile.slug`
+  // without optional chaining.
+  return { ...viewer, profile };
 }
 
 export async function requireAdmin() {
@@ -190,9 +198,6 @@ export async function findOrCreateUserByPhone(phone: string) {
   const db = getDb();
   const existingUser = await db.query.users.findFirst({
     where: eq(users.phone, phone),
-    with: {
-      profile: true,
-    },
   });
 
   if (existingUser) {
@@ -206,9 +211,15 @@ export async function findOrCreateUserByPhone(phone: string) {
       .where(eq(users.id, existingUser.id))
       .returning();
 
+    // A user owns many pages — we just need to know whether at least one
+    // is complete to skip the onboarding redirect after sign-in.
+    const firstCompletedPage = await resolveCurrentPageForOwner(
+      existingUser.id,
+    );
+
     return {
       ...updated,
-      profile: existingUser.profile,
+      profile: firstCompletedPage,
     };
   }
 
@@ -220,6 +231,29 @@ export async function findOrCreateUserByPhone(phone: string) {
       lastLoginAt: new Date(),
     })
     .returning();
+
+  // Best-effort referral hooks. Sign-in MUST not fail if either of
+  // these errors — the helpers swallow internally, but we double-wrap
+  // here for defense in depth.
+  try {
+    const { getOrCreateReferralCodeForUser, attachReferralOnSignup } =
+      await import("@/lib/referrals");
+    const { readReferralCookie } = await import("@/lib/referral-cookie");
+    await getOrCreateReferralCodeForUser(created.id);
+    const cookieId = await readReferralCookie();
+    if (cookieId) {
+      await attachReferralOnSignup({
+        cookieId,
+        refereeUserId: created.id,
+        refereePhone: phone,
+      });
+    }
+  } catch (err) {
+    log.warn("auth.referral_hook_failed", {
+      userId: created.id,
+      error: (err as Error).message,
+    });
+  }
 
   return {
     ...created,

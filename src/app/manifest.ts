@@ -50,10 +50,10 @@ export default function manifest(): MetadataRoute.Manifest {
         ],
       },
       {
-        name: "لینک‌های من",
-        short_name: "لینک‌ها",
-        description: "مدیریت لینک‌ها و پیش‌نمایش پروفایل",
-        url: "/dashboard/links?source=pwa-shortcut",
+        name: "صفحه‌ی من",
+        short_name: "صفحه",
+        description: "مدیریت بلاک‌ها و پیش‌نمایش پروفایل",
+        url: "/page?source=pwa-shortcut",
         icons: [
           { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
         ],
@@ -61,17 +61,17 @@ export default function manifest(): MetadataRoute.Manifest {
       {
         name: "رویدادها",
         short_name: "رویدادها",
-        description: "مرور و ثبت‌نام در رویدادهای کیوآر",
+        description: "مرور و ثبت‌نام در رویدادهای کی‌یو‌آر",
         url: "/events?source=pwa-shortcut",
         icons: [
           { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
         ],
       },
       {
-        name: "درخواست کارت",
-        short_name: "کارت جدید",
-        description: "درخواست کارت فیزیکی یا NFC",
-        url: "/dashboard/requests/new?source=pwa-shortcut",
+        name: "کارت هوشمند",
+        short_name: "کارت هوشمند",
+        description: "کارت هوشمند فیزیکی یا NFC",
+        url: "/premium?source=pwa-shortcut",
         icons: [
           { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
         ],

@@ -119,12 +119,12 @@ export default async function DashboardPage() {
       icon: EyeIcon,
     },
     {
-      label: "کلیک روی لینک‌ها",
+      label: "کلیک روی بلاک‌ها",
       value: toPersianDigits(profileStats.totalLinkClicks),
       icon: MousePointerClickIcon,
     },
     {
-      label: "لینک‌های فعال",
+      label: "بلاک‌های فعال",
       value: toPersianDigits(activeLinks),
       icon: UserPlusIcon,
     },
@@ -145,10 +145,10 @@ export default async function DashboardPage() {
           <div className="mb-2 flex items-center justify-between">
             <h2 className="text-sm font-bold">فعالیت ۷ روز اخیر</h2>
             <Link
-              href="/dashboard/links"
+              href="/me"
               className="text-xs font-semibold text-primary hover:underline"
             >
-              مدیریت لینک‌ها
+              مدیریت صفحه
               <ArrowUpLeftIcon className="ms-1 inline size-3" />
             </Link>
           </div>
@@ -163,7 +163,7 @@ export default async function DashboardPage() {
           </h2>
           {registrations.length > 3 ? (
             <Link
-              href="/dashboard/events"
+              href="/my-events"
               className="text-xs font-semibold text-primary hover:underline"
             >
               همه رویدادها
@@ -187,7 +187,7 @@ export default async function DashboardPage() {
                   </p>
                 </div>
                 <Link
-                  href={`/dashboard/events/${event.slug}` as Route}
+                  href={`/my-events/${event.slug}` as Route}
                   aria-label="مشاهده"
                   className={cn(
                     buttonVariants({

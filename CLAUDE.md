@@ -1,153 +1,235 @@
 @AGENTS.md
 
-# Kioar — Mobile-first & PWA guidelines
+# Kioar — session context
 
-This app is **mobile-first** and **installable**. Desktop is secondary; do NOT break desktop, but ALWAYS design from the smallest viewport up.
+Persian-only (RTL) link-in-bio + bookings/forms/events SaaS, **mobile-first**, installable PWA, self-hosted (Docker + Caddy). Light theme only.
 
-## Viewport & chrome
+## Stack
 
-- Root viewport uses `viewportFit: "cover"`, `interactiveWidget: "resizes-content"`, and permits zoom (`maximumScale: 5`, `userScalable: true`) for accessibility.
-- Theme color responds to color scheme; status bar is `black-translucent` on iOS for full-bleed PWA.
-- `<body>` uses `min-h-dvh` and `overscroll-y-none`. Prefer `min-h-dvh` / `h-dvh` over `min-h-screen` for page shells on mobile (dvh avoids iOS URL-bar jitter).
+- **Next.js 16** App Router, `--webpack` (NOT turbopack — see scripts).
+  - This is **not** the Next.js you may know. Read `node_modules/next/dist/docs/` before assuming an API exists.
+- **React 19**, TypeScript, Tailwind v4 (`@tailwindcss/postcss`), shadcn/ui (Radix/Base UI), `motion` (Framer Motion), `lucide-react` + `@tabler/icons-react`.
+- **Drizzle ORM** + **Postgres** (`postgres` driver). Schema in `src/db/schema.ts`. Migrations in `drizzle/`.
+- **Redis** (`ioredis`) for rate limits, OTP cooldowns, SMS queue locks.
+- **Kavenegar** SMS lookup. **Zarinpal** payments. **S3-compatible** object storage (`@aws-sdk/client-s3`), with `@vercel/blob` as alt.
+- **Auth**: phone + OTP, custom session cookie `kioar_session`, hashed with `AUTH_SECRET`. Admin role from `ADMIN_PHONE_NUMBERS` env.
+- **PWA**: `@ducanh2912/next-pwa` generates `public/sw.js` — never hand-edit. Offline fallback `/~offline`.
+- **Fonts**: IRANYekanXVF (local in `src/fonts`) + Vazirmatn variable.
+- **pnpm** is the only supported package manager (`packageManager` pinned).
 
-## PWA manifest (`src/app/manifest.ts`)
+## Scripts (use these, not bare `next` / `tsc`)
 
-- `id: "/?source=pwa"`, `start_url` includes the same source marker — required for app-replace installability.
-- `display_override: ["standalone", "minimal-ui", "browser"]`.
-- Shortcuts include per-item `icons`. Keep shortcuts to 3–4 high-intent actions.
-- If you introduce a new surface that should be launchable, add a shortcut.
+```
+pnpm dev              # next dev --webpack
+pnpm build            # next build --webpack   ← must be green before declaring done
+pnpm typecheck        # tsc --noEmit            ← must be green before declaring done
+pnpm lint             # eslint
+pnpm test             # node --test against tests/*.test.ts via tsx
+pnpm db:up            # docker compose up -d postgres
+pnpm db:generate      # drizzle-kit generate (new migration)
+pnpm db:migrate       # drizzle-kit migrate
+pnpm db:push          # drizzle-kit push (dev only)
+pnpm db:studio
+pnpm db:seed:plans    # tsx scripts/seed-plans.ts  ← feature registry seeder, insert-only
+pnpm db:seed:sms      # tsx scripts/seed-sms-templates.ts
+```
 
-## Global CSS utilities (`src/app/globals.css`)
+## Project layout
 
-- `safe-pb` / `safe-pt` / `safe-px` — add safe-area padding on sticky/fixed edges.
-- `safe-area-bottom` / `safe-area-top` — pure `env(safe-area-inset-*)`.
-- `pb-nav` — reserves space for the mobile bottom nav + iOS bottom inset. Use on `<main>` inside authenticated shells.
-- `min-h-screen-safe` / `h-screen-safe` — alias of `min-h-dvh` / `h-dvh`.
-- `tap-target` — enforces 44×44 minimum. Use on icon-only buttons (search, trigger, etc.).
-- `touch-pan-y` — overrides `touch-action` for scroll containers.
-- `no-scrollbar` — hides scrollbars while keeping scroll.
-- iOS 16 px auto-zoom is prevented globally via `@media (hover:none) and (pointer:coarse)`; do not set `<16px` font on inputs.
+```
+src/
+  middleware.ts                # only matches /auth — handle→pending-slug cookie
+  app/
+    (app)/                     # authenticated user shell: dashboard, page editor, bookings, forms, events, requests
+    [slug]/                    # public profile page renderer + booking/form actions
+    admin/                     # /admin shell, gated by requireAdmin()
+    api/                       # cron, webhooks, internal endpoints
+    auth/                      # phone+OTP screens
+    affiliate/, invited/, onboarding/, pricing/, r/, u/, events/, ~offline/
+  components/                  # admin/, app/, auth/, billing/, dashboard/, events/, marketing/,
+                               # navigation/, onboarding/, public/, referral/, shared/, ui/
+  db/                          # index.ts (getDb), schema.ts (~40 tables)
+  lib/
+    auth/                      # session.ts, otp.ts, pending-intent.ts
+    date/                      # persian.ts + timezone.ts ← ONLY place that imports date-fns-jalali
+    oauth/                     # OAuth providers (linked-account flow)
+    persian.ts                 # DEPRECATED shim re-exporting from lib/date/persian
+    entitlements.ts            # pageHasFeature, requireFeature, getPageEntitlementLimit, rebuildEntitlements
+    pages.ts                   # multi-page helpers (resolveCurrentPageForOwner, createPageForOwner, …)
+    billing-*.ts, zarinpal.ts, discounts.ts, invoice-numbering.ts, trial.ts
+    sms.ts, sms-queue.ts, kavenegar.ts
+    storage.ts, ssrf.ts, rate-limit.ts, redis.ts, request-ip.ts
+    booking-*, form-service, event-service, profile-service, link-icons*
+tests/                         # node:test + tsx, see tests/tsconfig.json
+drizzle/                       # numbered SQL migrations + meta/
+scripts/                       # generate-pwa-icons, seed-plans, seed-sms-templates
+```
 
-## Mobile navigation
+## Database conventions
 
-- Authenticated shells (`dashboard`, `admin`) render `<MobileBottomNav variant="dashboard" />` or `"admin"`. It is `fixed bottom-0` with safe-area padding and a center primary action (floating pill).
-- The shadcn Sidebar is `collapsible="icon"` on desktop and auto-becomes a Sheet on mobile via `SidebarTrigger`. Do NOT duplicate nav inside page content for mobile — rely on bottom nav + sheet.
-- `<main>` in dashboard/admin layouts uses `pb-nav md:pb-6` so content clears the bottom nav.
+- Schema is one file: `src/db/schema.ts`. Generate migrations with `pnpm db:generate`, never hand-edit existing migrations.
+- Timestamps: `timestamp({ withTimezone: true })`. UTC in DB, always.
+- Money: bigint `toman` (no fractional). VAT rate from `BILLING_VAT_RATE` env, never hardcoded.
+- Multi-tenancy: **page-owned**, not user-owned. The `profiles` table is the `pages` entity (owner = `userId`, but a user can have many pages). Resolve "current page" with `resolveCurrentPageForOwner()` — never assume `users.id === pages.id`.
+- Plan/feature registry tables: `plans`, `features`, `plan_features`, `page_subscriptions`, `page_entitlements`. **No plan-name comparisons in product code** — gate via `pageHasFeature(pageId, lookupKey)`. Limits via `getPageEntitlementLimit()`.
 
-## Forms — mobile requirements
+## Persian (Shamsi) calendar — MANDATORY
 
-Every `<input>` MUST declare, when applicable:
+Single source of truth: **`src/lib/date/persian.ts`** (+ `src/lib/date/timezone.ts`). Everything else imports from there. The legacy `src/lib/persian.ts` is a deprecated re-export shim — do not add new exports to it.
 
-- `type` (`tel`, `email`, `url`, `number`, `search`, `password`).
-- `inputMode` (`tel`, `email`, `url`, `numeric`, `decimal`, `search`).
-- `autoComplete` (WHATWG tokens — `tel`, `email`, `name`, `one-time-code`, etc.).
-- `enterKeyHint` (`next`, `send`, `search`, `go`, `done`).
-- For slugs/URLs: `autoCapitalize="none" autoCorrect="off" spellCheck={false}`.
-- For OTP: `autoComplete="one-time-code"`, `inputMode="numeric"`, `pattern="[0-9]*"`.
+Locked-in rules:
 
-The base `Input` component is `h-11` on mobile, `md:h-9` on desktop. Inputs >16px font-size on mobile (via CSS media query) — do not override.
+- **DB = UTC Gregorian.** Postgres `timestamptz`, Drizzle `timestamp({ withTimezone: true })`. Never store Shamsi strings as truth.
+- **Display = Shamsi via `formatShamsi*` helpers.** `formatShamsiDate / formatShamsiDateTime / formatShamsiShort / formatShamsiMonthYear / formatShamsiWeekdayDayMonth / formatShamsi(date, pattern)`.
+- **Only `src/lib/date/*` imports `date-fns-jalali`.** Grep `from "date-fns-jalali"` should return exactly two hits (`persian.ts` + `timezone.ts`). Never import it from a component or other lib module.
+- **No hardcoded Persian month names** outside the date module's preset formatters.
+- **No raw `Intl.DateTimeFormat("fa-IR", …)` for date display.** Direct Intl is fine for non-display work (currency, day-key parsing).
+- **"Today / now" anchors to Asia/Tehran.** Use `tehranIsoDate(now)` for backend day-keys (`YYYY-MM-DD`), `tehranLocalView` for Jalali arithmetic, and `shamsiStartOfMonth / shamsiAddMonths / shamsiDaysInMonth / shamsiWeekdayColumn` for calendar grids.
+- **APIs ship ISO 8601 UTC strings.** Never pre-format Shamsi server-side.
+- **Date pickers**: when one is needed, build a single `<ShamsiDatePicker />` and route all callers through it. Native `<input type="datetime-local">` stays Gregorian-local — that's an HTML constraint.
+- **Never reintroduce the booking-grid bug**: build the calendar from `shamsiStartOfMonth + shamsiDaysInMonth + shamsiWeekdayColumn`, label each cell with its true Jalali day-of-month. Do not iterate `new Date(year, month, day)` under a Persian header.
 
-## Responsive patterns
+## Timezone handling — MANDATORY
 
-- **Tables**: ALWAYS render a card list on mobile (`lg:hidden`) and the real table on desktop (`hidden lg:block`). Admin requests page is the canonical example.
-- **Forms**: stack in one column on mobile; use `sm:grid-cols-2` only when both fields fit. Button rows: use `w-full sm:w-auto` for primary actions.
-- **Touch targets**: minimum 44 px. Use `h-11`/`h-12` on interactive elements, `size-11` on icon buttons. Avoid `size-8`.
-- **Dialogs vs Sheets**: for long content on mobile, prefer `<Sheet side="bottom">` or `<Drawer>` over `<Dialog>`. Reserve `<Dialog>` for short confirms.
-- **Numbers & phones**: use `dir="ltr"` on the input, never reverse digits. Display with `formatPhoneDisplay` + `toPersianDigits`.
+Calendly-style: host defines availability in their own zone, booker sees converted slots in their zone, UTC is the only stored truth. Single source of truth: **`src/lib/date/timezone.ts`** (pairs with `./persian.ts`).
 
-## RTL
+Locked-in rules:
 
-- `<html dir="rtl">` is global. Use logical props: `ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `rounded-s-`, `rounded-e-`.
-- For numeric/LTR-only content (URLs, slugs, phones, OTP), set `dir="ltr"` on the element itself.
+- **All `timestamptz` columns are UTC. Always.** Never store offsets, abbreviations, or wall-clock strings as truth.
+- **Future scheduled events store UTC + IANA timezone.** Booking blocks carry `timezone` (host's zone at slot-publish time); `bookings` carry `hostTimezone` (snapshot at booking time) and `guestTimezone` (booker's chosen zone). Recurring rules must always store the IANA zone they were authored in — never just an offset.
+- **Only `src/lib/date/timezone.ts` and `src/lib/date/persian.ts` import `date-fns-tz` / `date-fns-jalali`.** Grep `from "date-fns-tz"` should return exactly one hit (`timezone.ts`). Components and other libs must use the wrappers (`formatShamsiTimeInZone`, `formatGregorianDateInZone`, `formatInTimezone`, `civilToUtc`, `resolveSlotToUtc`, `formatTimezoneLabel`, `formatOffset`, `getTimezoneOffsetMinutes`).
+- **Never store or transmit timezone offsets (`+02:00`) or abbreviations (`CET`, `EST`) as identifiers.** Always IANA (`Europe/Berlin`, `America/New_York`). Node's Intl will accept offsets/abbreviations as input, but the convention is enforced socially: do not write them into the DB or APIs.
+- **Detect with `Intl.DateTimeFormat().resolvedOptions().timeZone`** via `detectUserTimezone()`. Always allow the user to override (booking modal exposes a Select; persist override in `localStorage[kioar:booking-tz:${blockId}]`).
+- **APIs ship UTC ISO 8601 strings (`...Z`).** Never pre-format zoned/Shamsi server-side. Conversion happens at the render layer via `formatShamsi*InZone` / `formatGregorian*InZone`.
+- **Civil-time → UTC conversions go through `civilToUtc` / `resolveSlotToUtc`** (DST-correct via `fromZonedTime`). Never hand-roll `new Date(y, m, d, h, mm)` and add an offset — DST gaps and overlaps will silently corrupt slots.
+- **ICS exports use TZID + `VTIMEZONE`**, not floating times or naive UTC. Use `formatIcsLocal(date, tz)` for `DTSTART;TZID=...` and `formatIcsUtc(date)` for `DTSTAMP`.
+- **Don't auto-migrate historical timestamps.** They're already UTC; only future-scheduled rows need the new tz columns. Backfill `host_timezone` lazily on read if needed (default to `Asia/Tehran`).
+- **UI**: when displaying a future event whose `bookerTz !== hostTimezone`, show both ("ساعت محلی شما: …" + "وقت میزبان: …"). The booker's zone label is `formatTimezoneLabel(tz, instant)` → e.g. `Europe/Berlin (GMT+1:00)`.
 
-## Installability checks when shipping UI
+## Mobile-first & PWA
 
-1. New route that should be a shortcut? Add it to `manifest.ts`.
-2. Long page? Wrap sticky bottom with `safe-pb` or `pb-nav`.
-3. Form? Verify `inputMode`, `autoComplete`, `enterKeyHint`, `autoFocus` on first field of a single-purpose screen.
-4. Table? Provide a mobile card layout.
-5. Ran `pnpm typecheck` and `pnpm build` (webpack)? Both must be green.
+Mobile is primary; desktop must keep working but design from the smallest viewport up.
 
-## Service worker
+- **Viewport** (`src/app/layout.tsx`): `viewportFit: "cover"`, `interactiveWidget: "resizes-content"`, `maximumScale: 5`, `userScalable: true`. Status bar `black-translucent` on iOS. Never set `maximumScale: 1` or `userScalable: false`.
+- **Body**: `min-h-dvh overscroll-y-none`. Use `min-h-dvh` / `h-dvh` (or the `min-h-screen-safe` / `h-screen-safe` aliases). Avoid `min-h-screen` for new pages.
+- **PWA manifest** (`src/app/manifest.ts`): `id` and `start_url` carry `?source=pwa`; `display_override: ["standalone","minimal-ui","browser"]`. New launchable surface? Add a shortcut (max 3–4).
+- **CSS utilities** (`src/app/globals.css`): `safe-pb / safe-pt / safe-px`, `safe-area-bottom / safe-area-top`, `pb-nav` (reserves bottom-nav + iOS inset on `<main>`), `tap-target` (44×44 minimum), `touch-pan-y`, `no-scrollbar`.
+- iOS auto-zoom is prevented globally for coarse pointers; do **not** set `<16px` font on inputs.
 
-- Registered by `@ducanh2912/next-pwa`. Do NOT hand-edit `public/sw.js` — it's generated.
-- Offline fallback is `/~offline`. If a route must always work offline, make sure its shell is static.
+### Mobile navigation
 
-## Do NOT
+- Authenticated shells render `<MobileBottomNav variant="dashboard" />` or `"admin"` — fixed bottom, safe-area padded, center floating primary action.
+- shadcn `<Sidebar collapsible="icon">` becomes a Sheet on mobile via `<SidebarTrigger>`. Don't duplicate nav in page content.
+- `<main>` in `(app)` and `admin` layouts uses `pb-nav md:pb-6`.
 
-- Do not use `min-h-screen` on new mobile pages (use `min-h-dvh`).
-- Do not add `maximumScale: 1` or `userScalable: false`.
-- Do not default inputs below 16 px on mobile or below `h-11`.
-- Do not render desktop-only tables without a mobile card fallback.
-- Do not ship forms without `inputMode` + `autoComplete` + `enterKeyHint`.
-- Do not hide critical primary actions on mobile — surface them in the bottom nav or sticky CTA.
+### Forms — mobile requirements
 
-## Feature Registry Workflow — MANDATORY
+Every `<input>` declares, when applicable:
 
-Kioar's plan system is feature-based: every gateable capability is a row in the `features` table with a stable `lookup_key`, mapped to plans via `plan_features`. Product code never checks plan names; it only calls `pageHasFeature(pageId, 'lookup_key')`. The registry is the single source of truth.
+- `type` (`tel | email | url | number | search | password`).
+- `inputMode` (`tel | email | url | numeric | decimal | search`).
+- `autoComplete` (WHATWG tokens — `tel`, `email`, `name`, `one-time-code`, …).
+- `enterKeyHint` (`next | send | search | go | done`).
+- Slugs/URLs: `autoCapitalize="none" autoCorrect="off" spellCheck={false}`.
+- OTP: `autoComplete="one-time-code" inputMode="numeric" pattern="[0-9]*"`.
 
-**This means: every new gateable feature must go through the registry workflow before it is considered done.**
+Base `<Input>` is `h-11` mobile / `md:h-9` desktop. Don't override font-size below 16px on mobile.
+
+### Responsive patterns
+
+- **Tables**: card list on mobile (`lg:hidden`) + real table desktop (`hidden lg:block`). Canonical example: admin requests page.
+- **Forms**: stack one column on mobile; `sm:grid-cols-2` only when both fields fit. Primary buttons `w-full sm:w-auto`.
+- **Touch targets**: ≥44 px. `h-11`/`h-12` interactive, `size-11` icon buttons. Avoid `size-8`.
+- **Long content**: prefer `<Sheet side="bottom">` or `<Drawer>` over `<Dialog>`. Reserve `<Dialog>` for short confirms.
+- **Numbers/phones**: `dir="ltr"` on the input itself, never reverse digits. Display via `formatPhoneDisplay` + `toPersianDigits`.
+
+### RTL
+
+- `<html dir="rtl">` is global. Use logical Tailwind props: `ms-`, `me-`, `ps-`, `pe-`, `start-`, `end-`, `rounded-s-`, `rounded-e-`.
+- For numeric/LTR-only content (URLs, slugs, phones, OTP), set `dir="ltr"` on the element.
+
+### Pre-merge checklist for UI
+
+1. New launchable route? Add a shortcut to `manifest.ts`.
+2. Sticky bottom? Wrap with `safe-pb` or `pb-nav`.
+3. First field of single-purpose screen? `autoFocus`. All fields have `inputMode + autoComplete + enterKeyHint`.
+4. Table? Mobile card fallback present.
+5. `pnpm typecheck` and `pnpm build` green.
+
+## Auth, sessions, admin
+
+- Sessions: `getCurrentViewer()` (cached) reads `kioar_session` cookie, hashes with `AUTH_SECRET`, joins `users`. Banned users (`bannedAt`) are denied. Impersonation uses a separate `kioar_imp_return` cookie holding the admin's original token.
+- Use `requireAuth()` / `requireAdmin()` from `@/lib/auth/session` in server components and actions. Never trust client.
+- OTP: 6 digits, 3-min TTL, 60s cooldown, 5 attempts max — constants in `src/lib/auth/session.ts`.
+
+## Cron / background work
+
+- Single pattern: `POST/GET /api/cron/<name>` guarded by `Authorization: Bearer ${CRON_SECRET}` and a `pg_advisory_lock`. External systemd timer / Caddy hits the endpoints. Don't introduce BullMQ / pg_cron / new schedulers — extend this pattern. See `docs/cron.md`.
+
+## Rate limiting
+
+- `src/lib/rate-limit.ts` (Redis-backed buckets, plus `rate_limit_buckets` table fallback). Apply at every public mutation entrypoint (OTP, public forms, bookings, signup).
+
+## Storage
+
+- `src/lib/storage.ts` is the only place that talks to S3. Uploads go under `public/uploads/{avatars,link-covers}/` paths in dev, S3 keys in prod. SSRF protection in `src/lib/ssrf.ts` for any user-supplied URL fetch (link metadata, OG previews).
+
+## Testing
+
+- `pnpm test` runs `node --test` over `tests/*.test.ts` via `tsx`. Tests use `tests/tsconfig.json` and a `tests/stubs/` directory for module stubs. Add tests for billing math, date math, discounts, zarinpal — anything money- or time-sensitive.
+
+## Feature Registry workflow — MANDATORY
+
+Plan system is feature-based. Every gateable capability is a row in `features` with a stable `lookup_key`, mapped to plans via `plan_features`. Product code never compares plan names; it calls `pageHasFeature(pageId, 'lookup_key')` and `getPageEntitlementLimit(pageId, 'lookup_key')`.
 
 ### When the workflow triggers
 
-You must run this workflow when any of the following happen during a session:
+1. User asks to build a capability that could plausibly be plan-gated (new block type, analytics view, export, integration, editor tool, public-page rendering branch, business workflow, numeric limit).
+2. You discover existing code that exposes a gateable capability with no registry entry — raise it.
+3. User explicitly asks to add a feature to the registry.
 
-1. The user asks you to build a new capability that could plausibly be plan-gated. Examples: a new block type, a new analytics view, a new export, a new integration, a new editor tool, a new public-page rendering branch, a new business workflow (forms, bookings, etc.), any new numeric limit (storage, submissions, etc.).
-2. You discover existing code that looks like a gateable capability but has no corresponding registry entry. (You should sweep for this opportunistically — if you're touching a file and notice an ungated feature, raise it.)
-3. The user explicitly says "add this to the feature registry" or similar.
+The trigger is **capability**, not file type. A new component is a feature only when it exposes user-visible capability someone might pay for.
 
-The trigger is **capability**, not file type. A new React component on its own is not a feature. A new component that exposes a user-facing capability someone might pay for is.
+### Steps (stop coding and run in order)
 
-### What the workflow looks like
-
-When triggered, **stop coding** and run these steps in order:
-
-1. **Propose a lookup key.** Use the existing naming convention from `seed-plans.ts` and the matrix in `IMPLEMENTATION_PLAN.md`. Snake_case, lowercase, prefixed by category where applicable (`link_*`, `analytics_*`, `marketing_*`, `business_*`, `support_*`). Stable identifiers — these are referenced in code forever, so pick well.
-
-2. **Propose a category.** Must be one of the existing categories: `core`, `branding`, `design`, `link_types`, `analytics`, `marketing`, `business_tools`, `support`, `limits`. Don't invent new categories without explicit user approval.
-
-3. **Propose a Persian display name and a one-sentence description.** Match the tone of existing rows. The user can edit later in the admin panel; aim for "good enough to ship".
-
-4. **Ask the user three questions, in one batch:**
-
-    a. Which plans get this feature? (`free` / `pro` / `business` — multi-select)
-    b. Is this a boolean entitlement, or does it carry a numeric limit? If a limit, what's the limit per plan?
-    c. Does this need backfill for existing pages? (Almost always yes if it's a "true on Free or Pro" feature, since existing pages already have `page_entitlements` rows seeded from the registry. New `business_tools` features generally don't need backfill since no existing page has Business.)
-
-5. **Wait for the user's answer before writing any code.** Don't guess. Don't pick a default and proceed. The plan-mapping decision is a product decision and only the user can make it.
-
-6. **Once answered, do all of the following in a single commit:**
-
-    - Add the feature row to `seed-plans.ts` (the seeder is insert-only, so adding a new row + re-running it is safe).
-    - Add the appropriate `plan_features` mapping rows to `seed-plans.ts`.
-    - Run `pnpm db:seed:plans` against the dev DB to apply.
-    - If the user said backfill is needed, write a small migration that inserts `page_entitlements` rows for every existing page on a qualifying plan. Don't conflate this with the seeder — the seeder owns the registry, migrations own per-row data.
-    - Wire `pageHasFeature(pageId, '<lookup_key>')` into the actual product code that exposes the capability — both the public renderer (hide entirely) and the editor (locked-with-CTA), per the Phase 5 graceful degradation pattern.
-    - Add the new lookup key to the matrix in `IMPLEMENTATION_PLAN.md` so the matrix stays the source-of-truth document.
-
+1. **Propose a `lookup_key`** in `snake_case`, prefixed by category where applicable (`link_*`, `analytics_*`, `marketing_*`, `business_*`, `support_*`). Stable forever.
+2. **Propose a `category`** — one of `core`, `branding`, `design`, `link_types`, `analytics`, `marketing`, `business_tools`, `support`, `limits`. Don't invent new categories without explicit approval.
+3. **Propose a Persian display name + one-sentence description** matching the tone of existing rows.
+4. **Ask the user three questions in one batch:**
+   a. Which plans? (`free` / `pro` / `business`, multi-select)
+   b. Boolean entitlement, or numeric limit? If limit, what value per plan?
+   c. Backfill existing pages? (Usually yes for Free/Pro features; usually no for `business_*` since no existing page has Business.)
+5. **Wait for the answer.** Don't guess — this is a product decision.
+6. **Implement in one commit:**
+   - Add the row + mappings to `scripts/seed-plans.ts` (insert-only seeder).
+   - Run `pnpm db:seed:plans` against dev DB.
+   - If backfill is needed, write a migration that inserts `page_entitlements` rows for qualifying pages. Seeder owns the registry; migrations own per-row data.
+   - Wire `pageHasFeature(pageId, '<lookup_key>')` into both the public renderer (hide entirely) and the editor (`<LockedFeatureCard>` with upgrade CTA).
+   - Add the lookup key to the matrix in `IMPLEMENTATION_PLAN.md`.
 7. **Verify before declaring done:**
+   - `pnpm typecheck` and `pnpm build` clean.
+   - Grep for plan-name comparisons (`=== 'pro'`, `=== 'business'`, `=== 'free'`, `isPro`, `isBusiness`, `userPlan`, `planTier`) — must be zero hits.
+   - In dev DB: Free page lacks the entitlement (or has correct limit); Business page has it; renderer hides on Free; editor shows locked.
 
-    - `pnpm typecheck` clean.
-    - `pnpm build` clean.
-    - Grep the codebase for plan-name string comparisons (`=== 'pro'`, `=== 'business'`, `=== 'free'`, `isPro`, `isBusiness`, `userPlan`, `planTier`) — must still return zero hits.
-    - Manually verify in the dev DB: a Free page does not have the new entitlement (or has it with the right limit), a Business page does, the public renderer hides the block on Free, the editor shows it locked.
-
-### When NOT to run the workflow
+### When NOT to run
 
 - Bug fixes that don't change capability surface.
-- Refactors that move code around without exposing new functionality.
-- Internal tooling (admin panel additions, dev scripts, migrations) — these aren't user-facing features, they don't go in the registry.
-- Visual tweaks to existing features (CSS changes, copy edits, layout adjustments).
-- Backend infrastructure (queue workers, cron jobs, webhook handlers) — these support features but aren't features themselves.
+- Refactors without new functionality.
+- Internal admin / dev tooling, migrations, queue workers, cron handlers.
+- Visual tweaks (CSS, copy, layout) on existing features.
 
-If you're unsure whether something is a "feature" in this sense, **ask the user before assuming**. The cost of a clarifying question is one round trip; the cost of a missed gate is a Free user accessing a paid feature in production.
+If unsure, ask before assuming.
 
-### Bad outcomes this rule prevents
+## Hard "do not"s
 
-- A new block type ships with no entitlement check; Free users see it and use it.
-- A new analytics view is added to Pro in the matrix but the registry never gets the row; the gate fails open.
-- A `business_*` feature gets added with the wrong category or a typo'd lookup key; admin panel grouping breaks; future features reference the wrong key.
-- The matrix in `IMPLEMENTATION_PLAN.md` and the live registry drift apart; nobody can tell which is correct.
-- Limit values get hardcoded in product code instead of read from `plan_features.limit_value`; changing storage caps requires a deploy instead of an admin edit.
-
-The registry is infrastructure. Treat new entries with the same rigor as new database migrations: small, deliberate, reviewed, traceable.
+- **NO GRADIENTS.** Never use `bg-gradient-*`, `bg-linear-*`, `bg-[radial-gradient(...)]`, `bg-[conic-gradient(...)]`, `bg-[linear-gradient(...)]`, or any CSS `gradient` function anywhere in the UI — not as backgrounds, not as text fills (`bg-clip-text`), not as decorative blobs. Use solid colors only. This is a hard rule the designer explicitly set.
+- Don't use `min-h-screen` on new mobile pages (use `min-h-dvh`).
+- Don't set `maximumScale: 1` or `userScalable: false`.
+- Don't ship inputs below 16px font on mobile or below `h-11`.
+- Don't ship desktop-only tables without a mobile card fallback.
+- Don't ship forms without `inputMode + autoComplete + enterKeyHint`.
+- Don't import `date-fns-jalali` outside `src/lib/date/*`.
+- Don't compare plan names (`=== 'pro'`, etc.) anywhere in product code.
+- Don't hand-edit `public/sw.js` or migration files that already exist.
+- Don't introduce a second background-job system; extend `/api/cron/*`.
+- Don't pre-format dates server-side; ship UTC ISO and format on render via `formatShamsi*`.

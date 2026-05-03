@@ -1,15 +1,25 @@
 import "server-only";
 
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
+import { availableParallelism } from "node:os";
 import path from "node:path";
 
-import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import {
+  DeleteObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from "@aws-sdk/client-s3";
 import sharp from "sharp";
 
 import { safeFetch } from "@/lib/ssrf";
 
-export type UploadFolder = "avatars" | "events" | "link-covers" | "link-icons";
+export type UploadFolder =
+  | "avatars"
+  | "events"
+  | "link-covers"
+  | "link-icons"
+  | "product-items";
 
 export type UploadResult = {
   url: string;
@@ -21,6 +31,51 @@ export type UploadResult = {
 const MAX_INPUT_BYTES = 4_000_000;
 // Max pixel dimensions we'll render out. Limits DoS via huge decode buffers.
 const MAX_IMAGE_DIMENSION = 2400;
+
+// ---------- image-processing concurrency gate --------------------------------
+//
+// `sharp` is CPU-bound. Without a cap, a burst of uploads can pin every core
+// and stall unrelated requests served by the same Node process. We gate
+// `normalizeImage` through a lightweight semaphore tuned to available CPUs.
+// Configurable via `IMAGE_PROCESSING_CONCURRENCY` (default min(4, cpus)).
+
+function parseImageConcurrency(): number {
+  const raw = process.env.IMAGE_PROCESSING_CONCURRENCY;
+  if (raw) {
+    const n = Number(raw);
+    if (Number.isFinite(n) && n > 0) return Math.floor(n);
+  }
+  const cpus = (() => {
+    try {
+      return availableParallelism();
+    } catch {
+      return 2;
+    }
+  })();
+  return Math.min(4, Math.max(1, cpus));
+}
+
+const IMAGE_CONCURRENCY = parseImageConcurrency();
+let imageInFlight = 0;
+const imageWaitQueue: Array<() => void> = [];
+
+async function withImageSlot<T>(fn: () => Promise<T>): Promise<T> {
+  if (imageInFlight >= IMAGE_CONCURRENCY) {
+    await new Promise<void>((resolve) => imageWaitQueue.push(resolve));
+  }
+  imageInFlight++;
+  try {
+    return await fn();
+  } finally {
+    imageInFlight--;
+    const next = imageWaitQueue.shift();
+    if (next) next();
+  }
+}
+
+// Bound sharp's own thread pool to the same cap so multiple concurrent
+// `normalizeImage` calls can't fan out into 2× CPU's worth of libvips threads.
+sharp.concurrency(IMAGE_CONCURRENCY);
 
 type S3Config = {
   endpoint: string;
@@ -217,7 +272,7 @@ export async function uploadPublicImage(
   }
 
   const input = Buffer.from(await file.arrayBuffer());
-  const normalized = await normalizeImage(input);
+  const normalized = await withImageSlot(() => normalizeImage(input));
 
   const fileName = `${Date.now()}-${randomUUID()}.${normalized.extension}`;
   return putBuffer(folder, fileName, normalized.buffer, normalized.contentType);
@@ -241,7 +296,7 @@ export async function uploadImageFromUrl(
   if (!fetched.contentType.startsWith("image/")) return null;
 
   try {
-    const normalized = await normalizeImage(fetched.body);
+    const normalized = await withImageSlot(() => normalizeImage(fetched.body));
     const fileName = `${Date.now()}-${randomUUID()}.${normalized.extension}`;
     return await putBuffer(
       folder,
@@ -256,4 +311,33 @@ export async function uploadImageFromUrl(
 
 export function storageDriverName(): "s3" | "local" {
   return getS3Config() ? "s3" : "local";
+}
+
+/**
+ * Delete a previously uploaded public image by its URL.
+ * Silently does nothing if the URL is not recognised as one of ours.
+ */
+export async function deletePublicImage(url: string): Promise<void> {
+  const cfg = getS3Config();
+  if (cfg) {
+    const prefix = cfg.publicBase + "/";
+    if (!url.startsWith(prefix)) return;
+    const key = url.slice(prefix.length);
+    try {
+      await getS3Client(cfg).send(
+        new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }),
+      );
+    } catch {
+      // Non-critical — the row is already being nulled in the DB.
+    }
+  } else {
+    // Local filesystem storage.
+    if (!url.startsWith("/uploads/")) return;
+    const filePath = path.join(process.cwd(), "public", url);
+    try {
+      await unlink(filePath);
+    } catch {
+      // File may already be gone.
+    }
+  }
 }

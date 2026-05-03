@@ -5,11 +5,8 @@ import {
   desc,
   eq,
   gte,
-  ilike,
   inArray,
   isNotNull,
-  isNull,
-  or,
   sql,
   sum,
 } from "drizzle-orm";
@@ -27,12 +24,13 @@ import {
   users,
 } from "@/db/schema";
 import { isReservedSlug } from "@/lib/slug";
+import { resolveCurrentPageForOwner } from "@/lib/pages";
 
 export async function getProfileWithLinksByUserId(userId: string) {
   const db = getDb();
-  const profile = await db.query.profiles.findFirst({
-    where: eq(profiles.userId, userId),
-  });
+  // A user can own many pages now; resolve "the page they're editing" via
+  // the kioar_page_id cookie, falling back to their oldest page.
+  const profile = await resolveCurrentPageForOwner(userId);
 
   if (!profile) {
     return null;
@@ -75,8 +73,50 @@ export async function getPublicProfileBySlug(slug: string) {
     )
     .orderBy(asc(profileLinks.sortOrder));
 
-  const { getPublicActiveBookingBlocks } = await import("@/lib/booking-data");
-  const bookingBlocks = await getPublicActiveBookingBlocks(profile.id);
+  // Phase 5 — entitlement-driven graceful degradation. If the page's
+  // current plan doesn't include a block kind, the public renderer hides
+  // the block entirely (as if it never existed). The editor still shows
+  // it in a locked, read-only state — see `(app)/page/page.tsx`.
+  const { pageHasFeature } = await import("@/lib/entitlements");
+  const { blockKindToFeatureKey } = await import("@/lib/block-features");
+
+  const bookingFeature = blockKindToFeatureKey("booking");
+  const bookingsGranted =
+    bookingFeature === null ||
+    (await pageHasFeature(profile.id, bookingFeature));
+  let bookingBlocks: Awaited<
+    ReturnType<typeof import("@/lib/booking-data").getPublicActiveBookingBlocks>
+  > = [];
+  if (bookingsGranted) {
+    const { getPublicActiveBookingBlocks } = await import("@/lib/booking-data");
+    bookingBlocks = await getPublicActiveBookingBlocks(profile.id);
+  }
+
+  const formFeature = blockKindToFeatureKey("form");
+  const formsGranted =
+    formFeature === null || (await pageHasFeature(profile.id, formFeature));
+  let formBlocks: Awaited<
+    ReturnType<typeof import("@/lib/form-service").getPublicActiveFormBlocks>
+  > = [];
+  if (formsGranted) {
+    const { getPublicActiveFormBlocks } = await import("@/lib/form-service");
+    formBlocks = await getPublicActiveFormBlocks(profile.id);
+  }
+
+  const productFeature = blockKindToFeatureKey("product");
+  const productsGranted =
+    productFeature === null ||
+    (await pageHasFeature(profile.id, productFeature));
+  let productBlocks: Awaited<
+    ReturnType<
+      typeof import("@/lib/product-service").getPublicActiveProductBlocks
+    >
+  > = [];
+  if (productsGranted) {
+    const { getPublicActiveProductBlocks } =
+      await import("@/lib/product-service");
+    productBlocks = await getPublicActiveProductBlocks(profile.id);
+  }
 
   const owner = await db.query.users.findFirst({
     where: eq(users.id, profile.userId),
@@ -86,6 +126,8 @@ export async function getPublicProfileBySlug(slug: string) {
     ...profile,
     links,
     bookingBlocks,
+    formBlocks,
+    productBlocks,
     owner,
   };
 }
@@ -357,7 +399,29 @@ export type AdminUserFilter =
   | "active"
   | "banned"
   | "incomplete"
-  | "admins";
+  | "admins"
+  | "paid"
+  | "free_only"
+  | "trialing"
+  | "at_risk";
+
+export type AdminUserPagePlan = {
+  pageId: string;
+  slug: string;
+  fullName: string | null;
+  planKey: "free" | "pro" | "business";
+  planNameFa: string;
+  status:
+    | "active"
+    | "trialing"
+    | "pending_renewal"
+    | "grace"
+    | "expired"
+    | "canceled";
+  currentPeriodEnd: Date | null;
+  trialEndsAt: Date | null;
+  cancelAtPeriodEnd: boolean;
+};
 
 export type AdminUserListItem = {
   id: string;
@@ -375,6 +439,8 @@ export type AdminUserListItem = {
   linkCount: number;
   eventCount: number;
   cardRequestCount: number;
+  pageCount: number;
+  pagePlans: AdminUserPagePlan[];
 };
 
 const ADMIN_USERS_PAGE_SIZE = 25;
@@ -393,88 +459,199 @@ export async function listAdminUsers({
   const db = getDb();
 
   const q = (query ?? "").trim();
-  const searchPattern = q ? `%${q}%` : null;
-
-  const whereClauses = [] as ReturnType<typeof eq>[];
-  if (searchPattern) {
-    whereClauses.push(
-      or(
-        ilike(users.phone, searchPattern),
-        ilike(profiles.fullName, searchPattern),
-        ilike(profiles.slug, searchPattern),
-        ilike(profiles.email, searchPattern),
-      )!,
-    );
-  }
-  if (filter === "banned") {
-    whereClauses.push(isNotNull(users.bannedAt));
-  } else if (filter === "active") {
-    whereClauses.push(isNull(users.bannedAt));
-  } else if (filter === "admins") {
-    whereClauses.push(eq(users.role, "admin"));
-  } else if (filter === "incomplete") {
-    whereClauses.push(or(isNull(profiles.id), eq(profiles.isComplete, false))!);
-  }
-
-  const where = whereClauses.length ? and(...whereClauses) : undefined;
+  const qLike = q ? `%${q.toLowerCase()}%` : null;
 
   const safePage = Math.max(1, Math.floor(page));
   const safeSize = Math.max(1, Math.min(100, Math.floor(pageSize)));
+  const offset = (safePage - 1) * safeSize;
 
-  const rows = await db
-    .select({
-      id: users.id,
-      phone: users.phone,
-      role: users.role,
-      createdAt: users.createdAt,
-      lastLoginAt: users.lastLoginAt,
-      bannedAt: users.bannedAt,
-      bannedReason: users.bannedReason,
-      slug: profiles.slug,
-      fullName: profiles.fullName,
-      title: profiles.title,
-      avatarUrl: profiles.avatarUrl,
-      isComplete: profiles.isComplete,
-    })
-    .from(users)
-    .leftJoin(profiles, eq(profiles.userId, users.id))
-    .where(where)
-    .orderBy(desc(users.createdAt))
-    .limit(safeSize)
-    .offset((safePage - 1) * safeSize);
+  // Profile-based search: any of the user's pages match. Uses EXISTS so the
+  // main row source stays one-row-per-user.
+  const searchSql = qLike
+    ? sql`AND (
+        LOWER(u."phone") LIKE ${qLike}
+        OR EXISTS (
+          SELECT 1 FROM "profiles" p
+          WHERE p."user_id" = u."id"
+            AND (
+              LOWER(COALESCE(p."full_name", '')) LIKE ${qLike}
+              OR LOWER(p."slug") LIKE ${qLike}
+              OR LOWER(COALESCE(p."email", '')) LIKE ${qLike}
+            )
+        )
+      )`
+    : sql``;
 
-  const [{ total } = { total: 0 }] = await db
-    .select({ total: count(users.id) })
-    .from(users)
-    .leftJoin(profiles, eq(profiles.userId, users.id))
-    .where(where);
+  // Status / role / completeness filters.
+  let filterSql = sql``;
+  if (filter === "banned") {
+    filterSql = sql`AND u."banned_at" IS NOT NULL`;
+  } else if (filter === "active") {
+    filterSql = sql`AND u."banned_at" IS NULL`;
+  } else if (filter === "admins") {
+    filterSql = sql`AND u."role" = 'admin'`;
+  } else if (filter === "incomplete") {
+    // No profile yet, OR no profile of theirs is complete.
+    filterSql = sql`AND NOT EXISTS (
+      SELECT 1 FROM "profiles" p
+      WHERE p."user_id" = u."id" AND p."is_complete" = TRUE
+    )`;
+  } else if (filter === "paid") {
+    filterSql = sql`AND EXISTS (
+      SELECT 1 FROM "page_subscriptions" s
+      JOIN "profiles" p ON p."id" = s."page_id"
+      JOIN "plans" pl   ON pl."id" = s."plan_id"
+      WHERE p."user_id" = u."id" AND pl."key" IN ('pro','business')
+    )`;
+  } else if (filter === "free_only") {
+    filterSql = sql`AND EXISTS (
+      SELECT 1 FROM "profiles" p WHERE p."user_id" = u."id"
+    ) AND NOT EXISTS (
+      SELECT 1 FROM "page_subscriptions" s
+      JOIN "profiles" p ON p."id" = s."page_id"
+      JOIN "plans" pl   ON pl."id" = s."plan_id"
+      WHERE p."user_id" = u."id" AND pl."key" IN ('pro','business')
+    )`;
+  } else if (filter === "trialing") {
+    filterSql = sql`AND EXISTS (
+      SELECT 1 FROM "page_subscriptions" s
+      JOIN "profiles" p ON p."id" = s."page_id"
+      WHERE p."user_id" = u."id" AND s."status" = 'trialing'
+    )`;
+  } else if (filter === "at_risk") {
+    filterSql = sql`AND EXISTS (
+      SELECT 1 FROM "page_subscriptions" s
+      JOIN "profiles" p ON p."id" = s."page_id"
+      WHERE p."user_id" = u."id"
+        AND s."status" IN ('grace','expired')
+    )`;
+  }
+
+  // Display profile = oldest page for that user (matches user-detail picker).
+  const rows = (await db.execute(sql`
+    SELECT
+      u."id"             AS id,
+      u."phone"          AS phone,
+      u."role"::text     AS role,
+      u."created_at"     AS "createdAt",
+      u."last_login_at"  AS "lastLoginAt",
+      u."banned_at"      AS "bannedAt",
+      u."banned_reason"  AS "bannedReason",
+      dp."slug"          AS slug,
+      dp."full_name"     AS "fullName",
+      dp."title"         AS title,
+      dp."avatar_url"    AS "avatarUrl",
+      COALESCE(dp."is_complete", FALSE) AS "isComplete"
+    FROM "users" u
+    LEFT JOIN LATERAL (
+      SELECT p."slug", p."full_name", p."title", p."avatar_url", p."is_complete"
+      FROM "profiles" p
+      WHERE p."user_id" = u."id"
+      ORDER BY p."created_at" ASC
+      LIMIT 1
+    ) dp ON TRUE
+    WHERE 1=1
+    ${searchSql}
+    ${filterSql}
+    ORDER BY u."created_at" DESC
+    LIMIT ${safeSize} OFFSET ${offset}
+  `)) as unknown as Array<{
+    id: string;
+    phone: string;
+    role: "user" | "admin";
+    createdAt: Date;
+    lastLoginAt: Date | null;
+    bannedAt: Date | null;
+    bannedReason: string | null;
+    slug: string | null;
+    fullName: string | null;
+    title: string | null;
+    avatarUrl: string | null;
+    isComplete: boolean;
+  }>;
+
+  const totalRows = (await db.execute(sql`
+    SELECT COUNT(*)::int AS total
+    FROM "users" u
+    WHERE 1=1
+    ${searchSql}
+    ${filterSql}
+  `)) as unknown as Array<{ total: number }>;
+  const total = Number(totalRows[0]?.total ?? 0);
 
   if (rows.length === 0) {
     return {
       items: [] as AdminUserListItem[],
-      total: Number(total ?? 0),
+      total,
       page: safePage,
       pageSize: safeSize,
     };
   }
 
   const userIds = rows.map((row) => row.id);
-  const profileIds = rows
-    .map((row) => row.slug)
-    .filter((value): value is string => Boolean(value));
 
+  // All pages for these users with their subscription/plan summary.
+  const pageRows = (await db.execute(sql`
+    SELECT
+      p."user_id"             AS "userId",
+      p."id"                  AS "pageId",
+      p."slug"                AS slug,
+      p."full_name"           AS "fullName",
+      pl."key"::text          AS "planKey",
+      pl."name_fa"            AS "planNameFa",
+      s."status"::text        AS status,
+      s."current_period_end"  AS "currentPeriodEnd",
+      s."trial_ends_at"       AS "trialEndsAt",
+      s."cancel_at_period_end" AS "cancelAtPeriodEnd"
+    FROM "profiles" p
+    LEFT JOIN "page_subscriptions" s ON s."page_id" = p."id"
+    LEFT JOIN "plans" pl ON pl."id" = s."plan_id"
+    WHERE p."user_id" IN (${sql.join(
+      userIds.map((id) => sql`${id}`),
+      sql`,`,
+    )})
+    ORDER BY p."created_at" ASC
+  `)) as unknown as Array<{
+    userId: string;
+    pageId: string;
+    slug: string;
+    fullName: string | null;
+    planKey: "free" | "pro" | "business" | null;
+    planNameFa: string | null;
+    status: AdminUserPagePlan["status"] | null;
+    currentPeriodEnd: Date | null;
+    trialEndsAt: Date | null;
+    cancelAtPeriodEnd: boolean | null;
+  }>;
+
+  const pagesByUser = new Map<string, AdminUserPagePlan[]>();
+  for (const row of pageRows) {
+    const list = pagesByUser.get(row.userId) ?? [];
+    list.push({
+      pageId: row.pageId,
+      slug: row.slug,
+      fullName: row.fullName,
+      planKey: row.planKey ?? "free",
+      planNameFa: row.planNameFa ?? "Free",
+      status: row.status ?? "active",
+      currentPeriodEnd: row.currentPeriodEnd,
+      trialEndsAt: row.trialEndsAt,
+      cancelAtPeriodEnd: Boolean(row.cancelAtPeriodEnd),
+    });
+    pagesByUser.set(row.userId, list);
+  }
+
+  // Legacy per-account counts (kept so the existing columns don't go stale).
   const [linkCounts, eventCounts, cardCounts] = await Promise.all([
-    profileIds.length
-      ? db
-          .select({
-            profileId: profileLinks.profileId,
-            value: count(profileLinks.id),
-          })
-          .from(profileLinks)
-          .innerJoin(profiles, eq(profiles.id, profileLinks.profileId))
-          .where(inArray(profiles.userId, userIds))
-          .groupBy(profileLinks.profileId)
-      : Promise.resolve([] as { profileId: string; value: number }[]),
+    db
+      .select({
+        userId: profiles.userId,
+        value: count(profileLinks.id),
+      })
+      .from(profileLinks)
+      .innerJoin(profiles, eq(profiles.id, profileLinks.profileId))
+      .where(inArray(profiles.userId, userIds))
+      .groupBy(profiles.userId),
     db
       .select({
         userId: eventRegistrations.userId,
@@ -498,23 +675,9 @@ export async function listAdminUsers({
       .groupBy(cardRequests.userId),
   ]);
 
-  // Map link counts via profile → user id.
-  const userIdByProfileId = new Map<string, string>();
-  if (profileIds.length) {
-    const profileRows = await db
-      .select({ id: profiles.id, userId: profiles.userId })
-      .from(profiles)
-      .where(inArray(profiles.userId, userIds));
-    for (const row of profileRows) {
-      userIdByProfileId.set(row.id, row.userId);
-    }
-  }
-
-  const linkByUser = new Map<string, number>();
-  for (const row of linkCounts) {
-    const uid = userIdByProfileId.get(row.profileId);
-    if (uid) linkByUser.set(uid, Number(row.value));
-  }
+  const linkByUser = new Map<string, number>(
+    linkCounts.map((row) => [row.userId, Number(row.value)]),
+  );
   const eventByUser = new Map<string, number>(
     eventCounts.map((row) => [row.userId, Number(row.value)]),
   );
@@ -522,27 +685,32 @@ export async function listAdminUsers({
     cardCounts.map((row) => [row.userId, Number(row.value)]),
   );
 
-  const items: AdminUserListItem[] = rows.map((row) => ({
-    id: row.id,
-    phone: row.phone,
-    role: row.role,
-    createdAt: row.createdAt,
-    lastLoginAt: row.lastLoginAt,
-    bannedAt: row.bannedAt,
-    bannedReason: row.bannedReason,
-    slug: row.slug,
-    fullName: row.fullName,
-    title: row.title,
-    avatarUrl: row.avatarUrl,
-    isComplete: Boolean(row.isComplete),
-    linkCount: linkByUser.get(row.id) ?? 0,
-    eventCount: eventByUser.get(row.id) ?? 0,
-    cardRequestCount: cardByUser.get(row.id) ?? 0,
-  }));
+  const items: AdminUserListItem[] = rows.map((row) => {
+    const userPages = pagesByUser.get(row.id) ?? [];
+    return {
+      id: row.id,
+      phone: row.phone,
+      role: row.role,
+      createdAt: row.createdAt,
+      lastLoginAt: row.lastLoginAt,
+      bannedAt: row.bannedAt,
+      bannedReason: row.bannedReason,
+      slug: row.slug,
+      fullName: row.fullName,
+      title: row.title,
+      avatarUrl: row.avatarUrl,
+      isComplete: Boolean(row.isComplete),
+      linkCount: linkByUser.get(row.id) ?? 0,
+      eventCount: eventByUser.get(row.id) ?? 0,
+      cardRequestCount: cardByUser.get(row.id) ?? 0,
+      pageCount: userPages.length,
+      pagePlans: userPages,
+    };
+  });
 
   return {
     items,
-    total: Number(total ?? 0),
+    total,
     page: safePage,
     pageSize: safeSize,
   };
@@ -634,7 +802,7 @@ export async function getAdminUserStats() {
   };
 }
 
-export async function getAdminUserDetail(userId: string) {
+export async function getAdminUserDetail(userId: string, pageId?: string) {
   const db = getDb();
 
   const user = await db.query.users.findFirst({
@@ -642,9 +810,61 @@ export async function getAdminUserDetail(userId: string) {
   });
   if (!user) return null;
 
-  const profile = await db.query.profiles.findFirst({
-    where: eq(profiles.userId, user.id),
-  });
+  // Load every page owned by this user so admin can pick which one to edit.
+  const pages = await db
+    .select()
+    .from(profiles)
+    .where(eq(profiles.userId, user.id))
+    .orderBy(asc(profiles.createdAt));
+
+  // Per-page subscription/plan summary used by the admin user-detail UI.
+  const pagePlans = pages.length
+    ? (
+        (await db.execute(sql`
+        SELECT
+          p."id"                  AS "pageId",
+          p."slug"                AS slug,
+          p."full_name"           AS "fullName",
+          pl."key"::text          AS "planKey",
+          pl."name_fa"            AS "planNameFa",
+          s."status"::text        AS status,
+          s."current_period_end"  AS "currentPeriodEnd",
+          s."trial_ends_at"       AS "trialEndsAt",
+          s."cancel_at_period_end" AS "cancelAtPeriodEnd"
+        FROM "profiles" p
+        LEFT JOIN "page_subscriptions" s ON s."page_id" = p."id"
+        LEFT JOIN "plans" pl ON pl."id" = s."plan_id"
+        WHERE p."user_id" = ${user.id}
+        ORDER BY p."created_at" ASC
+      `)) as unknown as Array<{
+          pageId: string;
+          slug: string;
+          fullName: string | null;
+          planKey: "free" | "pro" | "business" | null;
+          planNameFa: string | null;
+          status: AdminUserPagePlan["status"] | null;
+          currentPeriodEnd: Date | null;
+          trialEndsAt: Date | null;
+          cancelAtPeriodEnd: boolean | null;
+        }>
+      ).map<AdminUserPagePlan>((row) => ({
+        pageId: row.pageId,
+        slug: row.slug,
+        fullName: row.fullName,
+        planKey: row.planKey ?? "free",
+        planNameFa: row.planNameFa ?? "Free",
+        status: row.status ?? "active",
+        currentPeriodEnd: row.currentPeriodEnd,
+        trialEndsAt: row.trialEndsAt,
+        cancelAtPeriodEnd: Boolean(row.cancelAtPeriodEnd),
+      }))
+    : [];
+
+  // Resolve the edit-target page: explicit pageId wins, else first-created
+  // page, else null. The caller is responsible for surfacing the picker
+  // when `pages.length > 1`.
+  const profile =
+    (pageId ? pages.find((p) => p.id === pageId) : null) ?? pages[0] ?? null;
 
   const links = profile
     ? await db
@@ -694,6 +914,8 @@ export async function getAdminUserDetail(userId: string) {
   return {
     user,
     profile: profile ?? null,
+    pages,
+    pagePlans,
     links,
     registrations,
     cardRequests: cards,

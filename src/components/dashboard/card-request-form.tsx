@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { CheckIcon } from "lucide-react";
 
-import { createCardRequestAction } from "@/app/dashboard/requests/actions";
+import { createCardRequestAction } from "@/app/(app)/requests/actions";
 import { idleState } from "@/lib/action-state";
 import { SubmitButton } from "@/components/shared/submit-button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +27,7 @@ const CARD_DESIGNS: ReadonlyArray<{
     key: "design_1",
     label: "طرح کلاسیک",
     preview: (
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500 to-emerald-700">
+      <div className="absolute inset-0 bg-emerald-600">
         <div className="absolute inset-x-3 bottom-3 space-y-1 text-white">
           <div className="h-1.5 w-12 rounded-full bg-white/80" />
           <div className="h-1 w-8 rounded-full bg-white/50" />
@@ -39,7 +39,7 @@ const CARD_DESIGNS: ReadonlyArray<{
     key: "design_2",
     label: "طرح مدرن",
     preview: (
-      <div className="absolute inset-0 bg-gradient-to-br from-zinc-900 to-zinc-700">
+      <div className="absolute inset-0 bg-zinc-800">
         <div className="absolute inset-x-3 top-3 space-y-1">
           <div className="h-1.5 w-10 rounded-full bg-amber-300" />
           <div className="h-1 w-6 rounded-full bg-white/40" />
@@ -51,7 +51,7 @@ const CARD_DESIGNS: ReadonlyArray<{
     key: "design_3",
     label: "طرح مینیمال",
     preview: (
-      <div className="absolute inset-0 bg-gradient-to-br from-stone-100 to-stone-300">
+      <div className="absolute inset-0 bg-stone-200">
         <div className="absolute inset-x-3 bottom-3 space-y-1">
           <div className="h-1.5 w-14 rounded-full bg-zinc-900/80" />
           <div className="h-1 w-8 rounded-full bg-zinc-900/40" />
@@ -80,6 +80,7 @@ export function CardRequestForm({
         <form
           action={formAction}
           className="space-y-5"
+          onReset={(e) => e.preventDefault()}
           suppressHydrationWarning
         >
           <div className="grid gap-4 sm:grid-cols-2">

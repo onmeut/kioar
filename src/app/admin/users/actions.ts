@@ -15,6 +15,7 @@ import {
   startImpersonation as startImpersonationHelper,
 } from "@/lib/auth/session";
 import { log } from "@/lib/log";
+import { ensureFreeSubscriptionForPage } from "@/lib/pages";
 import { profileDetailsFormSchema } from "@/lib/validations";
 
 const BAN_REASON_MAX = 200;
@@ -53,6 +54,7 @@ export async function adminUpdateUserProfileAction(
 ): Promise<ActionState> {
   const viewer = await requireAdmin();
   const userId = String(formData.get("userId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
   if (!userId) {
     return { status: "error", message: "شناسه کاربر نامعتبر است." };
   }
@@ -78,7 +80,10 @@ export async function adminUpdateUserProfileAction(
   const slugOwner = await db.query.profiles.findFirst({
     where: eq(profiles.slug, parsed.data.slug),
   });
-  if (slugOwner && slugOwner.userId !== userId) {
+  // Slug uniqueness is per-page, not per-user. Conflict only matters if the
+  // owning page differs from the page we're editing (or if editing a brand
+  // new page with no `pageId` yet).
+  if (slugOwner && (!pageId || slugOwner.id !== pageId)) {
     return {
       status: "error",
       fieldErrors: { slug: ["این شناسه قبلاً استفاده شده است."] },
@@ -86,9 +91,15 @@ export async function adminUpdateUserProfileAction(
     };
   }
 
-  const existing = await db.query.profiles.findFirst({
-    where: eq(profiles.userId, userId),
-  });
+  // Resolve the page explicitly. Admins MUST pick which page they're
+  // editing; we never silently grab the first row owned by `userId`.
+  const existing = pageId
+    ? await db.query.profiles.findFirst({ where: eq(profiles.id, pageId) })
+    : null;
+
+  if (pageId && (!existing || existing.userId !== userId)) {
+    return { status: "error", message: "صفحه انتخابی متعلق به این کاربر نیست." };
+  }
 
   const values = {
     slug: parsed.data.slug,
@@ -102,16 +113,23 @@ export async function adminUpdateUserProfileAction(
   };
 
   if (existing) {
-    await db.update(profiles).set(values).where(eq(profiles.userId, userId));
+    await db.update(profiles).set(values).where(eq(profiles.id, existing.id));
   } else {
-    await db
-      .insert(profiles)
-      .values({ userId, avatarSeed: generateAvatarSeed(), ...values });
+    // No pageId provided AND no existing page → create the user's first
+    // page (initial onboarding from admin).
+    await db.transaction(async (tx) => {
+      const [created] = await tx
+        .insert(profiles)
+        .values({ userId, avatarSeed: generateAvatarSeed(), ...values })
+        .returning();
+      await ensureFreeSubscriptionForPage(tx, created.id);
+    });
   }
 
   log.info("admin.user.profile_updated", {
     adminId: viewer.user.id,
     userId,
+    pageId: existing?.id ?? null,
   });
   revalidatePath(`/admin/users/${userId}`);
   revalidatePath("/admin/users");
@@ -123,17 +141,16 @@ export async function adminUpdateUserProfileAction(
 // but most callers pair this with useActionState.
 export async function adminUpdateUserProfileRedirectAction(formData: FormData) {
   const userId = String(formData.get("userId") || "").trim();
+  const pageId = String(formData.get("pageId") || "").trim();
   const result = await adminUpdateUserProfileAction(
     { status: "idle" },
     formData,
   );
+  const qs = pageId ? `&pageId=${pageId}` : "";
   if (result.status === "success") {
-    redirect(`/admin/users/${userId}?saved=1`);
+    redirect(`/admin/users/${userId}?saved=1${qs}`);
   }
-  // On validation errors we currently just bounce back without state. The
-  // field errors still surface the next time the page is rendered if the
-  // caller adopts useActionState; keeping this simple for now.
-  redirect(`/admin/users/${userId}?saved=0`);
+  redirect(`/admin/users/${userId}?saved=0${qs}`);
 }
 
 // --- Change role ---------------------------------------------------------

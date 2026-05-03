@@ -1,7 +1,9 @@
 import Image from "next/image";
 import {
   AtSignIcon,
+  CalendarIcon,
   DownloadIcon,
+  FormInputIcon,
   PhoneIcon,
   SparklesIcon,
 } from "lucide-react";
@@ -11,6 +13,25 @@ import {
   PublicBookingPill,
   type PublicBookingBlockData,
 } from "@/components/public/public-booking-modal";
+import {
+  PublicFormPill,
+  type PublicFormBlockData,
+} from "@/components/public/public-form-modal";
+import {
+  PublicProductInline,
+  PublicProductPill,
+  type PublicProductBlockData,
+} from "@/components/public/public-product-block";
+import { PublicAnimatedBlock } from "@/components/public/public-animated-block";
+import { BoringAvatar } from "@/components/shared/boring-avatar";
+import type { ActionState } from "@/lib/action-state";
+import {
+  spotlightAnimationClass,
+  spotlightAnimationClassOnce,
+  spotlightSortKey,
+  type BlockAnimationStyle,
+  type BlockSpotlight,
+} from "@/lib/block-spotlight";
 import type { IconKey } from "@/lib/link-icons";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +44,8 @@ type PublicLink = {
   iconKey?: IconKey | null;
   iconUrl?: string | null;
   sortOrder?: number;
+  spotlight?: BlockSpotlight;
+  animationStyle?: BlockAnimationStyle | null;
 };
 
 export type PublicProfileCardData = {
@@ -33,17 +56,31 @@ export type PublicProfileCardData = {
   publicPhone: string | null;
   email: string | null;
   avatarUrl: string | null;
+  /** Stable seed used by the boring-avatars fallback when no avatar is set. */
+  avatarSeed: string | null;
   links: PublicLink[];
-  bookingBlocks?: Array<PublicBookingBlockData & { sortOrder?: number }>;
+  bookingBlocks?: Array<
+    PublicBookingBlockData & {
+      sortOrder?: number;
+      spotlight?: BlockSpotlight;
+      animationStyle?: BlockAnimationStyle | null;
+    }
+  >;
+  formBlocks?: Array<
+    PublicFormBlockData & {
+      sortOrder?: number;
+      spotlight?: BlockSpotlight;
+      animationStyle?: BlockAnimationStyle | null;
+    }
+  >;
+  productBlocks?: Array<
+    PublicProductBlockData & {
+      sortOrder?: number;
+      spotlight?: BlockSpotlight;
+      animationStyle?: BlockAnimationStyle | null;
+    }
+  >;
 };
-
-function getInitials(name: string | null | undefined): string {
-  if (!name) return "·";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "·";
-  if (parts.length === 1) return parts[0].slice(0, 2);
-  return (parts[0][0] + parts[parts.length - 1][0]).slice(0, 2);
-}
 
 /**
  * Shared visual for the public profile "card" — used on the real public
@@ -62,6 +99,7 @@ export function PublicProfileCard({
   className,
   as = "section",
   interactive = true,
+  formSubmitAction,
 }: {
   profile: PublicProfileCardData;
   /** Optional slot rendered at the very top inside the card (e.g. logo + share row). */
@@ -78,9 +116,14 @@ export function PublicProfileCard({
   /** When false, link-like elements render as non-interactive spans
    *  (used inside the editor live-preview). */
   interactive?: boolean;
+  /** Server action invoked when a visitor submits a form pill. Required
+   *  whenever `profile.formBlocks` is non-empty AND `interactive` is true. */
+  formSubmitAction?: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
 }) {
   const displayName = profile.fullName || "کارت دیجیتال";
-  const initials = getInitials(profile.fullName);
   const hasQuickAction = Boolean(
     profile.publicPhone || profile.email || profile.slug,
   );
@@ -105,7 +148,7 @@ export function PublicProfileCard({
 
       {/* Hero */}
       <div className="relative flex flex-col items-center text-center">
-        <div className="relative size-24 overflow-hidden rounded-full bg-primary/90 text-primary-foreground sm:size-28">
+        <div className="relative size-24 overflow-hidden rounded-full border border-foreground/10 bg-card sm:size-28">
           {profile.avatarUrl ? (
             <Image
               src={profile.avatarUrl}
@@ -116,9 +159,7 @@ export function PublicProfileCard({
               sizes="112px"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-2xl font-bold sm:text-3xl">
-              {initials}
-            </div>
+            <BoringAvatar seed={profile.avatarSeed} size={112} />
           )}
         </div>
 
@@ -169,24 +210,82 @@ export function PublicProfileCard({
       <div className="relative mt-5 space-y-2.5">
         {(() => {
           type Item =
-            | { kind: "link"; sortOrder: number; link: PublicLink }
+            | {
+                kind: "link";
+                sortOrder: number;
+                link: PublicLink;
+                spotlight: BlockSpotlight;
+                animationStyle: BlockAnimationStyle | null;
+              }
             | {
                 kind: "booking";
                 sortOrder: number;
                 block: PublicBookingBlockData;
+                spotlight: BlockSpotlight;
+                animationStyle: BlockAnimationStyle | null;
+              }
+            | {
+                kind: "form";
+                sortOrder: number;
+                block: PublicFormBlockData;
+                spotlight: BlockSpotlight;
+                animationStyle: BlockAnimationStyle | null;
+              }
+            | {
+                kind: "product";
+                sortOrder: number;
+                block: PublicProductBlockData;
+                spotlight: BlockSpotlight;
+                animationStyle: BlockAnimationStyle | null;
               };
           const bookingBlocks = profile.bookingBlocks ?? [];
+          const formBlocks = profile.formBlocks ?? [];
+          const productBlocks = profile.productBlocks ?? [];
           const items: Item[] = [
-            ...profile.links.map((link, i) => ({
-              kind: "link" as const,
-              sortOrder: link.sortOrder ?? i,
-              link,
-            })),
-            ...bookingBlocks.map((block, i) => ({
-              kind: "booking" as const,
-              sortOrder: block.sortOrder ?? 1_000_000 + i,
-              block,
-            })),
+            ...profile.links.map((link, i) => {
+              const spotlight = link.spotlight ?? "none";
+              const baseSort = link.sortOrder ?? i;
+              return {
+                kind: "link" as const,
+                sortOrder: spotlightSortKey(spotlight, baseSort),
+                link,
+                spotlight,
+                animationStyle: link.animationStyle ?? null,
+              };
+            }),
+            ...bookingBlocks.map((block, i) => {
+              const spotlight = block.spotlight ?? "none";
+              const baseSort = block.sortOrder ?? 1_000_000 + i;
+              return {
+                kind: "booking" as const,
+                sortOrder: spotlightSortKey(spotlight, baseSort),
+                block,
+                spotlight,
+                animationStyle: block.animationStyle ?? null,
+              };
+            }),
+            ...formBlocks.map((block, i) => {
+              const spotlight = block.spotlight ?? "none";
+              const baseSort = block.sortOrder ?? 2_000_000 + i;
+              return {
+                kind: "form" as const,
+                sortOrder: spotlightSortKey(spotlight, baseSort),
+                block,
+                spotlight,
+                animationStyle: block.animationStyle ?? null,
+              };
+            }),
+            ...productBlocks.map((block, i) => {
+              const spotlight = block.spotlight ?? "none";
+              const baseSort = block.sortOrder ?? 3_000_000 + i;
+              return {
+                kind: "product" as const,
+                sortOrder: spotlightSortKey(spotlight, baseSort),
+                block,
+                spotlight,
+                animationStyle: block.animationStyle ?? null,
+              };
+            }),
           ].sort((a, b) => a.sortOrder - b.sortOrder);
 
           if (!items.length) {
@@ -199,20 +298,138 @@ export function PublicProfileCard({
           }
 
           return items.map((item) => {
+            const animClass = spotlightAnimationClass(
+              item.spotlight,
+              item.animationStyle,
+            );
+            const animClassOnce = spotlightAnimationClassOnce(
+              item.spotlight,
+              item.animationStyle,
+            );
+            const autoOpen = item.spotlight === "pin";
             if (item.kind === "booking") {
               return interactive ? (
-                <PublicBookingPill
+                <PublicAnimatedBlock
                   key={`b-${item.block.id}`}
-                  block={item.block}
-                />
+                  animClass={animClassOnce}
+                  intervalSec={10}
+                >
+                  <PublicBookingPill
+                    block={item.block}
+                    defaultOpen={autoOpen}
+                  />
+                </PublicAnimatedBlock>
               ) : (
                 <span
                   key={`b-${item.block.id}`}
-                  className="relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4"
+                  className={cn(
+                    "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4",
+                    animClass,
+                  )}
                   aria-disabled
                 >
+                  <span className="absolute inset-s-3 inline-flex size-9 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    {item.block.avatarUrl ? (
+                      <Image
+                        src={item.block.avatarUrl}
+                        alt=""
+                        width={36}
+                        height={36}
+                        className="size-full rounded-2xl object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <CalendarIcon className="size-5" />
+                    )}
+                  </span>
                   <span className="block w-full truncate px-10 text-center text-[15px] font-bold">
                     {item.block.name}
+                  </span>
+                </span>
+              );
+            }
+            if (item.kind === "form") {
+              return interactive && formSubmitAction ? (
+                <PublicAnimatedBlock
+                  key={`f-${item.block.id}`}
+                  animClass={animClassOnce}
+                  intervalSec={10}
+                >
+                  <PublicFormPill
+                    block={item.block}
+                    submitAction={formSubmitAction}
+                    defaultOpen={autoOpen}
+                  />
+                </PublicAnimatedBlock>
+              ) : (
+                <span
+                  key={`f-${item.block.id}`}
+                  className={cn(
+                    "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4",
+                    animClass,
+                  )}
+                  aria-disabled
+                >
+                  <span className="absolute inset-s-3 inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    <FormInputIcon className="size-5" />
+                  </span>
+                  <span className="block w-full truncate px-10 text-center text-[15px] font-bold">
+                    {item.block.name}
+                  </span>
+                </span>
+              );
+            }
+            if (item.kind === "product") {
+              if (item.block.displayMode === "inline") {
+                return (
+                  <PublicAnimatedBlock
+                    key={`p-${item.block.id}`}
+                    animClass={animClassOnce}
+                    intervalSec={10}
+                  >
+                    <PublicProductInline block={item.block} />
+                  </PublicAnimatedBlock>
+                );
+              }
+              return interactive ? (
+                <PublicAnimatedBlock
+                  key={`p-${item.block.id}`}
+                  animClass={animClassOnce}
+                  intervalSec={10}
+                >
+                  <PublicProductPill block={item.block} />
+                </PublicAnimatedBlock>
+              ) : (
+                <span
+                  key={`p-${item.block.id}`}
+                  className={cn(
+                    "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4",
+                    animClass,
+                  )}
+                  aria-disabled
+                >
+                  <span className="absolute inset-s-3 inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                    {item.block.iconKey ||
+                    item.block.iconUrl ||
+                    item.block.imageUrl ? (
+                      <LinkIconBubble
+                        iconKey={
+                          (item.block.iconKey as Parameters<
+                            typeof LinkIconBubble
+                          >[0]["iconKey"]) ?? "auto"
+                        }
+                        iconUrl={item.block.iconUrl ?? null}
+                        imageUrl={item.block.imageUrl ?? null}
+                        url=""
+                        size={36}
+                        className="rounded-2xl"
+                      />
+                    ) : (
+                      <SparklesIcon className="size-5" />
+                    )}
+                  </span>
+                  <span className="block w-full truncate px-10 text-center text-[15px] font-bold">
+                    {item.block.pillLabel || item.block.name}
                   </span>
                 </span>
               );
@@ -252,20 +469,32 @@ export function PublicProfileCard({
             const base =
               "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4 transition-colors";
 
-            return interactive ? (
-              <a
+            return (
+              <PublicAnimatedBlock
                 key={link.id}
-                href={`/api/links/${link.id}/click`}
-                target="_blank"
-                rel="noreferrer noopener"
-                className={cn(base, "hover:bg-primary/8 active:bg-primary/12")}
+                animClass={animClassOnce}
+                intervalSec={10}
               >
-                {content}
-              </a>
-            ) : (
-              <span key={link.id} className={base} aria-disabled>
-                {content}
-              </span>
+                {interactive ? (
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="nofollow ugc noopener noreferrer external"
+                    referrerPolicy="no-referrer"
+                    data-track-link-id={link.id}
+                    className={cn(
+                      base,
+                      "hover:bg-primary/8 active:bg-primary/12",
+                    )}
+                  >
+                    {content}
+                  </a>
+                ) : (
+                  <span className={base} aria-disabled>
+                    {content}
+                  </span>
+                )}
+              </PublicAnimatedBlock>
             );
           });
         })()}

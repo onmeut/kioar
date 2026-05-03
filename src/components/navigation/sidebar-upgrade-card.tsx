@@ -25,13 +25,14 @@ interface SidebarUpgradeCardProps {
 }
 
 /**
- * Sidebar footer block. Plan-aware upsell:
+ * Sidebar footer block. Plan-aware:
  *
- *   - Free  → glowing brand-tinted card pushing the Pro plan.
- *   - Pro   → same shell, copy + destination switched to Business
- *             (deep-links into the page-scoped plan picker so the page
- *             id is preserved through checkout).
- *   - Business → null. A Business page has nothing to upsell.
+ *   - Free      → glowing brand-tinted upsell card → `/pro`.
+ *   - Pro       → soft "مدیریت اشتراک" card → page-scoped billing.
+ *                 Replaces the dedicated nav item; this is now the
+ *                 only billing entry from the sidebar for Pro pages.
+ *   - Business  → null. Business owners reach billing from the
+ *                 admin/settings surfaces; the sidebar stays clean.
  *
  * Sized to live inside `SidebarFooter` (no horizontal padding of its
  * own; relies on the footer’s `p-3`).
@@ -42,38 +43,67 @@ export function SidebarUpgradeCard({
 }: SidebarUpgradeCardProps) {
   if (planKey === "business") return null;
 
-  // The two upsell variants share a card shell; only the headline,
-  // sub-copy, eyebrow label, and destination differ. Centralising the
-  // copy here keeps the JSX one block.
-  const variant =
-    planKey === "free"
-      ? {
-          eyebrow: "ارتقا",
-          title: "امکانات نامحدود کیوار",
-          subtitle: "آمار پیشرفته، بلاک‌های ویژه و حذف برندینگ.",
-          // `/pro` is the canonical entry point — it figures out the
-          // right page-scoped plan picker route on the server.
-          href: "/pro" as Route,
-          ariaLabel: "خرید اشتراک پرو",
-        }
-      : {
-          eyebrow: "ارتقا به Business",
-          title: "رزرو، فرم و ابزار کسب‌وکار",
-          subtitle: "اشتراک‌های متعدد، فرم‌های پیشرفته و رزرو حضوری.",
-          // Pro → Business is a per-page change, so we route directly
-          // into the page-scoped plan picker rather than `/pro`.
-          href: `/dashboard/pages/${pageId}/billing/plans` as Route,
-          ariaLabel: "ارتقا به اشتراک Business",
-        };
+  if (planKey === "pro") {
+    return (
+      <ManageSubscriptionCard
+        href={`/dashboard/pages/${pageId}/billing` as Route}
+      />
+    );
+  }
 
   return (
     <UpgradeCard
-      eyebrow={variant.eyebrow}
-      title={variant.title}
-      subtitle={variant.subtitle}
-      href={variant.href}
-      ariaLabel={variant.ariaLabel}
+      eyebrow="ارتقا"
+      title="امکانات نامحدود کیوار"
+      subtitle="آمار پیشرفته، بلاک‌های ویژه و حذف برندینگ."
+      href={"/pro" as Route}
+      ariaLabel="خرید اشتراک پرو"
     />
+  );
+}
+
+/**
+ * The Pro variant. Soft, status-y card — not pushing anything, just
+ * surfacing the billing surface. Whole card is the link to keep the
+ * tap target generous on mobile.
+ */
+function ManageSubscriptionCard({ href }: { href: Route }) {
+  return (
+    <Link
+      href={href}
+      aria-label="مدیریت اشتراک"
+      className={cn(
+        "group relative block overflow-hidden rounded-2xl",
+        "border border-border/70 bg-muted/40 p-3.5",
+        "transition-colors hover:bg-muted/60",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+      )}
+    >
+      <div className="flex items-center">
+        <div className="min-w-0 flex-1">
+          <p className="text-[13px] font-bold leading-tight">مدیریت اشتراک</p>
+          <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
+            صورت‌حساب‌ها، تجدید و ارتقا
+          </p>
+        </div>
+        <span
+          aria-hidden
+          className="text-muted-foreground transition-transform group-hover:-translate-x-0.5"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="size-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.25"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </span>
+      </div>
+    </Link>
   );
 }
 
@@ -105,33 +135,17 @@ function UpgradeCard({
 }) {
   return (
     <div
-      className={cn(
-        "group relative isolate overflow-hidden rounded-2xl",
-        "border border-primary/15 bg-gradient-to-br from-primary/8 via-background to-background",
-        "p-3.5 shadow-[0_1px_0_0_oklch(1_0_0/0.6)_inset,0_8px_24px_-12px_oklch(0_0_0/0.18)]",
-        "transition-shadow duration-300 hover:shadow-[0_1px_0_0_oklch(1_0_0/0.6)_inset,0_12px_28px_-10px_color-mix(in_srgb,var(--primary)_35%,transparent)]",
-      )}
+      className={cn("rounded-2xl", "border border-border bg-muted/40", "p-3.5")}
     >
-      {/* Brand-tinted top-end glow. Decorative. */}
-      <span
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute -top-12 -end-10 size-32 rounded-full",
-          "bg-[radial-gradient(closest-side,color-mix(in_srgb,var(--primary)_45%,transparent),transparent_70%)]",
-          "opacity-70 blur-xl transition-opacity duration-500 group-hover:opacity-100",
-        )}
-      />
-
-      {/* Sparkle sits in the start corner so it pairs with the glow on
-          the opposite corner — makes the card feel “lit”. */}
-      <div className="relative mb-2 flex items-center gap-2 text-primary">
+      {/* Sparkle + eyebrow */}
+      <div className="mb-2 flex items-center gap-2 text-primary">
         <SparkleMark />
         <span className="text-[11px] font-bold uppercase tracking-[0.14em]">
           {eyebrow}
         </span>
       </div>
 
-      <div className="relative space-y-1">
+      <div className="space-y-1">
         <p className="text-sm font-extrabold leading-tight">{title}</p>
         <p className="text-[11.5px] leading-snug text-muted-foreground">
           {subtitle}
@@ -141,10 +155,7 @@ function UpgradeCard({
       <Button
         render={<Link href={href} aria-label={ariaLabel} />}
         size="sm"
-        className={cn(
-          "relative mt-3 h-9 w-full font-bold",
-          "shadow-[0_4px_14px_-4px_color-mix(in_srgb,var(--primary)_60%,transparent)]",
-        )}
+        className="relative mt-3 h-9 w-full font-bold"
       >
         خرید اشتراک
       </Button>
@@ -163,7 +174,6 @@ function SparkleMark() {
       className={cn(
         "inline-flex size-6 items-center justify-center rounded-lg",
         "bg-primary text-primary-foreground",
-        "shadow-[0_2px_8px_-2px_color-mix(in_srgb,var(--primary)_60%,transparent)]",
       )}
       aria-hidden
     >

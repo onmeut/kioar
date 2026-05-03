@@ -1,0 +1,143 @@
+# Production self-host stack:
+#   app (Next.js standalone) + postgres + redis + caddy (TLS) +
+#   optional pgbouncer (profile: pgbouncer)
+#
+# Usage:
+#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+#
+#   # Enable pgbouncer when you scale beyond a single app instance:
+#   docker compose -f docker-compose.prod.yml \
+#     --profile pgbouncer \
+#     --env-file .env.production up -d
+#
+# Redis is REQUIRED in production (used by the rate limiter). It is included
+# by default in this compose file; override `REDIS_URL` in .env.production if
+# you point at an external managed Redis instead.
+#
+# Required env vars in .env.production: see .env.example. At minimum:
+#   POSTGRES_PASSWORD, AUTH_SECRET, CRON_SECRET, NEXT_PUBLIC_SITE_URL,
+#   APP_DOMAIN (used by Caddy for TLS).
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kioar-app:latest
+    restart: unless-stopped
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      # Wired by compose so the app talks to the in-network Redis without
+      # leaking it to .env. Override in .env.production for external Redis.
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    expose:
+      - "3000"
+    volumes:
+      # Persist locally-stored uploads when S3 is not configured.
+      - app_uploads:/app/public/uploads
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3000/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-kioar}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-kioar}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    # Postgres is reachable from app/pgbouncer over the compose network only.
+    expose:
+      - "5432"
+
+  pgbouncer:
+    image: bitnami/pgbouncer:1
+    restart: unless-stopped
+    profiles: ["pgbouncer"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRESQL_HOST: postgres
+      POSTGRESQL_PORT: "5432"
+      POSTGRESQL_USERNAME: ${POSTGRES_USER:-postgres}
+      POSTGRESQL_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRESQL_DATABASE: ${POSTGRES_DB:-kioar}
+      PGBOUNCER_POOL_MODE: transaction
+      PGBOUNCER_MAX_CLIENT_CONN: "500"
+      PGBOUNCER_DEFAULT_POOL_SIZE: "20"
+      PGBOUNCER_AUTH_TYPE: scram-sha-256
+    expose:
+      - "6432"
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    expose:
+      - "6379"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN is required for TLS}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  postgres_data:
+  redis_data:
+  app_uploads:
+  caddy_data:
+  caddy_config:

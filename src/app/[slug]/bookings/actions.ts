@@ -1,6 +1,7 @@
 "use server";
 
 import { and, eq } from "drizzle-orm";
+import { notFound } from "next/navigation";
 
 import { getDb } from "@/db";
 import {
@@ -9,10 +10,13 @@ import {
   profileBookingBlocks,
   profiles,
 } from "@/db/schema";
+import { getCurrentViewer } from "@/lib/auth/session";
+import { blockKindToFeatureKey } from "@/lib/block-features";
 import {
   getAvailableSlotsForDay,
   getPublicBookingBlockById,
 } from "@/lib/booking-data";
+import { pageHasFeature } from "@/lib/entitlements";
 import { log } from "@/lib/log";
 import { getOAuthAccount } from "@/lib/oauth/store";
 import { createCalendarEvent } from "@/lib/oauth/google";
@@ -44,6 +48,28 @@ export async function getPublicBookingSlotsAction(input: {
     !/^\d{4}-\d{2}-\d{2}$/.test(input.dateIso)
   ) {
     return { ok: false, message: "ورودی معتبر نیست." };
+  }
+  // Phase 5 — entitlement gate. If the page no longer has bookings, the
+  // endpoint behaves as if it doesn't exist (404). The page owner is
+  // allowed through regardless so the dashboard live-preview keeps working
+  // when bookings are present in the editor but not granted on the plan.
+  const featureKey = blockKindToFeatureKey("booking");
+  if (featureKey) {
+    const block = await getDb().query.profileBookingBlocks.findFirst({
+      where: eq(profileBookingBlocks.id, input.blockId),
+      columns: { id: true, profileId: true },
+    });
+    if (!block) notFound();
+    const granted = await pageHasFeature(block.profileId, featureKey);
+    if (!granted) {
+      const viewer = await getCurrentViewer();
+      const profile = await getDb().query.profiles.findFirst({
+        where: eq(profiles.id, block.profileId),
+        columns: { userId: true },
+      });
+      const isOwner = !!viewer && profile?.userId === viewer.user.id;
+      if (!isOwner) notFound();
+    }
   }
   try {
     const slots = await getAvailableSlotsForDay(input);
@@ -88,6 +114,13 @@ export async function submitPublicBookingAction(
   const block = await getPublicBookingBlockById(data.blockId);
   if (!block) {
     return { ok: false, message: "بلوک رزرو یافت نشد یا غیرفعال است." };
+  }
+  // Phase 5 — entitlement gate. If the page lost the bookings feature
+  // since this form was rendered, refuse the write entirely (404).
+  const featureKey = blockKindToFeatureKey("booking");
+  if (featureKey) {
+    const granted = await pageHasFeature(block.profileId, featureKey);
+    if (!granted) notFound();
   }
   const type = block.types.find((t) => t.id === data.bookingTypeId);
   if (!type) {
@@ -163,6 +196,7 @@ export async function submitPublicBookingAction(
       guestName: data.guestName,
       guestEmail: data.guestEmail,
       guestTimezone: data.guestTimezone ?? null,
+      hostTimezone: block.timezone ?? null,
       startsAt,
       endsAt,
       status: "confirmed",

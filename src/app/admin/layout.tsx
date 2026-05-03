@@ -1,4 +1,5 @@
-import { signOutAction } from "@/app/dashboard/actions";
+import { signOutAction } from "@/app/(app)/dashboard/actions";
+import type { Route } from "next";
 import { ImpersonationBar } from "@/components/admin/impersonation-bar";
 import {
   SidebarNav,
@@ -24,6 +25,30 @@ const adminNavItems: SidebarNavItem[] = [
   { href: "/admin", label: "نمای کلی", icon: "admin", match: "exact" },
   { href: "/admin/users", label: "کاربران", icon: "users" },
   {
+    href: "/admin/pages" as Route,
+    label: "صفحه‌ها",
+    icon: "page",
+    match: "prefix",
+  },
+  {
+    href: "/admin/billing/pages" as Route,
+    label: "اشتراک‌ها",
+    icon: "billing",
+    match: "prefix",
+  },
+  {
+    href: "/admin/billing/invoices" as Route,
+    label: "فاکتورها",
+    icon: "billing",
+    match: "prefix",
+  },
+  {
+    href: "/admin/plans" as Route,
+    label: "پلن‌ها و قابلیت‌ها",
+    icon: "plans",
+    match: "prefix",
+  },
+  {
     href: "/admin/events/new",
     label: "رویداد جدید",
     icon: "create",
@@ -35,13 +60,27 @@ const adminNavItems: SidebarNavItem[] = [
     icon: "requests",
     match: "exact",
   },
-  { href: "/dashboard", label: "داشبورد کاربر", icon: "home", match: "exact" },
+  { href: "/admin/sms", label: "پیامک‌ها", icon: "sms", match: "prefix" },
+  {
+    href: "/admin/discounts",
+    label: "تخفیف‌ها",
+    icon: "discounts",
+    match: "prefix",
+  },
+  {
+    href: "/admin/affiliates" as Route,
+    label: "همکاری در فروش",
+    icon: "affiliate",
+    match: "prefix",
+  },
 ];
 
 export default async function AdminLayout({
   children,
+  modal,
 }: {
   children: React.ReactNode;
+  modal: React.ReactNode;
 }) {
   const viewer = await requireAdmin();
 
@@ -84,6 +123,7 @@ export default async function AdminLayout({
         </header>
 
         <main className="flex-1 pb-nav md:pb-0">{children}</main>
+        {modal}
         <MobileBottomNav variant="admin" />
       </SidebarInset>
     </SidebarProvider>

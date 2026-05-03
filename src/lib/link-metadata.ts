@@ -115,7 +115,10 @@ export async function fetchLinkMetadata(
 
   // Only parse HTML responses. If the server returned something else (e.g. a
   // PDF for a link that happened to 200 OK at the redirect target), we bail.
-  if (!fetched.contentType.startsWith("text/html") && fetched.contentType !== "application/xhtml+xml") {
+  if (
+    !fetched.contentType.startsWith("text/html") &&
+    fetched.contentType !== "application/xhtml+xml"
+  ) {
     return {
       url,
       title: null,
@@ -173,8 +176,8 @@ export async function fetchLinkMetadata(
 
   return {
     url,
-    title: title ? title.slice(0, 120) : null,
-    description: description ? description.slice(0, 240) : null,
+    title: title ? title.slice(0, 40) : null,
+    description: description ? description.slice(0, 160) : null,
     image,
     siteName,
   };

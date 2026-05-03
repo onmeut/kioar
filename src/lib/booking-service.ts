@@ -11,12 +11,12 @@ import {
   bookingTypes,
   profileBookingBlocks,
   profileLinks,
-  profiles,
 } from "@/db/schema";
 import {
   bookingBlockInputSchema,
   type BookingBlockInput,
 } from "@/lib/validations";
+import { resolveCurrentPageForOwner } from "@/lib/pages";
 
 type SaveResult<T = undefined> =
   | { ok: true; data?: T }
@@ -27,8 +27,8 @@ type SaveResult<T = undefined> =
     };
 
 async function getProfileByUserId(userId: string) {
-  const db = getDb();
-  return db.query.profiles.findFirst({ where: eq(profiles.userId, userId) });
+  // Multi-page: write against the page the user is currently editing.
+  return resolveCurrentPageForOwner(userId);
 }
 
 async function nextBlockSortOrder(profileId: string): Promise<number> {

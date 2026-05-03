@@ -40,7 +40,7 @@ export async function createBookingBlockAction(
     };
   }
 
-  revalidatePath("/dashboard/links");
+  revalidatePath("/page");
   revalidatePath(`/${viewer.profile.slug}`);
   return {
     status: "success",
@@ -76,7 +76,7 @@ export async function updateBookingBlockAction(
     };
   }
 
-  revalidatePath("/dashboard/links");
+  revalidatePath("/page");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success", message: "ذخیره شد" };
 }
@@ -94,7 +94,7 @@ export async function deleteBookingBlockAction(
     return { status: "error", message: result.message };
   }
 
-  revalidatePath("/dashboard/links");
+  revalidatePath("/page");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success", message: "حذف شد" };
 }
@@ -117,7 +117,7 @@ export async function toggleBookingBlockActiveAction(
     return { status: "error", message: result.message };
   }
 
-  revalidatePath("/dashboard/links");
+  revalidatePath("/page");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success", message: isActive ? "فعال شد" : "غیرفعال شد" };
 }
@@ -146,6 +146,6 @@ export async function cancelBookingAction(
     return { status: "error", message: result.message };
   }
 
-  revalidatePath("/dashboard/bookings");
+  revalidatePath("/bookings");
   return { status: "success", message: "رزرو لغو شد." };
 }

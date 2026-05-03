@@ -18,7 +18,7 @@ export default function Icon() {
           alignItems: "center",
           justifyContent: "center",
           background:
-            "linear-gradient(135deg, rgb(24, 92, 84), rgb(190, 228, 213), rgb(245, 229, 199))",
+            "rgb(24, 92, 84)",
           fontFamily: "sans-serif",
           position: "relative",
         }}

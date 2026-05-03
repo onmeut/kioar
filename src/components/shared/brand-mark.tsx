@@ -22,7 +22,7 @@ export function BrandMark({
     return (
       <Link
         href={href}
-        aria-label="کیوآر"
+        aria-label="کی‌یو‌آر"
         className={cn(
           "inline-flex items-center justify-center text-foreground transition-opacity hover:opacity-80",
           className,
@@ -61,7 +61,7 @@ export function BrandMark({
           compact ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl",
         )}
       >
-        کیوآر
+        کی‌یو‌آر
       </span>
       {!compact ? (
         <span className="mb-1 hidden text-xs font-semibold text-muted-foreground sm:block">

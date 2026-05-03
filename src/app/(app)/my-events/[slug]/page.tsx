@@ -22,17 +22,11 @@ import {
   formatPersianTime,
   toPersianDigits,
 } from "@/lib/persian";
+import { formatIcsLocal, formatIcsUtc } from "@/lib/date/timezone";
+import { IRAN_TIMEZONE } from "@/lib/date/persian";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
-
-function formatICSDate(date: Date) {
-  // yyyymmddThhmmssZ
-  return date
-    .toISOString()
-    .replace(/[-:]/g, "")
-    .replace(/\.\d{3}/, "");
-}
 
 function buildIcsDataUrl(event: {
   title: string;
@@ -41,18 +35,42 @@ function buildIcsDataUrl(event: {
   slug: string;
   startsAt: Date;
   endsAt: Date | null;
+  timezone?: string | null;
 }) {
   const endDate =
     event.endsAt ?? new Date(event.startsAt.getTime() + 2 * 60 * 60 * 1000);
+  // Events are Iran-local by default; emit a TZID block so importers
+  // (Apple/Google/Outlook) apply the correct offset across DST shifts
+  // rather than treating the time as floating UTC.
+  const tz = event.timezone || IRAN_TIMEZONE;
+  // Minimal VTIMEZONE block — Asia/Tehran has had a stable +03:30 since
+  // Iran abolished DST in 2022. For other zones the receiver's calendar
+  // resolves the IANA name itself when TZID matches.
+  const vtimezone =
+    tz === IRAN_TIMEZONE
+      ? [
+          "BEGIN:VTIMEZONE",
+          `TZID:${tz}`,
+          "BEGIN:STANDARD",
+          "DTSTART:20220101T000000",
+          "TZOFFSETFROM:+0330",
+          "TZOFFSETTO:+0330",
+          "TZNAME:IRST",
+          "END:STANDARD",
+          "END:VTIMEZONE",
+        ]
+      : [`BEGIN:VTIMEZONE`, `TZID:${tz}`, `END:VTIMEZONE`];
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
     "PRODID:-//Kioar//Event//FA",
+    "CALSCALE:GREGORIAN",
+    ...vtimezone,
     "BEGIN:VEVENT",
     `UID:${event.slug}@kioar`,
-    `DTSTAMP:${formatICSDate(new Date())}`,
-    `DTSTART:${formatICSDate(event.startsAt)}`,
-    `DTEND:${formatICSDate(endDate)}`,
+    `DTSTAMP:${formatIcsUtc(new Date())}`,
+    `DTSTART;TZID=${tz}:${formatIcsLocal(event.startsAt, tz)}`,
+    `DTEND;TZID=${tz}:${formatIcsLocal(endDate, tz)}`,
     `SUMMARY:${event.title.replace(/\n/g, " ")}`,
     `DESCRIPTION:${event.description.replace(/\n/g, " ")}`,
     `LOCATION:${event.location.replace(/\n/g, " ")}`,
@@ -109,7 +127,7 @@ export default async function DashboardEventDetailPage({
   return (
     <div className="section-shell space-y-8 py-6">
       <Link
-        href={"/dashboard/events" as Route}
+        href={"/my-events" as Route}
         className="inline-flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground"
       >
         <ArrowRightIcon className="size-3.5" />
@@ -117,7 +135,7 @@ export default async function DashboardEventDetailPage({
       </Link>
 
       {/* Timing hero — the visual main */}
-      <section className="relative overflow-hidden rounded-4xl border border-primary/20 bg-linear-to-b from-primary/10 via-primary/5 to-transparent p-6 sm:p-8">
+      <section className="relative overflow-hidden rounded-4xl border border-primary/20 bg-primary/8 p-6 sm:p-8">
         <div className="flex flex-col gap-3">
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-primary/12 px-3 py-1 text-xs font-semibold text-primary">
             <TicketIcon className="size-3.5" />

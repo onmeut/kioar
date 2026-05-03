@@ -2,13 +2,17 @@ import { notFound, redirect } from "next/navigation";
 
 import { getDb } from "@/db";
 import { profiles } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 // Stable, immutable per-user URL printed on physical / NFC cards.
 // `userId` is the user's UUID and never changes; this route resolves the
 // user's CURRENT public profile slug at request time and 308-redirects there.
 // If the user later changes their slug, every printed card / programmed NFC
 // chip keeps working with no re-print needed.
+//
+// A user can own many pages now; we redirect to the *first* page they
+// created (oldest by `createdAt`). The card itself can later be reissued
+// pointing at a specific slug if the user wants a different page on it.
 export const dynamic = "force-dynamic";
 
 export default async function ResolveUserShortUrl({
@@ -30,6 +34,7 @@ export default async function ResolveUserShortUrl({
   const db = getDb();
   const profile = await db.query.profiles.findFirst({
     where: eq(profiles.userId, userId),
+    orderBy: [asc(profiles.createdAt)],
     columns: { slug: true },
   });
 

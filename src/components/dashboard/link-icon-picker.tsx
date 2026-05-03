@@ -1,199 +1,165 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { Loader2Icon, SparklesIcon, UploadIcon, XIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { SearchIcon, SparklesIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  CATEGORIES,
-  ICON_CATEGORY_LABELS,
   ICON_REGISTRY,
-  type IconCategory,
-  type IconKey,
   resolveIconEntry,
+  type IconKey,
 } from "@/lib/link-icons";
+import {
+  TABLER_ICONS,
+  TABLER_ICON_ALIASES,
+  tablerKeyOf,
+} from "@/lib/link-icons-tabler";
 import { cn } from "@/lib/utils";
 
 export type LinkIconPickerValue = {
   iconKey: IconKey | null;
+  /** Legacy — uploads are no longer supported but DB may still hold a value. */
   iconUrl: string | null;
+  /** Auto-fetched website cover. Picker can clear / restore this. */
+  imageUrl: string | null;
 };
 
 type Props = {
   url: string;
   value: LinkIconPickerValue;
   onChange: (next: LinkIconPickerValue) => void;
-  /** Server action that uploads a custom icon to "link-icons" bucket. */
-  uploadIcon: (file: File) => Promise<string | null>;
+  /**
+   * Called when the user picks "auto" — gives the host a chance to
+   * re-fetch website metadata so the cover image reappears.
+   */
+  onRefetch?: () => void;
+};
+
+type GridItem = {
+  key: IconKey;
+  label: string;
+  search: string;
+  // Icons come from two sources (Lucide-shaped & Tabler-shaped); allow either.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  Icon: React.ComponentType<any>;
 };
 
 /**
- * Icon picker that renders:
- *   • "auto" tile (detects from URL)
- *   • "custom" tile (upload a 1:1 image)
- *   • Grouped brand/generic icons from ICON_REGISTRY
+ * Builds a single flat grid: brand icons first, then generic Tabler icons.
+ * No categories, no labels, no upload — Notion/Linktree style.
+ *
+ * All items are rendered raw (just stroke), so brand icons sit visually
+ * alongside generic icons in the picker.
  */
-export function LinkIconPicker({ url, value, onChange, uploadIcon }: Props) {
-  const [category, setCategory] = useState<IconCategory>("general");
-  const [isUploading, setIsUploading] = useState(false);
-  const fileInput = useRef<HTMLInputElement | null>(null);
-
-  const detected = useMemo(() => resolveIconEntry("auto", url), [url]);
-
-  const items = useMemo(
-    () =>
-      Object.values(ICON_REGISTRY).filter(
-        (entry) => entry.category === category && entry.key !== "auto",
-      ),
-    [category],
-  );
-
-  async function onFile(file: File) {
-    setIsUploading(true);
-    try {
-      const uploadedUrl = await uploadIcon(file);
-      if (uploadedUrl) {
-        onChange({ iconKey: null, iconUrl: uploadedUrl });
-      }
-    } finally {
-      setIsUploading(false);
-    }
+function buildItems(): GridItem[] {
+  const items: GridItem[] = [];
+  for (const entry of Object.values(ICON_REGISTRY)) {
+    if (entry.key === "auto") continue;
+    items.push({
+      key: entry.key,
+      label: entry.label,
+      search: `${entry.key} ${entry.label}`.toLowerCase(),
+      Icon: entry.Icon,
+    });
   }
+  for (const [name, Icon] of Object.entries(TABLER_ICONS)) {
+    const alias = TABLER_ICON_ALIASES[name] ?? "";
+    items.push({
+      key: tablerKeyOf(name),
+      label: name.replace(/-/g, " "),
+      search: `${name.replace(/-/g, " ")} ${alias}`.toLowerCase(),
+      Icon,
+    });
+  }
+  return items;
+}
+
+const ALL_ITEMS = buildItems();
+
+export function LinkIconPicker({ url, value, onChange, onRefetch }: Props) {
+  void url;
+  const [query, setQuery] = useState("");
+
+  const items = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return ALL_ITEMS;
+    return ALL_ITEMS.filter((it) => it.search.includes(q));
+  }, [query]);
+
+  const isAuto = !value.iconUrl && (value.iconKey === "auto" || !value.iconKey);
 
   return (
-    <div className="space-y-3">
-      {/* Row 1 — auto + custom + current preview */}
-      <div className="flex items-center gap-2">
-        {/* auto */}
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="px-1 pb-2">
+        <div className="relative">
+          <SearchIcon className="pointer-events-none absolute inset-s-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="جست‌وجو در آیکون‌ها"
+            className="h-11 ps-9"
+            enterKeyHint="search"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+        </div>
+      </div>
+
+      <div className="px-1 pb-3">
         <button
           type="button"
-          onClick={() => onChange({ iconKey: "auto", iconUrl: null })}
+          onClick={() => {
+            onChange({ iconKey: "auto", iconUrl: null, imageUrl: null });
+            onRefetch?.();
+          }}
           className={cn(
-            "inline-flex h-11 items-center gap-2 rounded-2xl border px-3 text-sm font-bold transition-colors",
-            !value.iconUrl && (value.iconKey === "auto" || !value.iconKey)
+            "inline-flex h-11 w-full items-center justify-center gap-2 rounded-2xl border px-4 text-sm font-bold transition-colors",
+            isAuto
               ? "border-foreground bg-foreground text-background"
               : "border-border bg-background hover:bg-muted",
           )}
         >
           <SparklesIcon className="size-4" />
-          خودکار
-          {!value.iconUrl &&
-          (value.iconKey === "auto" || !value.iconKey) &&
-          detected ? (
-            <span
-              className="inline-flex size-5 items-center justify-center rounded-xl text-white"
-              style={{ backgroundColor: detected.color }}
-              aria-hidden
-            >
-              <detected.Icon width={12} height={12} />
-            </span>
-          ) : null}
+          انتخاب خودکار با توجه به لینک
         </button>
+      </div>
 
-        {/* custom upload */}
-        <button
-          type="button"
-          onClick={() => fileInput.current?.click()}
-          disabled={isUploading}
-          className={cn(
-            "inline-flex h-11 items-center gap-2 rounded-2xl border px-3 text-sm font-bold transition-colors",
-            value.iconUrl
-              ? "border-foreground bg-foreground text-background"
-              : "border-border bg-background hover:bg-muted",
-          )}
-        >
-          {isUploading ? (
-            <Loader2Icon className="size-4 animate-spin" />
-          ) : (
-            <UploadIcon className="size-4" />
-          )}
-          آیکون سفارشی
-        </button>
-
-        {value.iconUrl ? (
-          <div className="relative inline-flex size-11 items-center justify-center overflow-hidden rounded-2xl bg-muted">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={value.iconUrl}
-              alt=""
-              className="size-full object-cover"
-            />
-            <button
-              type="button"
-              onClick={() => onChange({ iconKey: "auto", iconUrl: null })}
-              className="absolute end-0.5 top-0.5 inline-flex size-4 items-center justify-center rounded-full bg-black/60 text-white"
-              aria-label="حذف آیکون سفارشی"
-            >
-              <XIcon className="size-3" />
-            </button>
+      <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-2">
+        {items.length === 0 ? (
+          <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+            آیکونی پیدا نشد
           </div>
-        ) : null}
-
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/*"
-          className="hidden"
-          onChange={(event) => {
-            const f = event.target.files?.[0];
-            event.target.value = "";
-            if (f) onFile(f);
-          }}
-        />
-      </div>
-
-      {/* Category chips */}
-      <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1">
-        {CATEGORIES.map((cat) => {
-          const active = category === cat;
-          return (
-            <button
-              key={cat}
-              type="button"
-              onClick={() => setCategory(cat)}
-              className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
-                active
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-background text-muted-foreground hover:bg-muted",
-              )}
-            >
-              {ICON_CATEGORY_LABELS[cat]}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* Grid */}
-      <div className="grid grid-cols-5 gap-2 sm:grid-cols-8">
-        {items.map((entry) => {
-          const selected =
-            !value.iconUrl &&
-            value.iconKey === entry.key &&
-            value.iconKey !== "auto";
-          return (
-            <button
-              key={entry.key}
-              type="button"
-              title={entry.label}
-              onClick={() => onChange({ iconKey: entry.key, iconUrl: null })}
-              className={cn(
-                "tap-target group relative flex flex-col items-center justify-center gap-1 rounded-2xl border bg-background p-2 transition-colors hover:bg-muted",
-                selected && "border-foreground ring-2 ring-foreground/20",
-              )}
-            >
-              <span
-                className="inline-flex size-8 items-center justify-center rounded-xl text-white"
-                style={{ backgroundColor: entry.color }}
-              >
-                <entry.Icon width={18} height={18} />
-              </span>
-              <span className="line-clamp-1 text-[10px] font-semibold text-muted-foreground">
-                {entry.label}
-              </span>
-            </button>
-          );
-        })}
+        ) : (
+          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-8">
+            {items.map((entry) => {
+              const selected = !value.iconUrl && value.iconKey === entry.key;
+              return (
+                <button
+                  key={entry.key}
+                  type="button"
+                  title={entry.label}
+                  onClick={() =>
+                    onChange({
+                      iconKey: entry.key,
+                      iconUrl: null,
+                      imageUrl: null,
+                    })
+                  }
+                  className={cn(
+                    "tap-target flex aspect-square items-center justify-center rounded-2xl transition-colors hover:bg-muted",
+                    selected && "bg-foreground/10 ring-2 ring-foreground/30",
+                  )}
+                >
+                  <entry.Icon
+                    width={22}
+                    height={22}
+                    className="text-foreground"
+                  />
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -215,7 +181,6 @@ export function LinkIconBubble({
   size?: number;
   className?: string;
 }) {
-  // Precedence: custom upload > cover image > built-in icon
   if (iconUrl) {
     return (
       <span

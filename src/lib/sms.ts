@@ -101,7 +101,7 @@ export async function sendOtpCode({
     url.searchParams.set("receptor", receptor);
     url.searchParams.set(
       "message",
-      `کد ورود کیوآر: ${code}\nاین کد تا ۳ دقیقه معتبر است.`,
+      `کد ورود کی‌یو‌آر: ${code}\nاین کد تا ۳ دقیقه معتبر است.`,
     );
 
     if (sender) {

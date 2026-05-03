@@ -1,6 +1,6 @@
 export const siteConfig = {
-  name: "کیوآر",
-  shortName: "کیوآر",
+  name: "کی‌یو‌آر",
+  shortName: "کی‌یو‌آر",
   description:
     "پلتفرم کارت ویزیت دیجیتال فارسی با لینک عمومی، QR، ثبت‌نام رویداد و درخواست کارت فیزیکی یا NFC.",
 };

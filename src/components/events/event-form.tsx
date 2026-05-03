@@ -410,7 +410,7 @@ export function EventForm({ initialEvent }: EventFormProps) {
           </p>
         </CardHeader>
         <CardContent className="space-y-4 p-5 pt-0 sm:p-6 sm:pt-0">
-          <div className="relative h-56 overflow-hidden rounded-[1.8rem] bg-[linear-gradient(135deg,#d8efe5,#f2e3c5)]">
+          <div className="relative h-56 overflow-hidden rounded-[1.8rem] bg-[#e8f2ec]">
             {coverPreview ? (
               <Image
                 src={coverPreview}

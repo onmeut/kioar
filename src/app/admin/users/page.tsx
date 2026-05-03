@@ -5,11 +5,17 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ExternalLinkIcon,
+  LayoutGridIcon,
   SearchIcon,
   ShieldCheckIcon,
   UserIcon,
   UserPlusIcon,
 } from "lucide-react";
+
+import {
+  RowActionsMenu,
+  type RowAction,
+} from "@/components/admin/row-actions-menu";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +34,8 @@ import {
   getAdminUserStats,
   listAdminUsers,
   type AdminUserFilter,
+  type AdminUserListItem,
+  type AdminUserPagePlan,
 } from "@/lib/data";
 import {
   formatPersianDate,
@@ -43,7 +51,62 @@ const FILTERS: { value: AdminUserFilter; label: string }[] = [
   { value: "banned", label: "مسدود" },
   { value: "incomplete", label: "پروفایل ناقص" },
   { value: "admins", label: "ادمین‌ها" },
+  { value: "paid", label: "دارای پلن پرداختی" },
+  { value: "free_only", label: "فقط Free" },
+  { value: "trialing", label: "در دوره آزمایشی" },
+  { value: "at_risk", label: "نیازمند رسیدگی" },
 ];
+
+const PLAN_BADGE_CLASS: Record<AdminUserPagePlan["planKey"], string> = {
+  free: "bg-muted text-muted-foreground",
+  pro: "bg-emerald-500/12 text-emerald-700",
+  business: "bg-violet-500/12 text-violet-700",
+};
+
+const STATUS_LABEL_FA: Record<AdminUserPagePlan["status"], string> = {
+  active: "فعال",
+  trialing: "آزمایشی",
+  pending_renewal: "در انتظار تمدید",
+  grace: "مهلت پرداخت",
+  expired: "منقضی",
+  canceled: "لغو شده",
+};
+
+function buildUserActions(user: AdminUserListItem): RowAction[] {
+  const actions: RowAction[] = [
+    {
+      key: "edit",
+      label: "مدیریت کاربر",
+      icon: "edit",
+      href: `/admin/users/${user.id}`,
+    },
+    {
+      key: "invoices",
+      label: "فاکتورها",
+      icon: "invoice",
+      href: `/admin/billing/invoices?userId=${user.id}`,
+    },
+  ];
+  if (user.pagePlans.length > 0) {
+    actions.push({
+      key: "first-page",
+      label: "مدیریت اشتراک صفحه",
+      icon: "page",
+      href: `/admin/billing/pages/${user.pagePlans[0].pageId}`,
+    });
+  }
+  if (user.slug) {
+    actions.push({
+      key: "view-public",
+      label: "مشاهده صفحه عمومی",
+      icon: "external",
+      href: `/${user.slug}`,
+      external: true,
+      separatorBefore: true,
+    });
+  }
+  return actions;
+}
 
 function getInitials(name: string | null, fallback: string) {
   if (!name) return fallback.slice(-2);
@@ -261,7 +324,12 @@ export default async function AdminUsersPage({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0">
-                            <p className="truncate font-bold">{displayName}</p>
+                            <Link
+                              href={`/admin/users/${user.id}` as Route}
+                              className="truncate font-bold hover:underline"
+                            >
+                              {displayName}
+                            </Link>
                             <p
                               className="truncate text-xs text-muted-foreground"
                               dir="ltr"
@@ -283,28 +351,24 @@ export default async function AdminUsersPage({
                           </Link>
                         ) : null}
 
-                        <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                        <dl className="mt-3 grid grid-cols-4 gap-2 text-xs">
+                          <Stat label="صفحه" value={user.pageCount} />
                           <Stat label="لینک" value={user.linkCount} />
                           <Stat label="رویداد" value={user.eventCount} />
                           <Stat label="کارت" value={user.cardRequestCount} />
                         </dl>
 
+                        {user.pagePlans.length > 0 ? (
+                          <div className="mt-3">
+                            <PlanSummary pages={user.pagePlans} />
+                          </div>
+                        ) : null}
+
                         <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
                           <span>
                             عضویت: {formatPersianDate(user.createdAt)}
                           </span>
-                          <Link
-                            href={`/admin/users/${user.id}` as Route}
-                            className={cn(
-                              buttonVariants({
-                                size: "sm",
-                                variant: "outline",
-                                className: "h-8 rounded-full text-xs",
-                              }),
-                            )}
-                          >
-                            مدیریت
-                          </Link>
+                          <RowActionsMenu actions={buildUserActions(user)} />
                         </div>
                       </div>
                     </div>
@@ -321,6 +385,7 @@ export default async function AdminUsersPage({
                     <TableHead>کاربر</TableHead>
                     <TableHead>شناسه عمومی</TableHead>
                     <TableHead>وضعیت</TableHead>
+                    <TableHead>صفحه‌ها</TableHead>
                     <TableHead className="text-center">لینک</TableHead>
                     <TableHead className="text-center">رویداد</TableHead>
                     <TableHead className="text-center">کارت</TableHead>
@@ -345,9 +410,12 @@ export default async function AdminUsersPage({
                               </AvatarFallback>
                             </Avatar>
                             <div className="min-w-0">
-                              <p className="truncate font-semibold">
+                              <Link
+                                href={`/admin/users/${user.id}` as Route}
+                                className="truncate font-semibold hover:underline"
+                              >
                                 {displayName}
-                              </p>
+                              </Link>
                               <p
                                 className="truncate text-xs text-muted-foreground"
                                 dir="ltr"
@@ -377,6 +445,9 @@ export default async function AdminUsersPage({
                         <TableCell>
                           <UserBadges user={user} />
                         </TableCell>
+                        <TableCell className="min-w-50">
+                          <PageCellDesktop pages={user.pagePlans} />
+                        </TableCell>
                         <TableCell className="text-center">
                           {toPersianDigits(user.linkCount)}
                         </TableCell>
@@ -395,18 +466,9 @@ export default async function AdminUsersPage({
                           {formatPersianDate(user.createdAt)}
                         </TableCell>
                         <TableCell>
-                          <Link
-                            href={`/admin/users/${user.id}` as Route}
-                            className={cn(
-                              buttonVariants({
-                                size: "sm",
-                                variant: "outline",
-                                className: "h-8 rounded-full",
-                              }),
-                            )}
-                          >
-                            مدیریت
-                          </Link>
+                          <div className="flex items-center justify-end gap-2">
+                            <RowActionsMenu actions={buildUserActions(user)} />
+                          </div>
                         </TableCell>
                       </TableRow>
                     );
@@ -525,4 +587,128 @@ function UserBadges({
     );
   }
   return <div className="flex flex-wrap gap-1">{items}</div>;
+}
+
+function summarizePlans(pages: AdminUserPagePlan[]) {
+  const counts: Record<AdminUserPagePlan["planKey"], number> = {
+    free: 0,
+    pro: 0,
+    business: 0,
+  };
+  let trialing = 0;
+  let atRisk = 0;
+  let cancelAtEnd = 0;
+  for (const p of pages) {
+    counts[p.planKey] += 1;
+    if (p.status === "trialing") trialing += 1;
+    if (p.status === "grace" || p.status === "expired") atRisk += 1;
+    if (p.cancelAtPeriodEnd) cancelAtEnd += 1;
+  }
+  return { counts, trialing, atRisk, cancelAtEnd };
+}
+
+function PlanSummary({ pages }: { pages: AdminUserPagePlan[] }) {
+  if (pages.length === 0) return null;
+  const { counts, trialing, atRisk } = summarizePlans(pages);
+  const planChips: React.ReactNode[] = [];
+  if (counts.business > 0) {
+    planChips.push(
+      <Badge
+        key="business"
+        className={cn("rounded-full", PLAN_BADGE_CLASS.business)}
+      >
+        {toPersianDigits(counts.business)} Business
+      </Badge>,
+    );
+  }
+  if (counts.pro > 0) {
+    planChips.push(
+      <Badge key="pro" className={cn("rounded-full", PLAN_BADGE_CLASS.pro)}>
+        {toPersianDigits(counts.pro)} Pro
+      </Badge>,
+    );
+  }
+  if (counts.free > 0) {
+    planChips.push(
+      <Badge key="free" className={cn("rounded-full", PLAN_BADGE_CLASS.free)}>
+        {toPersianDigits(counts.free)} Free
+      </Badge>,
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center gap-1">
+      {planChips}
+      {trialing > 0 ? (
+        <Badge className="rounded-full bg-amber-500/15 text-amber-700">
+          {toPersianDigits(trialing)} آزمایشی
+        </Badge>
+      ) : null}
+      {atRisk > 0 ? (
+        <Badge className="rounded-full bg-rose-500/15 text-rose-700">
+          {toPersianDigits(atRisk)} نیازمند رسیدگی
+        </Badge>
+      ) : null}
+    </div>
+  );
+}
+
+function PageCellDesktop({ pages }: { pages: AdminUserPagePlan[] }) {
+  if (pages.length === 0) {
+    return <span className="text-xs text-muted-foreground">بدون صفحه</span>;
+  }
+  return (
+    <details className="group">
+      <summary className="flex cursor-pointer list-none items-center gap-2">
+        <Badge className="gap-1 rounded-full bg-muted">
+          <LayoutGridIcon className="size-3" />
+          {toPersianDigits(pages.length)}
+        </Badge>
+        <PlanSummary pages={pages} />
+      </summary>
+      <ul className="mt-2 grid gap-1.5">
+        {pages.map((p) => (
+          <li
+            key={p.pageId}
+            className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-muted/40 p-2 text-xs"
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="font-mono text-foreground" dir="ltr">
+                /{p.slug}
+              </span>
+              <Badge
+                className={cn(
+                  "rounded-full text-[10px]",
+                  PLAN_BADGE_CLASS[p.planKey],
+                )}
+              >
+                {p.planNameFa}
+              </Badge>
+              <Badge className="rounded-full bg-background text-[10px] text-muted-foreground">
+                {STATUS_LABEL_FA[p.status]}
+              </Badge>
+              {p.cancelAtPeriodEnd ? (
+                <Badge className="rounded-full bg-muted text-[10px]">
+                  لغو در پایان
+                </Badge>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-2">
+              {p.currentPeriodEnd ? (
+                <span className="text-[11px] text-muted-foreground">
+                  {formatPersianDate(p.currentPeriodEnd)}
+                </span>
+              ) : null}
+              <Link
+                href={`/admin/billing/pages/${p.pageId}` as Route}
+                className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold text-background"
+              >
+                مدیریت
+                <ExternalLinkIcon className="size-3" />
+              </Link>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </details>
+  );
 }

@@ -43,5 +43,5 @@ export async function createCardRequestAction(
     notes: parsed.data.notes || null,
   });
 
-  redirect("/dashboard/requests/new?sent=1");
+  redirect("/premium?sent=1");
 }

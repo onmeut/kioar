@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(absoluteUrl("/")),
   applicationName: siteConfig.name,
   title: {
-    default: `${siteConfig.name} | کارت ویزیت دیجیتال فارسی`,
+    default: `${siteConfig.name} | هویت دیجیتالِ تو`,
     template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: `${siteConfig.name} | کارت ویزیت دیجیتال فارسی`,
+    title: `${siteConfig.name} | هویت دیجیتالِ تو`,
     description: siteConfig.description,
     type: "website",
     url: absoluteUrl("/"),
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${siteConfig.name} | کارت ویزیت دیجیتال فارسی`,
+    title: `${siteConfig.name} | هویت دیجیتالِ تو`,
     description: siteConfig.description,
   },
 };

@@ -115,6 +115,10 @@ const nextConfig: NextConfig = {
   compress: true,
   poweredByHeader: false,
   reactStrictMode: true,
+  // Standalone output produces `.next/standalone/server.js` plus a minimal
+  // node_modules tree. Used by the production Dockerfile to ship a small
+  // self-contained image. No-op for `next dev` / `next start`.
+  output: "standalone",
   experimental: {
     optimizePackageImports: ["lucide-react"],
     serverActions: {

@@ -1,24 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import {
-  CalendarIcon,
-  ClockIcon,
-  DollarSignIcon,
-  MoreVerticalIcon,
-  PencilIcon,
-  Trash2Icon,
-} from "lucide-react";
+import { CalendarIcon, CalendarCheckIcon } from "lucide-react";
 
+import { BlockCard } from "@/components/dashboard/block-card";
 import { BookingFlowDialog } from "@/components/dashboard/booking-flow-dialog";
+import { SpotlightStarButton } from "@/components/dashboard/spotlight-star-button";
 import type {
   EditableBookingBlockWithId,
   ProviderConnection,
 } from "@/components/dashboard/booking.types";
-import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import { Switch } from "@/components/ui/switch";
+import type {
+  BlockAnimationStyle,
+  BlockSpotlight,
+} from "@/lib/block-spotlight";
 import { toPersianDigits } from "@/lib/persian";
-import { cn } from "@/lib/utils";
 
 export type BookingBlockRowProps = {
   block: EditableBookingBlockWithId;
@@ -26,103 +22,97 @@ export type BookingBlockRowProps = {
   onUpdate: (next: EditableBookingBlockWithId) => Promise<void> | void;
   onDelete: () => Promise<void> | void;
   onToggleActive: (isActive: boolean) => Promise<void> | void;
-  /** Count of confirmed bookings to date (decorative). */
-  bookingCount?: number;
+  /** Drag handle props from `useSortable` (attributes + listeners). */
+  dragProps?: React.HTMLAttributes<HTMLButtonElement>;
+  /** True while this row is the dragged item. */
+  isDragging?: boolean;
+  /** Phase 5: render in a read-only locked state when the page lacks the
+   * `business_bookings` entitlement. The owner still sees their config. */
+  locked?: boolean;
+  /** Phase 6 — Spotlight gating. */
+  pinAllowed?: boolean;
+  animateAllowed?: boolean;
+  onSpotlightChange?: (next: {
+    spotlight: BlockSpotlight;
+    animationStyle: BlockAnimationStyle | null;
+  }) => Promise<void> | void;
 };
 
+/**
+ * Booking block row, rendered inside the unified blocks list. Uses the
+ * shared {@link BlockCard} shell so its sizing, drag handle and action
+ * cluster match links and forms exactly. Inline meta shows the first
+ * booking type's duration and price (further types are summarised as
+ * "+N").
+ */
 export function BookingBlockRow({
   block,
   providerConnections,
   onUpdate,
   onDelete,
   onToggleActive,
-  bookingCount = 0,
+  dragProps,
+  isDragging,
+  locked = false,
+  pinAllowed = false,
+  animateAllowed = false,
+  onSpotlightChange,
 }: BookingBlockRowProps) {
   const [editOpen, setEditOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   return (
-    <li
-      className={cn(
-        "min-w-0 rounded-3xl border border-border bg-background/80 p-4",
-        !block.isActive && "opacity-60",
-      )}
-    >
-      <div className="flex items-center gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-2xl bg-primary/10 text-primary">
-          <CalendarIcon className="size-5" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold">{block.name}</p>
-          <p className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span>میتینگ</span>
-            <span>·</span>
-            <span>{toPersianDigits(block.types.length)} نوع</span>
-            {bookingCount > 0 ? (
-              <>
-                <span>·</span>
-                <span>{toPersianDigits(bookingCount)} رزرو</span>
-              </>
-            ) : null}
-          </p>
-        </div>
-        <Switch
-          checked={block.isActive}
-          onCheckedChange={(v) => onToggleActive(!!v)}
-          aria-label="فعال/غیرفعال"
-        />
-        <button
-          type="button"
-          aria-label="ویرایش"
-          onClick={() => setEditOpen(true)}
-          className="tap-target grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-foreground/5"
-        >
-          <PencilIcon className="size-4" />
-        </button>
-        <ConfirmDialog
-          title="حذف میتینگ؟"
-          description="این میتینگ و تمام رزروهای مرتبط برای همیشه حذف می‌شوند."
-          confirmLabel="حذف"
-          destructive
-          onConfirm={onDelete}
-        >
-          <button
-            type="button"
-            aria-label="حذف"
-            className="tap-target grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+    <>
+      <BlockCard
+        dragProps={dragProps}
+        isDragging={isDragging}
+        locked={locked}
+        lockedPlan="business"
+        icon={
+          <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
+            <CalendarIcon className="size-5" />
+          </span>
+        }
+        title={block.name || "هماهنگ"}
+        meta={undefined}
+        trailing={
+          <span
+            className="inline-flex items-center gap-1 rounded-xl bg-muted px-2 py-1 text-[11px] font-bold text-muted-foreground"
+            title="تعداد رزرو"
           >
-            <Trash2Icon className="size-4" />
-          </button>
-        </ConfirmDialog>
-      </div>
-
-      {block.types.length ? (
-        <ul className="mt-3 flex flex-wrap gap-2">
-          {block.types.map((t, i) => (
-            <li
-              key={i}
-              className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-3 py-1 text-[11px]"
-            >
-              <ClockIcon className="size-3" />
-              <span className="font-bold">{t.title}</span>
-              <span className="text-muted-foreground">
-                · {toPersianDigits(t.durationMin)} د
-              </span>
-              <DollarSignIcon className="size-3 opacity-60" />
-              <span className="text-muted-foreground" dir="ltr">
-                {t.priceAmount === 0
-                  ? "رایگان"
-                  : `${t.priceAmount} ${t.priceCurrency}`}
-              </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+            <CalendarCheckIcon className="size-3" />
+            <span className="mt-0.5">
+              {toPersianDigits(block.bookingsCount ?? 0)}
+            </span>
+          </span>
+        }
+        spotlightSlot={
+          onSpotlightChange ? (
+            <SpotlightStarButton
+              blockKind="booking"
+              spotlight={block.spotlight}
+              animationStyle={block.animationStyle}
+              pinAllowed={pinAllowed}
+              animateAllowed={animateAllowed}
+              onChange={onSpotlightChange}
+            />
+          ) : null
+        }
+        isActive={block.isActive}
+        onToggleActive={(v) => onToggleActive(v)}
+        onEdit={() => {
+          if (locked) return;
+          setEditOpen(true);
+        }}
+        onDelete={onDelete}
+        deleteTitle="حذف هماهنگ؟"
+        deleteDescription="این هماهنگ و تمام هماهنگی‌های مرتبط برای همیشه حذف می‌شوند."
+      />
 
       <BookingFlowDialog
         open={editOpen}
         onOpenChange={setEditOpen}
-        title="ویرایش میتینگ"
+        title="ویرایش هماهنگ"
         initial={block}
         submitting={submitting}
         providerConnections={providerConnections}
@@ -134,6 +124,8 @@ export function BookingBlockRow({
               id: block.id,
               isActive: block.isActive,
               sortOrder: block.sortOrder,
+              spotlight: block.spotlight,
+              animationStyle: block.animationStyle,
             });
             setEditOpen(false);
           } finally {
@@ -141,6 +133,6 @@ export function BookingBlockRow({
           }
         }}
       />
-    </li>
+    </>
   );
 }

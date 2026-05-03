@@ -1,4 +1,8 @@
 import type { BookingBlockInput } from "@/lib/validations";
+import type {
+  BlockAnimationStyle,
+  BlockSpotlight,
+} from "@/lib/block-spotlight";
 import { detectTimezone } from "@/lib/timezones";
 
 // Client-side editable view of a booking block. Maps 1:1 to the server-side
@@ -10,6 +14,9 @@ export type EditableBookingBlockWithId = EditableBookingBlock & {
   id: string;
   isActive: boolean;
   sortOrder: number;
+  spotlight: BlockSpotlight;
+  animationStyle: BlockAnimationStyle | null;
+  bookingsCount?: number;
 };
 
 // Mirrors the server-side `ProviderConnectionStatus` from
@@ -24,8 +31,8 @@ export type ProviderConnection = {
 
 export const DEFAULT_BOOKING_BLOCK: EditableBookingBlock = {
   id: null,
-  name: "میتینگ با من",
-  description: "یک میتینگ کوتاه با من بگذارید — درباره‌ی پروژه‌تان حرف بزنیم.",
+  name: "",
+  description: null,
   avatarUrl: null,
   timezone: detectTimezone(),
   locationType: "online",
@@ -33,7 +40,7 @@ export const DEFAULT_BOOKING_BLOCK: EditableBookingBlock = {
   locationLat: null,
   locationLng: null,
   locationPlaceId: null,
-  meetingProvider: "google_meet",
+  meetingProvider: "custom",
   meetingLink: null,
   skyroomApiKey: null,
   skyroomRoomNamePrefix: null,

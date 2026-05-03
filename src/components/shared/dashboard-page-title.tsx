@@ -3,18 +3,30 @@
 import { usePathname } from "next/navigation";
 
 const TITLE_MAP: Array<{ match: RegExp; title: string }> = [
-  // Dashboard
-  { match: /^\/dashboard\/links(\/|$)/, title: "لینک‌ها" },
-  { match: /^\/dashboard\/requests(\/|$)/, title: "درخواست کارت" },
-  { match: /^\/dashboard\/events\/[^/]+/, title: "رویداد من" },
-  { match: /^\/dashboard\/events\/?$/, title: "رویدادهای من" },
+  // Dashboard / app
+  { match: /^\/page(\/|$)/, title: "صفحه‌ی من" },
+  { match: /^\/bookings(\/|$)/, title: "هماهنگی‌ها" },
+  { match: /^\/forms(\/|$)/, title: "پاسخ‌های فرم" },
+  { match: /^\/premium(\/|$)/, title: "کارت هوشمند" },
+  { match: /^\/my-events\/[^/]+/, title: "رویداد من" },
+  { match: /^\/my-events\/?$/, title: "رویدادهای من" },
   { match: /^\/dashboard\/?$/, title: "داشبورد" },
   // Admin
   { match: /^\/admin\/users\/[^/]+/, title: "جزئیات کاربر" },
   { match: /^\/admin\/users\/?$/, title: "کاربران" },
+  { match: /^\/admin\/pages\/?$/, title: "صفحه‌ها" },
   { match: /^\/admin\/events\/new/, title: "رویداد جدید" },
   { match: /^\/admin\/events\//, title: "ویرایش رویداد" },
   { match: /^\/admin\/requests(\/|$)/, title: "درخواست‌های کارت" },
+  {
+    match: /^\/admin\/affiliates\/applications(\/|$)/,
+    title: "درخواست‌های همکاری",
+  },
+  { match: /^\/admin\/affiliates\/payouts(\/|$)/, title: "تسویه‌های همکاری" },
+  { match: /^\/admin\/affiliates\/ledger(\/|$)/, title: "دفترچه پورسانت" },
+  { match: /^\/admin\/affiliates\/settings(\/|$)/, title: "تنظیمات همکاری" },
+  { match: /^\/admin\/affiliates\/[^/]+/, title: "جزئیات همکار" },
+  { match: /^\/admin\/affiliates\/?$/, title: "همکاری در فروش" },
   { match: /^\/admin\/?$/, title: "نمای کلی" },
   // Public-in-shell
   { match: /^\/events\/[^/]+/, title: "رویداد" },

@@ -143,18 +143,12 @@ export default async function EventPage({
       <SiteHeader />
 
       <main className="overflow-hidden bg-[#fcfbf8] text-foreground#0f1318]">
-        {/* Gradient accent backdrop */}
         <div className="relative border-b border-black/5">
-          <div className="pointer-events-none absolute inset-0 overflow-hidden">
-            <div className="absolute top-[-30%] left-[-10%] h-[32rem] w-[32rem] rounded-full bg-[radial-gradient(circle,_rgba(101,159,240,0.14),_transparent_70%)],_rgba(54,84,122,0.22),_transparent_72%)]" />
-            <div className="absolute right-[-10%] bottom-[-30%] h-[30rem] w-[30rem] rounded-full bg-[radial-gradient(circle,_rgba(243,201,138,0.14),_transparent_70%)],_rgba(126,90,50,0.22),_transparent_72%)]" />
-          </div>
-
           <section className="marketing-shell relative py-10 sm:py-14 lg:py-16">
             <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr] lg:gap-12">
               {/* Cover */}
               <div className="order-1">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,#d8efe5,#f3e3c4)] shadow-[0_40px_80px_-50px_rgba(15,23,42,0.35)]">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] bg-[#e8f5ef] shadow-[0_40px_80px_-50px_rgba(15,23,42,0.35)]">
                   {event.coverUrl ? (
                     <Image
                       src={event.coverUrl}
@@ -247,7 +241,7 @@ export default async function EventPage({
                           ? "این رویداد پایان یافته است"
                           : isRegistered
                             ? "شما ثبت‌نام کرده‌اید"
-                            : "رایگان · با پروفایل کیوآر"}
+                            : "رایگان · با پروفایل کی‌یو‌آر"}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -350,7 +344,7 @@ export default async function EventPage({
                   <TicketIcon className="size-5" />
                 </div>
                 <div>
-                  <p className="font-bold">تیم کیوآر</p>
+                  <p className="font-bold">تیم کی‌یو‌آر</p>
                   <p className="text-sm text-muted-foreground">
                     کارت دیجیتال برای رویدادها و شبکه‌سازی
                   </p>
@@ -360,7 +354,7 @@ export default async function EventPage({
 
             <div className="marketing-card p-5 sm:p-6">
               <p className="text-xs font-semibold text-muted-foreground uppercase">
-                چرا کیوآر برای رویداد
+                چرا کی‌یو‌آر برای رویداد
               </p>
               <ul className="mt-3 space-y-3 text-sm leading-7 text-muted-foreground">
                 <li className="flex items-start gap-2">

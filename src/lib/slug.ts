@@ -45,6 +45,10 @@ const RESERVED_SLUGS = new Set([
   "icons",
   "fallback",
   "swe-worker",
+  "robots",
+  "sitemap",
+  "opengraph-image",
+  "twitter-image",
 ]);
 
 export function normalizeSlug(input: string) {

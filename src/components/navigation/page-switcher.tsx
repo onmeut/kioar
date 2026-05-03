@@ -163,9 +163,6 @@ export function PageSwitcher({
 
             <DropdownMenuContent align="start" sideOffset={8} className="w-72">
               <DropdownMenuGroup>
-                <DropdownMenuLabel className="text-xs text-muted-foreground">
-                  صفحه‌های شما
-                </DropdownMenuLabel>
                 {pages.map((page) => {
                   const isCurrent = page.id === currentPageId;
                   return (
