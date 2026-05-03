@@ -13,7 +13,7 @@ function normalizeSlug(input: string) {
     .replace(/^-|-$/g, "");
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   if (pathname === "/auth") {

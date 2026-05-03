@@ -38,7 +38,7 @@ pnpm db:seed:sms      # tsx scripts/seed-sms-templates.ts
 
 ```
 src/
-  middleware.ts                # only matches /auth — handle→pending-slug cookie
+  proxy.ts                     # only matches /auth — handle→pending-slug cookie
   app/
     (app)/                     # authenticated user shell: dashboard, page editor, bookings, forms, events, requests
     [slug]/                    # public profile page renderer + booking/form actions
