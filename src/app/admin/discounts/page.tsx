@@ -1,8 +1,9 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, isNull, sql } from "drizzle-orm";
 import Link from "next/link";
 import type { Route } from "next";
 
 import { CreateDiscountDialog } from "@/components/admin/create-discount-dialog";
+import { BulkCreateDiscountDialog } from "@/components/admin/bulk-create-discount-dialog";
 import { Badge } from "@/components/ui/badge";
 import { getDb } from "@/db";
 import { discountCodes, discountRedemptions } from "@/db/schema";
@@ -15,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { ToggleDiscountButton } from "./toggle-button";
+import { SoftDeleteDiscountButton } from "./soft-delete-button";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,7 @@ export default async function AdminDiscountsPage() {
     db
       .select()
       .from(discountCodes)
+      .where(isNull(discountCodes.deletedAt))
       .orderBy(desc(discountCodes.createdAt))
       .limit(100),
     db
@@ -50,7 +53,8 @@ export default async function AdminDiscountsPage() {
         active: sql<number>`count(*) filter (where ${discountCodes.isActive} = true)::int`,
         sumRedemptions: sql<number>`coalesce(sum(${discountCodes.redemptionsCount}), 0)::int`,
       })
-      .from(discountCodes),
+      .from(discountCodes)
+      .where(isNull(discountCodes.deletedAt)),
     db.select({ count: sql<number>`count(*)::int` }).from(discountRedemptions),
   ]);
 
@@ -68,7 +72,10 @@ export default async function AdminDiscountsPage() {
             ایجاد و مدیریت کدهای تخفیف برای پلن‌های اشتراکی.
           </p>
         </div>
-        <CreateDiscountDialog />
+        <div className="flex flex-wrap gap-2">
+          <BulkCreateDiscountDialog />
+          <CreateDiscountDialog />
+        </div>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -157,6 +164,7 @@ export default async function AdminDiscountsPage() {
                         کدها و استفاده‌ها
                       </Link>
                       <ToggleDiscountButton id={c.id} isActive={c.isActive} />
+                      <SoftDeleteDiscountButton id={c.id} code={c.code} />
                     </div>
                   </div>
                 </li>
@@ -226,6 +234,10 @@ export default async function AdminDiscountsPage() {
                           <ToggleDiscountButton
                             id={c.id}
                             isActive={c.isActive}
+                          />
+                          <SoftDeleteDiscountButton
+                            id={c.id}
+                            code={c.code}
                           />
                         </div>
                       </td>

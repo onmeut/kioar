@@ -41,7 +41,7 @@
  *   free_months_requires_monthly — `free_months` only valid for monthly cycle
  *   amount_invalid       — code amount is corrupt (defensive)
  */
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -199,7 +199,10 @@ export async function validateDiscountCode(
   if (affiliateAttribution.length > 0) return err("stacked_with_affiliate");
 
   const code = await db.query.discountCodes.findFirst({
-    where: eq(discountCodes.codeNormalized, normalized),
+    where: and(
+      eq(discountCodes.codeNormalized, normalized),
+      isNull(discountCodes.deletedAt),
+    ),
   });
   if (!code) return err("not_found");
   if (!code.isActive) return err("inactive");
@@ -299,7 +302,10 @@ export async function findActiveRecurringRedemption(input: {
   const head = rows[0]!;
 
   const code = await db.query.discountCodes.findFirst({
-    where: eq(discountCodes.id, head.codeId),
+    where: and(
+      eq(discountCodes.id, head.codeId),
+      isNull(discountCodes.deletedAt),
+    ),
   });
   if (!code || !code.isActive) return null;
 
