@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
   bigint,
   boolean,
@@ -13,6 +13,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
 export const userRoleEnum = pgEnum("user_role", ["user", "admin"]);
@@ -147,6 +148,9 @@ export const users = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     phone: text("phone").notNull(),
     role: userRoleEnum("role").default("user").notNull(),
+    /** Legal / billing name — collected on demand, not at sign-up. */
+    firstName: text("first_name"),
+    lastName: text("last_name"),
     /**
      * IANA timezone string the user has selected (e.g. "Asia/Tehran").
      * Nullable; display layer falls back to the detected browser zone
@@ -226,9 +230,10 @@ export const profiles = pgTable(
     bio: text("bio"),
     avatarUrl: text("avatar_url"),
     /**
-     * Seed used for the deterministic boring-avatars fallback when no
-     * `avatarUrl` is set. Generated server-side at profile creation and
-     * persisted so the same user always sees the same generated avatar.
+     * Seed used for the deterministic DiceBear (bottts-neutral) fallback
+     * avatar when no `avatarUrl` is set. Generated server-side at profile
+     * creation and persisted so the same user always sees the same
+     * generated avatar.
      */
     avatarSeed: text("avatar_seed"),
     publicPhone: text("public_phone"),
@@ -1029,6 +1034,13 @@ export const plans = pgTable("plans", {
   descriptionFa: text("description_fa"),
   priceMonthlyToman: integer("price_monthly_toman").default(0).notNull(),
   priceAnnualToman: integer("price_annual_toman").default(0).notNull(),
+  /**
+   * Optional UI helper for the plan-prices editor's "computed from %"
+   * toggle. When non-NULL, the editor recomputes annual = monthly * 12 *
+   * (1 - pct/100) and grays out the absolute field. Pricing math always
+   * reads `priceAnnualToman` directly — this column is never authoritative.
+   */
+  annualDiscountPercent: integer("annual_discount_percent"),
   trialDays: integer("trial_days").default(7).notNull(),
   displayOrder: integer("display_order").default(0).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
@@ -1144,6 +1156,21 @@ export const pageSubscriptions = pgTable(
       () => plans.id,
       { onDelete: "set null" },
     ),
+    /**
+     * Admin-queued discount intent. Consumed by the trial-end /
+     * renewal-invoice path: the next invoice generated for this page
+     * attaches the redemption and clears these three columns.
+     */
+    pendingDiscountCodeId: uuid("pending_discount_code_id").references(
+      (): AnyPgColumn => discountCodes.id,
+      { onDelete: "set null" },
+    ),
+    pendingDiscountAppliedAt: timestamp("pending_discount_applied_at", {
+      withTimezone: true,
+    }),
+    pendingDiscountQueuedAt: timestamp("pending_discount_queued_at", {
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1159,6 +1186,9 @@ export const pageSubscriptions = pgTable(
       table.status,
       table.currentPeriodEnd,
     ),
+    index("page_subscriptions_pending_discount_idx")
+      .on(table.pendingDiscountCodeId)
+      .where(sql`${table.pendingDiscountCodeId} IS NOT NULL`),
   ],
 );
 
@@ -1422,6 +1452,22 @@ export const smsTemplates = pgTable("sms_templates", {
     .$type<string[]>()
     .notNull()
     .default([]),
+  /**
+   * Documentation-only mirror of the Farsi body that lives on the
+   * Kavenegar dashboard. Sending always uses tokens via lookup; we
+   * never transmit raw text from this column.
+   */
+  bodyFaPreview: text("body_fa_preview"),
+  bodyPreviewUpdatedAt: timestamp("body_preview_updated_at", {
+    withTimezone: true,
+  }),
+  /**
+   * Set when an admin clicks "I've reconciled with Kavenegar". The UI
+   * flags rows where `bodyPreviewUpdatedAt > kavenegarSyncedAt`.
+   */
+  kavenegarSyncedAt: timestamp("kavenegar_synced_at", {
+    withTimezone: true,
+  }),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true })
     .defaultNow()
@@ -1526,6 +1572,10 @@ export const discountCodes = pgTable(
     /** Total cycles (THIS invoice + N-1 renewals). 1 ⇒ single-use. */
     recurringCycles: integer("recurring_cycles").notNull().default(1),
     isActive: boolean("is_active").notNull().default(true),
+    /** Soft-delete: validator joins `deleted_at IS NULL`. */
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+    /** Groups bulk-generated codes (CSV download / batch deactivate). */
+    batchId: uuid("batch_id"),
     createdByUserId: uuid("created_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
@@ -1540,6 +1590,12 @@ export const discountCodes = pgTable(
   (table) => [
     uniqueIndex("discount_codes_code_normalized_idx").on(table.codeNormalized),
     index("discount_codes_is_active_idx").on(table.isActive),
+    index("discount_codes_batch_id_idx")
+      .on(table.batchId)
+      .where(sql`${table.batchId} IS NOT NULL`),
+    index("discount_codes_active_normalized_idx")
+      .on(table.codeNormalized)
+      .where(sql`${table.deletedAt} IS NULL`),
   ],
 );
 
@@ -2057,6 +2113,129 @@ export const affiliatePayoutsRelations = relations(
     }),
     processedBy: one(users, {
       fields: [affiliatePayouts.processedByUserId],
+      references: [users.id],
+    }),
+  }),
+);
+
+// ---------------------------------------------------------------------------
+// Phase 13 — Subscription admin
+//
+// `app_settings` stores billing knobs (grace days, reminder offsets, VAT
+// rate, default grandfathering policy) as typed JSONB. Reads/writes go
+// through `lib/app-settings.ts` which validates each key with zod. Pure
+// k/v table on purpose — adding a new knob is one seeder line, not a
+// migration.
+//
+// `subscription_price_locks` snapshots a page's price at the moment an
+// admin chose to grandfather it against a plan-level price change. The
+// invoice generator reads locks first, falls back to `plans.price_*`. A
+// manual plan change drops the lock (audit `subscription.price_lock_dropped_on_plan_change`).
+//
+// `subscription_price_change_events` is the audit + notification source
+// for every published price change.
+// ---------------------------------------------------------------------------
+
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").notNull(),
+  descriptionFa: text("description_fa"),
+  updatedByUserId: uuid("updated_by_user_id").references(() => users.id, {
+    onDelete: "set null",
+  }),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
+});
+
+export const subscriptionPriceLocks = pgTable(
+  "subscription_price_locks",
+  {
+    pageId: uuid("page_id")
+      .primaryKey()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "restrict" }),
+    billingCycle: billingCycleEnum("billing_cycle"),
+    lockedMonthlyToman: integer("locked_monthly_toman"),
+    lockedAnnualToman: integer("locked_annual_toman"),
+    reason: text("reason"),
+    lockedByUserId: uuid("locked_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    lockedAt: timestamp("locked_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("subscription_price_locks_plan_id_idx").on(table.planId),
+  ],
+);
+
+export const subscriptionPriceLocksRelations = relations(
+  subscriptionPriceLocks,
+  ({ one }) => ({
+    page: one(profiles, {
+      fields: [subscriptionPriceLocks.pageId],
+      references: [profiles.id],
+    }),
+    plan: one(plans, {
+      fields: [subscriptionPriceLocks.planId],
+      references: [plans.id],
+    }),
+    lockedBy: one(users, {
+      fields: [subscriptionPriceLocks.lockedByUserId],
+      references: [users.id],
+    }),
+  }),
+);
+
+export const subscriptionPriceChangeEvents = pgTable(
+  "subscription_price_change_events",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    planId: uuid("plan_id")
+      .notNull()
+      .references(() => plans.id, { onDelete: "cascade" }),
+    actorUserId: uuid("actor_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    previousMonthlyToman: integer("previous_monthly_toman"),
+    previousAnnualToman: integer("previous_annual_toman"),
+    previousAnnualDiscountPercent: integer("previous_annual_discount_percent"),
+    newMonthlyToman: integer("new_monthly_toman"),
+    newAnnualToman: integer("new_annual_toman"),
+    newAnnualDiscountPercent: integer("new_annual_discount_percent"),
+    /** "always_current" | "grandfather" */
+    policy: text("policy").notNull(),
+    grandfatheredCount: integer("grandfathered_count").notNull().default(0),
+    notificationSent: boolean("notification_sent").notNull().default(false),
+    reason: text("reason"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("subscription_price_change_events_plan_created_idx").on(
+      table.planId,
+      table.createdAt,
+    ),
+  ],
+);
+
+export const subscriptionPriceChangeEventsRelations = relations(
+  subscriptionPriceChangeEvents,
+  ({ one }) => ({
+    plan: one(plans, {
+      fields: [subscriptionPriceChangeEvents.planId],
+      references: [plans.id],
+    }),
+    actor: one(users, {
+      fields: [subscriptionPriceChangeEvents.actorUserId],
       references: [users.id],
     }),
   }),

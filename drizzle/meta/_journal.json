@@ -225,6 +225,20 @@
       "when": 1777900029000,
       "tag": "0031_product_block_icon",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1778079213478,
+      "tag": "0032_flashy_miracleman",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1778153320627,
+      "tag": "0033_subscription_admin",
+      "breakpoints": true
     }
   ]
 }
