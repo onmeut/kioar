@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { Route } from "next";
 
 const TABS: ReadonlyArray<{ href: Route; label: string }> = [
+  { href: "/admin/billing/overview" as Route, label: "نمای کلی" },
   { href: "/admin/billing/pages", label: "اشتراک‌ها" },
   { href: "/admin/billing/invoices", label: "فاکتورها" },
   { href: "/admin/billing/plans-pricing", label: "قیمت‌گذاری پلن‌ها" },
