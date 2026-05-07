@@ -5,12 +5,17 @@ import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
-const TABS = [
+import type { Route } from "next";
+
+const TABS: ReadonlyArray<{ href: Route; label: string }> = [
   { href: "/admin/billing/pages", label: "اشتراک‌ها" },
   { href: "/admin/billing/invoices", label: "فاکتورها" },
   { href: "/admin/billing/plans-pricing", label: "قیمت‌گذاری پلن‌ها" },
   { href: "/admin/billing/config", label: "تنظیمات" },
-] as const;
+  ...(process.env.NODE_ENV !== "production"
+    ? [{ href: "/admin/billing/test-tools" as Route, label: "ابزار آزمایشی" }]
+    : []),
+];
 
 export function BillingSectionTabs() {
   const pathname = usePathname();

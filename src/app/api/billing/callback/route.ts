@@ -33,9 +33,8 @@ import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { getDb } from "@/db";
-import { invoices, pageSubscriptions, payments, plans } from "@/db/schema";
-import { computePeriodEnd } from "@/lib/billing-pricing";
-import { rebuildEntitlements } from "@/lib/entitlements";
+import { invoices, payments, plans } from "@/db/schema";
+import { applyVerifiedPayment } from "@/lib/billing-apply";
 import { log } from "@/lib/log";
 import { absoluteUrl } from "@/lib/site";
 import { enqueueSms } from "@/lib/sms-queue";
@@ -158,61 +157,18 @@ export async function GET(request: Request) {
   const now = new Date();
   const refId = verifyResult.refId;
 
-  // Phase 9: a `kind: "proration"` invoice pays the in-period delta only;
-  // the user's existing period end MUST be preserved (they already paid
-  // for that period). All other invoice kinds (fresh checkout, trial-end,
-  // renewal) reset the period to `now → now + cycle`.
-  const meta = (invoice.metadata ?? {}) as Record<string, unknown>;
-  const isProration = meta.kind === "proration";
-  const preservedStart =
-    isProration && typeof meta.currentPeriodStart === "string"
-      ? new Date(meta.currentPeriodStart)
-      : null;
-  const preservedEnd =
-    isProration && typeof meta.currentPeriodEnd === "string"
-      ? new Date(meta.currentPeriodEnd)
-      : null;
-
-  const newPeriodStart =
-    preservedStart && !Number.isNaN(preservedStart.getTime())
-      ? preservedStart
-      : now;
-  const newPeriodEnd =
-    preservedEnd && !Number.isNaN(preservedEnd.getTime())
-      ? preservedEnd
-      : computePeriodEnd(now, invoice.billingCycle);
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(payments)
-      .set({
-        status: "verified",
-        refId,
-        verifiedAt: now,
-        rawResponse: verifyResult.raw as Record<string, unknown>,
-        updatedAt: now,
-      })
-      .where(eq(payments.id, payment.id));
-
-    await tx
-      .update(invoices)
-      .set({ status: "paid", paidAt: now })
-      .where(eq(invoices.id, invoice.id));
-
-    await tx
-      .update(pageSubscriptions)
-      .set({
-        planId: invoice.planId,
-        billingCycle: invoice.billingCycle,
-        status: "active",
-        currentPeriodStart: newPeriodStart,
-        currentPeriodEnd: newPeriodEnd,
-        cancelAtPeriodEnd: false,
-        pendingPlanChangePlanId: null,
-      })
-      .where(eq(pageSubscriptions.pageId, invoice.pageId));
-
-    await rebuildEntitlements(tx, invoice.pageId);
+  await applyVerifiedPayment({
+    payment: { id: payment.id, invoiceId: payment.invoiceId },
+    invoice: {
+      id: invoice.id,
+      pageId: invoice.pageId,
+      planId: invoice.planId,
+      billingCycle: invoice.billingCycle,
+      metadata: invoice.metadata,
+    },
+    refId,
+    rawResponse: verifyResult.raw as Record<string, unknown>,
+    now,
   });
 
   // Best-effort SMS — failures here MUST NOT roll back the apply.
