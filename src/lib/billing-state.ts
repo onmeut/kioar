@@ -69,6 +69,7 @@ import {
   pageSubscriptions,
   plans as plansTable,
 } from "@/db/schema";
+import { getAllSettings } from "@/lib/app-settings";
 import {
   computeBillingTotals,
   computePeriodEnd,
@@ -79,11 +80,41 @@ import { allocateInvoiceNumber } from "@/lib/invoice-numbering";
 import { log } from "@/lib/log";
 import { enqueueSms, type SmsTemplateKey } from "@/lib/sms-queue";
 
+/**
+ * Compile-time fallback when no config is passed (tests, ad-hoc calls).
+ * Production callers go through `transitionForToday` which loads the
+ * runtime config from `app_settings`.
+ */
 export const GRACE_PERIOD_DAYS = 7;
 /** Days before `current_period_end` at which paid-renewal SMS reminders fire. */
 export const PERIOD_REMINDER_OFFSETS_DAYS: readonly number[] = [5, 1];
 /** Days before `trial_ends_at` at which the trial-ending reminder fires. */
 export const TRIAL_REMINDER_OFFSET_DAYS = 3;
+
+export type BillingConfig = {
+  gracePeriodDays: number;
+  periodReminderOffsetsDays: readonly number[];
+  trialReminderOffsetDays: number;
+  vatRate: number;
+};
+
+const DEFAULT_CONFIG: BillingConfig = {
+  gracePeriodDays: GRACE_PERIOD_DAYS,
+  periodReminderOffsetsDays: PERIOD_REMINDER_OFFSETS_DAYS,
+  trialReminderOffsetDays: TRIAL_REMINDER_OFFSET_DAYS,
+  vatRate: 0,
+};
+
+async function loadBillingConfig(): Promise<BillingConfig> {
+  const s = await getAllSettings();
+  return {
+    gracePeriodDays: s["billing.grace_period_days"],
+    periodReminderOffsetsDays: s["billing.reminder_offsets_days"],
+    trialReminderOffsetDays: s["billing.trial_reminder_offset_days"],
+    vatRate: s["billing.vat_rate"],
+  };
+}
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type TransitionType =
@@ -164,6 +195,7 @@ function diffDays(from: Date, to: Date): number {
 export function evaluateTransitions(
   sub: SubRow,
   now: Date,
+  config: BillingConfig = DEFAULT_CONFIG,
 ): CandidateTransition[] {
   const out: CandidateTransition[] = [];
 
@@ -171,7 +203,7 @@ export function evaluateTransitions(
   if (sub.status === "trialing" && sub.trialEndsAt) {
     const daysUntilTrialEnd = diffDays(now, sub.trialEndsAt);
 
-    if (daysUntilTrialEnd === 3) {
+    if (daysUntilTrialEnd === config.trialReminderOffsetDays) {
       out.push({ type: "trial_ending_in_3d", keyDate: sub.trialEndsAt });
     }
     if (daysUntilTrialEnd === 0) {
@@ -206,17 +238,23 @@ export function evaluateTransitions(
   if (sub.status === "active" || sub.status === "pending_renewal") {
     const daysUntilEnd = diffDays(now, sub.currentPeriodEnd);
 
-    if (daysUntilEnd === 5) {
-      out.push({
-        type: "period_ending_in_5d",
-        keyDate: sub.currentPeriodEnd,
-      });
-    }
-    if (daysUntilEnd === 1) {
-      out.push({
-        type: "period_ending_in_1d",
-        keyDate: sub.currentPeriodEnd,
-      });
+    if (daysUntilEnd > 0 && config.periodReminderOffsetsDays.includes(daysUntilEnd)) {
+      // Map offset → existing transition type. We keep two specific
+      // transitions (5d / 1d) so the idempotency log keys remain stable
+      // and the SMS template keys (`renewal_reminder_5d` / `_1d`) line
+      // up. Any offset outside {5,1} is silently ignored — admins who
+      // want a 7d reminder need a new transition + SMS template first.
+      if (daysUntilEnd === 5) {
+        out.push({
+          type: "period_ending_in_5d",
+          keyDate: sub.currentPeriodEnd,
+        });
+      } else if (daysUntilEnd === 1) {
+        out.push({
+          type: "period_ending_in_1d",
+          keyDate: sub.currentPeriodEnd,
+        });
+      }
     }
     if (now >= sub.currentPeriodEnd) {
       if (sub.cancelAtPeriodEnd) {
@@ -242,7 +280,7 @@ export function evaluateTransitions(
   // ---- Grace branch ---------------------------------------------------
   if (sub.status === "grace") {
     const daysSinceEnd = diffDays(sub.currentPeriodEnd, now);
-    if (daysSinceEnd >= GRACE_PERIOD_DAYS) {
+    if (daysSinceEnd >= config.gracePeriodDays) {
       out.push({
         type: "grace_ended_to_expired",
         keyDate: sub.currentPeriodEnd,
@@ -263,6 +301,7 @@ export async function transitionForToday(
   now: Date = new Date(),
 ): Promise<TransitionForTodayResult> {
   const db = getDb();
+  const config = await loadBillingConfig();
 
   // Resolve the Free plan once — needed for downgrade-to-free targets.
   const freePlan = await db.query.plans.findFirst({
@@ -308,10 +347,10 @@ export async function transitionForToday(
   };
 
   for (const sub of rows) {
-    const candidates = evaluateTransitions(sub, now);
+    const candidates = evaluateTransitions(sub, now, config);
     for (const c of candidates) {
       try {
-        const fired = await applyTransition(sub, c, now, freePlan.id);
+        const fired = await applyTransition(sub, c, now, freePlan.id, config);
         const entry: AppliedTransition = {
           pageId: sub.pageId,
           type: c.type,
@@ -349,6 +388,7 @@ async function applyTransition(
   candidate: CandidateTransition,
   now: Date,
   freePlanId: string,
+  config: BillingConfig,
 ): Promise<boolean> {
   const db = getDb();
   const keyDateStr = isoDate(candidate.keyDate);
@@ -386,7 +426,7 @@ async function applyTransition(
           idempotencyKey: `trial_ending_soon:${sub.id}:${keyDateStr}`,
           variables: {
             plan: sub.planNameFa,
-            daysLeft: 3,
+            daysLeft: config.trialReminderOffsetDays,
           },
         });
         return true;
@@ -404,6 +444,7 @@ async function applyTransition(
           },
           billingCycle: sub.billingCycle,
           discountAmountToman: 0,
+          vatRate: config.vatRate,
         });
 
         const { number } = await allocateInvoiceNumber(tx, now);
@@ -478,7 +519,7 @@ async function applyTransition(
           idempotencyKey: `grace_period_started:${sub.id}:${keyDateStr}`,
           variables: {
             plan: sub.planNameFa,
-            graceDays: GRACE_PERIOD_DAYS,
+            graceDays: config.gracePeriodDays,
           },
         });
         return true;
@@ -591,7 +632,7 @@ async function applyTransition(
             idempotencyKey: `grace_period_started:${sub.id}:${keyDateStr}`,
             variables: {
               plan: sub.planNameFa,
-              graceDays: GRACE_PERIOD_DAYS,
+              graceDays: config.gracePeriodDays,
             },
           });
         }

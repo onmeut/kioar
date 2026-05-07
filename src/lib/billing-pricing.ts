@@ -58,6 +58,13 @@ export function computeBillingTotals(input: {
   billingCycle: BillingCycle;
   /** Pre-validated discount amount (toman). Pass 0 when no code applied. */
   discountAmountToman?: number;
+  /**
+   * VAT rate as a fraction (0.09 = 9%). Defaults to `BILLING_VAT_RATE`
+   * env (or 0). Cron / admin paths thread the runtime value from
+   * `app_settings.billing.vat_rate` so a hot config change is honored
+   * on the next invoice without a redeploy.
+   */
+  vatRate?: number;
 }): PriceBreakdown {
   const { plan, billingCycle, discountAmountToman = 0 } = input;
 
@@ -85,7 +92,7 @@ export function computeBillingTotals(input: {
   const discount = Math.min(discountAmountToman, subtotal);
   const postDiscount = subtotal - discount;
 
-  const vatRate = getVatRate();
+  const vatRate = input.vatRate ?? getVatRate();
   const vat = vatRate > 0 ? roundHalfToEven(postDiscount * vatRate) : 0;
 
   const total = postDiscount + vat;
