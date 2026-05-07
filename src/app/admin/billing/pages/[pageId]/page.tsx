@@ -12,6 +12,7 @@ import {
 import { EntitlementsManager } from "@/components/admin/entitlements-manager";
 import { InvoiceActions } from "@/components/admin/invoice-actions";
 import { SubscriptionActions } from "@/components/admin/subscription-actions";
+import { SubscriptionAdvancedActions } from "@/components/admin/subscription-advanced-actions";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { getDb } from "@/db";
@@ -99,6 +100,11 @@ type PageDetail = {
   cancel_at_period_end: boolean;
   pending_plan_change_plan_id: string | null;
   pending_plan_change_name_fa: string | null;
+  plan_price_monthly_toman: number;
+  plan_price_annual_toman: number;
+  pending_discount_code_id: string | null;
+  pending_discount_code: string | null;
+  pending_discount_queued_at: Date | null;
 };
 
 type InvoiceRow = {
@@ -187,12 +193,18 @@ export default async function AdminBillingPageDetailPage({
       s."has_used_trial_business"  AS has_used_trial_business,
       s."cancel_at_period_end"     AS cancel_at_period_end,
       s."pending_plan_change_plan_id" AS pending_plan_change_plan_id,
-      pp."name_fa"                 AS pending_plan_change_name_fa
+      pp."name_fa"                 AS pending_plan_change_name_fa,
+      pl."price_monthly_toman"     AS plan_price_monthly_toman,
+      pl."price_annual_toman"      AS plan_price_annual_toman,
+      s."pending_discount_code_id" AS pending_discount_code_id,
+      pdc."code"                   AS pending_discount_code,
+      s."pending_discount_queued_at" AS pending_discount_queued_at
     FROM "profiles" p
     JOIN "users" u ON u."id" = p."user_id"
     JOIN "page_subscriptions" s ON s."page_id" = p."id"
     JOIN "plans" pl ON pl."id" = s."plan_id"
     LEFT JOIN "plans" pp ON pp."id" = s."pending_plan_change_plan_id"
+    LEFT JOIN "discount_codes" pdc ON pdc."id" = s."pending_discount_code_id"
     WHERE p."id" = ${pageId}::uuid
     LIMIT 1
   `)) as unknown as PageDetail[];
@@ -200,8 +212,17 @@ export default async function AdminBillingPageDetailPage({
   const detail = detailRows[0];
   if (!detail) notFound();
 
-  const [invoices, payments, entitlements, sms, features, allPlans, audit] =
-    await Promise.all([
+  const [
+    invoices,
+    payments,
+    entitlements,
+    sms,
+    features,
+    allPlans,
+    audit,
+    priceLockRows,
+    activeDiscountCodes,
+  ] = await Promise.all([
       db.execute(sql`
         SELECT
           "id", "number", "status"::text AS status, "total_toman",
@@ -272,7 +293,42 @@ export default async function AdminBillingPageDetailPage({
         ORDER BY "display_order" ASC
       `) as unknown as Promise<PlanRow[]>,
       getAuditLogForPage(pageId, 30),
+      db.execute(sql`
+        SELECT
+          "locked_monthly_toman" AS locked_monthly_toman,
+          "locked_annual_toman"  AS locked_annual_toman,
+          "reason"               AS reason,
+          "locked_at"            AS locked_at
+        FROM "subscription_price_locks"
+        WHERE "page_id" = ${pageId}::uuid
+        LIMIT 1
+      `) as unknown as Promise<
+        Array<{
+          locked_monthly_toman: number;
+          locked_annual_toman: number;
+          reason: string | null;
+          locked_at: Date;
+        }>
+      >,
+      db.execute(sql`
+        SELECT "id", "code", "name_fa"
+        FROM "discount_codes"
+        WHERE "is_active" = true AND "deleted_at" IS NULL
+        ORDER BY "code" ASC
+        LIMIT 200
+      `) as unknown as Promise<
+        Array<{ id: string; code: string; name_fa: string }>
+      >,
     ]);
+
+  const priceLock = priceLockRows[0]
+    ? {
+        lockedMonthlyToman: priceLockRows[0].locked_monthly_toman,
+        lockedAnnualToman: priceLockRows[0].locked_annual_toman,
+        reason: priceLockRows[0].reason,
+        lockedAt: priceLockRows[0].locked_at.toISOString(),
+      }
+    : null;
 
   const publicUrl = absoluteUrl(`/${detail.slug}`);
 
@@ -336,6 +392,21 @@ export default async function AdminBillingPageDetailPage({
             currentPlanKey={detail.plan_key}
             currentBillingCycle={detail.billing_cycle}
             plans={allPlans.map((p) => ({ key: p.key, nameFa: p.name_fa }))}
+          />
+        </div>
+        <div className="mt-3 border-t border-border pt-3">
+          <SubscriptionAdvancedActions
+            pageId={pageId}
+            planKey={detail.plan_key}
+            planMonthlyToman={detail.plan_price_monthly_toman}
+            planAnnualToman={detail.plan_price_annual_toman}
+            priceLock={priceLock}
+            discountOptions={activeDiscountCodes.map((d) => ({
+              id: d.id,
+              code: d.code,
+              nameFa: d.name_fa,
+            }))}
+            pendingDiscountCode={detail.pending_discount_code}
           />
         </div>
       </section>

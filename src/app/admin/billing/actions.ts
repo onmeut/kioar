@@ -555,3 +555,312 @@ export async function adminCancelInvoiceAction(
   revalidatePath("/admin/billing/invoices");
   return { status: "success", message: "فاکتور لغو شد." };
 }
+
+// ---------------------------------------------------------------------------
+// Phase 8 — page-level subscription extensions.
+//
+// Force-expire, lock/unlock price for the current plan, queue a discount
+// for the next renewal. Each goes through the same admin → audit pattern.
+// ---------------------------------------------------------------------------
+
+const forceExpireSchema = z.object({
+  pageId: z.string().uuid(),
+  reason: reasonSchema,
+});
+
+export async function adminForceExpireSubscriptionAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const viewer = await requireAdmin();
+  const parsed = forceExpireSchema.safeParse({
+    pageId: formData.get("pageId"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+      message: "ورودی نامعتبر است.",
+    };
+  }
+  const { pageId, reason } = parsed.data;
+
+  const db = getDb();
+  const sub = await db.query.pageSubscriptions.findFirst({
+    where: eq(pageSubscriptions.pageId, pageId),
+  });
+  if (!sub) return { status: "error", message: "اشتراک یافت نشد." };
+  if (sub.status === "expired") {
+    return { status: "error", message: "این اشتراک هم‌اکنون منقضی است." };
+  }
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(pageSubscriptions)
+      .set({
+        status: "expired",
+        currentPeriodEnd: now,
+        cancelAtPeriodEnd: false,
+        pendingPlanChangePlanId: null,
+        updatedAt: now,
+      })
+      .where(eq(pageSubscriptions.pageId, pageId));
+
+    // Strip subscription-sourced entitlements; admin grants survive.
+    await rebuildEntitlements(tx, pageId);
+
+    await recordAdminAudit(
+      {
+        actorUserId: viewer.user.id,
+        action: "subscription.force_expire",
+        targetPageId: pageId,
+        reason,
+        metadata: {
+          previousStatus: sub.status,
+          previousPeriodEnd: sub.currentPeriodEnd.toISOString(),
+        },
+      },
+      tx,
+    );
+  });
+
+  log.info("admin.subscription.force_expire", {
+    adminId: viewer.user.id,
+    pageId,
+  });
+  revalidatePath(`/admin/billing/pages/${pageId}`);
+  return { status: "success", message: "اشتراک منقضی شد." };
+}
+
+const priceLockSchema = z.object({
+  pageId: z.string().uuid(),
+  lockedMonthlyToman: z.coerce.number().int().min(0).max(1_000_000_000),
+  lockedAnnualToman: z.coerce.number().int().min(0).max(1_000_000_000),
+  reason: reasonSchema,
+});
+
+export async function adminSetPriceLockAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const viewer = await requireAdmin();
+  const parsed = priceLockSchema.safeParse({
+    pageId: formData.get("pageId"),
+    lockedMonthlyToman: formData.get("lockedMonthlyToman"),
+    lockedAnnualToman: formData.get("lockedAnnualToman"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+      message: "ورودی نامعتبر است.",
+    };
+  }
+  const { pageId, lockedMonthlyToman, lockedAnnualToman, reason } = parsed.data;
+
+  const db = getDb();
+  const sub = await db.query.pageSubscriptions.findFirst({
+    where: eq(pageSubscriptions.pageId, pageId),
+    with: { plan: true },
+  });
+  if (!sub) return { status: "error", message: "اشتراک یافت نشد." };
+  if (sub.plan.key === "free") {
+    return {
+      status: "error",
+      message: "قفل قیمت برای پلن رایگان معنا ندارد.",
+    };
+  }
+
+  await db.transaction(async (tx) => {
+    await tx.execute(sql`
+      INSERT INTO "subscription_price_locks"
+        ("page_id", "plan_id", "billing_cycle",
+         "locked_monthly_toman", "locked_annual_toman",
+         "reason", "locked_by_user_id", "locked_at")
+      VALUES (
+        ${pageId}::uuid, ${sub.planId}::uuid, NULL,
+        ${lockedMonthlyToman}, ${lockedAnnualToman},
+        ${reason}, ${viewer.user.id}::uuid, now()
+      )
+      ON CONFLICT ("page_id") DO UPDATE SET
+        "plan_id"              = EXCLUDED."plan_id",
+        "locked_monthly_toman" = EXCLUDED."locked_monthly_toman",
+        "locked_annual_toman"  = EXCLUDED."locked_annual_toman",
+        "reason"               = EXCLUDED."reason",
+        "locked_by_user_id"    = EXCLUDED."locked_by_user_id",
+        "locked_at"            = now()
+    `);
+
+    await recordAdminAudit(
+      {
+        actorUserId: viewer.user.id,
+        action: "subscription.price_lock_set",
+        targetPageId: pageId,
+        reason,
+        metadata: {
+          planId: sub.planId,
+          lockedMonthlyToman,
+          lockedAnnualToman,
+        },
+      },
+      tx,
+    );
+  });
+
+  log.info("admin.subscription.price_lock_set", {
+    adminId: viewer.user.id,
+    pageId,
+  });
+  revalidatePath(`/admin/billing/pages/${pageId}`);
+  return { status: "success", message: "قفل قیمت اعمال شد." };
+}
+
+const removeLockSchema = z.object({
+  pageId: z.string().uuid(),
+  reason: reasonSchema,
+});
+
+export async function adminRemovePriceLockAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const viewer = await requireAdmin();
+  const parsed = removeLockSchema.safeParse({
+    pageId: formData.get("pageId"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+      message: "ورودی نامعتبر است.",
+    };
+  }
+  const { pageId, reason } = parsed.data;
+
+  const db = getDb();
+  let dropped = 0;
+  await db.transaction(async (tx) => {
+    const result = (await tx.execute(sql`
+      DELETE FROM "subscription_price_locks"
+      WHERE "page_id" = ${pageId}::uuid
+      RETURNING "plan_id", "locked_monthly_toman", "locked_annual_toman"
+    `)) as unknown as Array<{
+      plan_id: string;
+      locked_monthly_toman: number;
+      locked_annual_toman: number;
+    }>;
+    dropped = result.length;
+    if (dropped === 0) return;
+
+    await recordAdminAudit(
+      {
+        actorUserId: viewer.user.id,
+        action: "subscription.price_lock_remove",
+        targetPageId: pageId,
+        reason,
+        metadata: { droppedLocks: result },
+      },
+      tx,
+    );
+  });
+
+  if (dropped === 0) {
+    return { status: "error", message: "قفل قیمتی برای این صفحه ثبت نشده." };
+  }
+
+  log.info("admin.subscription.price_lock_remove", {
+    adminId: viewer.user.id,
+    pageId,
+  });
+  revalidatePath(`/admin/billing/pages/${pageId}`);
+  return { status: "success", message: "قفل قیمت حذف شد." };
+}
+
+const applyDiscountSchema = z.object({
+  pageId: z.string().uuid(),
+  discountCodeId: z.string().uuid(),
+  reason: reasonSchema,
+});
+
+export async function adminApplyDiscountToNextRenewalAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const viewer = await requireAdmin();
+  const parsed = applyDiscountSchema.safeParse({
+    pageId: formData.get("pageId"),
+    discountCodeId: formData.get("discountCodeId"),
+    reason: formData.get("reason"),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+      message: "ورودی نامعتبر است.",
+    };
+  }
+  const { pageId, discountCodeId, reason } = parsed.data;
+
+  const db = getDb();
+  const codeRows = (await db.execute(sql`
+    SELECT "id", "code", "is_active", "deleted_at"
+    FROM "discount_codes"
+    WHERE "id" = ${discountCodeId}::uuid
+    LIMIT 1
+  `)) as unknown as Array<{
+    id: string;
+    code: string;
+    is_active: boolean;
+    deleted_at: Date | null;
+  }>;
+  const code = codeRows[0];
+  if (!code) return { status: "error", message: "کد تخفیف یافت نشد." };
+  if (!code.is_active || code.deleted_at) {
+    return { status: "error", message: "کد تخفیف فعال نیست." };
+  }
+
+  const sub = await db.query.pageSubscriptions.findFirst({
+    where: eq(pageSubscriptions.pageId, pageId),
+  });
+  if (!sub) return { status: "error", message: "اشتراک یافت نشد." };
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(pageSubscriptions)
+      .set({
+        pendingDiscountCodeId: discountCodeId,
+        pendingDiscountQueuedAt: now,
+        pendingDiscountAppliedAt: null,
+        updatedAt: now,
+      })
+      .where(eq(pageSubscriptions.pageId, pageId));
+
+    await recordAdminAudit(
+      {
+        actorUserId: viewer.user.id,
+        action: "subscription.apply_discount_to_next_renewal",
+        targetPageId: pageId,
+        reason,
+        metadata: {
+          discountCodeId,
+          code: code.code,
+          previousPendingDiscountCodeId: sub.pendingDiscountCodeId,
+        },
+      },
+      tx,
+    );
+  });
+
+  log.info("admin.subscription.apply_discount_to_next_renewal", {
+    adminId: viewer.user.id,
+    pageId,
+    discountCodeId,
+  });
+  revalidatePath(`/admin/billing/pages/${pageId}`);
+  return { status: "success", message: "کد تخفیف برای تمدید بعدی ثبت شد." };
+}
