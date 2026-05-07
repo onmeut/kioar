@@ -79,6 +79,12 @@ const adminNavItems: SidebarNavItem[] = [
     icon: "affiliate",
     match: "prefix",
   },
+  {
+    href: "/admin/audit" as Route,
+    label: "گزارش فعالیت",
+    icon: "notifications",
+    match: "prefix",
+  },
 ];
 
 export default async function AdminLayout({
