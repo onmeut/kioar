@@ -74,17 +74,14 @@ function ManageSubscriptionCard({ href }: { href: Route }) {
       aria-label="مدیریت اشتراک"
       className={cn(
         "group relative block overflow-hidden rounded-2xl",
-        "border border-border/70 bg-muted/40 p-3.5",
+        "border border-border/70 bg-muted/40 p-3 pr-4",
         "transition-colors hover:bg-muted/60",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
       )}
     >
       <div className="flex items-center">
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-bold leading-tight">مدیریت اشتراک</p>
-          <p className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
-            صورت‌حساب‌ها، تجدید و ارتقا
-          </p>
+          <p className="text-sm font-bold leading-tight">مدیریت اشتراک</p>
         </div>
         <span
           aria-hidden

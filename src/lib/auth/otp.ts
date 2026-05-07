@@ -46,10 +46,21 @@ export async function issueSignInOtp(phone: string) {
 
   const code = generateOtpCode();
 
-  await sendOtpCode({
-    phone,
-    code,
-  });
+  try {
+    await sendOtpCode({
+      phone,
+      code,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    // Log so we can diagnose Kavenegar / SMS provider issues from server logs.
+    console.error("[kioar:otp] sms delivery failed", { phone, error: message });
+    return {
+      ok: false as const,
+      reason: "sms_failed" as const,
+      cooldownUntil: Date.now(),
+    };
+  }
 
   await db.insert(otpCodes).values({
     phone,

@@ -10,8 +10,6 @@ import { idleState } from "@/lib/action-state";
 import { isIranianPhone } from "@/lib/phone";
 import { toEnglishDigits } from "@/lib/persian";
 import { BrandMark } from "@/components/shared/brand-mark";
-import { SlugInput } from "@/components/shared/slug-input";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 function ContinueButton({ disabled }: { disabled: boolean }) {
@@ -40,11 +38,7 @@ function ContinueButton({ disabled }: { disabled: boolean }) {
   );
 }
 
-export function PhoneAuthForm({
-  pendingSlug,
-}: {
-  pendingSlug?: string | null;
-}) {
+export function PhoneAuthForm() {
   const [state, formAction] = useActionState(requestOtpAction, idleState);
   const [phone, setPhone] = useState("");
 
@@ -62,7 +56,7 @@ export function PhoneAuthForm({
         <BrandMark variant="mark" className="size-14" />
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
-            خوش آمدید به کی‌یو‌آر
+            به کیوآر خوش آمدید
           </h1>
           <p className="text-sm text-muted-foreground sm:text-base">
             شماره موبایل خود را وارد کنید تا ادامه دهید
@@ -71,20 +65,6 @@ export function PhoneAuthForm({
       </div>
 
       <form action={formAction} className="flex w-full flex-col gap-4">
-        {pendingSlug ? (
-          <div className="grid gap-2">
-            <Label htmlFor="handle">نام کاربری</Label>
-            <SlugInput
-              name="handle"
-              defaultValue={pendingSlug}
-              autoFocus
-              enterKeyHint="next"
-              size="sm"
-              variant="muted"
-            />
-          </div>
-        ) : null}
-
         <input
           id="phone"
           name="phone"
@@ -92,7 +72,7 @@ export function PhoneAuthForm({
           inputMode="tel"
           autoComplete="tel"
           enterKeyHint="send"
-          autoFocus={!pendingSlug}
+          autoFocus
           dir="ltr"
           placeholder="09123456789"
           value={phone}
@@ -132,21 +112,22 @@ export function PhoneAuthForm({
         <ContinueButton disabled={!isValid} />
 
         <p className="px-2 text-center text-xs leading-relaxed text-muted-foreground">
-          با ادامه، شما با{" "}
+          با ادامه، شما{" "}
           <Link
-            href="/terms"
+            href="#"
             className="font-semibold text-foreground underline-offset-4 hover:underline"
           >
             شرایط استفاده
-          </Link>{" "}
-          و{" "}
+          </Link>
+          {" "}و{" "}
           <Link
-            href="/privacy"
+            href="#"
             className="font-semibold text-foreground underline-offset-4 hover:underline"
           >
             سیاست حریم خصوصی
-          </Link>{" "}
-          ما موافقت می‌کنید.
+          </Link>
+          {" "}
+          را می‌پذیرید.
         </p>
       </form>
     </div>

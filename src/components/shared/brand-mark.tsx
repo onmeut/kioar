@@ -55,19 +55,6 @@ export function BrandMark({
         height={34}
         className={cn("shrink-0", compact ? "h-6 w-auto" : "h-7 w-auto")}
       />
-      <span
-        className={cn(
-          "font-bold leading-none",
-          compact ? "text-xl sm:text-2xl" : "text-2xl sm:text-3xl",
-        )}
-      >
-        کی‌یو‌آر
-      </span>
-      {!compact ? (
-        <span className="mb-1 hidden text-xs font-semibold text-muted-foreground sm:block">
-          کارت دیجیتال
-        </span>
-      ) : null}
     </Link>
   );
 }

@@ -44,6 +44,7 @@ export type SmsTemplateKey =
   | "subscription_expired"
   | "discount_applied"
   | "plan_changed"
+  | "price_change_notice"
   | "cancellation_confirmed"
   | "referral_referee_rewarded"
   | "referral_referrer_rewarded"
@@ -159,7 +160,7 @@ export async function processSmsQueue(options?: {
     SET "status" = 'sending', "updated_at" = now()
     WHERE "id" IN (
       SELECT "id" FROM "sms_queue"
-      WHERE "status" = 'queued' AND "scheduled_for" <= ${now}
+      WHERE "status" = 'queued' AND "scheduled_for" <= ${now.toISOString()}
       ORDER BY "scheduled_for" ASC
       LIMIT ${limit}
       FOR UPDATE SKIP LOCKED
@@ -248,7 +249,7 @@ export async function processSmsQueue(options?: {
           SET "status" = 'queued',
               "attempts" = ${newAttempts},
               "last_error" = ${message},
-              "scheduled_for" = ${nextRun},
+              "scheduled_for" = ${nextRun.toISOString()},
               "updated_at" = now()
           WHERE "id" = ${row.id}
         `);

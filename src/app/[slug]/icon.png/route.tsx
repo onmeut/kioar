@@ -7,5 +7,6 @@ export async function GET(
   { params }: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await params;
-  return renderProfileIcon(slug, 192, "any");
+  // Tab favicon: pure avatar, no rounded background chrome.
+  return renderProfileIcon(slug, 192, "favicon");
 }

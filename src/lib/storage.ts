@@ -19,16 +19,19 @@ export type UploadFolder =
   | "events"
   | "link-covers"
   | "link-icons"
-  | "product-items";
+  | "product-items"
+  | "products";
 
 export type UploadResult = {
   url: string;
   pathname: string;
 };
 
-// Max bytes accepted from the client. We reduce from 5MB because we always
-// re-encode through sharp and write a much smaller output anyway.
-const MAX_INPUT_BYTES = 4_000_000;
+// Max bytes accepted from the client. iPhone HEIC photos client-converted to
+// JPEG can grow to ~6-8MB at high quality, so we allow a little more headroom
+// than the raw HEIC source. We always re-encode through sharp to a much
+// smaller output anyway.
+const MAX_INPUT_BYTES = 8_000_000;
 // Max pixel dimensions we'll render out. Limits DoS via huge decode buffers.
 const MAX_IMAGE_DIMENSION = 2400;
 
@@ -145,28 +148,84 @@ function sanitizeFolder(folder: UploadFolder): string {
 
 type NormalizedImage = {
   buffer: Buffer;
-  contentType: "image/webp" | "image/png";
-  extension: "webp" | "png";
+  contentType: "image/webp" | "image/svg+xml";
+  extension: "webp" | "svg";
 };
+
+/**
+ * Detect whether a Buffer looks like SVG XML. We have to inspect bytes — the
+ * client-supplied MIME and extension cannot be trusted (polyglot risk).
+ */
+function looksLikeSvg(input: Buffer): boolean {
+  // SVG can have a leading XML prolog or whitespace/BOM. Scan the first 1KB.
+  const head = input
+    .subarray(0, Math.min(input.byteLength, 1024))
+    .toString("utf8")
+    .replace(/^\uFEFF/, "")
+    .trimStart()
+    .toLowerCase();
+  return (
+    head.startsWith("<?xml") ||
+    head.startsWith("<svg") ||
+    head.startsWith("<!doctype svg")
+  );
+}
+
+/**
+ * Sanitize an SVG buffer by parsing it through DOMPurify in a JSDOM
+ * environment and stripping any <script>, on* event handlers, foreignObject,
+ * external references, etc. — the standard XSS surface for inline SVG.
+ *
+ * DOMPurify is the industry-standard implementation; rolling our own regex
+ * sanitizer is a known-bad idea (parser differentials between sanitizer and
+ * browser have produced real CVEs).
+ */
+async function sanitizeSvg(input: Buffer): Promise<Buffer> {
+  const { default: DOMPurify } = await import("isomorphic-dompurify");
+  const dirty = input.toString("utf8");
+  const clean = DOMPurify.sanitize(dirty, {
+    USE_PROFILES: { svg: true, svgFilters: true },
+    // Belt-and-braces: even if the profile would allow them, we don't.
+    FORBID_TAGS: ["script", "foreignObject", "iframe"],
+    FORBID_ATTR: ["onload", "onerror", "onclick", "onmouseover"],
+  });
+  if (!clean || !clean.includes("<svg")) {
+    throw new Error("فرمت تصویر پشتیبانی نمی‌شود.");
+  }
+  return Buffer.from(clean, "utf8");
+}
 
 /**
  * Normalize arbitrary user-supplied image bytes into a safe, re-encoded image.
  *
  * WHY: trusting the uploaded MIME/extension is unsafe.
  *   - SVG is XML and can contain <script> / external resources -> stored XSS
- *     when served inline. We refuse SVG entirely.
+ *     when served inline. We sanitize via DOMPurify and keep the SVG as-is
+ *     (no rasterization — vectors stay vectors, no size change).
  *   - EXIF metadata on avatars often contains GPS coordinates (PII leak); sharp
  *     strips it by default on re-encode.
  *   - Re-encoding through a decoder also detects polyglot files (e.g. a PHP
  *     file renamed .jpg) which would otherwise sit in our bucket.
+ *   - HEIC/HEIF (iPhone camera roll) is decoded by libheif via sharp and
+ *     re-encoded to WebP, so non-Safari browsers can render it.
  *   - Pixel-dimension cap mitigates decode-bomb DoS.
  */
-async function normalizeImage(input: Buffer): Promise<NormalizedImage> {
+async function normalizeImage(
+  input: Buffer,
+  folder: UploadFolder,
+): Promise<NormalizedImage> {
   if (input.byteLength === 0) {
     throw new Error("تصویر خالی است.");
   }
   if (input.byteLength > MAX_INPUT_BYTES) {
-    throw new Error("حجم تصویر باید کمتر از ۴ مگابایت باشد.");
+    throw new Error("حجم تصویر باید کمتر از ۸ مگابایت باشد.");
+  }
+
+  // SVG path: sanitize and pass through unchanged. We never raster SVG —
+  // resolution-independence is the whole point of vectors.
+  if (looksLikeSvg(input)) {
+    const buffer = await sanitizeSvg(input);
+    return { buffer, contentType: "image/svg+xml", extension: "svg" };
   }
 
   let pipeline: sharp.Sharp;
@@ -180,7 +239,8 @@ async function normalizeImage(input: Buffer): Promise<NormalizedImage> {
 
   const format = metadata.format;
   if (!format || format === "svg" || format === "magick") {
-    // SVG is unsafe to serve inline; other vector formats are refused.
+    // Reject anything that smelled like SVG but didn't pass the prefix check,
+    // and any other vector formats sharp may surface.
     throw new Error("فرمت تصویر پشتیبانی نمی‌شود.");
   }
 
@@ -191,23 +251,28 @@ async function normalizeImage(input: Buffer): Promise<NormalizedImage> {
     throw new Error("ابعاد تصویر بیش از حد مجاز است.");
   }
 
+  // Avatars are always rendered into a fixed 200×200 circular slot in the UI.
+  // The cropper has already enforced 1:1, so center-cover just downscales.
+  if (folder === "avatars") {
+    const buffer = await pipeline
+      .resize(200, 200, { fit: "cover", position: "centre" })
+      .webp({ quality: 85 })
+      .toBuffer();
+    return { buffer, contentType: "image/webp", extension: "webp" };
+  }
+
+  // Everything else: cap dimensions and convert to WebP. WebP supports alpha,
+  // so we no longer need a PNG fallback path; modern browsers all decode it.
   pipeline = pipeline.resize({
     width: MAX_IMAGE_DIMENSION,
     height: MAX_IMAGE_DIMENSION,
     fit: "inside",
     withoutEnlargement: true,
   });
-
-  // Keep PNG when the source has an alpha channel; WebP otherwise (smaller).
   const hasAlpha = metadata.hasAlpha === true;
-  if (hasAlpha) {
-    const buffer = await pipeline
-      .png({ compressionLevel: 9, palette: true })
-      .toBuffer();
-    return { buffer, contentType: "image/png", extension: "png" };
-  }
-
-  const buffer = await pipeline.webp({ quality: 82, effort: 4 }).toBuffer();
+  const buffer = await pipeline
+    .webp({ quality: hasAlpha ? 88 : 82, effort: 4, alphaQuality: 90 })
+    .toBuffer();
   return { buffer, contentType: "image/webp", extension: "webp" };
 }
 
@@ -268,11 +333,11 @@ export async function uploadPublicImage(
   if (file.size === 0) return null;
 
   if (file.size > MAX_INPUT_BYTES) {
-    throw new Error("حجم تصویر باید کمتر از ۴ مگابایت باشد.");
+    throw new Error("حجم تصویر باید کمتر از ۸ مگابایت باشد.");
   }
 
   const input = Buffer.from(await file.arrayBuffer());
-  const normalized = await withImageSlot(() => normalizeImage(input));
+  const normalized = await withImageSlot(() => normalizeImage(input, folder));
 
   const fileName = `${Date.now()}-${randomUUID()}.${normalized.extension}`;
   return putBuffer(folder, fileName, normalized.buffer, normalized.contentType);
@@ -296,7 +361,9 @@ export async function uploadImageFromUrl(
   if (!fetched.contentType.startsWith("image/")) return null;
 
   try {
-    const normalized = await withImageSlot(() => normalizeImage(fetched.body));
+    const normalized = await withImageSlot(() =>
+      normalizeImage(fetched.body, folder),
+    );
     const fileName = `${Date.now()}-${randomUUID()}.${normalized.extension}`;
     return await putBuffer(
       folder,

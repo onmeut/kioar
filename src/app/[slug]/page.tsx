@@ -34,39 +34,74 @@ export async function generateMetadata({
   }
 
   const displayName = profile.fullName || "کارت دیجیتال";
-  const titleBase =
-    profile.seoTitle ||
-    (profile.title ? `${displayName} — ${profile.title}` : displayName);
+  const seoTitle = profile.seoTitle || displayName;
   const description =
     profile.seoDescription ||
     profile.bio ||
     `${displayName} روی کی‌یو‌آر — لینک‌ها، تماس، فرم‌ها و رزرو وقت.`;
 
   const canonical = profileShareUrl(slug, profile.domain);
-  const ogImage = profile.ogImageUrl || `/${slug}/opengraph-image`;
+  // Default OG image is the brand placeholder (cream bg + black logo).
+  // Users can upload a custom one in page settings.
+  const ogImage = profile.ogImageUrl || "/brand/og-default.png";
 
   const indexable = profile.indexEnabled && profile.isComplete;
 
+  // Home-screen / installed-app name = the user's handle. Used by the
+  // PWA manifest, `apple-mobile-web-app-title`, and `applicationName`.
+  // We deliberately do NOT put it in `<title>` — that's the SEO/tab
+  // title (full name + role). Modern iOS (14+) and Android both honour
+  // `apple-mobile-web-app-title` / `manifest.name` for the home-screen
+  // label, so the install dialog still shows `@username` while the
+  // browser tab and search engines see the rich title.
+  const homeScreenName = displayName;
+
+  // Cache-bust the per-profile icon/manifest URLs whenever the profile
+  // changes (avatar swap, color change, slug rename, etc). Without this,
+  // the CDN serves yesterday's icon for up to 24 h after an avatar swap.
+  const iconVersion = String(profile.updatedAt?.getTime?.() ?? "0");
+  const v = (path: string) => `${path}?v=${iconVersion}`;
+
   return {
     metadataBase: new URL(absoluteUrl("/")),
-    title: titleBase,
+    // Rich SEO/tab title — full name + role. The root layout's
+    // `template: "%s | کی‌یو‌آر"` would normally append the brand, but
+    // for public profile pages we keep it absolute so the tab reads
+    // exactly what the visitor expects.
+    title: { absolute: seoTitle },
     description,
-    applicationName: displayName,
+    applicationName: homeScreenName,
     authors: [{ name: displayName }],
     creator: displayName,
     keywords: [displayName, profile.title ?? "", "کی‌یو‌آر", "kioar"].filter(
       Boolean,
     ) as string[],
-    manifest: `/${slug}/manifest.webmanifest`,
+    manifest: v(`/${slug}/manifest.webmanifest`),
+    // Override the root layout's `appleWebApp` (which sets title="Kioar")
+    // so installed iOS app uses the profile's handle instead.
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: homeScreenName,
+      startupImage: [{ url: v(`/${slug}/apple-icon.png`) }],
+    },
     icons: {
       icon: [
-        { url: `/${slug}/icon.png`, sizes: "192x192", type: "image/png" },
-        { url: `/${slug}/icon-512.png`, sizes: "512x512", type: "image/png" },
+        { url: v(`/${slug}/icon.png`), sizes: "192x192", type: "image/png" },
+        {
+          url: v(`/${slug}/icon-512.png`),
+          sizes: "512x512",
+          type: "image/png",
+        },
       ],
       apple: [
-        { url: `/${slug}/apple-icon.png`, sizes: "180x180", type: "image/png" },
+        {
+          url: v(`/${slug}/apple-icon.png`),
+          sizes: "180x180",
+          type: "image/png",
+        },
       ],
-      shortcut: [{ url: `/${slug}/icon.png` }],
+      shortcut: [{ url: v(`/${slug}/icon.png`) }],
     },
     alternates: {
       canonical,
@@ -86,7 +121,9 @@ export async function generateMetadata({
       : { index: false, follow: false },
     openGraph: {
       type: "profile",
-      title: titleBase,
+      // Rich title for social/search previews — this is where the SEO
+      // value lives now that `<title>` is just the handle.
+      title: seoTitle,
       description,
       siteName: "کی‌یو‌آر",
       url: canonical,
@@ -102,14 +139,14 @@ export async function generateMetadata({
     },
     twitter: {
       card: "summary_large_image",
-      title: titleBase,
+      title: seoTitle,
       description,
       images: [ogImage],
     },
     other: {
       "apple-mobile-web-app-capable": "yes",
       "apple-mobile-web-app-status-bar-style": "black-translucent",
-      "apple-mobile-web-app-title": displayName,
+      "apple-mobile-web-app-title": homeScreenName,
       "mobile-web-app-capable": "yes",
       "theme-color": profile.appIconColor || "#195c54",
     },

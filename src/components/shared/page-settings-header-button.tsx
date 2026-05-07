@@ -1,6 +1,6 @@
 "use client";
 
-import { Settings2Icon } from "lucide-react";
+import { PencilIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 /** Broadcasts a custom event that `links-page-client` listens for. */
 export function PageSettingsHeaderButton() {
   const pathname = usePathname() || "";
-  if (!/^\/page(\/|$)/.test(pathname)) return null;
+  if (!/^\/me(\/|$)/.test(pathname)) return null;
 
   return (
     <Button
@@ -20,8 +20,8 @@ export function PageSettingsHeaderButton() {
         window.dispatchEvent(new CustomEvent("open-page-settings"))
       }
     >
-      <Settings2Icon className="size-4" />
-      تنظیمات صفحه
+      <PencilIcon className="size-4" />
+      ویرایش
     </Button>
   );
 }

@@ -38,7 +38,7 @@ export async function updateLinksAction(
     };
   }
 
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
 
   return {

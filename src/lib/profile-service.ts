@@ -9,7 +9,7 @@ import {
   ensureFreeSubscriptionForPage,
   resolveCurrentPageForOwner,
 } from "@/lib/pages";
-import { uploadPublicImage } from "@/lib/storage";
+import { deletePublicImage, uploadPublicImage } from "@/lib/storage";
 import {
   onboardingProfileSchema,
   pageSettingsFormSchema,
@@ -18,7 +18,7 @@ import {
 } from "@/lib/validations";
 
 type SaveResult =
-  | { ok: true }
+  | { ok: true; ogImageUrl?: string | null }
   | {
       ok: false;
       fieldErrors?: Record<string, string[] | undefined>;
@@ -263,13 +263,23 @@ export async function savePageSettingsForUser(
   let ogImageUrl = existingProfile.ogImageUrl ?? null;
   const ogImageRemove = formData.get("ogImageRemove") === "1";
   if (ogImageRemove) {
+    // Delete old file from storage so it doesn't linger in the bucket.
+    if (existingProfile.ogImageUrl) {
+      try {
+        await deletePublicImage(existingProfile.ogImageUrl);
+      } catch {
+        // Non-fatal: file may already be gone; continue to clear DB reference.
+      }
+    }
     ogImageUrl = null;
   }
+  let uploadedOgUrl: string | undefined;
   const ogImage = formData.get("ogImage");
   if (ogImage instanceof File && ogImage.size > 0) {
     try {
       const uploaded = await uploadPublicImage(ogImage, "events");
       ogImageUrl = uploaded?.url ?? ogImageUrl;
+      uploadedOgUrl = uploaded?.url ?? undefined;
     } catch (error) {
       return {
         ok: false,
@@ -310,7 +320,10 @@ export async function savePageSettingsForUser(
     throw error;
   }
 
-  return { ok: true };
+  return {
+    ok: true,
+    ogImageUrl: uploadedOgUrl ?? (ogImageRemove ? null : undefined),
+  };
 }
 
 export async function saveProfileLinksForUser(
@@ -408,9 +421,7 @@ export async function saveOnboardingProfileForUser(
   formData: FormData,
 ): Promise<OnboardingSaveResult> {
   const parsed = onboardingProfileSchema.safeParse({
-    firstName: formData.get("firstName"),
-    lastName: formData.get("lastName"),
-    title: formData.get("title"),
+    pageName: formData.get("pageName"),
     slug: formData.get("slug"),
   });
 
@@ -422,7 +433,7 @@ export async function saveOnboardingProfileForUser(
     };
   }
 
-  const fullName = `${parsed.data.firstName} ${parsed.data.lastName}`.trim();
+  const fullName = parsed.data.pageName;
 
   const db = getDb();
   // Slug uniqueness across every page on the platform.
@@ -446,7 +457,6 @@ export async function saveOnboardingProfileForUser(
   const nextValues = {
     slug: parsed.data.slug,
     fullName,
-    title: parsed.data.title,
     isComplete: true,
     updatedAt: new Date(),
   };

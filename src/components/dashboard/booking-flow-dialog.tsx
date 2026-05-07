@@ -673,7 +673,7 @@ function ProviderConnectCard({
   const returnTo =
     typeof window !== "undefined"
       ? window.location.pathname + window.location.search
-      : "/page";
+      : "/me";
   const startHref = `/api/oauth/${provider}/start?returnTo=${encodeURIComponent(returnTo)}`;
 
   async function disconnect() {

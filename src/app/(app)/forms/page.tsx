@@ -29,7 +29,7 @@ export default async function FormsSubmissionsPage({
             href="/me"
             className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground"
           >
-            رفتن به صفحه‌ی من
+            رفتن به لینک من
           </a>
         </div>
       </div>

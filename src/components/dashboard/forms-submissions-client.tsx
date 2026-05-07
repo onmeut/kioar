@@ -184,7 +184,7 @@ export function FormsSubmissionsClient({
     <div className="px-4 py-6 sm:px-6 lg:px-8">
       <div className="mx-auto w-full max-w-5xl space-y-5">
         <header className="space-y-1">
-          <h1 className="text-2xl font-bold">پاسخ‌های فرم</h1>
+          <h1 className="hidden text-2xl font-bold md:block">پاسخ‌های فرم</h1>
           <p className="text-sm text-muted-foreground">
             مشاهده، مدیریت و خروجی‌گرفتن از پاسخ‌هایی که از فرم‌های شما دریافت
             شده‌اند.

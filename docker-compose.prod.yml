@@ -79,6 +79,21 @@ services:
     expose:
       - "5432"
 
+  migrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migrator
+    image: kioar-app-migrator:latest
+    env_file:
+      - .env.production
+    environment:
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles: ["migrate"]
+
   pgbouncer:
     image: bitnami/pgbouncer:1
     restart: unless-stopped

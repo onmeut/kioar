@@ -2,13 +2,13 @@
 
 import {
   useActionState,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
   useTransition,
 } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   closestCenter,
@@ -26,12 +26,10 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
-  CameraIcon,
   Check,
-  EyeIcon,
   MousePointerClickIcon,
+  PencilIcon,
   PlusIcon,
-  Settings2Icon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -68,7 +66,6 @@ import type {
   BlockSpotlight,
 } from "@/lib/block-spotlight";
 import type { EditableLink } from "@/components/dashboard/links-manager.types";
-import { ProfileAvatarModal } from "@/components/dashboard/profile-avatar-modal";
 import { PhoneMockupFrame } from "@/components/dashboard/phone-mockup-frame";
 import { ProfilePreviewMock } from "@/components/dashboard/profile-preview-mock";
 import {
@@ -76,7 +73,6 @@ import {
   type PageSettingsValues,
 } from "@/components/dashboard/page-settings-sheet";
 import { PublicShareBar } from "@/components/dashboard/public-share-bar";
-import { BoringAvatar } from "@/components/shared/boring-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,7 +98,7 @@ type ProfileSnapshot = {
   publicPhone: string;
   email: string;
   avatarUrl: string | null;
-  /** Seed for the boring-avatars fallback when `avatarUrl` is null. */
+  /** Seed for the DiceBear avatar fallback when `avatarUrl` is null. */
   avatarSeed: string | null;
   domain: string;
   seoTitle: string;
@@ -141,6 +137,10 @@ type LinksPageClientProps = {
     formData: FormData,
   ) => Promise<ActionState>;
   deleteAvatarAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  saveAvatarSeedAction: (
     state: ActionState,
     formData: FormData,
   ) => Promise<ActionState>;
@@ -239,6 +239,7 @@ export function LinksPageClient({
   savePageSettingsAction,
   autosaveAvatarAction,
   deleteAvatarAction,
+  saveAvatarSeedAction,
   reorderBlocksAction,
   createBookingBlockAction,
   updateBookingBlockAction,
@@ -294,8 +295,6 @@ export function LinksPageClient({
   const [productBuilderOpen, setProductBuilderOpen] = useState(false);
   const [editingProductBlock, setEditingProductBlock] =
     useState<EditableProductBlockWithId | null>(null);
-  const [savingProduct, setSavingProduct] = useState(false);
-  const [avatarOpen, setAvatarOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -303,6 +302,54 @@ export function LinksPageClient({
     window.addEventListener("open-page-settings", handler);
     return () => window.removeEventListener("open-page-settings", handler);
   }, []);
+
+  // Mobile header "پیش‌نمایش" button (rendered in the dashboard
+  // top-bar by `MeHeaderActions`) dispatches this event. Keeping the
+  // sheet state colocated with the editor lets us preview the live
+  // in-memory profile without prop-drilling state up to the layout.
+  useEffect(() => {
+    const handler = () => setPreviewOpen(true);
+    window.addEventListener("open-page-preview", handler);
+    return () => window.removeEventListener("open-page-preview", handler);
+  }, []);
+
+  // Handle quick actions dispatched by the command palette (either live via
+  // custom event when already on /me, or via sessionStorage when navigating
+  // from another route).
+  const openPaletteAction = useCallback((action: string) => {
+    if (action === "add-block") {
+      setAddOpen(true);
+    } else if (action === "add-booking") {
+      setBookingFlowOpen(true);
+    } else if (action === "add-form") {
+      setEditingFormBlock(null);
+      setFormBuilderOpen(true);
+    } else if (action === "add-product") {
+      setEditingProductBlock(null);
+      setProductBuilderOpen(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    // On mount: consume a pending action stored by the command palette when
+    // it navigated here from another route.
+    const pending = sessionStorage.getItem("kioar:pending-palette-action");
+    if (pending) {
+      sessionStorage.removeItem("kioar:pending-palette-action");
+      openPaletteAction(pending);
+    }
+  }, [openPaletteAction]);
+
+  useEffect(() => {
+    // When already on /me: respond to the live custom event dispatched by
+    // the command palette without a full navigation.
+    const handler = (e: Event) => {
+      const action = (e as CustomEvent<string>).detail;
+      openPaletteAction(action);
+    };
+    window.addEventListener("cmd-palette-action", handler);
+    return () => window.removeEventListener("cmd-palette-action", handler);
+  }, [openPaletteAction]);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
@@ -735,52 +782,34 @@ export function LinksPageClient({
   }
 
   // -------- Product block handlers --------
-  async function handleSaveProduct(payload: ProductBlockSubmit) {
-    setSavingProduct(true);
-    try {
-      const fd = new FormData();
-      fd.set("payload", JSON.stringify(payload));
-      if (editingProductBlock) {
-        fd.set("blockId", editingProductBlock.id);
-        const result = await updateProductBlockAction(idleState, fd);
-        if (result.status === "error") {
-          toast.error(result.message ?? "ذخیره نشد.");
-          return;
-        }
-        toast.success("به‌روز شد.");
-      } else {
-        const result = await createProductBlockAction(
-          { status: "idle" as const },
-          fd,
-        );
-        if (result.status === "error") {
-          toast.error(result.message ?? "ساخت بلوک با خطا مواجه شد.");
-          return;
-        }
-        toast.success("بلوک ساخته شد.");
-      }
-      setProductBuilderOpen(false);
-      setEditingProductBlock(null);
-      router.refresh();
-    } finally {
-      setSavingProduct(false);
-    }
-  }
-
-  /** Silent auto-save — called by the builder for reorder/item edits while
-   * the modal is still open. No toast, no close. */
-  async function handleAutoSaveProduct(payload: ProductBlockSubmit) {
-    if (!editingProductBlock) return;
+  /** Unified auto-save: creates the block on first call (returns the new
+   * id so the dialog can keep editing the same row) or updates the
+   * existing block. Optimistic UI: closing the modal triggers a refresh
+   * to pick up canonical server state. */
+  async function handleAutoSaveProduct(
+    payload: ProductBlockSubmit,
+  ): Promise<{ id: string } | null> {
     const fd = new FormData();
     fd.set("payload", JSON.stringify(payload));
-    fd.set("blockId", editingProductBlock.id);
-    const result = await updateProductBlockAction(idleState, fd);
-    if (result.status === "error") {
-      // Surface errors quietly so the user can retry via the Save button.
-      toast.error(result.message ?? "ذخیره نشد.");
-    } else {
-      router.refresh();
+    if (payload.id) {
+      fd.set("blockId", payload.id);
+      const result = await updateProductBlockAction(idleState, fd);
+      if (result.status === "error") {
+        toast.error(result.message ?? "ذخیره نشد.");
+        return null;
+      }
+      return { id: payload.id };
     }
+    const result = await createProductBlockAction(
+      { status: "idle" as const },
+      fd,
+    );
+    if (result.status === "error" || !result.id) {
+      toast.error(result.message ?? "ساخت بلوک با خطا مواجه شد.");
+      return null;
+    }
+    toast.success("بلوک ساخته شد.");
+    return { id: result.id };
   }
 
   async function handleDeleteProductBlock(id: string) {
@@ -834,6 +863,10 @@ export function LinksPageClient({
       toast.error(result.message ?? "آپلود نشد.");
       return { ok: false as const };
     }
+    const newUrl = result.values?.avatarUrl ?? null;
+    if (newUrl) {
+      setProfile((p) => ({ ...p, avatarUrl: newUrl }));
+    }
     router.refresh();
     return { ok: true as const };
   }
@@ -845,6 +878,21 @@ export function LinksPageClient({
       return { ok: false as const };
     }
     setProfile((p) => ({ ...p, avatarUrl: null }));
+    router.refresh();
+    return { ok: true as const };
+  }
+
+  async function handleAvatarPickSeed(seed: string) {
+    const fd = new FormData();
+    fd.set("seed", seed);
+    const result = await saveAvatarSeedAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "ذخیره نشد.");
+      return { ok: false as const };
+    }
+    // Picking a seed clears any uploaded photo on the server; mirror that
+    // optimistically so the editor avatar swaps immediately.
+    setProfile((p) => ({ ...p, avatarSeed: seed, avatarUrl: null }));
     router.refresh();
     return { ok: true as const };
   }
@@ -887,7 +935,7 @@ export function LinksPageClient({
       ogImageUrl: next.ogImageRemove
         ? null
         : next.ogImageFile
-          ? p.ogImageUrl /* server returns updated url after refresh */
+          ? result.values?.ogImageUrl || p.ogImageUrl // use server-returned S3 URL
           : p.ogImageUrl,
       indexEnabled: next.indexEnabled,
       appIconKey: next.appIconKey,
@@ -996,82 +1044,54 @@ export function LinksPageClient({
       {/* Editor column */}
       <div className="min-w-0 border-b lg:border-b-0 lg:border-e">
         <div className="section-shell space-y-6 py-6">
-          {/* Profile summary */}
-          <section className="space-y-4">
-            <div className="flex items-start gap-4">
-              <button
-                type="button"
-                onClick={() => setAvatarOpen(true)}
-                aria-label="ویرایش تصویر"
-                className="group relative size-20 shrink-0 overflow-hidden rounded-full border border-foreground/10 bg-card"
-              >
-                {profile.avatarUrl ? (
-                  <Image
-                    src={profile.avatarUrl}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    sizes="80px"
-                  />
-                ) : (
-                  <BoringAvatar seed={profile.avatarSeed} size={80} />
-                )}
-                <span className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                  <CameraIcon className="size-5 text-white" />
-                </span>
-              </button>
+          {/* Mobile: profile summary card removed — page identity now
+              lives in the dashboard header (page switcher) and page
+              settings open via the gear button on the header. */}
 
-              <div className="min-w-0 flex-1">
-                <div className="flex w-full items-start gap-2 p-1">
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="truncate text-lg font-bold">
-                      {profile.fullName || "نام شما"}
-                    </p>
-                    {profile.title ? (
-                      <p className="truncate text-sm text-muted-foreground">
-                        {profile.title}
-                      </p>
-                    ) : null}
-                    {profile.bio ? (
-                      <p className="line-clamp-2 text-xs leading-6 text-muted-foreground">
-                        {profile.bio}
-                      </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">
-                        توضیح کوتاهی درباره خود بنویسید.
-                      </p>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setSettingsOpen(true)}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-2xl border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground shadow-xs transition-colors hover:bg-muted"
-                  >
-                    <Settings2Icon className="size-3.5" />
-                    تنظیمات صفحه
-                  </button>
-                </div>
-              </div>
+          {/* ─────────────────────────────────────────────────────────
+              DESKTOP — action row only.
+              The avatar + name was deliberately removed: on desktop the
+              live preview (right panel) already shows the page header,
+              so duplicating the avatar above the editor was redundant.
+              The two buttons share size/padding/typography; only color
+              differs. "ویرایش" keeps its natural width, "+ افزودن بلاک"
+              fills the rest with `flex-1`.
+             ────────────────────────────────────────────────────────── */}
+          <section className="hidden lg:block">
+            <div className="flex items-stretch gap-2">
+              <Button
+                type="button"
+                onClick={() => setAddOpen(true)}
+                disabled={!canAdd}
+                className="h-12 flex-1 gap-1.5 rounded-full text-sm font-bold"
+              >
+                <PlusIcon className="size-4" />
+                افزودن بلاک
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSettingsOpen(true)}
+                className="h-12 gap-1.5 rounded-full px-5 text-sm font-bold"
+              >
+                <PencilIcon className="size-4" />
+                تنظیمات صفحه
+              </Button>
             </div>
+            {!canAdd ? (
+              <p className="mt-2 text-center text-xs text-muted-foreground">
+                حداکثر ۸ لینک قابل ثبت است.
+              </p>
+            ) : null}
           </section>
 
-          {/* Compact share pill (shown on all breakpoints, tight). */}
-          <div className="flex items-center gap-2 lg:hidden">
-            <PublicShareBar
-              publicUrl={publicUrl}
-              slug={profile.slug}
-              displayName={profile.fullName || "کارت"}
-              host={`${profile.domain}/${profile.slug}`}
-            />
-          </div>
-
-          {/* Add button */}
-          <div>
+          {/* MOBILE — full-width add button (kept as before). */}
+          <div className="lg:hidden">
             <Button
               type="button"
               onClick={() => setAddOpen(true)}
               disabled={!canAdd}
-              className="h-12 w-full text-sm font-bold"
+              className="h-12 w-full rounded-full text-sm font-bold"
             >
               <PlusIcon className="size-4" />
               افزودن بلاک
@@ -1233,44 +1253,33 @@ export function LinksPageClient({
       </div>
 
       {/* Desktop preview column */}
-      <aside className="hidden lg:block bg-sidebar-accent/30">
-        <div className="sticky top-0 flex h-[calc(100dvh-var(--promo-bar-height,0)-4rem)] flex-col">
-          <div className="flex items-center justify-center gap-2 p-3">
-            <PublicShareBar
-              publicUrl={publicUrl}
-              slug={profile.slug}
-              displayName={profile.fullName || "کارت"}
-              host={`${profile.domain}/${profile.slug}`}
+      <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-[calc(100dvh-var(--promo-bar-height,0)-4rem)] lg:flex-col bg-sidebar-accent/30">
+        <div className="flex min-h-0 flex-1 flex-col items-center overflow-hidden px-6 pt-6">
+          {/* Phone frame — fills remaining column height (flex-1 in a flex-col
+              parent is cross-browser reliable; h-full against items-stretch
+              breaks in WebKit). translateZ(0) makes it the containing block
+              for position:fixed portaled modals. */}
+          <PhoneMockupFrame>
+            <ProfilePreviewMock
+              profile={previewProfile}
+              formSubmitAction={publicSubmitFormAction}
             />
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col items-center overflow-hidden px-6 pb-6">
-            {/* Phone frame — fills remaining column height (flex-1 in a flex-col
-                parent is cross-browser reliable; h-full against items-stretch
-                breaks in WebKit). translateZ(0) makes it the containing block
-                for position:fixed portaled modals. */}
-            <PhoneMockupFrame>
-              <ProfilePreviewMock
-                profile={previewProfile}
-                formSubmitAction={publicSubmitFormAction}
-              />
-            </PhoneMockupFrame>
-          </div>
+          </PhoneMockupFrame>
+        </div>
+        <div className="flex items-center justify-center gap-2 px-3 pt-3 pb-5">
+          <PublicShareBar
+            publicUrl={publicUrl}
+            slug={profile.slug}
+            displayName={profile.fullName || "کارت"}
+            host={`${profile.domain}/${profile.slug}`}
+          />
         </div>
       </aside>
 
-      {/* Mobile floating Preview button (above bottom nav). */}
-      <button
-        type="button"
-        onClick={() => setPreviewOpen(true)}
-        aria-label="پیش‌نمایش کارت"
-        className="fixed inset-e-4 z-30 inline-flex items-center gap-1.5 rounded-full border border-black/8 bg-card px-4 py-2.5 text-sm font-bold text-foreground shadow-[0_18px_36px_-18px_rgba(15,23,42,0.4)] backdrop-blur transition-colors hover:bg-primary/10 lg:hidden"
-        style={{
-          bottom: "calc(5.25rem + env(safe-area-inset-bottom))",
-        }}
-      >
-        <EyeIcon className="size-4" />
-        پیش‌نمایش
-      </button>
+      {/* Floating mobile share/preview bar was removed — these
+          actions now live in the dashboard header (see
+          `MeHeaderActions`) so they don't crowd the viewport above
+          the bottom nav. */}
 
       {/* Mobile Preview sheet — renders the REAL public profile card. */}
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
@@ -1278,11 +1287,8 @@ export function LinksPageClient({
           side="bottom"
           className="max-h-[92dvh] rounded-t-[2rem] bg-background p-0"
         >
-          <SheetHeader className="border-b px-4 pt-4 pb-3">
-            <SheetTitle>پیش‌نمایش زنده</SheetTitle>
-            <SheetDescription>
-              دقیقاً همان چیزی که بازدیدکنندگان می‌بینند.
-            </SheetDescription>
+          <SheetHeader className="border-b px-4 pt-4 pb-4 text-center">
+            <SheetTitle className="text-center">پیش‌نمایش زنده</SheetTitle>
           </SheetHeader>
           <div className="overflow-y-auto px-3 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <div className="mx-auto w-full max-w-md">
@@ -1347,14 +1353,19 @@ export function LinksPageClient({
         open={productBuilderOpen}
         onOpenChange={(o) => {
           setProductBuilderOpen(o);
-          if (!o) setEditingProductBlock(null);
+          if (!o) {
+            setEditingProductBlock(null);
+            // Refresh once on close to pick up canonical server state
+            // (item ids, sort order). We deliberately do NOT refresh
+            // during the modal session so the in-flight draft isn't
+            // wiped by a parent re-render.
+            router.refresh();
+          }
         }}
         initial={editingProductBlock}
         itemsCap={productItemsCap}
-        onSubmit={handleSaveProduct}
         onAutoSave={handleAutoSaveProduct}
         onUploadItemImage={handleUploadProductImage}
-        submitting={savingProduct}
       />
 
       <BookingFlowDialog
@@ -1364,16 +1375,6 @@ export function LinksPageClient({
         submitting={creatingBooking}
         providerConnections={providerConnections}
         onSubmit={handleCreateBooking}
-      />
-
-      <ProfileAvatarModal
-        open={avatarOpen}
-        onOpenChange={setAvatarOpen}
-        currentUrl={profile.avatarUrl}
-        avatarSeed={profile.avatarSeed}
-        displayName={profile.fullName ?? ""}
-        onUpload={handleAvatarSave}
-        onDelete={handleAvatarDelete}
       />
 
       <PageSettingsSheet
@@ -1399,8 +1400,12 @@ export function LinksPageClient({
           fullName: profile.fullName,
           title: profile.title,
           avatarUrl: profile.avatarUrl,
+          avatarSeed: profile.avatarSeed,
         }}
         onSave={handleSettingsSave}
+        onAvatarUpload={handleAvatarSave}
+        onAvatarDelete={handleAvatarDelete}
+        onAvatarPickSeed={handleAvatarPickSeed}
       />
     </div>
   );

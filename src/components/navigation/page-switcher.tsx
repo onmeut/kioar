@@ -7,14 +7,13 @@ import { toast } from "sonner";
 
 import { switchPageAction } from "@/app/(app)/dashboard/pages/actions";
 import { CreatePageDialog } from "@/components/dashboard/create-page-dialog";
-import { BoringAvatar } from "@/components/shared/boring-avatar";
+import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -45,6 +44,12 @@ interface PageSwitcherProps {
    * affordance.
    */
   signOut: () => Promise<void>;
+  /**
+   * `sidebar` (default) renders the full-width sidebar trigger row.
+   * `compact` renders a small avatar + chevron pill — used in the
+   * mobile dashboard header where vertical space is precious.
+   */
+  variant?: "sidebar" | "compact";
 }
 
 const PLAN_LABEL: Record<PageSwitcherItem["planKey"], string> = {
@@ -103,7 +108,7 @@ function PageAvatar({
         <AvatarImage src={page.avatarUrl} alt={page.title} />
       ) : (
         <AvatarFallback className="p-0 bg-transparent">
-          <BoringAvatar seed={page.avatarSeed} size={size} />
+          <KioarAvatar seed={page.avatarSeed} size={size} />
         </AvatarFallback>
       )}
     </Avatar>
@@ -119,6 +124,7 @@ export function PageSwitcher({
   pages,
   currentPageId,
   signOut,
+  variant = "sidebar",
 }: PageSwitcherProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -136,10 +142,94 @@ export function PageSwitcher({
         toast.error(result.message);
         return;
       }
-      router.push("/page");
+      router.push("/me");
       router.refresh();
     });
   };
+
+  // Shared dropdown content — same items regardless of variant.
+  const dropdownContent = (
+    <DropdownMenuContent align="start" sideOffset={8} className="w-72">
+      <DropdownMenuGroup>
+        {pages.map((page) => {
+          const isCurrent = page.id === currentPageId;
+          return (
+            <DropdownMenuItem
+              key={page.id}
+              onClick={() => onSelect(page.id)}
+              className="cursor-pointer items-center gap-3 py-2"
+            >
+              <PageAvatar page={page} size={44} highlighted={isCurrent} />
+              <span className="flex min-w-0 flex-1 flex-col justify-center text-start leading-tight">
+                <span className="truncate text-sm font-semibold">
+                  {page.title}
+                </span>
+                <span className="truncate text-[11px] text-muted-foreground">
+                  /{page.slug}
+                </span>
+              </span>
+              <PlanBadge planKey={page.planKey} isOnTrial={page.isOnTrial} />
+            </DropdownMenuItem>
+          );
+        })}
+      </DropdownMenuGroup>
+
+      <DropdownMenuSeparator />
+
+      <DropdownMenuItem
+        onClick={() => setCreateOpen(true)}
+        className="cursor-pointer items-center gap-3 py-2"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
+          <PlusIcon className="size-4" aria-hidden />
+        </span>
+        <span className="text-sm font-medium">صفحه‌ی جدید</span>
+      </DropdownMenuItem>
+
+      <DropdownMenuSeparator />
+
+      <DropdownMenuItem
+        onClick={() => startTransition(() => void signOut())}
+        disabled={isPending}
+        className="cursor-pointer items-center gap-3 py-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+          <LogOutIcon className="size-4" aria-hidden />
+        </span>
+        <span className="text-sm font-medium">خروج از حساب</span>
+      </DropdownMenuItem>
+    </DropdownMenuContent>
+  );
+
+  if (variant === "compact") {
+    return (
+      <>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            disabled={isPending}
+            aria-label={`صفحه‌ی فعلی: ${current.title}`}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-background ps-1 pe-2.5 transition-colors hover:bg-muted disabled:opacity-60"
+          >
+            <PageAvatar page={current} size={26} />
+            <span className="max-w-[5rem] truncate text-sm font-semibold leading-none">
+              {current.title}
+            </span>
+            <ChevronDownIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+          </DropdownMenuTrigger>
+          {dropdownContent}
+        </DropdownMenu>
+        <CreatePageDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          existingCount={pages.length}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <SidebarMenu>
@@ -151,76 +241,21 @@ export function PageSwitcher({
               className="h-auto cursor-pointer gap-3 px-2 py-2"
               disabled={isPending}
             >
-              <PageAvatar page={current} size={40} />
+              <PageAvatar page={current} size={32} />
               <span className="min-w-0 flex-1 truncate text-sm font-semibold">
                 {current.title}
               </span>
+              <PlanBadge
+                planKey={current.planKey}
+                isOnTrial={current.isOnTrial}
+              />
               <ChevronDownIcon
                 className="size-4 shrink-0 text-muted-foreground"
                 aria-hidden
               />
             </SidebarMenuButton>
 
-            <DropdownMenuContent align="start" sideOffset={8} className="w-72">
-              <DropdownMenuGroup>
-                {pages.map((page) => {
-                  const isCurrent = page.id === currentPageId;
-                  return (
-                    <DropdownMenuItem
-                      key={page.id}
-                      // Base UI's Menu.Item dispatches via `onClick` (not the
-                      // Radix-style `onSelect`). closeOnClick defaults to true
-                      // so the menu auto-closes after the handler runs.
-                      onClick={() => onSelect(page.id)}
-                      className="cursor-pointer items-center gap-3 py-2"
-                    >
-                      <PageAvatar
-                        page={page}
-                        size={44}
-                        highlighted={isCurrent}
-                      />
-                      <span className="flex min-w-0 flex-1 flex-col justify-center text-start leading-tight">
-                        <span className="truncate text-sm font-semibold">
-                          {page.title}
-                        </span>
-                        <span className="truncate text-[11px] text-muted-foreground">
-                          /{page.slug}
-                        </span>
-                      </span>
-                      <PlanBadge
-                        planKey={page.planKey}
-                        isOnTrial={page.isOnTrial}
-                      />
-                    </DropdownMenuItem>
-                  );
-                })}
-              </DropdownMenuGroup>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                onClick={() => setCreateOpen(true)}
-                className="cursor-pointer items-center gap-3 py-2"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
-                  <PlusIcon className="size-4" aria-hidden />
-                </span>
-                <span className="text-sm font-medium">صفحه‌ی جدید</span>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                onClick={() => startTransition(() => void signOut())}
-                disabled={isPending}
-                className="cursor-pointer items-center gap-3 py-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
-              >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-                  <LogOutIcon className="size-4" aria-hidden />
-                </span>
-                <span className="text-sm font-medium">خروج از حساب</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
+            {dropdownContent}
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>

@@ -12,6 +12,8 @@ import { LinkIconBubble } from "@/components/dashboard/link-icon-picker";
 import {
   PublicBookingPill,
   type PublicBookingBlockData,
+  type PublicBookingSlotsAction,
+  type PublicBookingSubmitAction,
 } from "@/components/public/public-booking-modal";
 import {
   PublicFormPill,
@@ -23,7 +25,7 @@ import {
   type PublicProductBlockData,
 } from "@/components/public/public-product-block";
 import { PublicAnimatedBlock } from "@/components/public/public-animated-block";
-import { BoringAvatar } from "@/components/shared/boring-avatar";
+import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import type { ActionState } from "@/lib/action-state";
 import {
   spotlightAnimationClass,
@@ -56,7 +58,7 @@ export type PublicProfileCardData = {
   publicPhone: string | null;
   email: string | null;
   avatarUrl: string | null;
-  /** Stable seed used by the boring-avatars fallback when no avatar is set. */
+  /** Stable seed used by the DiceBear fallback when no avatar is set. */
   avatarSeed: string | null;
   links: PublicLink[];
   bookingBlocks?: Array<
@@ -100,6 +102,8 @@ export function PublicProfileCard({
   as = "section",
   interactive = true,
   formSubmitAction,
+  bookingSlotsAction,
+  bookingSubmitAction,
 }: {
   profile: PublicProfileCardData;
   /** Optional slot rendered at the very top inside the card (e.g. logo + share row). */
@@ -122,6 +126,10 @@ export function PublicProfileCard({
     state: ActionState,
     formData: FormData,
   ) => Promise<ActionState>;
+  /** Optional overrides for previews/tests that should use the real booking UI
+   * without the production DB-backed public booking actions. */
+  bookingSlotsAction?: PublicBookingSlotsAction;
+  bookingSubmitAction?: PublicBookingSubmitAction;
 }) {
   const displayName = profile.fullName || "کارت دیجیتال";
   const hasQuickAction = Boolean(
@@ -135,7 +143,7 @@ export function PublicProfileCard({
       dir="rtl"
       className={cn(
         "relative flex flex-col overflow-hidden bg-card p-6",
-        "lg:p-8 lg:shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_0_0_0.5px_rgba(0,0,0,0.06),0_2px_8px_rgba(0,0,0,0.05),0_20px_60px_-4px_rgba(0,0,0,0.10)]",
+        "lg:p-8 lg:shadow-card",
         flushBottom
           ? "pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1.5rem))] lg:rounded-t-[2rem] lg:rounded-b-none"
           : "lg:rounded-[2rem]",
@@ -148,7 +156,7 @@ export function PublicProfileCard({
 
       {/* Hero */}
       <div className="relative flex flex-col items-center text-center">
-        <div className="relative size-24 overflow-hidden rounded-full border border-foreground/10 bg-card sm:size-28">
+        <div className="relative size-25 overflow-hidden rounded-full bg-card">
           {profile.avatarUrl ? (
             <Image
               src={profile.avatarUrl}
@@ -157,9 +165,14 @@ export function PublicProfileCard({
               className="object-cover"
               priority
               sizes="112px"
+              // User-uploaded avatars are pre-optimized server-side via
+              // sharp (≤2400px webp/png). Skip the Next image optimizer
+              // to avoid `/_next/image` 400s in standalone Docker builds
+              // and reduce a hop on first paint.
+              unoptimized
             />
           ) : (
-            <BoringAvatar seed={profile.avatarSeed} size={112} />
+            <KioarAvatar seed={profile.avatarSeed} size={100} />
           )}
         </div>
 
@@ -201,7 +214,7 @@ export function PublicProfileCard({
 
       {/* Bio */}
       {profile.bio ? (
-        <div className="relative mt-5 rounded-2xl bg-foreground/[0.04] px-4 py-3">
+        <div className="relative mt-5 rounded-2xl bg-foreground/4 px-4 py-3">
           <p className="text-[14px] leading-7 text-foreground">{profile.bio}</p>
         </div>
       ) : null}
@@ -317,13 +330,15 @@ export function PublicProfileCard({
                   <PublicBookingPill
                     block={item.block}
                     defaultOpen={autoOpen}
+                    getSlotsAction={bookingSlotsAction}
+                    submitBookingAction={bookingSubmitAction}
                   />
                 </PublicAnimatedBlock>
               ) : (
                 <span
                   key={`b-${item.block.id}`}
                   className={cn(
-                    "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4",
+                    "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4",
                     animClass,
                   )}
                   aria-disabled
@@ -365,7 +380,7 @@ export function PublicProfileCard({
                 <span
                   key={`f-${item.block.id}`}
                   className={cn(
-                    "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4",
+                    "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4",
                     animClass,
                   )}
                   aria-disabled
@@ -403,7 +418,7 @@ export function PublicProfileCard({
                 <span
                   key={`p-${item.block.id}`}
                   className={cn(
-                    "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4",
+                    "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4",
                     animClass,
                   )}
                   aria-disabled
@@ -467,7 +482,7 @@ export function PublicProfileCard({
             );
 
             const base =
-              "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4 transition-colors";
+              "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4 transition-colors";
 
             return (
               <PublicAnimatedBlock
@@ -519,7 +534,7 @@ function QuickAction({
   interactive: boolean;
 }) {
   const base =
-    "flex flex-col gap-1 items-center justify-center py-3.5 px-2 rounded-2xl bg-foreground/[0.05] text-foreground transition-colors";
+    "flex flex-col gap-1 items-center justify-center py-3.5 px-2 rounded-2xl bg-foreground/5 text-foreground transition-colors";
 
   if (!href || !interactive) {
     return (
@@ -538,10 +553,7 @@ function QuickAction({
     <a
       href={href}
       aria-label={label}
-      className={cn(
-        base,
-        "hover:bg-foreground/[0.09] active:bg-foreground/[0.13]",
-      )}
+      className={cn(base, "hover:bg-foreground/9 active:bg-foreground/13")}
     >
       {icon}
       <span className="text-[11px] font-semibold">{label}</span>

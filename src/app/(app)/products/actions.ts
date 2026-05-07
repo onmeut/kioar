@@ -79,7 +79,7 @@ export async function createProductBlockAction(
   if (!result.ok) {
     return { status: "error", message: result.message };
   }
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success", message: "بلوک ساخته شد.", id: result.id };
 }
@@ -115,7 +115,7 @@ export async function updateProductBlockAction(
   if (!result.ok) {
     return { status: "error", message: result.message };
   }
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success", message: "ذخیره شد." };
 }
@@ -130,7 +130,7 @@ export async function deleteProductBlockAction(
   if (!result.ok) {
     return { status: "error", message: result.message ?? "حذف نشد." };
   }
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success" };
 }
@@ -150,7 +150,7 @@ export async function toggleProductBlockActiveAction(
   if (!result.ok) {
     return { status: "error", message: result.message ?? "تغییر ناموفق بود." };
   }
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success" };
 }
@@ -173,7 +173,7 @@ export async function uploadProductItemImageAction(
     return { status: "error", message: "فایل تصویر ارسال نشد.", url: null };
   }
   try {
-    const uploaded = await uploadPublicImage(file, "product-items");
+    const uploaded = await uploadPublicImage(file, "products");
     if (!uploaded?.url) throw new Error("آپلود ناموفق بود.");
     return { status: "success", message: "تصویر آپلود شد", url: uploaded.url };
   } catch (error) {

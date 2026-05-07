@@ -5,21 +5,27 @@
 // portfolio). Mobile uses a bottom Sheet, desktop a centered Dialog —
 // matches the form/booking builders.
 //
-// The builder is a single-surface UX with two tabs:
-//   - «موارد»     — list of items (edit / reorder / delete) + bulk paste.
-//   - «تنظیمات»  — block-level settings (name, currency, layout, etc.).
+// UX is auto-save first: every mutation (item add / edit / delete /
+// reorder, every settings/layout change) is persisted silently. There
+// is no explicit "Save" button — the user just closes the modal when
+// they're done. The first item add CREATES the block, so the row never
+// disappears just because the modal was dismissed.
 //
-// On submit the dialog emits a `ProductBlockDraft` to the parent which
-// posts it to the server action.
+// Tabs: «موارد» (items) · «چیدمان» (layout) · «تنظیمات» (settings).
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
+  ChevronDownIcon,
   ChevronRightIcon,
   GripVerticalIcon,
   ImageIcon,
   ImageOffIcon,
+  Loader2Icon,
+  PencilIcon,
   PlusIcon,
   TrashIcon,
+  UploadIcon,
   XIcon,
 } from "lucide-react";
 import {
@@ -37,6 +43,12 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import {
+  Cropper,
+  ImageRestriction,
+  type CropperRef,
+} from "react-advanced-cropper";
+import "react-advanced-cropper/dist/style.css";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -44,6 +56,16 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Select,
   SelectContent,
@@ -154,6 +176,12 @@ const LAYOUT_LABEL: Record<ProductBlockLayout, string> = {
   cards: "کارت بزرگ",
 };
 
+const LAYOUT_DESCRIPTION: Record<ProductBlockLayout, string> = {
+  list: "ردیف فشرده با تصویر کوچک — مناسب منو و فهرست‌های طولانی.",
+  grid: "شبکه‌ی دو ستونه با تصویر مربعی — مناسب فروشگاه یا گالری.",
+  cards: "کارت بزرگ تمام‌عرض با تصویر برجسته — مناسب پکیج‌ها و خدمات شاخص.",
+};
+
 const PRICE_TYPE_LABEL: Record<ProductItemPriceType, string> = {
   fixed: "ثابت",
   from: "از",
@@ -242,17 +270,58 @@ function majorStringToMinor(
   return Math.round(num * MAJOR_TO_MINOR[currency]);
 }
 
+function buildPayload(d: ProductBlockDraft): ProductBlockSubmit {
+  return {
+    id: d.id ?? null,
+    name: d.name.trim() || "محصولات",
+    description: d.description?.trim() ? d.description.trim() : null,
+    preset: d.preset,
+    layout: d.layout,
+    itemLabel: d.itemLabel?.trim() ? d.itemLabel.trim() : null,
+    currency: d.currency,
+    showPrices: true,
+    displayMode: d.displayMode,
+    pillLabel: d.pillLabel?.trim() ? d.pillLabel.trim() : null,
+    iconKey: d.iconKey ?? null,
+    iconUrl: d.iconUrl ?? null,
+    imageUrl: d.imageUrl ?? null,
+    sections: d.sections.map((s) => ({
+      id: s.id ?? null,
+      title: s.title.trim(),
+    })),
+    items: d.items.map((it) => ({
+      id: it.id ?? null,
+      sectionRef: it.sectionRef ?? null,
+      title: it.title.trim(),
+      description: it.description?.trim() ? it.description.trim() : null,
+      imageUrl: it.imageUrl,
+      priceType: it.priceType,
+      priceAmount: majorStringToMinor(it.priceMajor, d.currency),
+      priceAmountMax:
+        it.priceType === "range"
+          ? majorStringToMinor(it.priceMaxMajor, d.currency)
+          : null,
+      availability: it.availability,
+      externalUrl: it.externalUrl,
+      badge: it.badge?.trim() ? it.badge.trim() : null,
+      sku: it.sku?.trim() ? it.sku.trim() : null,
+    })),
+  };
+}
+
 export type ProductBuilderDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial?: ProductBlockDraft | null;
   itemsCap?: number;
-  onSubmit: (draft: ProductBlockSubmit) => Promise<void> | void;
-  /** Silent auto-save called for reorder/item add/edit/delete when the block
-   * already exists. Does NOT close the modal or show toasts. */
-  onAutoSave?: (draft: ProductBlockSubmit) => Promise<void>;
+  /** Auto-save handler: persists the draft (creates the block on first
+   * call when payload.id is null) and returns the resulting block id so
+   * the dialog can keep editing the same row. Returns null on failure.
+   *
+   * The dialog calls this after every meaningful mutation. There is no
+   * explicit "Save" button. Closing the modal is purely a dismiss. */
+  onAutoSave: (draft: ProductBlockSubmit) => Promise<{ id: string } | null>;
   onUploadItemImage?: (file: File) => Promise<string | null>;
-  submitting?: boolean;
 };
 
 export function ProductBuilderDialog({
@@ -260,10 +329,8 @@ export function ProductBuilderDialog({
   onOpenChange,
   initial,
   itemsCap = PRODUCT_ITEMS_HARD_CAP,
-  onSubmit,
   onAutoSave,
   onUploadItemImage,
-  submitting,
 }: ProductBuilderDialogProps) {
   const isMobile = useIsMobile();
   const sensors = useSensors(
@@ -274,21 +341,68 @@ export function ProductBuilderDialog({
   );
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   /** Draft for a brand-new item that hasn't been committed to the list
-   * yet. Committed only when the user taps the «افزودن» button so a
+   * yet. Committed only when the user taps the «اضافه کن» button so a
    * cancel never leaves a half-empty row behind. */
   const [pendingItem, setPendingItem] = useState<ProductItemDraft | null>(null);
-  const [tab, setTab] = useState<"items" | "settings">("items");
-  const [bulkOpen, setBulkOpen] = useState(false);
+  const [tab, setTab] = useState<"items" | "layout" | "settings">("items");
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  const [savingState, setSavingState] = useState<"idle" | "saving" | "saved">(
+    "idle",
+  );
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
+  // Reset state ONLY when the dialog transitions from closed → open. We
+  // intentionally do NOT reset on `initial` reference changes — those
+  // happen on every parent router.refresh() and would wipe the user's
+  // in-flight edit (the user reported the modal "closing" / losing state
+  // after switching apps; that was this).
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (open) {
       setDraft(initial ?? defaultDraft());
       setEditingIndex(null);
       setPendingItem(null);
       setTab("items");
-      setBulkOpen(false);
+      setConfirmDelete(null);
+      setSavingState("idle");
     }
-  }, [open, initial]);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+    };
+  }, []);
+
+  /** Persist `next` immediately and capture the server-assigned id on
+   * the first save so subsequent calls update instead of creating. */
+  async function autoSave(next: ProductBlockDraft): Promise<ProductBlockDraft> {
+    if (next.items.length === 0) return next;
+    setSavingState("saving");
+    try {
+      const result = await onAutoSave(buildPayload(next));
+      if (!result) {
+        setSavingState("idle");
+        return next;
+      }
+      const withId = next.id === result.id ? next : { ...next, id: result.id };
+      setDraft(withId);
+      setSavingState("saved");
+      if (savedTimer.current) clearTimeout(savedTimer.current);
+      savedTimer.current = setTimeout(() => setSavingState("idle"), 1500);
+      return withId;
+    } catch {
+      setSavingState("idle");
+      return next;
+    }
+  }
+
+  /** Update the draft locally and schedule an auto-save. */
+  function commit(next: ProductBlockDraft) {
+    setDraft(next);
+    void autoSave(next);
+  }
 
   const Container = isMobile ? Sheet : Dialog;
   const Content = isMobile ? SheetContent : DialogContent;
@@ -303,88 +417,22 @@ export function ProductBuilderDialog({
       }
     : {
         className:
-          "p-0 sm:max-w-[560px] max-h-[92vh] flex flex-col gap-0 overflow-hidden",
+          "p-0 sm:max-w-[640px] h-[92vh] flex flex-col gap-0 overflow-hidden",
         showCloseButton: false,
       };
 
-  const canSubmit = draft.name.trim().length > 0 && draft.items.length > 0;
-
-  /** Silent auto-save for in-modal edits (reorder, item add/edit/delete). */
-  function autoSaveDraft(d: ProductBlockDraft) {
-    if (!d.id || !onAutoSave) return;
-    void onAutoSave(buildPayload(d));
-  }
-
-  /** Convert a draft into the server payload shape and submit it. */
-  async function submitDraft(d: ProductBlockDraft) {
-    await onSubmit(buildPayload(d));
-  }
-
-  function buildPayload(d: ProductBlockDraft): ProductBlockSubmit {
-    return {
-      id: d.id ?? null,
-      name: d.name.trim(),
-      description: d.description?.trim() ? d.description.trim() : null,
-      preset: d.preset,
-      layout: d.layout,
-      itemLabel: d.itemLabel?.trim() ? d.itemLabel.trim() : null,
-      currency: d.currency,
-      showPrices: true,
-      displayMode: d.displayMode,
-      pillLabel: d.pillLabel?.trim() ? d.pillLabel.trim() : null,
-      iconKey: d.iconKey ?? null,
-      iconUrl: d.iconUrl ?? null,
-      imageUrl: d.imageUrl ?? null,
-      sections: d.sections.map((s) => ({
-        id: s.id ?? null,
-        title: s.title.trim(),
-      })),
-      items: d.items.map((it) => ({
-        id: it.id ?? null,
-        sectionRef: it.sectionRef ?? null,
-        title: it.title.trim(),
-        description: it.description?.trim() ? it.description.trim() : null,
-        imageUrl: it.imageUrl,
-        priceType: it.priceType,
-        priceAmount: majorStringToMinor(it.priceMajor, d.currency),
-        priceAmountMax:
-          it.priceType === "range"
-            ? majorStringToMinor(it.priceMaxMajor, d.currency)
-            : null,
-        availability: it.availability,
-        externalUrl: it.externalUrl,
-        badge: it.badge?.trim() ? it.badge.trim() : null,
-        sku: it.sku?.trim() ? it.sku.trim() : null,
-      })),
-    };
-  }
-
-  async function handleDone() {
-    if (!canSubmit) return;
-    await submitDraft(draft);
-  }
-
-  function applyBulk(rows: ProductItemDraft[]) {
-    const remaining = itemsCap - draft.items.length;
-    const slice = rows.slice(0, Math.max(0, remaining));
-    if (slice.length === 0) {
-      setBulkOpen(false);
-      return;
-    }
-    const next = { ...draft, items: [...draft.items, ...slice] };
-    setDraft(next);
-    setBulkOpen(false);
-    autoSaveDraft(next);
-  }
-
   const editingItem = editingIndex !== null ? draft.items[editingIndex] : null;
+  const headerTitle =
+    pendingItem !== null
+      ? "افزودن مورد"
+      : editingIndex !== null
+        ? "ویرایش مورد"
+        : "افزودن محصول / خدمت";
 
   return (
     <Container open={open} onOpenChange={onOpenChange}>
       <Content {...contentProps}>
-        <Title className="sr-only">
-          {draft.id ? "ویرایش بلوک محصولات" : "افزودن بلوک محصولات"}
-        </Title>
+        <Title className="sr-only">{headerTitle}</Title>
 
         <header className="flex items-center justify-between border-b px-4 py-3">
           <button
@@ -392,33 +440,32 @@ export function ProductBuilderDialog({
             onClick={() => {
               if (pendingItem !== null) setPendingItem(null);
               else if (editingIndex !== null) setEditingIndex(null);
-              else if (bulkOpen) setBulkOpen(false);
               else onOpenChange(false);
             }}
             className="grid size-9 place-items-center rounded-full hover:bg-muted"
-            aria-label="بازگشت"
+            aria-label={
+              pendingItem !== null || editingIndex !== null ? "بازگشت" : "بستن"
+            }
           >
-            <ChevronRightIcon className="size-5" />
+            {pendingItem !== null || editingIndex !== null ? (
+              <ChevronRightIcon className="size-5" />
+            ) : (
+              <XIcon className="size-5" />
+            )}
           </button>
-          <h2 className="text-sm font-bold">
-            {pendingItem !== null
-              ? "افزودن مورد"
-              : editingIndex !== null
-                ? "ویرایش مورد"
-                : bulkOpen
-                  ? "افزودن گروهی"
-                  : draft.id
-                    ? "ویرایش بلوک"
-                    : "افزودن بلوک محصولات"}
-          </h2>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="grid size-9 place-items-center rounded-full hover:bg-muted"
-            aria-label="بستن"
-          >
-            <XIcon className="size-5" />
-          </button>
+          <div className="flex flex-col items-center">
+            <h2 className="text-sm font-bold">{headerTitle}</h2>
+            {pendingItem === null && editingIndex === null ? (
+              <span className="text-[10px] text-muted-foreground">
+                {savingState === "saving"
+                  ? "در حال ذخیره…"
+                  : savingState === "saved"
+                    ? "ذخیره شد"
+                    : "تغییرات به‌صورت خودکار ذخیره می‌شود"}
+              </span>
+            ) : null}
+          </div>
+          <div className="size-9" aria-hidden />
         </header>
 
         {/* -------------------------------------------------- ITEM EDITOR */}
@@ -428,18 +475,15 @@ export function ProductBuilderDialog({
             item={pendingItem}
             currency={draft.currency}
             onChange={(next) => setPendingItem(next)}
-            onCommit={() => {
+            onCommit={async () => {
               if (!pendingItem.title.trim()) return;
               if (draft.items.length >= itemsCap) return;
               const next = {
                 ...draft,
                 items: [...draft.items, pendingItem],
               };
-              setDraft(next);
               setPendingItem(null);
-              // Auto-save: only if the block already exists (autoSaveDraft
-              // is a no-op for new blocks).
-              autoSaveDraft(next);
+              await autoSave(next);
             }}
             onUploadImage={onUploadItemImage}
           />
@@ -454,26 +498,15 @@ export function ProductBuilderDialog({
                 items: d.items.map((it, i) => (i === editingIndex ? next : it)),
               }))
             }
-            onUpdate={() => {
+            onUpdate={async () => {
               setEditingIndex(null);
-              autoSaveDraft(draft);
-            }}
-            onDelete={() => {
-              const next = {
-                ...draft,
-                items: draft.items.filter((_, i) => i !== editingIndex),
-              };
-              setDraft(next);
-              setEditingIndex(null);
-              autoSaveDraft(next);
+              await autoSave(draft);
             }}
             onUploadImage={
               onUploadItemImage
                 ? async (file) => {
                     const url = await onUploadItemImage(file);
-                    if (url && draft.id && editingIndex !== null) {
-                      // Persist the new image URL immediately so the user
-                      // doesn't have to back out and tap Save.
+                    if (url && editingIndex !== null) {
                       const next = {
                         ...draft,
                         items: draft.items.map((it, i) =>
@@ -481,31 +514,30 @@ export function ProductBuilderDialog({
                         ),
                       };
                       setDraft(next);
-                      autoSaveDraft(next);
+                      void autoSave(next);
                     }
                     return url;
                   }
                 : undefined
             }
           />
-        ) : bulkOpen ? (
-          <BulkEditor
-            currency={draft.currency}
-            remaining={itemsCap - draft.items.length}
-            onApply={applyBulk}
-          />
         ) : (
           // -------------------------------------------------- MAIN SCREEN
           <div className="flex min-h-0 flex-1 flex-col">
             <Tabs
               value={tab}
-              onValueChange={(v) => setTab(v as "items" | "settings")}
+              onValueChange={(v) =>
+                setTab(v as "items" | "layout" | "settings")
+              }
               className="flex min-h-0 flex-1 flex-col"
             >
               <div className="border-b px-4 py-2">
                 <TabsList className="w-full">
                   <TabsTrigger value="items" className="flex-1">
                     موارد ({toPersianDigits(draft.items.length)})
+                  </TabsTrigger>
+                  <TabsTrigger value="layout" className="flex-1">
+                    چیدمان
                   </TabsTrigger>
                   <TabsTrigger value="settings" className="flex-1">
                     تنظیمات
@@ -518,9 +550,12 @@ export function ProductBuilderDialog({
                 className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4"
               >
                 {draft.items.length === 0 ? (
-                  <p className="rounded-2xl bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
-                    موردی اضافه نکرده‌اید.
-                  </p>
+                  <div className="rounded-2xl bg-muted/40 px-4 py-8 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      از طریق دکمه‌ی زیر اولین محصول یا خدمت خودتون رو ایجاد
+                      کنید.
+                    </p>
+                  </div>
                 ) : (
                   <DndContext
                     sensors={sensors}
@@ -532,12 +567,10 @@ export function ProductBuilderDialog({
                       const oldIndex = ids.indexOf(String(active.id));
                       const newIndex = ids.indexOf(String(over.id));
                       if (oldIndex !== -1 && newIndex !== -1) {
-                        const next = {
+                        commit({
                           ...draft,
                           items: arrayMove(draft.items, oldIndex, newIndex),
-                        };
-                        setDraft(next);
-                        autoSaveDraft(next);
+                        });
                       }
                     }}
                   >
@@ -552,16 +585,7 @@ export function ProductBuilderDialog({
                             item={it}
                             currency={draft.currency}
                             onEdit={() => setEditingIndex(i)}
-                            onDelete={() => {
-                              const next = {
-                                ...draft,
-                                items: draft.items.filter(
-                                  (_, idx) => idx !== i,
-                                ),
-                              };
-                              setDraft(next);
-                              autoSaveDraft(next);
-                            }}
+                            onDelete={() => setConfirmDelete(i)}
                           />
                         ))}
                       </ul>
@@ -569,10 +593,10 @@ export function ProductBuilderDialog({
                   </DndContext>
                 )}
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
                     type="button"
-                    variant="outline"
+                    variant="default"
                     onClick={() => {
                       if (draft.items.length >= itemsCap) return;
                       setPendingItem(emptyItem());
@@ -581,15 +605,7 @@ export function ProductBuilderDialog({
                     className="gap-1"
                   >
                     <PlusIcon className="size-4" />
-                    افزودن یک مورد
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setBulkOpen(true)}
-                    disabled={draft.items.length >= itemsCap}
-                  >
-                    افزودن گروهی
+                    افزودن خدمت/محصول
                   </Button>
                   <span className="ms-auto self-center text-xs text-muted-foreground">
                     {toPersianDigits(draft.items.length)} /{" "}
@@ -599,25 +615,107 @@ export function ProductBuilderDialog({
               </TabsContent>
 
               <TabsContent
+                value="layout"
+                className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4"
+              >
+                <div className="grid gap-2">
+                  <Label>چیدمان لیست</Label>
+                  <p className="text-xs text-muted-foreground">
+                    شکل نمایش موارد روی صفحه‌ی شما را انتخاب کنید.
+                  </p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {PRODUCT_BLOCK_LAYOUTS.map((l) => (
+                      <SelectableCard
+                        key={l}
+                        title={LAYOUT_LABEL[l]}
+                        description={LAYOUT_DESCRIPTION[l]}
+                        selected={draft.layout === l}
+                        onSelect={() => commit({ ...draft, layout: l })}
+                        preview={<LayoutPreview layout={l} />}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-2">
+                  <Label>روش نمایش روی صفحه</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {PRODUCT_BLOCK_DISPLAY_MODES.map((m) => (
+                      <DisplayModeCard
+                        key={m}
+                        mode={m}
+                        selected={draft.displayMode === m}
+                        onSelect={() => commit({ ...draft, displayMode: m })}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {draft.displayMode === "pill" ? (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="prod-pill">متن دکمه</Label>
+                    <Input
+                      id="prod-pill"
+                      value={draft.pillLabel ?? ""}
+                      placeholder="مثلاً: مشاهده منو"
+                      maxLength={40}
+                      enterKeyHint="done"
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, pillLabel: e.target.value }))
+                      }
+                      onBlur={() => void autoSave(draft)}
+                    />
+                  </div>
+                ) : null}
+              </TabsContent>
+
+              <TabsContent
                 value="settings"
                 className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
               >
-                <SettingsPane draft={draft} setDraft={setDraft} />
-                <div className="pb-2 pt-4">
-                  <Button
-                    type="button"
-                    onClick={handleDone}
-                    disabled={!canSubmit || submitting}
-                    className="w-full"
-                  >
-                    {submitting ? "در حال ذخیره..." : "ذخیره"}
-                  </Button>
-                </div>
+                <SettingsPane
+                  draft={draft}
+                  setDraft={setDraft}
+                  onCommit={(d) => void autoSave(d)}
+                />
               </TabsContent>
             </Tabs>
           </div>
         )}
       </Content>
+
+      <AlertDialog
+        open={confirmDelete !== null}
+        onOpenChange={(o) => {
+          if (!o) setConfirmDelete(null);
+        }}
+      >
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>حذف مورد</AlertDialogTitle>
+            <AlertDialogDescription>
+              این مورد از فهرست حذف می‌شود. این عمل قابل بازگشت نیست.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>انصراف</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                if (confirmDelete === null) return;
+                const idx = confirmDelete;
+                setConfirmDelete(null);
+                commit({
+                  ...draft,
+                  items: draft.items.filter((_, i) => i !== idx),
+                });
+              }}
+            >
+              حذف
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Container>
   );
 }
@@ -713,9 +811,11 @@ function SortableItemRow({
 function SettingsPane({
   draft,
   setDraft,
+  onCommit,
 }: {
   draft: ProductBlockDraft;
   setDraft: React.Dispatch<React.SetStateAction<ProductBlockDraft>>;
+  onCommit: (d: ProductBlockDraft) => void;
 }) {
   return (
     <>
@@ -726,14 +826,16 @@ function SettingsPane({
           iconUrl={draft.iconUrl}
           imageUrl={draft.imageUrl}
           size={52}
-          onChange={(next) =>
-            setDraft((d) => ({
-              ...d,
+          onChange={(next) => {
+            const updated = {
+              ...draft,
               iconKey: next.iconKey,
               iconUrl: next.iconUrl,
               imageUrl: next.imageUrl,
-            }))
-          }
+            };
+            setDraft(updated);
+            onCommit(updated);
+          }}
         />
         <div className="grid min-w-0 flex-1 gap-1.5">
           <Label htmlFor="prod-name">عنوان بلوک</Label>
@@ -741,7 +843,10 @@ function SettingsPane({
             id="prod-name"
             value={draft.name}
             maxLength={80}
+            placeholder="مثلاً: منوی کافه / خدمات طراحی"
+            enterKeyHint="done"
             onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+            onBlur={() => onCommit(draft)}
           />
         </div>
       </div>
@@ -752,92 +857,49 @@ function SettingsPane({
           id="prod-desc"
           value={draft.description ?? ""}
           maxLength={280}
+          placeholder="یک جمله درباره‌ی این بلوک — مثلاً «نوشیدنی‌های فصلی» یا «بسته‌های طراحی لوگو»."
           onChange={(e) =>
             setDraft((d) => ({ ...d, description: e.target.value }))
           }
+          onBlur={() => onCommit(draft)}
           rows={2}
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="grid gap-1.5">
-          <Label>چیدمان</Label>
-          <Select
-            value={draft.layout}
-            onValueChange={(v) =>
-              setDraft((d) => ({ ...d, layout: v as ProductBlockLayout }))
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue>
-                {(v) => LAYOUT_LABEL[v as ProductBlockLayout]}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {PRODUCT_BLOCK_LAYOUTS.map((l) => (
-                <SelectItem key={l} value={l}>
-                  {LAYOUT_LABEL[l]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid gap-1.5">
-          <Label>واحد پول</Label>
-          <Select
-            value={draft.currency}
-            onValueChange={(v) =>
-              setDraft((d) => ({ ...d, currency: v as ProductBlockCurrency }))
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue>
-                {(v) => CURRENCY_LABEL[v as ProductBlockCurrency]}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {PRODUCT_BLOCK_CURRENCIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {CURRENCY_LABEL[c]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      <div className="grid gap-1.5">
+        <Label>واحد پول</Label>
+        <Select
+          value={draft.currency}
+          onValueChange={(v) => {
+            const updated = {
+              ...draft,
+              currency: v as ProductBlockCurrency,
+            };
+            setDraft(updated);
+            onCommit(updated);
+          }}
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue>
+              {(v) => CURRENCY_LABEL[v as ProductBlockCurrency]}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            {PRODUCT_BLOCK_CURRENCIES.map((c) => (
+              <SelectItem key={c} value={c}>
+                {CURRENCY_LABEL[c]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
-
-      <div className="grid gap-2">
-        <Label>روش نمایش روی صفحه</Label>
-        <div className="grid grid-cols-2 gap-2">
-          {PRODUCT_BLOCK_DISPLAY_MODES.map((m) => (
-            <DisplayModeCard
-              key={m}
-              mode={m}
-              selected={draft.displayMode === m}
-              onSelect={() => setDraft((d) => ({ ...d, displayMode: m }))}
-            />
-          ))}
-        </div>
-      </div>
-
-      {draft.displayMode === "pill" ? (
-        <div className="grid gap-1.5">
-          <Label htmlFor="prod-pill">متن دکمه</Label>
-          <Input
-            id="prod-pill"
-            value={draft.pillLabel ?? ""}
-            placeholder="مثلاً: مشاهده منو"
-            maxLength={40}
-            onChange={(e) =>
-              setDraft((d) => ({ ...d, pillLabel: e.target.value }))
-            }
-          />
-        </div>
-      ) : null}
     </>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Item editor (basic + collapsible advanced section)
+// ---------------------------------------------------------------------------
 
 function ItemEditor({
   mode,
@@ -846,7 +908,6 @@ function ItemEditor({
   onChange,
   onCommit,
   onUpdate,
-  onDelete,
   onUploadImage,
 }: {
   mode: "add" | "edit";
@@ -855,255 +916,526 @@ function ItemEditor({
   onChange: (next: ProductItemDraft) => void;
   onCommit?: () => void;
   onUpdate?: () => void;
-  onDelete?: () => void;
   onUploadImage?: (file: File) => Promise<string | null>;
 }) {
-  const [uploading, setUploading] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  async function handleFile(file: File) {
-    if (!onUploadImage) return;
-    setUploading(true);
+  async function handleSubmit() {
+    if (!item.title.trim()) return;
+    setSubmitting(true);
     try {
-      const url = await onUploadImage(file);
-      if (url) onChange({ ...item, imageUrl: url });
+      if (mode === "add") await onCommit?.();
+      else await onUpdate?.();
     } finally {
-      setUploading(false);
+      setSubmitting(false);
     }
   }
 
+  const isFreeOrOnRequest =
+    item.priceType === "free" || item.priceType === "on_request";
+
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
-      <div className="flex items-center gap-3">
-        <label
-          className={cn(
-            "grid size-20 place-items-center overflow-hidden rounded-2xl border-2 border-dashed bg-muted text-muted-foreground",
-            onUploadImage ? "cursor-pointer hover:bg-muted/70" : "",
-          )}
-        >
-          {item.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={item.imageUrl}
-              alt=""
-              className="size-full object-cover"
-            />
-          ) : (
-            <ImageIcon className="size-5" />
-          )}
-          {onUploadImage ? (
-            <input
-              type="file"
-              accept="image/*"
-              className="sr-only"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleFile(f);
-              }}
-            />
-          ) : null}
-        </label>
-        <div className="flex-1 text-xs text-muted-foreground">
-          {uploading
-            ? "در حال آپلود..."
-            : item.imageUrl
-              ? "برای تعویض، تصویر را لمس کنید."
-              : "افزودن تصویر (اختیاری)"}
-          {item.imageUrl ? (
-            <button
-              type="button"
-              onClick={() => onChange({ ...item, imageUrl: null })}
-              className="ms-2 text-destructive"
-            >
-              حذف
-            </button>
-          ) : null}
-        </div>
-      </div>
-
-      <div className="grid gap-1.5">
-        <Label htmlFor="item-title">عنوان</Label>
-        <Input
-          id="item-title"
-          value={item.title}
-          maxLength={120}
-          onChange={(e) => onChange({ ...item, title: e.target.value })}
-        />
-      </div>
-
-      <div className="grid gap-1.5">
-        <Label htmlFor="item-desc">توضیح</Label>
-        <Textarea
-          id="item-desc"
-          value={item.description ?? ""}
-          maxLength={280}
-          rows={2}
-          onChange={(e) => onChange({ ...item, description: e.target.value })}
-        />
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pb-24">
         <div className="grid gap-1.5">
-          <Label>نوع قیمت</Label>
-          <Select
-            value={item.priceType}
-            onValueChange={(v) =>
-              onChange({ ...item, priceType: v as ProductItemPriceType })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue>
-                {(v) => PRICE_TYPE_LABEL[v as ProductItemPriceType]}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {PRODUCT_ITEM_PRICE_TYPES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {PRICE_TYPE_LABEL[t]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Label htmlFor="item-title">عنوان</Label>
+          <Input
+            id="item-title"
+            value={item.title}
+            maxLength={120}
+            placeholder="مثلاً: قهوه لاته / طراحی لوگو"
+            autoFocus={mode === "add"}
+            enterKeyHint="next"
+            onChange={(e) => onChange({ ...item, title: e.target.value })}
+          />
         </div>
 
-        <div className="grid gap-1.5">
-          <Label>وضعیت</Label>
-          <Select
-            value={item.availability}
-            onValueChange={(v) =>
-              onChange({
-                ...item,
-                availability: v as ProductItemAvailability,
-              })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue>
-                {(v) => AVAILABILITY_LABEL[v as ProductItemAvailability]}
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {PRODUCT_ITEM_AVAILABILITY.map((a) => (
-                <SelectItem key={a} value={a}>
-                  {AVAILABILITY_LABEL[a]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
-      {item.priceType !== "free" && item.priceType !== "on_request" ? (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="price-amount">
-              {item.priceType === "range" ? "از" : "قیمت"} (
-              {CURRENCY_LABEL[currency]})
-            </Label>
-            <Input
-              id="price-amount"
-              inputMode="decimal"
-              value={item.priceMajor}
-              onChange={(e) =>
-                onChange({ ...item, priceMajor: e.target.value })
-              }
-            />
-          </div>
-          {item.priceType === "range" ? (
+        {!isFreeOrOnRequest ? (
+          <div className="grid grid-cols-[1fr_auto] gap-3">
             <div className="grid gap-1.5">
-              <Label htmlFor="price-max">تا</Label>
+              <Label htmlFor="price-amount">
+                {item.priceType === "range" ? "از" : "قیمت"} (
+                {CURRENCY_LABEL[currency]})
+              </Label>
               <Input
-                id="price-max"
+                id="price-amount"
                 inputMode="decimal"
-                value={item.priceMaxMajor}
+                placeholder="مثلاً: ۸۵۰۰۰"
+                value={item.priceMajor}
+                enterKeyHint="done"
                 onChange={(e) =>
-                  onChange({ ...item, priceMaxMajor: e.target.value })
+                  onChange({ ...item, priceMajor: e.target.value })
                 }
               />
             </div>
-          ) : null}
-        </div>
-      ) : null}
+            {item.priceType === "range" ? (
+              <div className="grid w-32 gap-1.5">
+                <Label htmlFor="price-max">تا</Label>
+                <Input
+                  id="price-max"
+                  inputMode="decimal"
+                  placeholder="مثلاً: ۲۰۰۰۰۰"
+                  value={item.priceMaxMajor}
+                  enterKeyHint="done"
+                  onChange={(e) =>
+                    onChange({ ...item, priceMaxMajor: e.target.value })
+                  }
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
-      <div className="grid gap-1.5">
-        <Label htmlFor="item-link">لینک خرید/مرجع (اختیاری)</Label>
-        <Input
-          id="item-link"
-          dir="ltr"
-          placeholder="https://..."
-          value={item.externalUrl ?? ""}
-          onChange={(e) =>
-            onChange({
-              ...item,
-              externalUrl: e.target.value.trim() ? e.target.value.trim() : null,
-            })
-          }
+        {/* Image upload */}
+        <ProductImageField
+          imageUrl={item.imageUrl}
+          onChange={(url) => onChange({ ...item, imageUrl: url })}
+          onUploadImage={onUploadImage}
         />
-      </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="item-badge">برچسب (اختیاری)</Label>
-          <Input
-            id="item-badge"
-            value={item.badge ?? ""}
-            maxLength={40}
-            placeholder="مثلاً: ویژه"
-            onChange={(e) =>
-              onChange({
-                ...item,
-                badge: e.target.value || null,
-              })
-            }
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="item-sku">کد (اختیاری)</Label>
-          <Input
-            id="item-sku"
-            value={item.sku ?? ""}
-            maxLength={64}
-            onChange={(e) =>
-              onChange({
-                ...item,
-                sku: e.target.value || null,
-              })
-            }
-          />
-        </div>
-      </div>
-
-      <div className="mt-2 flex flex-col gap-2">
-        {mode === "add" ? (
+        {/* Advanced collapsible */}
+        <div className="rounded-2xl border bg-muted/20">
           <button
             type="button"
-            onClick={() => onCommit?.()}
-            disabled={!item.title.trim()}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            aria-expanded={advancedOpen}
+            className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-bold hover:bg-muted/40"
           >
-            <PlusIcon className="size-4" />
-            افزودن
+            <span>جزئیات بیشتر</span>
+            <ChevronDownIcon
+              className={cn(
+                "size-4 text-muted-foreground transition-transform",
+                advancedOpen ? "rotate-180" : "",
+              )}
+            />
           </button>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => onUpdate?.()}
-              disabled={!item.title.trim()}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              به‌روزرسانی
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete?.()}
-              className="flex items-center justify-center gap-2 rounded-2xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm font-bold text-destructive hover:bg-destructive/10"
-            >
-              <TrashIcon className="size-4" />
-              حذف این مورد
-            </button>
-          </>
-        )}
+          {advancedOpen ? (
+            <div className="flex flex-col gap-4 px-4 pt-1 pb-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="item-desc">توضیح</Label>
+                <Textarea
+                  id="item-desc"
+                  value={item.description ?? ""}
+                  maxLength={280}
+                  rows={3}
+                  placeholder="جزئیات کوتاه — مثلاً «اسپرسو + شیر بخارپز» یا «لوگوی برند با ۳ بازنگری»."
+                  onChange={(e) =>
+                    onChange({ ...item, description: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label>نوع قیمت</Label>
+                  <Select
+                    value={item.priceType}
+                    onValueChange={(v) =>
+                      onChange({
+                        ...item,
+                        priceType: v as ProductItemPriceType,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {(v) => PRICE_TYPE_LABEL[v as ProductItemPriceType]}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRODUCT_ITEM_PRICE_TYPES.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {PRICE_TYPE_LABEL[t]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label>وضعیت</Label>
+                  <Select
+                    value={item.availability}
+                    onValueChange={(v) =>
+                      onChange({
+                        ...item,
+                        availability: v as ProductItemAvailability,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue>
+                        {(v) =>
+                          AVAILABILITY_LABEL[v as ProductItemAvailability]
+                        }
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRODUCT_ITEM_AVAILABILITY.map((a) => (
+                        <SelectItem key={a} value={a}>
+                          {AVAILABILITY_LABEL[a]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid gap-1.5">
+                <Label htmlFor="item-link">لینک محصول (اختیاری)</Label>
+                <p className="text-xs text-muted-foreground">
+                  لینک خارجی به فروشگاه یا صفحه‌ی محصول. اگر وارد کنید، لمس روی
+                  این مورد کاربر را به همین آدرس می‌برد.
+                </p>
+                <Input
+                  id="item-link"
+                  dir="ltr"
+                  type="url"
+                  inputMode="url"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  enterKeyHint="done"
+                  placeholder="https://shop.example.com/latte"
+                  value={item.externalUrl ?? ""}
+                  onChange={(e) =>
+                    onChange({
+                      ...item,
+                      externalUrl: e.target.value.trim()
+                        ? e.target.value.trim()
+                        : null,
+                    })
+                  }
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="item-badge">لیبل (اختیاری)</Label>
+                  <Input
+                    id="item-badge"
+                    value={item.badge ?? ""}
+                    maxLength={40}
+                    placeholder="مثلاً: ویژه / جدید / پرفروش"
+                    onChange={(e) =>
+                      onChange({
+                        ...item,
+                        badge: e.target.value || null,
+                      })
+                    }
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="item-sku">کد کالا (اختیاری)</Label>
+                  <Input
+                    id="item-sku"
+                    value={item.sku ?? ""}
+                    maxLength={64}
+                    placeholder="مثلاً: COF-101"
+                    autoCapitalize="characters"
+                    onChange={(e) =>
+                      onChange({
+                        ...item,
+                        sku: e.target.value || null,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
+
+      {/* Sticky submit bar */}
+      <div className="sticky bottom-0 border-t bg-background px-4 py-3 safe-pb">
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!item.title.trim() || submitting}
+          className="w-full gap-1"
+        >
+          {submitting ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <PlusIcon className="size-4" />
+          )}
+          {mode === "add" ? "اضافه کن" : "به‌روزرسانی"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Image field with built-in 1:1 cropper (react-advanced-cropper)
+// ---------------------------------------------------------------------------
+
+function ProductImageField({
+  imageUrl,
+  onChange,
+  onUploadImage,
+}: {
+  imageUrl: string | null;
+  onChange: (url: string | null) => void;
+  onUploadImage?: (file: File) => Promise<string | null>;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const cropperRef = useRef<CropperRef>(null);
+  const [cropSrc, setCropSrc] = useState<string | null>(null);
+  const [cropFileName, setCropFileName] = useState("product.png");
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (cropSrc) URL.revokeObjectURL(cropSrc);
+    };
+  }, [cropSrc]);
+
+  function handleFiles(files: FileList | null) {
+    const file = files?.[0];
+    if (!file || !onUploadImage) return;
+    const src = URL.createObjectURL(file);
+    setCropFileName(file.name || "product.png");
+    setCropSrc(src);
+    if (inputRef.current) inputRef.current.value = "";
+  }
+
+  async function handleCropSave() {
+    if (!onUploadImage) return;
+    const canvas = cropperRef.current?.getCanvas();
+    if (!canvas) return;
+    setUploading(true);
+    canvas.toBlob(
+      async (blob) => {
+        if (!blob) {
+          setUploading(false);
+          return;
+        }
+        const baseName = cropFileName.replace(/\.[^.]+$/, "") || "product";
+        const file = new File([blob], `${baseName}.jpg`, {
+          type: "image/jpeg",
+        });
+        try {
+          const url = await onUploadImage(file);
+          if (cropSrc) URL.revokeObjectURL(cropSrc);
+          setCropSrc(null);
+          if (url) onChange(url);
+        } finally {
+          setUploading(false);
+        }
+      },
+      "image/jpeg",
+      0.9,
+    );
+  }
+
+  function handleCropCancel() {
+    if (cropSrc) URL.revokeObjectURL(cropSrc);
+    setCropSrc(null);
+  }
+
+  const cropOverlay =
+    cropSrc && typeof document !== "undefined"
+      ? createPortal(
+          <div
+            className="fixed inset-0 flex flex-col bg-black"
+            style={{ zIndex: 9999 }}
+            dir="ltr"
+          >
+            <div className="relative min-h-0 flex-1">
+              <Cropper
+                ref={cropperRef}
+                src={cropSrc}
+                stencilProps={{ aspectRatio: 1, grid: true }}
+                imageRestriction={ImageRestriction.fitArea}
+                style={{ width: "100%", height: "100%" }}
+                className="size-full"
+              />
+            </div>
+            <div className="flex flex-col gap-2 bg-black px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCropSave}
+                disabled={uploading}
+                className="h-11 w-full rounded-full border-white/20 bg-white text-sm font-bold text-black hover:bg-white/90"
+              >
+                {uploading ? (
+                  <Loader2Icon className="size-4 animate-spin" />
+                ) : null}
+                ذخیره
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCropCancel}
+                disabled={uploading}
+                className="h-11 w-full rounded-full text-sm font-medium text-white hover:bg-white/10 hover:text-white"
+              >
+                انصراف
+              </Button>
+            </div>
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <div className="grid gap-1.5">
+      <Label>تصویر محصول</Label>
+      {imageUrl ? (
+        <div className="relative aspect-square w-full max-w-[180px] overflow-hidden rounded-2xl border bg-muted">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={imageUrl} alt="" className="size-full object-cover" />
+          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/55 px-3 py-2 text-white">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={uploading || !onUploadImage}
+              className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold backdrop-blur hover:bg-white/25"
+            >
+              <PencilIcon className="size-3.5" />
+              تغییر
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              disabled={uploading}
+              className="grid size-7 place-items-center rounded-full bg-white/15 backdrop-blur hover:bg-white/25"
+              aria-label="حذف تصویر"
+            >
+              <TrashIcon className="size-3.5" />
+            </button>
+          </div>
+          {uploading ? (
+            <div className="absolute inset-0 grid place-items-center bg-black/40">
+              <Loader2Icon className="size-6 animate-spin text-white" />
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => inputRef.current?.click()}
+          disabled={!onUploadImage || uploading}
+          className={cn(
+            "flex h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed text-muted-foreground transition-colors",
+            "hover:border-primary hover:bg-primary/5 hover:text-primary disabled:opacity-50",
+          )}
+        >
+          {uploading ? (
+            <Loader2Icon className="size-6 animate-spin" />
+          ) : (
+            <>
+              <UploadIcon className="size-6" />
+              <span className="text-sm font-bold">افزودن تصویر محصول</span>
+              <span className="text-[11px] text-muted-foreground">
+                نسبت تصویر ۱:۱ — قابل برش پس از انتخاب
+              </span>
+            </>
+          )}
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => handleFiles(e.target.files)}
+      />
+      {cropOverlay}
+      {!onUploadImage ? (
+        <p className="text-[11px] text-muted-foreground">
+          <ImageIcon className="me-1 inline size-3" />
+          آپلود تصویر در حال حاضر در دسترس نیست.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Layout / display-mode selector cards
+// ---------------------------------------------------------------------------
+
+function SelectableCard({
+  title,
+  description,
+  selected,
+  onSelect,
+  preview,
+}: {
+  title: string;
+  description: string;
+  selected: boolean;
+  onSelect: () => void;
+  preview: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        "flex items-start gap-3 rounded-2xl border bg-card p-3 text-start transition",
+        selected
+          ? "border-foreground ring-2 ring-foreground/10"
+          : "hover:border-foreground/20",
+      )}
+    >
+      <span
+        className={cn(
+          "mt-1 grid size-5 shrink-0 place-items-center rounded-full border-2 transition",
+          selected
+            ? "border-foreground bg-foreground"
+            : "border-muted-foreground/30",
+        )}
+      >
+        {selected ? (
+          <span className="size-1.5 rounded-full bg-background" />
+        ) : null}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-bold">{title}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+        <div className="mt-3 grid h-20 place-items-center overflow-hidden rounded-xl bg-muted/40">
+          {preview}
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function LayoutPreview({ layout }: { layout: ProductBlockLayout }) {
+  if (layout === "list") {
+    return (
+      <div className="flex w-full flex-col gap-1.5 px-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="flex items-center gap-2">
+            <div className="size-4 rounded bg-muted" />
+            <div className="h-1.5 flex-1 rounded bg-muted" />
+            <div className="h-1.5 w-6 rounded bg-foreground/40" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (layout === "grid") {
+    return (
+      <div className="grid w-full grid-cols-3 gap-1.5 px-4">
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="aspect-square rounded bg-muted" />
+        ))}
+      </div>
+    );
+  }
+  // cards
+  return (
+    <div className="flex w-full flex-col gap-1.5 px-4">
+      <div className="h-8 rounded-md bg-muted" />
+      <div className="h-8 rounded-md bg-muted" />
     </div>
   );
 }
@@ -1130,7 +1462,7 @@ function DisplayModeCard({
       className={cn(
         "flex flex-col gap-2 rounded-2xl border bg-card p-3 text-start transition",
         selected
-          ? "border-primary ring-2 ring-primary/20"
+          ? "border-foreground ring-2 ring-foreground/10"
           : "hover:border-foreground/20",
       )}
     >
@@ -1139,24 +1471,24 @@ function DisplayModeCard({
           <div className="flex flex-col items-center gap-1">
             <div className="h-2 w-16 rounded bg-muted" />
             <div className="h-2 w-12 rounded bg-muted" />
-            <div className="mt-1 h-5 w-20 rounded-full bg-primary/80" />
+            <div className="mt-1 h-5 w-20 rounded-full bg-foreground/70" />
           </div>
         ) : (
           <div className="flex w-full flex-col gap-1 px-3">
             <div className="flex items-center gap-2">
               <div className="size-4 rounded bg-muted" />
               <div className="h-1.5 flex-1 rounded bg-muted" />
-              <div className="h-1.5 w-6 rounded bg-primary/60" />
+              <div className="h-1.5 w-6 rounded bg-foreground/40" />
             </div>
             <div className="flex items-center gap-2">
               <div className="size-4 rounded bg-muted" />
               <div className="h-1.5 flex-1 rounded bg-muted" />
-              <div className="h-1.5 w-6 rounded bg-primary/60" />
+              <div className="h-1.5 w-6 rounded bg-foreground/40" />
             </div>
             <div className="flex items-center gap-2">
               <div className="size-4 rounded bg-muted" />
               <div className="h-1.5 flex-1 rounded bg-muted" />
-              <div className="h-1.5 w-6 rounded bg-primary/60" />
+              <div className="h-1.5 w-6 rounded bg-foreground/40" />
             </div>
           </div>
         )}
@@ -1169,187 +1501,6 @@ function DisplayModeCard({
   );
 }
 
-function BulkEditor({
-  currency,
-  remaining,
-  onApply,
-}: {
-  currency: ProductBlockCurrency;
-  remaining: number;
-  onApply: (rows: ProductItemDraft[]) => void;
-}) {
-  type Row = { _key: string; title: string; price: string };
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-  );
-  const [rows, setRows] = useState<Row[]>(() => [
-    { _key: newKey(), title: "", price: "" },
-    { _key: newKey(), title: "", price: "" },
-    { _key: newKey(), title: "", price: "" },
-  ]);
-
-  function setRow(key: string, patch: Partial<Row>) {
-    setRows((rs) => rs.map((r) => (r._key === key ? { ...r, ...patch } : r)));
-  }
-
-  const filled = rows.filter((r) => r.title.trim().length > 0);
-  const overflow = filled.length > remaining;
-
-  function handleApply() {
-    const drafts: ProductItemDraft[] = filled.slice(0, remaining).map((r) => ({
-      id: null,
-      _key: newKey(),
-      sectionRef: null,
-      title: r.title.trim(),
-      description: null,
-      imageUrl: null,
-      priceType: "fixed",
-      priceMajor: r.price.trim(),
-      priceMaxMajor: "",
-      availability: "available",
-      externalUrl: null,
-      badge: null,
-      sku: null,
-    }));
-    onApply(drafts);
-  }
-
-  return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
-      <p className="text-xs text-muted-foreground">
-        برای هر مورد عنوان و قیمت را وارد کنید. ردیف‌های خالی نادیده گرفته
-        می‌شوند.
-      </p>
-
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={(event: DragEndEvent) => {
-          const { active, over } = event;
-          if (!over || active.id === over.id) return;
-          const keys = rows.map((r) => r._key);
-          const oldIndex = keys.indexOf(String(active.id));
-          const newIndex = keys.indexOf(String(over.id));
-          if (oldIndex !== -1 && newIndex !== -1) {
-            setRows((rs) => arrayMove(rs, oldIndex, newIndex));
-          }
-        }}
-      >
-        <SortableContext
-          items={rows.map((r) => r._key)}
-          strategy={verticalListSortingStrategy}
-        >
-          <div className="flex flex-col gap-2">
-            {rows.map((r) => (
-              <BulkRow
-                key={r._key}
-                row={r}
-                currency={currency}
-                onChange={(patch) => setRow(r._key, patch)}
-                onDelete={() =>
-                  setRows((rs) =>
-                    rs.length > 1 ? rs.filter((x) => x._key !== r._key) : rs,
-                  )
-                }
-              />
-            ))}
-          </div>
-        </SortableContext>
-      </DndContext>
-
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={() =>
-          setRows((rs) => [...rs, { _key: newKey(), title: "", price: "" }])
-        }
-        className="gap-1 self-start"
-      >
-        <PlusIcon className="size-4" />
-        افزودن ردیف جدید
-      </Button>
-
-      {overflow ? (
-        <p className="rounded-xl border border-destructive/30 bg-destructive/5 p-2 text-xs text-destructive">
-          حداکثر {toPersianDigits(remaining)} مورد دیگر می‌توانید اضافه کنید.
-        </p>
-      ) : null}
-
-      <Button
-        type="button"
-        onClick={handleApply}
-        disabled={filled.length === 0 || remaining <= 0}
-        className="mt-2"
-      >
-        افزودن (
-        {toPersianDigits(Math.min(filled.length, Math.max(remaining, 0)))})
-      </Button>
-    </div>
-  );
-}
-
-function BulkRow({
-  row,
-  currency,
-  onChange,
-  onDelete,
-}: {
-  row: { _key: string; title: string; price: string };
-  currency: ProductBlockCurrency;
-  onChange: (patch: { title?: string; price?: string }) => void;
-  onDelete: () => void;
-}) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: row._key });
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        opacity: isDragging ? 0.4 : 1,
-      }}
-      className="flex items-center gap-2 rounded-2xl border bg-card p-2"
-    >
-      <span
-        className="touch-none cursor-grab text-muted-foreground active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
-      >
-        <GripVerticalIcon className="size-4" />
-      </span>
-      <div className="grid flex-1 grid-cols-[1fr_auto] gap-2">
-        <Input
-          value={row.title}
-          onChange={(e) => onChange({ title: e.target.value })}
-          placeholder="عنوان"
-          maxLength={120}
-          aria-label="عنوان"
-        />
-        <Input
-          value={row.price}
-          onChange={(e) => onChange({ price: e.target.value })}
-          inputMode="decimal"
-          placeholder={`قیمت (${CURRENCY_LABEL[currency]})`}
-          className="w-28"
-          aria-label="قیمت"
-        />
-      </div>
-      <button
-        type="button"
-        onClick={onDelete}
-        className="grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-muted"
-        aria-label="حذف ردیف"
-      >
-        <TrashIcon className="size-4" />
-      </button>
-    </div>
-  );
-}
+// re-export for any lazy/legacy import paths that referenced the old
+// minor→major helpers (none in product code today).
+export { minorToMajorString, majorStringToMinor };

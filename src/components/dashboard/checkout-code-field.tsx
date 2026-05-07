@@ -27,7 +27,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { CheckCircle2Icon, Loader2Icon, TagIcon, XIcon } from "lucide-react";
 
-import { BoringAvatar } from "@/components/shared/boring-avatar";
+import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -161,9 +161,9 @@ export function CheckoutCodeField({
           }),
         });
         if (myReq !== reqIdRef.current) return; // stale
-        const data = (await res.json().catch(() => null)) as
-          | ResolveResponse
-          | null;
+        const data = (await res
+          .json()
+          .catch(() => null)) as ResolveResponse | null;
         if (!res.ok || !data) {
           setError("ارتباط با سرور برقرار نشد.");
           setPendingCode(null);
@@ -245,7 +245,8 @@ export function CheckoutCodeField({
     if (!raw.trim()) return;
     debounceRef.current = setTimeout(() => {
       void resolveAndApply(raw);
-    }, DEBOUNCE_MS);  };
+    }, DEBOUNCE_MS);
+  };
 
   const handleRemove = () => {
     onChange(null);
@@ -255,9 +256,7 @@ export function CheckoutCodeField({
 
   // ----- Render -----
   if (applied) {
-    return (
-      <AppliedChip applied={applied} onRemove={handleRemove} />
-    );
+    return <AppliedChip applied={applied} onRemove={handleRemove} />;
   }
 
   if (!expanded) {
@@ -358,17 +357,11 @@ function AppliedChip({
     tone === "amber"
       ? "border-amber-200 bg-amber-50"
       : "border-emerald-200 bg-emerald-50";
-  const headingTone =
-    tone === "amber" ? "text-amber-900" : "text-emerald-900";
+  const headingTone = tone === "amber" ? "text-amber-900" : "text-emerald-900";
   const bodyTone = tone === "amber" ? "text-amber-800" : "text-emerald-800";
 
   return (
-    <div
-      className={cn(
-        "space-y-2 rounded-xl border p-3 text-sm",
-        toneClasses,
-      )}
-    >
+    <div className={cn("space-y-2 rounded-xl border p-3 text-sm", toneClasses)}>
       <div className="flex items-start gap-3">
         {applied.kind === "discount" ? (
           <div
@@ -393,7 +386,7 @@ function AppliedChip({
               />
             ) : (
               <AvatarFallback className="bg-transparent p-0">
-                <BoringAvatar
+                <KioarAvatar
                   seed={applied.inviterName ?? applied.raw}
                   size={40}
                 />
@@ -446,8 +439,8 @@ function AppliedChip({
 
       {applied.eligible === false ? (
         <p className="rounded-lg border border-amber-200 bg-amber-100/60 p-2 text-[12px] leading-5 text-amber-900">
-          این کد فقط برای اولین خرید کاربران جدید است. می‌توانید پرداخت را
-          ادامه دهید، اما هدیه‌ی این کد اعمال نخواهد شد.
+          این کد فقط برای اولین خرید کاربران جدید است. می‌توانید پرداخت را ادامه
+          دهید، اما هدیه‌ی این کد اعمال نخواهد شد.
         </p>
       ) : null}
 

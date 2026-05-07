@@ -15,23 +15,23 @@ Persian-only (RTL) link-in-bio + bookings/forms/events SaaS, **mobile-first**, i
 - **Auth**: phone + OTP, custom session cookie `kioar_session`, hashed with `AUTH_SECRET`. Admin role from `ADMIN_PHONE_NUMBERS` env.
 - **PWA**: `@ducanh2912/next-pwa` generates `public/sw.js` — never hand-edit. Offline fallback `/~offline`.
 - **Fonts**: IRANYekanXVF (local in `src/fonts`) + Vazirmatn variable.
-- **pnpm** is the only supported package manager (`packageManager` pinned).
+- **npm** is the package manager.
 
 ## Scripts (use these, not bare `next` / `tsc`)
 
 ```
-pnpm dev              # next dev --webpack
-pnpm build            # next build --webpack   ← must be green before declaring done
-pnpm typecheck        # tsc --noEmit            ← must be green before declaring done
-pnpm lint             # eslint
-pnpm test             # node --test against tests/*.test.ts via tsx
-pnpm db:up            # docker compose up -d postgres
-pnpm db:generate      # drizzle-kit generate (new migration)
-pnpm db:migrate       # drizzle-kit migrate
-pnpm db:push          # drizzle-kit push (dev only)
-pnpm db:studio
-pnpm db:seed:plans    # tsx scripts/seed-plans.ts  ← feature registry seeder, insert-only
-pnpm db:seed:sms      # tsx scripts/seed-sms-templates.ts
+npm run dev              # next dev --webpack
+npm run build            # next build --webpack   ← must be green before declaring done
+npm run typecheck        # tsc --noEmit            ← must be green before declaring done
+npm run lint             # eslint
+npm test                 # node --test against tests/*.test.ts via tsx
+npm run db:up            # docker compose up -d postgres
+npm run db:generate      # drizzle-kit generate (new migration)
+npm run db:migrate       # drizzle-kit migrate
+npm run db:push          # drizzle-kit push (dev only)
+npm run db:studio
+npm run db:seed:plans    # tsx scripts/seed-plans.ts  ← feature registry seeder, insert-only
+npm run db:seed:sms      # tsx scripts/seed-sms-templates.ts
 ```
 
 ## Project layout
@@ -67,7 +67,7 @@ scripts/                       # generate-pwa-icons, seed-plans, seed-sms-templa
 
 ## Database conventions
 
-- Schema is one file: `src/db/schema.ts`. Generate migrations with `pnpm db:generate`, never hand-edit existing migrations.
+- Schema is one file: `src/db/schema.ts`. Generate migrations with `npm run db:generate`, never hand-edit existing migrations.
 - Timestamps: `timestamp({ withTimezone: true })`. UTC in DB, always.
 - Money: bigint `toman` (no fractional). VAT rate from `BILLING_VAT_RATE` env, never hardcoded.
 - Multi-tenancy: **page-owned**, not user-owned. The `profiles` table is the `pages` entity (owner = `userId`, but a user can have many pages). Resolve "current page" with `resolveCurrentPageForOwner()` — never assume `users.id === pages.id`.
@@ -154,7 +154,7 @@ Base `<Input>` is `h-11` mobile / `md:h-9` desktop. Don't override font-size bel
 2. Sticky bottom? Wrap with `safe-pb` or `pb-nav`.
 3. First field of single-purpose screen? `autoFocus`. All fields have `inputMode + autoComplete + enterKeyHint`.
 4. Table? Mobile card fallback present.
-5. `pnpm typecheck` and `pnpm build` green.
+5. `npm run typecheck` and `npm run build` green.
 
 ## Auth, sessions, admin
 
@@ -176,7 +176,7 @@ Base `<Input>` is `h-11` mobile / `md:h-9` desktop. Don't override font-size bel
 
 ## Testing
 
-- `pnpm test` runs `node --test` over `tests/*.test.ts` via `tsx`. Tests use `tests/tsconfig.json` and a `tests/stubs/` directory for module stubs. Add tests for billing math, date math, discounts, zarinpal — anything money- or time-sensitive.
+- `npm test` runs `node --test` over `tests/*.test.ts` via `tsx`. Tests use `tests/tsconfig.json` and a `tests/stubs/` directory for module stubs. Add tests for billing math, date math, discounts, zarinpal — anything money- or time-sensitive.
 
 ## Feature Registry workflow — MANDATORY
 
@@ -202,12 +202,12 @@ The trigger is **capability**, not file type. A new component is a feature only 
 5. **Wait for the answer.** Don't guess — this is a product decision.
 6. **Implement in one commit:**
    - Add the row + mappings to `scripts/seed-plans.ts` (insert-only seeder).
-   - Run `pnpm db:seed:plans` against dev DB.
+   - Run `npm run db:seed:plans` against dev DB.
    - If backfill is needed, write a migration that inserts `page_entitlements` rows for qualifying pages. Seeder owns the registry; migrations own per-row data.
    - Wire `pageHasFeature(pageId, '<lookup_key>')` into both the public renderer (hide entirely) and the editor (`<LockedFeatureCard>` with upgrade CTA).
    - Add the lookup key to the matrix in `IMPLEMENTATION_PLAN.md`.
 7. **Verify before declaring done:**
-   - `pnpm typecheck` and `pnpm build` clean.
+   - `npm run typecheck` and `npm run build` clean.
    - Grep for plan-name comparisons (`=== 'pro'`, `=== 'business'`, `=== 'free'`, `isPro`, `isBusiness`, `userPlan`, `planTier`) — must be zero hits.
    - In dev DB: Free page lacks the entitlement (or has correct limit); Business page has it; renderer hides on Free; editor shows locked.
 

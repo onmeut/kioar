@@ -7,14 +7,13 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3Icon,
   CalendarClockIcon,
-  CalendarDaysIcon,
   CreditCardIcon,
   FormInputIcon,
   GlobeIcon,
-  HomeIcon,
   LayoutGridIcon,
+  MenuIcon,
   PlusSquareIcon,
-  ShieldCheckIcon,
+  SparklesIcon,
   UsersIcon,
 } from "lucide-react";
 
@@ -25,55 +24,78 @@ type NavItem = {
   label: string;
   icon: LucideIcon;
   match?: "exact" | "prefix";
-  primary?: boolean;
+  /** Upgrade tab — violet accent treatment */
+  accent?: boolean;
 };
 
-const dashboardItems: NavItem[] = [
-  { href: "/dashboard", label: "داشبورد", icon: HomeIcon, match: "exact" },
-  { href: "/bookings", label: "هماهنگی‌ها", icon: CalendarClockIcon },
-  {
-    href: "/me" as Route,
-    label: "صفحه",
-    icon: GlobeIcon,
-    primary: true,
-  },
-  { href: "/my-events", label: "رویدادها", icon: CalendarDaysIcon },
-  { href: "/forms" as Route, label: "فرم‌ها", icon: FormInputIcon },
-];
+function getDashboardItems(isProUser: boolean): NavItem[] {
+  const base: NavItem[] = [
+    { href: "/me" as Route, label: "لینک من", icon: GlobeIcon },
+    {
+      href: "/bookings" as Route,
+      label: "هماهنگی‌ها",
+      icon: CalendarClockIcon,
+    },
+    {
+      href: "/dashboard" as Route,
+      label: "آمار",
+      icon: BarChart3Icon,
+      match: "exact",
+    },
+  ];
+
+  if (!isProUser) {
+    return [
+      ...base,
+      {
+        href: "/pro" as Route,
+        label: "ارتقا",
+        icon: SparklesIcon,
+        accent: true,
+      },
+    ];
+  }
+
+  return [
+    ...base,
+    {
+      href: "/forms" as Route,
+      label: "فرم‌ها",
+      icon: FormInputIcon,
+    },
+  ];
+}
 
 const adminItems: NavItem[] = [
   { href: "/admin", label: "نما", icon: LayoutGridIcon, match: "exact" },
   { href: "/admin/users", label: "کاربران", icon: UsersIcon },
-  {
-    href: "/admin/events/new",
-    label: "رویداد",
-    icon: PlusSquareIcon,
-    primary: true,
-  },
+  { href: "/admin/events/new", label: "رویداد", icon: PlusSquareIcon },
   { href: "/admin/requests", label: "درخواست", icon: CreditCardIcon },
-  { href: "/dashboard", label: "داشبورد", icon: ShieldCheckIcon },
 ];
 
 export function MobileBottomNav({
   variant = "dashboard",
+  isProUser = false,
 }: {
   variant?: "dashboard" | "admin";
+  isProUser?: boolean;
 }) {
   const pathname = usePathname();
-  const items = variant === "admin" ? adminItems : dashboardItems;
+  const items = variant === "admin" ? adminItems : getDashboardItems(isProUser);
+
+  const moreActive = pathname === "/more" || pathname.startsWith("/more/");
 
   return (
     <nav
       dir="rtl"
       aria-label="ناوبری موبایل"
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:hidden"
+      className={cn(
+        "pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3 md:hidden",
+        "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+      )}
     >
       <div className="pointer-events-auto w-full max-w-md">
-        <div
-          className={cn(
-            "grid grid-cols-5 items-stretch gap-0.5 rounded-[28px] border border-black/8 bg-background/92 px-1.5 py-1.5 shadow-[0_14px_36px_-18px_rgba(15,23,42,0.35)] backdrop-blur-xl",
-          )}
-        >
+        <div className="grid grid-cols-5 items-stretch gap-2 rounded-[28px] border border-black/8 bg-background/92 px-1.5 py-1.5 shadow-nav backdrop-blur-xl">
           {items.map((item) => {
             const Icon = item.icon;
             const active =
@@ -82,6 +104,21 @@ export function MobileBottomNav({
                 : pathname === item.href ||
                   pathname.startsWith(`${item.href}/`);
 
+            if (item.accent) {
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-label={item.label}
+                  aria-current={active ? "page" : undefined}
+                  className="tap-target relative flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-violet-50 px-1 py-1.5 text-[10.5px] font-semibold text-violet-600 ring-1 ring-violet-200 transition-colors hover:bg-violet-100"
+                >
+                  <Icon className="size-5" aria-hidden />
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              );
+            }
+
             return (
               <Link
                 key={item.href}
@@ -89,24 +126,34 @@ export function MobileBottomNav({
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "tap-target relative flex flex-col items-center justify-center gap-0 rounded-full px-1 py-1.5 text-[10.5px] font-semibold transition-colors",
-                  item.primary
-                    ? "-mt-5 aspect-square size-14 justify-self-center self-center bg-primary text-primary-foreground shadow-[0_16px_34px_-14px_color-mix(in_srgb,var(--primary)_60%,transparent)]"
-                    : active
-                      ? "bg-primary/12 text-primary"
-                      : "text-muted-foreground hover:text-foreground",
+                  "tap-target relative flex flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1.5 text-[10.5px] font-semibold transition-colors",
+                  active
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <Icon
-                  className={cn("size-5", item.primary ? "size-6" : undefined)}
-                  aria-hidden
-                />
-                <span className={cn(item.primary && "sr-only")}>
-                  {item.label}
-                </span>
+                <Icon className="size-5" aria-hidden />
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
+
+          {/* "More" — opens the dedicated /more menu page (PWA-standard
+              pattern, replaces the previous sidebar Sheet on mobile). */}
+          <Link
+            href={"/more" as Route}
+            aria-label="بیشتر"
+            aria-current={moreActive ? "page" : undefined}
+            className={cn(
+              "tap-target relative flex flex-col items-center justify-center gap-0.5 rounded-2xl px-1 py-1.5 text-[10.5px] font-semibold transition-colors",
+              moreActive
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            <MenuIcon className="size-5" aria-hidden />
+            <span className="truncate">بیشتر</span>
+          </Link>
         </div>
       </div>
     </nav>

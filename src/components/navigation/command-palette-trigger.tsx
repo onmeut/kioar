@@ -20,7 +20,6 @@ export interface CommandPaletteTriggerProps {
   currentPageId: string;
   publicUrl: string;
   features: CommandPaletteFeatureFlags;
-  isAdmin: boolean;
 }
 
 /**
@@ -38,7 +37,6 @@ export function CommandPaletteTrigger({
   currentPageId,
   publicUrl,
   features,
-  isAdmin,
 }: CommandPaletteTriggerProps) {
   const [open, setOpen] = useState(false);
   // null on the server / first render to avoid hydration mismatch on the
@@ -66,8 +64,20 @@ export function CommandPaletteTrigger({
   // it doesn't compete with route-load chrome. Dismissal is sticky in
   // localStorage; we use a versioned key so we can re-introduce the
   // hint after a major redesign without colliding with old state.
+  // Skipped on touch-only devices (no keyboard, no shortcut).
   useEffect(() => {
     if (typeof window === "undefined") return;
+    // Hide on coarse-pointer / touch / narrow screens — they have no
+    // physical keyboard or visible ⌘K trigger button. The pill is
+    // already `hidden md:flex`, so on <768px there's nothing to teach.
+    const isTouchOnly =
+      window.matchMedia?.("(hover: none) and (pointer: coarse)").matches ??
+      false;
+    const isNarrow = window.matchMedia?.("(max-width: 767px)").matches ?? false;
+    const isStandalone =
+      window.matchMedia?.("(display-mode: standalone)").matches ?? false;
+    if (isTouchOnly || isNarrow || isStandalone) return;
+
     let dismissed = false;
     try {
       dismissed = window.localStorage.getItem(HINT_STORAGE_KEY) === "1";
@@ -149,7 +159,6 @@ export function CommandPaletteTrigger({
         currentPageId={currentPageId}
         publicUrl={publicUrl}
         features={features}
-        isAdmin={isAdmin}
       />
     </>
   );

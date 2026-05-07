@@ -1,9 +1,13 @@
-# Caddy automatically provisions TLS via Let's Encrypt for $APP_DOMAIN.
-# Reverse-proxies all traffic to the standalone Next.js server.
+# ArvanCloud CDN proxy mode:
+# ArvanCloud terminates HTTPS for end-users and forwards plain HTTP to Caddy.
+# Caddy reverse-proxies to the standalone Next.js server on port 80.
+# TLS is provided by ArvanCloud at their edge — no ACME needed here.
 #
-# Set APP_DOMAIN in .env.production (e.g. APP_DOMAIN=app.example.com).
+# Required in ArvanCloud DNS panel:
+#   - CDN proxy ON for the A record (cloud icon enabled)
+#   - SSL mode: Flexible or Full
 
-{$APP_DOMAIN} {
+:80 {
 	encode zstd gzip
 
 	# Long cache for hashed Next.js static assets.
@@ -14,10 +18,9 @@
 	@uploads path /uploads/*
 	header @uploads Cache-Control "public, max-age=31536000, immutable"
 
-	# Rate-limit raw requests at the edge as a coarse first line of defense.
-	# (Per-route limits inside the app remain the source of truth.)
 	reverse_proxy app:3000 {
-		header_up X-Forwarded-Proto {scheme}
+		# ArvanCloud always terminates HTTPS — tell the app it arrived over HTTPS.
+		header_up X-Forwarded-Proto https
 		header_up X-Forwarded-For {remote_host}
 		header_up X-Real-IP {remote_host}
 	}

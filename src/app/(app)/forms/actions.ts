@@ -46,7 +46,7 @@ export async function createFormBlockAction(
   if (!result.ok) {
     return { status: "error", message: result.message };
   }
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath("/forms");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success", message: "فرم ساخته شد.", id: result.id };
@@ -74,7 +74,7 @@ export async function updateFormBlockAction(
   if (!result.ok) {
     return { status: "error", message: result.message };
   }
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath("/forms");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success", message: "ذخیره شد." };
@@ -90,7 +90,7 @@ export async function deleteFormBlockAction(
   if (!result.ok) {
     return { status: "error", message: result.message ?? "حذف نشد." };
   }
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath("/forms");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success" };
@@ -111,7 +111,7 @@ export async function toggleFormBlockActiveAction(
   if (!result.ok) {
     return { status: "error", message: result.message ?? "تغییر ناموفق بود." };
   }
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success" };
 }

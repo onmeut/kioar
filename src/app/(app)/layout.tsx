@@ -1,6 +1,10 @@
 import type { Route } from "next";
 import { signOutAction } from "@/app/(app)/dashboard/actions";
 import { ImpersonationBar } from "@/components/admin/impersonation-bar";
+import {
+  MeHeaderActions,
+  MeSettingsButton,
+} from "@/components/dashboard/me-header-actions";
 import { CommandPaletteTrigger } from "@/components/navigation/command-palette-trigger";
 import { PageSwitcher } from "@/components/navigation/page-switcher";
 import {
@@ -14,12 +18,15 @@ import { SidebarUpgradeCard } from "@/components/navigation/sidebar-upgrade-card
 import { DashboardPageTitle } from "@/components/shared/dashboard-page-title";
 import { MobileBottomNav } from "@/components/shared/mobile-bottom-nav";
 import { ProPromoBar } from "@/components/shared/pro-promo-bar";
+import { InstallPrompt } from "@/components/app/install-prompt";
+import { PullToRefresh } from "@/components/app/pull-to-refresh";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar";
@@ -106,29 +113,32 @@ export default async function DashboardLayout({
   //
   // Order is intentional: داشبورد is account-wide and sits alone in
   // its own group at the top (visually separated by the next group's
-  // padding). صفحه‌ی من is then promoted as the *primary* row — it's
+  // padding). لینک من is then promoted as the *primary* row — it's
   // the app's centerpiece, treated visually as a tier above its peers.
   // Everything else is conventional supporting nav.
   //
   // پلن و صورت‌حساب is intentionally absent — billing access lives in
   // the plan-aware card slot at the footer (Free → upgrade card, Pro →
   // "مدیریت اشتراک" card, Business → no card).
+  const isProUser = currentPage?.planKey !== "free";
+
   const myPageNavItem: SidebarNavItem = {
     href: "/me" as Route,
-    label: "صفحه‌ی من",
+    label: "لینک من",
     icon: "page",
   };
 
-  const mainNavItems: SidebarNavItem[] = [
-    {
-      href: "/dashboard",
-      label: "داشبورد",
-      icon: "home",
-      match: "exact",
-    },
+  const statsNavItem: SidebarNavItem = {
+    href: "/dashboard",
+    label: "آمار",
+    icon: "analytics",
+    match: "exact",
+  };
+
+  const toolsNavItems: SidebarNavItem[] = [
     {
       href: "/bookings",
-      label: "هماهنگ‌ها",
+      label: "هماهنگی‌ها",
       icon: "bookings",
       badgeCount: badgeCounts.bookings,
     },
@@ -139,9 +149,6 @@ export default async function DashboardLayout({
       badgeCount: badgeCounts.forms,
     },
     { href: "/my-events", label: "رویدادها", icon: "events" },
-  ];
-
-  const premiumNavItems: SidebarNavItem[] = [
     { href: "/premium" as Route, label: "کارت هوشمند", icon: "requests" },
   ];
 
@@ -157,8 +164,8 @@ export default async function DashboardLayout({
       showDot: badgeCounts.notifications > 0,
     },
     {
-      href: "/dashboard/profile" as Route,
-      label: "پروفایل کاربری",
+      href: "/dashboard/account" as Route,
+      label: "حساب کاربری",
       icon: "user",
     },
     { href: "/help" as Route, label: "راهنما و پشتیبانی", icon: "help" },
@@ -186,8 +193,8 @@ export default async function DashboardLayout({
       <div
         className={
           showPromoBar
-            ? "flex min-h-0 flex-1 rounded-t-3xl contain-[paint] bg-background"
-            : "flex min-h-0 flex-1 contain-[paint] bg-background"
+            ? "flex min-h-0 flex-1 rounded-t-3xl bg-background isolate"
+            : "flex min-h-0 flex-1 bg-background isolate"
         }
       >
         <SidebarProvider defaultOpen className="min-h-0! h-full">
@@ -208,24 +215,12 @@ export default async function DashboardLayout({
                 </SidebarGroupContent>
               </SidebarGroup>
 
-              {/* صفحه‌ی من — public mini-site entry, sits first. */}
+              {/* لینک من + آمار + ابزارها */}
               <SidebarGroup>
                 <SidebarGroupContent>
-                  <SidebarNav items={[myPageNavItem]} />
-                </SidebarGroupContent>
-              </SidebarGroup>
-
-              {/* Main nav — dashboard + all page-scoped links. */}
-              <SidebarGroup className="pt-1">
-                <SidebarGroupContent>
-                  <SidebarNav items={mainNavItems} />
-                </SidebarGroupContent>
-              </SidebarGroup>
-
-              {/* کارت هوشمند — standalone group */}
-              <SidebarGroup>
-                <SidebarGroupContent>
-                  <SidebarNav items={premiumNavItems} />
+                  <SidebarNav
+                    items={[myPageNavItem, statsNavItem, ...toolsNavItems]}
+                  />
                 </SidebarGroupContent>
               </SidebarGroup>
             </SidebarContent>
@@ -247,16 +242,43 @@ export default async function DashboardLayout({
 
           <SidebarInset className="flex h-full flex-col overflow-hidden">
             <ImpersonationBar />
-            <header className="shrink-0 z-20 border-b bg-background/84 backdrop-blur-sm">
-              {/* Use a 3-column grid so the pill is always exactly
-                  centred regardless of how wide the title or settings
-                  button are. The pill column is `1fr` wide, capped at
-                  360px, and sits in the middle cell. The outer two
-                  cells each take an equal share of remaining space. */}
-              <div className="grid h-14 grid-cols-[1fr_auto_1fr] md:grid-cols-[1fr_minmax(0,360px)_1fr] items-center gap-3 px-4 sm:h-16 sm:px-6">
-                <DashboardPageTitle />
-                {/* Centre cell — pill always horizontally centred; hidden on mobile */}
-                <div className="hidden md:flex justify-center">
+            <header className="shrink-0 z-20 border-b bg-background/84 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
+              {/* Mobile: settings gear (start, /me-only) + absolutely-
+                  centred page-switcher + end actions. The page title
+                  is intentionally absent on mobile — the page-switcher
+                  carries the page identity and the bottom-nav
+                  communicates the current section. */}
+              <div className="relative flex h-14 items-center px-3 sm:h-14 sm:px-6 md:hidden">
+                <MeSettingsButton />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div className="pointer-events-auto">
+                    <PageSwitcher
+                      pages={switcherItems}
+                      currentPageId={viewer.profile.id}
+                      signOut={signOutAction}
+                      variant="compact"
+                    />
+                  </div>
+                </div>
+                <div className="ms-auto flex items-center gap-1">
+                  <MeHeaderActions
+                    publicUrl={publicUrl}
+                    slug={viewer.profile.slug}
+                    displayName={
+                      viewer.profile.fullName || viewer.profile.title || "کارت"
+                    }
+                    host={`${viewer.profile.domain}/${viewer.profile.slug}`}
+                  />
+                </div>
+              </div>
+
+              {/* Desktop: 3-column grid that perfectly centres the
+                  ⌘K palette pill regardless of title/actions widths. */}
+              <div className="hidden h-14 items-center gap-3 px-3 sm:h-16 sm:px-6 md:grid md:grid-cols-[1fr_minmax(0,360px)_1fr]">
+                <div className="min-w-0">
+                  <DashboardPageTitle />
+                </div>
+                <div className="flex justify-center">
                   <CommandPaletteTrigger
                     pages={switcherItems}
                     currentPageId={currentPageId}
@@ -266,20 +288,29 @@ export default async function DashboardLayout({
                       bookings: bookingsFeature,
                       csvExport: csvExportFeature,
                     }}
-                    isAdmin={isAdmin}
                   />
                 </div>
-                <div />
+                <div className="flex justify-end">
+                  <MeHeaderActions
+                    publicUrl={publicUrl}
+                    slug={viewer.profile.slug}
+                    displayName={
+                      viewer.profile.fullName || viewer.profile.title || "کارت"
+                    }
+                    host={`${viewer.profile.domain}/${viewer.profile.slug}`}
+                  />
+                </div>
               </div>
             </header>
 
-            <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-nav md:pb-0">
-              {children}
+            <main className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden pb-nav md:pb-0 [-webkit-overflow-scrolling:touch] overscroll-contain">
+              <PullToRefresh>{children}</PullToRefresh>
             </main>
-            <MobileBottomNav variant="dashboard" />
+            <MobileBottomNav variant="dashboard" isProUser={isProUser} />
           </SidebarInset>
         </SidebarProvider>
       </div>
+      <InstallPrompt />
     </div>
   );
 }

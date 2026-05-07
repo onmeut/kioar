@@ -45,7 +45,7 @@ export async function setBlockSpotlightAction(
     return { status: "error", message: result.message };
   }
 
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success" };
 }

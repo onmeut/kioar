@@ -21,7 +21,15 @@ type PublicShareBarProps = {
   displayName: string;
   /** "{domain}/{slug}" — controls the host shown in the pill. */
   host?: string;
+  /** When set, overrides the pill label text and switches to RTL layout. */
+  label?: string;
   className?: string;
+  /**
+   * `pill` (default) renders the host/label pill. `icon` renders a
+   * compact circular share button — used inside the mobile dashboard
+   * header where we only have room for an affordance.
+   */
+  variant?: "pill" | "icon";
 };
 
 export function PublicShareBar({
@@ -29,10 +37,37 @@ export function PublicShareBar({
   slug,
   displayName,
   host,
+  label,
   className,
+  variant = "pill",
 }: PublicShareBarProps) {
   const [open, setOpen] = useState(false);
   const displayHost = host ?? `kioar.com/${slug}`;
+
+  if (variant === "icon") {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="اشتراک‌گذاری"
+          className={cn(
+            "tap-target inline-flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted",
+            className,
+          )}
+        >
+          <ShareIcon className="size-5" aria-hidden />
+        </button>
+        <ShareDialog
+          open={open}
+          onOpenChange={setOpen}
+          publicUrl={publicUrl}
+          displayHost={displayHost}
+          displayName={displayName}
+        />
+      </>
+    );
+  }
 
   return (
     <>
@@ -44,35 +79,18 @@ export function PublicShareBar({
           if (e.key === "Enter" || e.key === " ") setOpen(true);
         }}
         className={cn(
-          "relative mt-3 flex w-full max-w-62.5 cursor-pointer items-center justify-center rounded-full border border-border bg-background/90 px-3 py-2.5 text-sm backdrop-blur transition-colors hover:bg-muted/60",
+          "flex w-full max-w-62.5 cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-background/90 px-4 py-2.5 text-sm backdrop-blur transition-colors hover:bg-muted/60",
           className,
         )}
-        dir="ltr"
+        dir={label ? "rtl" : "ltr"}
       >
+        <ShareIcon className="size-4 shrink-0 text-foreground" />
         <span
-          className="truncate text-center font-semibold text-foreground/80"
+          className="truncate font-semibold text-foreground/80"
           title={publicUrl}
         >
-          {displayHost}
+          {label ?? displayHost}
         </span>
-        <div
-          onClick={(e) => {
-            e.stopPropagation();
-            setOpen(true);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.stopPropagation();
-              setOpen(true);
-            }
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="اشتراک‌گذاری"
-          className="absolute inset-y-0 right-5 flex items-center rounded-full text-foreground"
-        >
-          <ShareIcon className="size-4" />
-        </div>
       </div>
 
       <ShareDialog

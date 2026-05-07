@@ -83,6 +83,12 @@ export async function requestOtpAction(
   const result = await issueSignInOtp(parsed.data.phone);
 
   if (!result.ok) {
+    if (result.reason === "sms_failed") {
+      return {
+        status: "error",
+        message: "خطا در ارسال پیامک. لطفاً دوباره تلاش کنید.",
+      };
+    }
     return {
       status: "error",
       cooldownUntil: result.cooldownUntil,
@@ -121,6 +127,12 @@ export async function resendOtpAction(
   const result = await issueSignInOtp(parsed.data.phone);
 
   if (!result.ok) {
+    if (result.reason === "sms_failed") {
+      return {
+        status: "error",
+        message: "خطا در ارسال پیامک. لطفاً دوباره تلاش کنید.",
+      };
+    }
     return {
       status: "error",
       cooldownUntil: result.cooldownUntil,

@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { href: "/admin/billing/pages", label: "اشتراک‌ها" },
   { href: "/admin/billing/invoices", label: "فاکتورها" },
+  { href: "/admin/billing/plans-pricing", label: "قیمت‌گذاری پلن‌ها" },
+  { href: "/admin/billing/config", label: "تنظیمات" },
 ] as const;
 
 export function BillingSectionTabs() {

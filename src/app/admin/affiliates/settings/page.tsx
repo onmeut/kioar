@@ -85,7 +85,7 @@ export default async function AdminAffiliateSettingsPage({
             placeholder="# قوانین محتوای تبلیغ&#10;..."
           />
           <p className="text-[11px] text-muted-foreground">
-            این متن روی صفحه‌ی منابع همکار قابل نمایشه.
+            این متن روی لینک منابع همکار قابل نمایشه.
           </p>
         </div>
 

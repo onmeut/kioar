@@ -1,29 +1,23 @@
 "use client";
 
 /**
- * Phase 8 — trial claim screen (client island).
+ * `/trial` claim screen.
  *
- * The screen mirrors the Linktree "Claim a free 7-day Pro trial" flow but
- * stays Persian / RTL / light. A single render handles three modes:
- *
- *   1. One eligible plan        → show plan card + 3-row timeline + CTA.
+ * Three modes from a single render:
+ *   1. One eligible plan        → plan card + 3-row timeline + CTA.
  *   2. Two eligible plans       → tab between them.
- *   3. Mixed eligibility        → render ineligible plans with an
- *      "already used" badge so the user understands why the CTA is gone.
+ *   3. Mixed eligibility        → ineligible plans show an "already used"
+ *      hint so the user understands why the CTA is gone.
  *
  * Trial length is `option.trialDays` from the registry — never hardcoded.
- * Timeline reminder day = `trialDays - 2` (matches cron's
- * `trial_ending_in_3d`-style spacing without coupling to it).
- *
- * All money / numerals are rendered with `formatPersianNumber` +
- * `toPersianDigits` so the screen is consistent with the rest of the app.
+ * Reminder day = `trialDays - 2` (matches cron spacing without coupling).
  */
 import { useMemo, useState, useTransition } from "react";
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeftIcon,
-  BellIcon,
+  BellRingIcon,
   CalendarClockIcon,
   CheckIcon,
   RocketIcon,
@@ -31,9 +25,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
+import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { formatPersianNumber, toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +72,11 @@ const REASON_LABELS: Record<
   page_not_active: "وضعیت اشتراک این صفحه اجازه‌ی شروع آزمایش نمی‌دهد.",
 };
 
+const PLAN_LABEL_FA: Record<"pro" | "business", string> = {
+  pro: "پلن حرفه‌ای",
+  business: "پلن کسب‌وکار",
+};
+
 export function TrialClaimScreen({
   pageId,
   pageDisplayName,
@@ -90,7 +88,6 @@ export function TrialClaimScreen({
   const [isPending, startTransition] = useTransition();
   const [pendingKey, setPendingKey] = useState<string | null>(null);
 
-  // Default selection = first eligible plan, otherwise first option.
   const initialKey = useMemo(() => {
     return options.find((o) => o.eligible)?.key ?? options[0]?.key ?? "pro";
   }, [options]);
@@ -122,9 +119,6 @@ export function TrialClaimScreen({
         }
 
         toast.success("آزمایش رایگان فعال شد.");
-        // Always honour the caller's `successHref` (e.g. `/page` — the
-        // user's own page editor) instead of the API's default billing
-        // URL. The API still returns redirectUrl for backwards compat.
         router.push(successHref as Route);
         router.refresh();
       } catch (error) {
@@ -136,17 +130,15 @@ export function TrialClaimScreen({
 
   if (!active) {
     return (
-      <div className="rounded-2xl border bg-white p-6 text-center text-sm text-zinc-600">
+      <div className="flex flex-col items-center gap-6 rounded-3xl bg-white p-8 text-center text-sm text-zinc-600 ring-1 ring-zinc-200">
         پلن قابل آزمایشی برای این صفحه وجود ندارد.
-        <div className="mt-4">
-          <Button
-            render={<a href={skipHref} />}
-            variant="outline"
-            className="h-11"
-          >
-            بازگشت به داشبورد
-          </Button>
-        </div>
+        <Button
+          render={<a href={skipHref} />}
+          variant="outline"
+          className="h-11"
+        >
+          بازگشت به داشبورد
+        </Button>
       </div>
     );
   }
@@ -156,42 +148,45 @@ export function TrialClaimScreen({
 
   const timeline = [
     {
-      icon: <SparklesIcon className="size-4" />,
+      icon: <SparklesIcon className="size-5" />,
       day: "امروز",
-      title: `همه‌ی امکانات ${active.nameFa} باز می‌شود`,
+      title: "همه‌ی امکانات فعال می‌شود",
+      hint: "بدون نیاز به کارت بانکی — همین حالا شروع کن.",
     },
     {
-      icon: <BellIcon className="size-4" />,
+      icon: <BellRingIcon className="size-5" />,
       day: `روز ${toPersianDigits(reminderDay)}`,
-      title: "پیامک یادآوری دریافت می‌کنید",
+      title: "پیامک یادآوری برایت می‌فرستیم",
+      hint: "تا با خیال راحت تصمیم بگیری.",
     },
     {
-      icon: <CalendarClockIcon className="size-4" />,
+      icon: <CalendarClockIcon className="size-5" />,
       day: `روز ${toPersianDigits(trialDays)}`,
       title: "پایان دوره‌ی آزمایش",
+      hint: "اگر ادامه ندادی، صفحه‌ات روی پلن رایگان می‌ماند.",
     },
   ];
 
   return (
-    <div className="space-y-6">
-      <header className="space-y-2 text-zinc-900">
-        <Badge
-          variant="outline"
-          className="border-emerald-200 bg-emerald-50 text-emerald-700"
-        >
-          آزمایش رایگان {toPersianDigits(trialDays)} روزه
-        </Badge>
-        <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
-          {active.nameFa} را{" "}
-          <span className="text-primary">رایگان امتحان کنید</span>
-        </h1>
-        <p className="text-sm text-zinc-600">
-          همه‌ی امکانات پلن {active.nameFa} برای صفحه‌ی{" "}
-          <span className="font-semibold text-zinc-900">{pageDisplayName}</span>{" "}
-          فعال می‌شود.
-        </p>
-      </header>
+    <div className="space-y-7">
+      {/* Header */}
+      <div className="flex flex-col items-center gap-5 text-center">
+        <BrandMark variant="mark" className="size-12" />
+        <div className="flex flex-col gap-3">
+          <h1 className="text-3xl font-bold leading-tight text-zinc-900 sm:text-4xl">
+            تست {toPersianDigits(trialDays)} روزه رایگان
+          </h1>
+          <p className="px-2 text-sm leading-7 text-zinc-600 sm:text-[15px]">
+            همه‌ی امکانات {PLAN_LABEL_FA[active.key]} برای صفحه‌ی{" "}
+            <span className="font-semibold text-zinc-900">
+              {pageDisplayName}
+            </span>{" "}
+            فعال می‌شود.
+          </p>
+        </div>
+      </div>
 
+      {/* Plan picker */}
       {options.length > 1 ? (
         <div
           role="radiogroup"
@@ -212,26 +207,24 @@ export function TrialClaimScreen({
                 onClick={() => setActiveKey(opt.key)}
                 disabled={!opt.eligible}
                 className={cn(
-                  "relative flex flex-col items-start gap-1 rounded-2xl border p-3 text-start transition-colors",
+                  "relative flex flex-col items-start gap-1 rounded-2xl bg-white p-4 text-start ring-1 transition-all",
                   isActive
-                    ? "border-primary bg-primary/5 ring-2 ring-primary/40"
-                    : "border-zinc-200 bg-white hover:border-zinc-300",
-                  !opt.eligible && "opacity-60",
+                    ? "ring-2 ring-zinc-900 shadow-sm"
+                    : "ring-zinc-200 hover:ring-zinc-300",
+                  !opt.eligible && "opacity-50",
                 )}
               >
-                <span className="text-sm font-bold text-zinc-900">
-                  {opt.nameFa}
+                <span className="text-base font-bold text-zinc-900 sm:text-lg">
+                  {PLAN_LABEL_FA[opt.key]}
                 </span>
                 {monthly ? (
-                  <span className="text-[11px] text-zinc-500">{monthly}</span>
+                  <span className="text-xs text-zinc-500">{monthly}</span>
                 ) : null}
                 {!opt.eligible ? (
-                  <span className="text-[10px] text-zinc-400">
-                    استفاده‌شده
-                  </span>
+                  <span className="text-[10px] text-zinc-400">استفاده‌شده</span>
                 ) : null}
                 {isActive ? (
-                  <span className="absolute inset-e-2 top-2 inline-flex size-4 items-center justify-center rounded-full bg-primary text-white">
+                  <span className="absolute inset-e-3 top-3 inline-flex size-5 items-center justify-center rounded-full bg-zinc-900 text-white">
                     <CheckIcon className="size-3" strokeWidth={3} />
                   </span>
                 ) : null}
@@ -241,38 +234,44 @@ export function TrialClaimScreen({
         </div>
       ) : null}
 
-      <Card className="border-zinc-200 bg-white shadow-sm">
-        <CardContent className="space-y-4 pt-5">
-          <ol className="relative space-y-5 ps-6">
+      {/* Timeline */}
+      <ol className="relative grid gap-5 rounded-3xl bg-white p-6 ring-1 ring-zinc-200">
+        <span
+          aria-hidden
+          className="absolute top-[3.75rem] bottom-[3.75rem] inset-s-[2.4rem] w-px bg-zinc-200"
+        />
+        {timeline.map((step, i) => (
+          <li key={i} className="relative flex items-start gap-4">
             <span
               aria-hidden
-              className="absolute inset-s-2 top-2 bottom-2 w-px bg-zinc-200"
-            />
-            {timeline.map((step, i) => (
-              <li key={i} className="relative">
-                <span
-                  aria-hidden
-                  className="absolute -inset-s-6 top-0.5 flex size-4 items-center justify-center rounded-full bg-white ring-2 ring-zinc-200 text-zinc-500"
-                >
-                  {step.icon}
-                </span>
-                <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
-                  {step.day}
-                </p>
-                <p className="mt-0.5 text-sm font-semibold text-zinc-900">
-                  {step.title}
-                </p>
-              </li>
-            ))}
-          </ol>
-        </CardContent>
-      </Card>
+              className={cn(
+                "relative z-10 grid size-11 shrink-0 place-items-center rounded-full ring-1",
+                i === 0
+                  ? "bg-zinc-900 text-white ring-zinc-900"
+                  : "bg-zinc-50 text-zinc-700 ring-zinc-200",
+              )}
+            >
+              {step.icon}
+            </span>
+            <div className="flex flex-col gap-0.5 pt-0.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                {step.day}
+              </p>
+              <p className="text-[15px] font-bold text-zinc-900">
+                {step.title}
+              </p>
+              <p className="text-xs leading-6 text-zinc-500">{step.hint}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
 
+      {/* CTA */}
       {active.eligible ? (
         <div className="space-y-3">
           <Button
             type="button"
-            className="h-12 w-full text-base"
+            className="h-13 w-full text-[15px] font-bold"
             disabled={isPending}
             onClick={() => handleStart(active)}
           >
@@ -287,6 +286,14 @@ export function TrialClaimScreen({
           </Button>
           <Button
             type="button"
+            variant="outline"
+            className="h-11 w-full text-sm"
+            render={<a href="/pro" />}
+          >
+            مشاهده و مقایسه پلن‌ها
+          </Button>
+          <Button
+            type="button"
             variant="ghost"
             className="h-11 w-full text-sm text-zinc-500"
             disabled={isPending}
@@ -298,7 +305,7 @@ export function TrialClaimScreen({
         </div>
       ) : (
         <div className="space-y-3">
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+          <div className="rounded-2xl bg-amber-50 p-3 text-xs text-amber-800 ring-1 ring-amber-200">
             {active.ineligibleReason
               ? REASON_LABELS[active.ineligibleReason]
               : "این پلن فعلاً برای آزمایش در دسترس نیست."}

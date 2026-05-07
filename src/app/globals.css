@@ -81,10 +81,10 @@
 :root {
   --radius: 0.625rem;
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.1822 0 0);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.508 0.118 165.612);
+  --popover-foreground: oklch(0.1822 0 0);
+  --primary: oklch(0.1822 0 0);
   --primary-foreground: oklch(0.979 0.021 166.113);
   --secondary: oklch(0.967 0.001 286.375);
   --secondary-foreground: oklch(0.21 0.006 285.885);
@@ -104,15 +104,15 @@
   --chart-4: oklch(0.508 0.118 165.612);
   --chart-5: oklch(0.432 0.095 166.913);
   --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.596 0.145 163.225);
+  --sidebar-foreground: oklch(0.1822 0 0);
+  --sidebar-primary: oklch(0.1822 0 0);
   --sidebar-primary-foreground: oklch(0.979 0.021 166.113);
   --sidebar-accent: oklch(0.97 0 0);
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.08 0 0);
   --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  --foreground: oklch(0.1822 0 0);
 
   /* ── Marketing palette (beside-inspired clean SaaS) ── */
   --paper: oklch(1 0 0);
@@ -231,34 +231,78 @@
   }
 
   /*
-   * Claim-form animated border — pulses with brand green to attract attention.
-   * Uses box-shadow (not a background gradient) to stay compliant with the
-   * no-bg-gradient rule while still achieving the shimmer effect.
+   * Claim-form traveling border — a small bright arc slowly orbits the box
+   * using a rotating conic-gradient pseudo-element clipped by the wrapper.
+   * @property lets us interpolate the custom angle for smooth animation.
    */
-  @keyframes claim-border-glow {
-    0%,
-    100% {
-      box-shadow: none;
-      border-color: var(--hairline);
-    }
-    50% {
-      box-shadow:
-        0 0 0 3px oklch(0.508 0.118 165.612 / 0.14),
-        0 8px 28px -8px oklch(0.508 0.118 165.612 / 0.22);
-      border-color: oklch(0.508 0.118 165.612 / 0.5);
+  @property --claim-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  @keyframes claim-border-rotate {
+    to {
+      --claim-angle: 360deg;
     }
   }
 
+  /* Outer wrapper — overflow:hidden clips the rotating pseudo to the border strip */
+  .claim-form-wrapper {
+    position: relative;
+    border-radius: 1rem; /* rounded-2xl = 16px */
+    padding: 1.5px;
+    overflow: hidden;
+    box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.12);
+  }
+
+  /* The rotating arc — lives behind the inner content box */
+  .claim-form-wrapper::before {
+    content: "";
+    position: absolute;
+    inset: -80%;
+    background: conic-gradient(
+      from var(--claim-angle),
+      transparent 0%,
+      transparent 68%,
+      oklch(0.508 0.118 165.612 / 0.35) 80%,
+      oklch(0.508 0.118 165.612 / 0.9) 88%,
+      oklch(0.75 0.12 165) 91%,
+      oklch(0.508 0.118 165.612 / 0.9) 94%,
+      oklch(0.508 0.118 165.612 / 0.35) 96%,
+      transparent 100%
+    );
+    animation: claim-border-rotate 6s linear infinite;
+  }
+
+  /* Static hairline fallback when JS or animation is off */
+  .claim-form-wrapper::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1.5px var(--hairline);
+    pointer-events: none;
+  }
+
+  /* Inner content box — solid bg covers the rotating gradient underneath */
   .claim-form-border {
-    animation: claim-border-glow 3.5s ease-in-out infinite;
+    position: relative;
+    z-index: 1;
+    border-radius: calc(1rem - 1.5px); /* 14.5px */
+    overflow: hidden;
+    background: var(--paper);
   }
 
-  .claim-form-border:focus-within {
-    animation: none;
-    border-color: oklch(0.508 0.118 165.612 / 0.65);
+  /* Focus: speed up slightly + solid emerald ring outside */
+  .claim-form-wrapper:has(.claim-form-border:focus-within) {
     box-shadow:
-      0 0 0 4px oklch(0.508 0.118 165.612 / 0.13),
-      0 8px 28px -8px oklch(0.508 0.118 165.612 / 0.18);
+      0 0 0 3px oklch(0.508 0.118 165.612 / 0.18),
+      0 8px 28px -8px oklch(0.508 0.118 165.612 / 0.2);
+  }
+
+  .claim-form-wrapper:has(.claim-form-border:focus-within)::before {
+    animation-duration: 2.5s;
   }
 
   .marketing-card {
@@ -469,6 +513,59 @@
     animation-delay: -4s;
   }
 
+  /* Hero CTA — traveling arc border (pill button variant of claim-form-wrapper) */
+  @property --hero-cta-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  @keyframes hero-cta-border {
+    to {
+      --hero-cta-angle: 360deg;
+    }
+  }
+
+  .hero-cta-ring {
+    position: relative;
+    border-radius: 9999px;
+    padding: 2px;
+    /* overflow:hidden alone fails to clip ::before on mobile Safari for pills —
+       clip-path is the reliable cross-browser fix */
+    overflow: hidden;
+    clip-path: inset(0 round 9999px);
+    display: inline-flex;
+    isolation: isolate;
+  }
+
+  .hero-cta-ring::before {
+    content: "";
+    position: absolute;
+    inset: -80%;
+    z-index: -1;
+    background: conic-gradient(
+      from var(--hero-cta-angle),
+      transparent 0%,
+      transparent 68%,
+      rgba(30, 215, 96, 0.12) 78%,
+      rgba(30, 215, 96, 0.85) 86%,
+      rgba(160, 255, 180, 0.9) 89%,
+      rgba(30, 215, 96, 0.85) 92%,
+      rgba(30, 215, 96, 0.12) 97%,
+      transparent 100%
+    );
+    animation: hero-cta-border 5s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-cta-ring::before {
+      display: none;
+    }
+    .hero-cta-ring {
+      padding: 0;
+    }
+  }
+
   /* ----------------------------------------------------------------- */
   /* Block "Spotlight" animations — applied to public link/form/booking */
   /* pills when the creator picks an animation style. Loop forever, but */
@@ -666,7 +763,7 @@
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
+  --background: oklch(0.1822 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
   --card-foreground: oklch(0.985 0 0);

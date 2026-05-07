@@ -32,8 +32,6 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   CheckoutCodeField,
@@ -244,31 +242,43 @@ export function BillingActionsCard({ state }: Props) {
     : null;
 
   return (
-    <Card>
-      <CardHeader className="space-y-3">
-        <div className="flex flex-col gap-1">
-          <CardTitle className="text-base">مدیریت اشتراک</CardTitle>
-          <p className="text-xs text-zinc-500">
-            تغییر پلن، چرخه‌ی صورت‌حساب، یا لغو اشتراک این صفحه از اینجا قابل
-            انجام است.
-          </p>
+    <section className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200 sm:p-6">
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <div className="flex flex-col items-center gap-1 text-center">
+            <h2 className="text-lg font-bold text-zinc-900 sm:text-xl">
+              مدیریت اشتراک
+            </h2>
+            <p className="text-xs leading-6 text-zinc-500 sm:text-sm">
+              تغییر پلن، چرخه‌ی صورت‌حساب، یا لغو اشتراک این صفحه از اینجا قابل
+              انجام است.
+            </p>
+          </div>
+
+          <Tabs
+            value={cycle}
+            onValueChange={(v) => setCycle(v as "monthly" | "annual")}
+          >
+            <TabsList className="grid h-12 w-full grid-cols-2 rounded-full bg-zinc-100 p-1">
+              <TabsTrigger
+                value="monthly"
+                className="rounded-full text-sm font-semibold"
+              >
+                ماهانه
+              </TabsTrigger>
+              <TabsTrigger
+                value="annual"
+                className="rounded-full text-sm font-semibold"
+              >
+                سالانه
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
-        <Tabs
-          value={cycle}
-          onValueChange={(v) => setCycle(v as "monthly" | "annual")}
-        >
-          <TabsList className="grid w-full grid-cols-2 sm:w-auto">
-            <TabsTrigger value="monthly">ماهانه</TabsTrigger>
-            <TabsTrigger value="annual">سالانه</TabsTrigger>
-          </TabsList>
-        </Tabs>
-      </CardHeader>
-
-      <CardContent className="space-y-4">
         {(state.cancelAtPeriodEnd || state.pendingPlanChangePlanId) &&
         periodEndLabel ? (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
             {state.cancelAtPeriodEnd ? (
               <p>
                 اشتراک شما در{" "}
@@ -316,7 +326,7 @@ export function BillingActionsCard({ state }: Props) {
         ) : null}
 
         <div className="space-y-3">
-          {sortedOptions.map((option, idx) => {
+          {sortedOptions.map((option) => {
             const isCurrent = option.id === state.currentPlanId;
             const sameCycle = cycle === state.currentBillingCycle;
             const targetPrice =
@@ -362,69 +372,78 @@ export function BillingActionsCard({ state }: Props) {
                         : "ارتقا و پرداخت";
 
             return (
-              <div key={option.id}>
-                {idx > 0 ? <Separator className="my-3" /> : null}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold">{option.nameFa}</p>
-                      {isCurrent ? (
-                        <Badge
-                          variant="outline"
-                          className={
-                            onTrial
-                              ? "border-blue-200 bg-blue-50 text-[11px] text-blue-700"
-                              : "border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
-                          }
-                        >
-                          {onTrial ? (
-                            "آزمایشی"
-                          ) : (
-                            <>
-                              <CheckIcon className="me-1 size-3" /> فعلی
-                            </>
-                          )}
-                        </Badge>
-                      ) : null}
-                    </div>
-                    {option.descriptionFa ? (
-                      <p className="text-xs text-zinc-500">
-                        {option.descriptionFa}
-                      </p>
-                    ) : null}
-                    <p className="text-xs text-zinc-500">
-                      {option.key === "free" ? (
-                        "رایگان — برای همیشه"
-                      ) : (
-                        <>
-                          {formatToman(targetPrice)} تومان{" "}
-                          {cycle === "annual" ? "در سال" : "در ماه"}
-                        </>
-                      )}
+              <div
+                key={option.id}
+                className={cn(
+                  "flex flex-col gap-3 rounded-2xl bg-white p-4 ring-1 transition-all sm:flex-row sm:items-center sm:justify-between",
+                  isExactCurrent
+                    ? "ring-2 ring-zinc-900"
+                    : "ring-zinc-200 hover:ring-zinc-300",
+                )}
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-bold text-zinc-900 sm:text-lg">
+                      {option.nameFa}
                     </p>
+                    {isCurrent ? (
+                      <Badge
+                        variant="outline"
+                        className={
+                          onTrial
+                            ? "border-blue-200 bg-blue-50 text-[11px] text-blue-700"
+                            : "border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
+                        }
+                      >
+                        {onTrial ? (
+                          "آزمایشی"
+                        ) : (
+                          <>
+                            <CheckIcon className="me-1 size-3" /> فعلی
+                          </>
+                        )}
+                      </Badge>
+                    ) : null}
                   </div>
-                  <Button
-                    type="button"
-                    variant={isUpgrade ? "default" : "outline"}
-                    className={cn(
-                      "h-11 sm:w-auto",
-                      isExactCurrent && "pointer-events-none opacity-60",
-                    )}
-                    disabled={
-                      isExactCurrent ||
-                      cycleMismatch ||
-                      isPending ||
-                      pendingAction !== null
-                    }
-                    onClick={() => handleChange(option)}
-                  >
-                    {isLoading ? (
-                      <Loader2Icon className="size-4 animate-spin" />
+                  {option.descriptionFa ? (
+                    <p className="text-xs leading-6 text-zinc-500 sm:text-[13px]">
+                      {option.descriptionFa}
+                    </p>
+                  ) : null}
+                  <p className="text-xs text-zinc-500">
+                    {option.key === "free" ? (
+                      "رایگان — برای همیشه"
                     ) : (
-                      buttonLabel
+                      <>
+                        <span className="font-semibold text-zinc-900">
+                          {formatToman(targetPrice)} تومان
+                        </span>{" "}
+                        {cycle === "annual" ? "در سال" : "در ماه"}
+                      </>
                     )}
-                  </Button>
+                  </p>
                 </div>
+                <Button
+                  type="button"
+                  variant={isUpgrade ? "default" : "outline"}
+                  className={cn(
+                    "h-12 w-full text-sm font-bold sm:w-auto sm:min-w-32",
+                    isExactCurrent && "pointer-events-none opacity-60",
+                  )}
+                  disabled={
+                    isExactCurrent ||
+                    cycleMismatch ||
+                    isPending ||
+                    pendingAction !== null
+                  }
+                  onClick={() => handleChange(option)}
+                >
+                  {isLoading ? (
+                    <Loader2Icon className="size-4 animate-spin" />
+                  ) : (
+                    buttonLabel
+                  )}
+                </Button>
               </div>
             );
           })}
@@ -434,7 +453,7 @@ export function BillingActionsCard({ state }: Props) {
         (state.status === "active" ||
           state.status === "trialing" ||
           state.status === "pending_renewal") ? (
-          <div className="rounded-xl border bg-zinc-50 p-3">
+          <div className="rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
             {state.cancelAtPeriodEnd ? (
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-xs text-zinc-600">
@@ -477,7 +496,7 @@ export function BillingActionsCard({ state }: Props) {
             )}
           </div>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }

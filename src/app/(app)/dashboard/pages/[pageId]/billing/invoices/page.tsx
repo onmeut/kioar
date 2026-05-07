@@ -11,7 +11,10 @@ import { desc, eq } from "drizzle-orm";
 import { ChevronRightIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { InvoicesTable, type InvoiceRow } from "@/components/billing/invoices-table";
+import {
+  InvoicesTable,
+  type InvoiceRow,
+} from "@/components/billing/invoices-table";
 import { Button } from "@/components/ui/button";
 import { getDb } from "@/db";
 import { invoices } from "@/db/schema";
@@ -54,15 +57,15 @@ export default async function BillingInvoicesRoute({
   }));
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 sm:py-10">
-      <div className="flex items-center gap-2 text-xs text-zinc-500">
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:py-10">
+      <div>
         <Button
           variant="ghost"
           size="sm"
           render={
             <Link
               href={`/dashboard/pages/${pageId}/billing` as Route}
-              className="-ms-2 h-8 gap-1 px-2"
+              className="-ms-2 h-9 gap-1 rounded-full px-3 text-xs text-zinc-500"
             />
           }
         >
@@ -71,11 +74,11 @@ export default async function BillingInvoicesRoute({
         </Button>
       </div>
 
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+      <header className="flex flex-col items-center gap-2 text-center">
+        <h1 className="text-2xl font-bold leading-tight text-zinc-900 sm:text-3xl">
           فاکتورها
         </h1>
-        <p className="text-sm text-zinc-500">
+        <p className="text-xs leading-6 text-zinc-500 sm:text-sm">
           سابقه‌ی صدور و پرداخت فاکتورهای مربوط به این صفحه.
         </p>
       </header>

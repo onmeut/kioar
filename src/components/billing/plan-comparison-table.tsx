@@ -6,20 +6,15 @@
  * active plan. Cells render either a check (boolean grant), the limit
  * value (numeric grant), or a dash (not granted).
  *
- * Hidden by default on small mobile (<sm) — pricing cards already cover the
- * "what do I get" question on phones; the matrix is a desktop convenience.
+ * Mobile-first: a single compact table with sticky header so the plan
+ * column labels stay visible as the user scrolls a long category list.
+ * Plain HTML table (not the shadcn Table) is used because the shadcn
+ * wrapper introduces an `overflow-x-auto` scroll context that breaks
+ * vertical `position: sticky` for the header.
  */
 import { Fragment } from "react";
 import { CheckIcon, MinusIcon } from "lucide-react";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { getDb } from "@/db";
 import { formatPersianNumber, toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
@@ -78,74 +73,94 @@ export async function PlanComparisonTable({ plans }: Props) {
   });
 
   return (
-    <div className="overflow-x-auto rounded-2xl border bg-white">
-      <Table className="text-[13px]">
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[44%] text-start font-semibold">
+    <div className="rounded-3xl bg-white ring-1 ring-zinc-200">
+      <table className="w-full border-separate border-spacing-0 text-right text-[12px] sm:text-[13px]">
+        <thead className="sticky top-0 z-10">
+          <tr>
+            <th
+              scope="col"
+              className="rounded-ts-3xl border-b border-zinc-200 bg-white/95 px-3 py-3 text-start text-[11px] font-bold text-zinc-900 backdrop-blur-sm sm:px-5 sm:py-4 sm:text-[13px]"
+            >
               امکانات
-            </TableHead>
-            {sortedPlans.map((p) => (
-              <TableHead
+            </th>
+            {sortedPlans.map((p, i) => (
+              <th
                 key={p.id}
+                scope="col"
                 className={cn(
-                  "text-center font-semibold",
-                  p.key === "pro" && "bg-zinc-50",
+                  "border-b border-zinc-200 px-1 py-3 text-center text-[11px] font-bold text-zinc-900 backdrop-blur-sm sm:px-3 sm:py-4 sm:text-[13px]",
+                  i === sortedPlans.length - 1 && "rounded-te-3xl",
+                  p.key === "pro" ? "bg-zinc-50/95" : "bg-white/95",
                 )}
               >
                 {p.nameFa}
-              </TableHead>
+              </th>
             ))}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+          </tr>
+        </thead>
+        <tbody>
           {Array.from(groups.entries()).map(([category, rows]) => (
             <Fragment key={`cat-${category}`}>
-              <TableRow className="bg-zinc-50/60 hover:bg-zinc-50/60">
-                <TableCell
+              <tr>
+                <td
                   colSpan={1 + sortedPlans.length}
-                  className="py-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500"
+                  className="border-b border-zinc-100 bg-zinc-50/60 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500 sm:px-5 sm:text-[11px]"
                 >
                   {CATEGORY_LABELS[category] ?? category}
-                </TableCell>
-              </TableRow>
-              {rows.map((feature) => (
-                <TableRow key={feature.id}>
-                  <TableCell className="font-medium text-zinc-800">
-                    {feature.nameFa}
-                  </TableCell>
-                  {sortedPlans.map((p) => {
-                    const planGrants = grantsByPlan.get(p.id);
-                    const has = planGrants?.has(feature.id) ?? false;
-                    const limit = planGrants?.get(feature.id);
-                    return (
-                      <TableCell
-                        key={p.id}
-                        className={cn(
-                          "text-center",
-                          p.key === "pro" && "bg-zinc-50/60",
-                        )}
-                      >
-                        {has ? (
-                          typeof limit === "number" ? (
-                            <span className="font-semibold">
-                              {toPersianDigits(formatPersianNumber(limit))}
-                            </span>
+                </td>
+              </tr>
+              {rows.map((feature, rowIdx) => {
+                const isLastRow =
+                  rowIdx === rows.length - 1 &&
+                  category === Array.from(groups.keys()).at(-1);
+                return (
+                  <tr key={feature.id}>
+                    <td
+                      className={cn(
+                        "border-b border-zinc-100 px-3 py-3 font-medium text-zinc-800 sm:px-5",
+                        isLastRow && "border-b-0",
+                      )}
+                    >
+                      {feature.nameFa}
+                    </td>
+                    {sortedPlans.map((p, i) => {
+                      const planGrants = grantsByPlan.get(p.id);
+                      const has = planGrants?.has(feature.id) ?? false;
+                      const limit = planGrants?.get(feature.id);
+                      return (
+                        <td
+                          key={p.id}
+                          className={cn(
+                            "border-b border-zinc-100 px-1 py-3 text-center sm:px-3",
+                            p.key === "pro" && "bg-zinc-50/60",
+                            isLastRow && "border-b-0",
+                            isLastRow &&
+                              i === sortedPlans.length - 1 &&
+                              "rounded-be-3xl",
+                            isLastRow && i === 0 && "rounded-bs-3xl",
+                          )}
+                        >
+                          {has ? (
+                            typeof limit === "number" ? (
+                              <span className="font-semibold text-zinc-900">
+                                {toPersianDigits(formatPersianNumber(limit))}
+                              </span>
+                            ) : (
+                              <CheckIcon className="mx-auto size-4 text-emerald-600" />
+                            )
                           ) : (
-                            <CheckIcon className="mx-auto size-4 text-emerald-600" />
-                          )
-                        ) : (
-                          <MinusIcon className="mx-auto size-3 text-zinc-300" />
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
+                            <MinusIcon className="mx-auto size-3 text-zinc-300" />
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </Fragment>
           ))}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
     </div>
   );
 }

@@ -97,7 +97,7 @@ export async function createPageAction(
   let redirectTo = "/me";
   const eligibility = await getTrialEligibility(result.page.id);
   if (eligibility?.options.some((o) => o.eligible)) {
-    redirectTo = `/dashboard/pages/${result.page.id}/trial`;
+    redirectTo = "/trial";
   }
 
   return {

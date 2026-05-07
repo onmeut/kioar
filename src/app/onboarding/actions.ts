@@ -44,7 +44,7 @@ export async function saveOnboardingProfileAction(
   }
 
   if (result.isFirstPage) {
-    redirect(`/dashboard/pages/${result.pageId}/trial` as Route);
+    redirect("/trial" as Route);
   }
   redirect("/me");
 }

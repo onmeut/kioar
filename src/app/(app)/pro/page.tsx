@@ -25,11 +25,11 @@ import {
   type BillingPlanOption,
 } from "@/components/dashboard/billing-actions-card";
 import { PlanComparisonTable } from "@/components/billing/plan-comparison-table";
-import { BoringAvatar } from "@/components/shared/boring-avatar";
+import { BrandMark } from "@/components/shared/brand-mark";
+import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { getDb } from "@/db";
 import { pageSubscriptions } from "@/db/schema";
 import { requireCompletedProfile } from "@/lib/auth/session";
@@ -122,24 +122,26 @@ export default async function ProRoute() {
   const planBadge = PLAN_BADGE[sub.plan.key as "free" | "pro" | "business"];
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 sm:py-10">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          پلن‌ها و اشتراک
-        </h1>
-        <p className="text-sm text-zinc-500">
-          پلن این صفحه را تغییر دهید، چرخه‌ی صورت‌حساب را عوض کنید، یا اشتراک را
-          لغو کنید.
-        </p>
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:py-10">
+      {/* Header — matches the trial-claim screen aesthetic. */}
+      <header className="flex flex-col items-center gap-5 text-center">
+        <BrandMark variant="mark" className="size-12" />
+        <div className="flex flex-col gap-3">
+          <h1 className="text-3xl font-bold leading-tight text-zinc-900 sm:text-4xl">
+            پلن‌ها و اشتراک
+          </h1>
+          <p className="px-2 text-sm leading-7 text-zinc-600 sm:text-[15px]">
+            پلن این صفحه را تغییر دهید، چرخه‌ی صورت‌حساب را عوض کنید، یا اشتراک
+            را لغو کنید.
+          </p>
+        </div>
       </header>
 
-      {/* "صفحه‌ی در حال ارتقا" card — the URL no longer contains the
-       *  page id, so the user needs an unambiguous visual that names
-       *  which of their pages this checkout will affect. Switching pages
-       *  from the sidebar updates the cookie and re-renders this card
-       *  with new context — no extra navigation required. */}
-      <Card className="relative overflow-hidden border-primary/20 bg-primary/5 shadow-sm">
-        <CardContent className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+      {/* "صفحه‌ی در حال ارتقا" panel — keeps the user oriented to which
+          page this checkout will affect. Restyled to the trial page's
+          rounded-3xl + ring-1 ring-zinc-200 aesthetic. */}
+      <section className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
             <div className="relative shrink-0">
               <Avatar className="size-14 ring-2 ring-background [&_svg]:size-full!">
@@ -147,7 +149,7 @@ export default async function ProRoute() {
                   <AvatarImage src={page.avatarUrl} alt={displayName} />
                 ) : (
                   <AvatarFallback className="bg-transparent p-0">
-                    <BoringAvatar seed={page.avatarSeed} size={56} />
+                    <KioarAvatar seed={page.avatarSeed} size={56} />
                   </AvatarFallback>
                 )}
               </Avatar>
@@ -162,10 +164,10 @@ export default async function ProRoute() {
               </Badge>
             </div>
             <div className="min-w-0 space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/70">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
                 در حال ارتقای این صفحه
               </p>
-              <p className="truncate text-base font-bold sm:text-lg">
+              <p className="truncate text-base font-bold text-zinc-900 sm:text-lg">
                 {displayName}
               </p>
               <p
@@ -179,24 +181,24 @@ export default async function ProRoute() {
           <Button
             variant="outline"
             size="sm"
+            className="h-10 shrink-0 self-start rounded-full sm:self-auto"
             render={
-              <Link
-                href={`/dashboard/pages/${page.id}/billing` as Route}
-                className="h-9 shrink-0 self-start sm:self-auto"
-              />
+              <Link href={`/dashboard/pages/${page.id}/billing` as Route} />
             }
           >
             صورت‌حساب صفحه
           </Button>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <BillingActionsCard state={billingState} />
 
       <section className="space-y-3">
-        <div>
-          <h2 className="text-base font-bold">مقایسه‌ی امکانات پلن‌ها</h2>
-          <p className="mt-1 text-xs text-zinc-500">
+        <div className="flex flex-col items-center gap-1 text-center">
+          <h2 className="text-xl font-bold text-zinc-900 sm:text-2xl">
+            مقایسه‌ی امکانات پلن‌ها
+          </h2>
+          <p className="text-xs leading-6 text-zinc-500 sm:text-sm">
             همه‌ی امکانات از تنظیمات پلن خوانده می‌شود.
           </p>
         </div>

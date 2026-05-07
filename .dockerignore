@@ -1,24 +1,72 @@
+# Version control
 .git
-.github
-.next
+.gitignore
+.gitattributes
+
+# Dependencies (installed inside container)
 node_modules
-npm-debug.log
-README.md
-Dockerfile
-.dockerignore
+.pnpm-store
+
+# Build outputs
+.next
+out
+dist
+build
+*.tsbuildinfo
+
+# Environment files (passed via --env-file at runtime)
 .env
-.env.*
-!.env.example
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor / OS
 .vscode
 .idea
-coverage
 .DS_Store
-**/*.log
-docker-compose*.yml
-caddy
-caddy_data
-caddy_config
-public/uploads/avatars
-public/uploads/events
-public/uploads/link-covers
-public/uploads/link-icons
+Thumbs.db
+*.swp
+*.swo
+
+# Testing
+coverage
+.nyc_output
+__tests__
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+playwright-report
+test-results
+
+# Docs / misc
+README.md
+CHANGELOG.md
+LICENSE
+docs
+*.md
+
+# Local dev artifacts
+tmp
+temp
+screenshots
+.cache
+
+# Deploy scripts (not needed inside image)
+deploy.sh
+weekly-cleanup.sh
+docker-compose.yml
+docker-compose.dev.yml
+
+# User uploads (mounted at runtime, not baked in)
+public/uploads/*
+!public/uploads/.gitkeep

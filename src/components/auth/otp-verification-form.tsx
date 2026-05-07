@@ -106,7 +106,7 @@ export function OtpVerificationForm({
         <BrandMark variant="mark" className="size-14" />
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
-            خوش آمدید به کی‌یو‌آر
+            به کیوآر خوش آمدید
           </h1>
           <p className="text-sm text-muted-foreground sm:text-base">
             کد ۶ رقمی ارسال‌شده به شماره موبایل خود را وارد کنید
@@ -204,25 +204,26 @@ export function OtpVerificationForm({
           href="/auth"
           className="tap-target inline-flex h-14 w-full items-center justify-center rounded-full bg-muted text-base font-semibold text-foreground transition-colors hover:bg-muted/80 active:translate-y-px"
         >
-          استفاده از شماره دیگر
+          ویرایش شماره
         </Link>
 
         <p className="px-2 pt-1 text-center text-xs leading-relaxed text-muted-foreground">
-          با ادامه، شما با{" "}
+          با ادامه، شما{" "}
           <Link
-            href="/terms"
+            href="#"
             className="font-semibold text-foreground underline-offset-4 hover:underline"
           >
             شرایط استفاده
-          </Link>{" "}
-          و{" "}
+          </Link>
+          {" "}و{" "}
           <Link
-            href="/privacy"
+            href="#"
             className="font-semibold text-foreground underline-offset-4 hover:underline"
           >
             سیاست حریم خصوصی
-          </Link>{" "}
-          ما موافقت می‌کنید.
+          </Link>
+          {" "}
+          را می‌پذیرید.
         </p>
       </div>
     </div>

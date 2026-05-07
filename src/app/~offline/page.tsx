@@ -1,29 +1,47 @@
-import Link from "next/link";
-import { WifiOffIcon } from "lucide-react";
+"use client";
 
-import { buttonVariants } from "@/components/ui/button";
+import Link from "next/link";
+import { WifiOff } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 
 export default function OfflinePage() {
   return (
-    <main className="section-shell flex min-h-dvh items-center justify-center py-16">
-      <div className="surface-card max-w-md space-y-4 p-6 text-center sm:p-8">
-        <div className="mx-auto flex size-14 items-center justify-center rounded-4xl bg-primary/10 text-primary">
-          <WifiOffIcon className="size-6" />
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-16">
+      <div className="flex w-full max-w-sm flex-col items-center gap-8 text-center">
+        {/* Icon */}
+        <div className="flex size-16 items-center justify-center rounded-3xl border border-border bg-muted text-muted-foreground">
+          <WifiOff className="size-7" />
         </div>
-        <h1 className="text-2xl font-bold">اتصال شما قطع شده است</h1>
-        <p className="text-sm leading-7 text-muted-foreground">
-          برخی صفحه‌های بازدیدشده هنوز در دسترس هستند. بعد از اتصال دوباره،
-          برنامه به‌صورت خودکار به‌روزرسانی می‌شود.
-        </p>
-        <Link
-          href="/"
-          className={buttonVariants({
-            size: "lg",
-            className: "w-full rounded-full",
-          })}
-        >
-          بازگشت به خانه
-        </Link>
+
+        {/* Copy */}
+        <div className="flex flex-col gap-2">
+          <h1 className="text-xl font-bold leading-snug text-foreground">
+            اتصال اینترنت برقرار نیست
+          </h1>
+          <p className="text-sm leading-7 text-muted-foreground">
+            به‌نظر می‌رسه الان آنلاین نیستی یا شایدم فیلترشکنت روشنه،
+          </p>
+        </div>
+
+        {/* Actions */}
+        <div className="flex w-full flex-col gap-3">
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={() => window.location.reload()}
+          >
+            تلاش دوباره
+          </Button>
+          <Button
+            variant="ghost"
+            size="lg"
+            className="w-full"
+            render={<Link href="/" />}
+          >
+            بازگشت به خانه
+          </Button>
+        </div>
       </div>
     </main>
   );

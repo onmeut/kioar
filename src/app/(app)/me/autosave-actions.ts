@@ -31,7 +31,7 @@ export async function autosaveProfileDetailsAction(
     };
   }
 
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
 
   return {
@@ -55,13 +55,16 @@ export async function savePageSettingsAction(
     };
   }
 
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
 
   return {
     status: "success",
     message: "ذخیره شد",
-  };
+    ...(result.ogImageUrl !== undefined
+      ? { values: { ogImageUrl: result.ogImageUrl ?? "" } }
+      : {}),
+  } satisfies ActionState;
 }
 
 export async function autosaveAvatarAction(
@@ -99,12 +102,56 @@ export async function autosaveAvatarAction(
     .set({ avatarUrl, updatedAt: new Date() })
     .where(eq(profiles.id, viewer.profile.id));
 
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
 
   return {
     status: "success",
     message: "تصویر ذخیره شد",
+    values: { avatarUrl },
+  };
+}
+
+/**
+ * Persist a user-chosen avatar seed (DiceBear bottts-neutral). Picking
+ * a seed implicitly clears any uploaded `avatarUrl` because the renderer
+ * picks the upload first; leaving it would mean the seed change is
+ * invisible. The previously-uploaded file is also removed from storage.
+ */
+export async function saveAvatarSeedAction(
+  _prevState: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const viewer = await requireCompletedProfile();
+  const raw = String(formData.get("seed") ?? "").trim();
+
+  // Validate: lowercase hex, 8–64 chars. Matches `generateAvatarSeed()`
+  // (8 random bytes hex = 16 chars) and any client-generated seed of
+  // similar shape. Rejecting arbitrary strings prevents stored XSS via
+  // SVG attributes downstream and keeps the column tidy.
+  if (!/^[a-f0-9]{8,64}$/.test(raw)) {
+    return { status: "error", message: "شناسه آواتار نامعتبر است." };
+  }
+
+  const oldUrl = viewer.profile.avatarUrl;
+
+  const db = getDb();
+  await db
+    .update(profiles)
+    .set({ avatarSeed: raw, avatarUrl: null, updatedAt: new Date() })
+    .where(eq(profiles.id, viewer.profile.id));
+
+  if (oldUrl) {
+    await deletePublicImage(oldUrl);
+  }
+
+  revalidatePath("/me");
+  revalidatePath(`/${viewer.profile.slug}`);
+
+  return {
+    status: "success",
+    message: "آواتار ذخیره شد",
+    values: { avatarSeed: raw, avatarUrl: "" },
   };
 }
 
@@ -128,7 +175,7 @@ export async function deleteAvatarAction(
     await deletePublicImage(oldUrl);
   }
 
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
 
   return {
@@ -178,7 +225,7 @@ export async function autosaveLinksAction(
     };
   }
 
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
 
   return {
@@ -281,7 +328,7 @@ export async function reorderBlocksAction(
     return { status: "error", message: result.message };
   }
 
-  revalidatePath("/page");
+  revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success", message: "ذخیره شد" };
 }

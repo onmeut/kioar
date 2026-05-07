@@ -61,11 +61,10 @@ third party reviews paperwork.
 - [ ] Private key has a strong passphrase (or you've added it to
       `ssh-agent`). Do not commit it anywhere.
 - [ ] `~/.ssh/config` has a host alias so you don't fat-finger the IP:
-      `     Host kioar-staging
-      HostName <fill-after-provisioning>
-      User deploy
-      IdentityFile ~/.ssh/kioar_deploy
-    `
+      `    Host kioar-staging
+  HostName <fill-after-provisioning>
+  User deploy
+  IdentityFile ~/.ssh/kioar_deploy`
 
 ### 0.3 — Zarinpal merchant account (multi-day lead time)
 
@@ -110,7 +109,7 @@ compromised and rotate **before** the staging VM goes live.
   - `https://staging.kioar.com/api/oauth/google/callback`
   - `http://localhost:3000/api/oauth/google/callback` (for dev only)
 - [ ] OAuth consent screen scopes: `openid email profile
-    https://www.googleapis.com/auth/calendar.events`. Submit for
+https://www.googleapis.com/auth/calendar.events`. Submit for
       verification only when you're ready to publish the app to external
       users — internal/testing mode is fine for the dress rehearsal.
 - [ ] Enable APIs in this project: **Google Calendar API**, **Maps
@@ -165,8 +164,8 @@ compromised and rotate **before** the staging VM goes live.
 
 - [ ] `ssh`, `dig`, `curl`, `git`, `docker` (for the restore-verification
       step in Section 10) — all installed.
-- [ ] Repo cloned locally; `pnpm install` succeeds; `pnpm typecheck` and
-      `pnpm test` pass on `main`. **Do not deploy from a branch with
+- [ ] Repo cloned locally; `npm install` succeeds; `npm run typecheck` and
+      `npm test` pass on `main`. **Do not deploy from a branch with
       failing tests.**
 - [ ] Latest `pg_dump` from any existing prod DB (if migrating) saved
       offline; otherwise N/A.
@@ -211,7 +210,7 @@ stall waiting for an external party. Start them in parallel today.
     but unreliable. If pulls fail, configure ArvanCloud's Docker registry
     mirror (Section 3).
   - npm registry: `registry.npmjs.org` is geo-blocked from Iranian IPs.
-    The Dockerfile's `pnpm install --frozen-lockfile` will fail without a
+    The Dockerfile's `npm ci` will fail without a
     mirror. Fix in Section 3.
   - GitHub (`api.github.com`, `codeload.github.com`): typically reachable;
     if not, push to Gitea/GitLab inside Iran or rsync from your laptop.
@@ -366,30 +365,18 @@ sudo systemctl restart docker
 > occasionally rename it. The `log-opts` cap container log growth at
 > 250 MB/container so the disk doesn't fill silently.
 
-#### npm/pnpm registry mirror (most likely first-deploy failure)
+#### npm registry — no action needed
 
-The Dockerfile runs `pnpm install --frozen-lockfile` against
-`registry.npmjs.org`, which is geo-blocked from Iranian IPs. Add a mirror
-to the Dockerfile **before** the first build. Edit
-[`Dockerfile`](../Dockerfile) and append to the `deps` stage:
+The Docker image is built **locally on your laptop** (via `deploy.sh`) where
+`registry.npmjs.org` is fully accessible. The image is then streamed to the
+server via `docker save | gzip | ssh | docker load`. npm never runs on the
+server itself, so the geo-block on `registry.npmjs.org` from Iranian IPs is
+never hit.
 
-```dockerfile
-FROM node:22-alpine AS deps
-RUN apk add --no-cache libc6-compat
-WORKDIR /app
-RUN corepack enable
-# ↓ add this line before COPY package.json
-RUN npm config set registry https://registry.npmmirror.com -g \
- && pnpm config set registry https://registry.npmmirror.com -g
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-RUN pnpm install --frozen-lockfile
-```
-
-> `registry.npmmirror.com` is the de-facto China/MENA mirror that mirrors
-> `registry.npmjs.org` packages. ArvanCloud may publish their own — if so,
-> swap the URL. Do **not** commit this change with `package.json` resolved
-> against an unofficial mirror; if you push to GitHub Actions or a hosted
-> CI, set the registry there back to npmjs.org.
+The migration sidecar (Section 7) still runs `npm ci` on the server, but it
+only installs `drizzle-kit` and a handful of deps — a much lighter install
+that is less likely to hit network timeouts. The Runflare mirror is
+configured there for reliability (`https://mirror-npm.runflare.com`).
 
 ### 4. Create the Object Storage bucket
 
@@ -600,8 +587,15 @@ services:
 ```bash
 cd /srv/kioar/app
 
-# 7.1 — build the app image (npm mirror in Dockerfile from Section 3).
-docker compose -f docker-compose.prod.yml --env-file .env.production build
+# 7.1 — build the app image LOCALLY on your laptop (not on the server).
+# npm install runs on your machine where registry.npmjs.org is accessible.
+# Run this from your laptop, then ship the image:
+#
+#   DOCKER_BUILDKIT=1 docker buildx build --platform linux/amd64 --load -t kioar-app:latest /path/to/kioar-app/
+#   docker save kioar-app:latest | gzip | ssh -i ~/.ssh/kioar_deploy deploy@<server-ip> "docker load"
+#
+# The rsync + build + ship steps are all wrapped in ~/deploy.sh on your laptop.
+# For the very first boot, run deploy.sh from your laptop before continuing here.
 
 # 7.2 — bring up postgres + redis only.
 docker compose -f docker-compose.prod.yml --env-file .env.production \
@@ -625,13 +619,12 @@ docker run --rm \
   -e CI=1 \
   node:22-alpine sh -lc '
     apk add --no-cache git &&
-    corepack enable &&
-    npm config set registry https://registry.npmmirror.com -g &&
-    pnpm config set registry https://registry.npmmirror.com -g &&
-    pnpm install --frozen-lockfile &&
-    pnpm db:migrate &&
-    pnpm db:seed:plans &&
-    pnpm db:seed:sms
+    npm config set registry https://mirror-npm.runflare.com --global &&
+    npm config set strict-ssl false --global &&
+    npm ci &&
+    npm run db:migrate &&
+    npm run db:seed:plans &&
+    npm run db:seed:sms
   '
 
 # 7.4 — bring the full stack up.
@@ -641,11 +634,13 @@ docker compose -f docker-compose.prod.yml --env-file .env.production up -d
 docker compose -f docker-compose.prod.yml logs -f app caddy
 ```
 
-The sidecar approach (7.3) installs dev deps (incl. `drizzle-kit`, which
-isn't in the runner image), runs the migration once, and exits. The
-mounted `node_modules` is local to the host and unused by the runtime
-containers — feel free to `rm -rf node_modules` afterwards if disk is
-tight.
+The app image is built on your **laptop** (7.1) where npm has unrestricted
+internet access, then shipped to the server as a pre-built image — npm never
+runs on the server for the app itself.
+
+The sidecar (7.3) still runs `npm ci` on the server, but it only installs
+`drizzle-kit` + a small set of deps. That install is much lighter (~30 packages)
+and uses the Liara mirror for reliability.
 
 If Caddy can't obtain a cert, the most common causes are: DNS hasn't
 propagated yet, port 80 isn't reachable from the public internet, or the
@@ -823,57 +818,64 @@ Treat them as VM disaster recovery only — not a substitute for `pg_dump`.
 
 ### 11. Zero-downtime redeploy
 
-`/srv/kioar/scripts/deploy.sh`:
+The canonical redeploy workflow is the same as `deploy.sh` on your laptop:
+build the image locally, ship it, run migrations on the server, then restart
+the container. Run this **from your laptop**, not from the server:
 
 ```bash
 #!/usr/bin/env bash
+# ~/deploy.sh — run from your laptop
 set -euo pipefail
 
-cd /srv/kioar/app
-ENV_FILE=.env.production
-COMPOSE=docker-compose.prod.yml
+SERVER="deploy@37.32.30.145"
+SSH_KEY="$HOME/.ssh/kioar_deploy"
+REMOTE_PATH="/srv/kioar/app"
+LOCAL_PATH="$HOME/kioar-app/"
+IMAGE="kioar-app:latest"
+ENV_FILE=".env.production"
+COMPOSE="docker-compose.prod.yml"
 
-echo "→ pulling"
-git fetch --all --prune
-git checkout main
-git pull --ff-only
+echo "→ syncing code..."
+rsync -avz --delete -e "ssh -i $SSH_KEY" \
+  --exclude '.next' --exclude '.git' --exclude 'node_modules' \
+  --exclude '.npm' --exclude '.env.local' --exclude '.env.development' \
+  --exclude '*.log' --exclude '.DS_Store' \
+  "$LOCAL_PATH" "$SERVER:$REMOTE_PATH/"
 
-echo "→ building image"
-docker compose -f "$COMPOSE" --env-file "$ENV_FILE" build app
+echo "→ building image locally (linux/amd64)..."
+DOCKER_BUILDKIT=1 docker buildx build \
+  --platform linux/amd64 --load -t "$IMAGE" "$LOCAL_PATH"
 
-echo "→ migrating DB (sidecar)"
-PG_PW=$(grep '^POSTGRES_PASSWORD=' "$ENV_FILE" | cut -d= -f2-)
-NETWORK=$(docker compose -f "$COMPOSE" --env-file "$ENV_FILE" \
-  ps --format '{{.Name}}' postgres | head -1 | xargs -I{} \
-  docker inspect {} --format '{{range $k,$_ := .NetworkSettings.Networks}}{{$k}}{{end}}')
-docker run --rm \
-  --network "$NETWORK" \
-  -v "$PWD:/app" -w /app \
-  -e DATABASE_URL="postgres://kioar:${PG_PW}@postgres:5432/kioar" \
+echo "→ shipping image to server..."
+docker save "$IMAGE" | gzip | ssh -i "$SSH_KEY" "$SERVER" "docker load"
+
+echo "→ migrating DB (sidecar on server)"
+PG_PW=$(ssh -i "$SSH_KEY" "$SERVER" \
+  "grep '^POSTGRES_PASSWORD=' $REMOTE_PATH/$ENV_FILE | cut -d= -f2-")
+NETWORK=$(ssh -i "$SSH_KEY" "$SERVER" \
+  "docker compose -f $REMOTE_PATH/$COMPOSE --env-file $REMOTE_PATH/$ENV_FILE \
+   ps --format '{{.Name}}' postgres | head -1 | xargs -I{} \
+   docker inspect {} --format '{{range \$k,\$_ := .NetworkSettings.Networks}}{{\$k}}{{end}}'")
+ssh -i "$SSH_KEY" "$SERVER" "docker run --rm \
+  --network $NETWORK \
+  -v $REMOTE_PATH:/app -w /app \
+  -e DATABASE_URL=postgres://kioar:${PG_PW}@postgres:5432/kioar \
   node:22-alpine sh -lc '
-    corepack enable &&
-    npm config set registry https://registry.npmmirror.com -g &&
-    pnpm config set registry https://registry.npmmirror.com -g &&
-    pnpm install --frozen-lockfile &&
-    pnpm db:migrate &&
-    pnpm db:seed:plans
-  '
+    npm config set registry https://mirror-npm.runflare.com --global &&
+    npm config set strict-ssl false --global &&
+    npm ci &&
+    npm run db:migrate &&
+    npm run db:seed:plans
+  '"
 
-echo "→ rolling app container"
-docker compose -f "$COMPOSE" --env-file "$ENV_FILE" up -d --no-deps --build app
+echo "→ rolling app container..."
+ssh -i "$SSH_KEY" "$SERVER" \
+  "cd $REMOTE_PATH && \
+   docker compose -f $COMPOSE --env-file $ENV_FILE up -d && \
+   docker image prune -f"
 
-echo "→ pruning old images"
-docker image prune -f
-
-echo "✓ deployed $(git rev-parse --short HEAD)"
+echo "✓ deployed!"
 ```
-
-The healthcheck on `app` (defined in `docker-compose.prod.yml`) ensures
-the new container is serving before the old one stops, giving you
-near-zero downtime for a single-instance deploy. For _true_ zero-downtime,
-scale to two app replicas behind Caddy — but that requires PgBouncer
-(already wired via the `pgbouncer` profile) and a shared session store
-(Redis already covers it).
 
 **Rollback**:
 

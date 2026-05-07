@@ -18,7 +18,7 @@ export function PhoneMockupFrame({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="relative flex w-85 flex-1 min-h-145 max-h-190 shrink-0 flex-col overflow-hidden rounded-[44px] border-2 border-foreground/15 bg-card shadow-2xl"
+      className="relative flex h-[690px] w-85 max-h-[690px] shrink-0 flex-col overflow-hidden rounded-[44px] border-2 border-foreground/15 bg-card"
       // translateZ(0) makes this a containing block for fixed descendants —
       // required for in-mockup modal positioning. Tailwind's `transform-gpu`
       // would also work; explicit style avoids surprises if class purging

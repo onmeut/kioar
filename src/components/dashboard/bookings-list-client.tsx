@@ -105,7 +105,10 @@ export function BookingsListClient({
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 md:px-6">
       <header className="space-y-1">
-        <h1 className="text-2xl font-semibold">هماهنگی‌ها</h1>
+        {/* Mobile shows the title via the dashboard header (DashboardPageTitle).
+            Hide the duplicate H1 on mobile to avoid stacked headers, but keep
+            the description visible. */}
+        <h1 className="hidden text-2xl font-semibold md:block">هماهنگی‌ها</h1>
         <p className="text-sm text-muted-foreground">
           مدیریت جلسات و هماهنگی‌هایی که دریافت کرده‌اید یا در صفحات دیگران
           گذاشته‌اید.

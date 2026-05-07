@@ -24,11 +24,27 @@ export type AdminAuditAction =
   | "subscription.extend_period"
   | "subscription.manual_plan_change"
   | "subscription.manual_status_change"
+  | "subscription.force_expire"
+  | "subscription.price_lock_set"
+  | "subscription.price_lock_remove"
+  | "subscription.price_lock_dropped_on_plan_change"
+  | "subscription.apply_discount_to_next_renewal"
+  | "subscription.simulate_renewal_dry_run"
+  | "subscription.fire_sms_now"
+  | "subscription.mock_zarinpal_verify"
   | "invoice.mark_paid"
   | "invoice.cancel"
   | "plan_feature.toggle"
   | "plan_feature.update_limit"
   | "plan_feature.rebuild_all_pages"
+  | "plan_settings.price_change_with_grandfather"
+  | "plan_settings.price_change_without_grandfather"
+  | "discount_code.batch_create"
+  | "discount_code.batch_deactivate"
+  | "discount_code.soft_delete"
+  | "sms_template.body_preview_update"
+  | "sms_template.kavenegar_synced"
+  | "app_settings.update"
   | "affiliate.application.approve"
   | "affiliate.application.reject"
   | "affiliate.application.needs_info"
@@ -143,11 +159,31 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   "subscription.extend_period": "تمدید دستی دوره",
   "subscription.manual_plan_change": "تغییر دستی پلن",
   "subscription.manual_status_change": "تغییر دستی وضعیت اشتراک",
+  "subscription.force_expire": "انقضای اجباری اشتراک",
+  "subscription.price_lock_set": "قفل قیمت اشتراک",
+  "subscription.price_lock_remove": "حذف قفل قیمت اشتراک",
+  "subscription.price_lock_dropped_on_plan_change":
+    "حذف قفل قیمت در پی تغییر پلن",
+  "subscription.apply_discount_to_next_renewal":
+    "اعمال کد تخفیف بر تجدید بعدی",
+  "subscription.simulate_renewal_dry_run": "شبیه‌سازی تجدید (آزمایشی)",
+  "subscription.fire_sms_now": "ارسال فوری پیامک",
+  "subscription.mock_zarinpal_verify": "تأیید آزمایشی پرداخت زرین‌پال",
   "invoice.mark_paid": "ثبت دستی پرداخت فاکتور",
   "invoice.cancel": "لغو دستی فاکتور",
   "plan_feature.toggle": "تغییر فعال‌بودن قابلیت در پلن",
   "plan_feature.update_limit": "ویرایش سقف قابلیت",
   "plan_feature.rebuild_all_pages": "بازسازی قابلیت‌ها برای همه صفحات",
+  "plan_settings.price_change_with_grandfather":
+    "تغییر قیمت پلن با حفظ قیمت قدیم برای فعلی‌ها",
+  "plan_settings.price_change_without_grandfather":
+    "تغییر قیمت پلن (همه به قیمت جدید)",
+  "discount_code.batch_create": "ساخت گروهی کدهای تخفیف",
+  "discount_code.batch_deactivate": "غیرفعال‌سازی گروهی کدهای تخفیف",
+  "discount_code.soft_delete": "حذف نرم کد تخفیف",
+  "sms_template.body_preview_update": "بروزرسانی پیش‌نمایش متن پیامک",
+  "sms_template.kavenegar_synced": "تأیید همگام‌سازی با کاوه‌نگار",
+  "app_settings.update": "بروزرسانی تنظیمات سامانه",
   "affiliate.application.approve": "تأیید درخواست همکاری",
   "affiliate.application.reject": "رد درخواست همکاری",
   "affiliate.application.needs_info": "درخواست تکمیل اطلاعات همکاری",

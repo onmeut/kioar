@@ -29,7 +29,6 @@ export default function robots(): MetadataRoute.Robots {
           "/requests/",
           "/my-events",
           "/my-events/",
-          "/u/",
         ],
       },
     ],

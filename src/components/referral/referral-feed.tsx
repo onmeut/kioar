@@ -13,7 +13,7 @@ import {
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { BoringAvatar } from "@/components/shared/boring-avatar";
+import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import {
   DEFAULT_PROFILE_DOMAIN,
   isProfileDomain,
@@ -157,7 +157,7 @@ function Row({ row }: { row: ReferralFeedClientRow }) {
               />
             ) : null}
             <AvatarFallback>
-              <BoringAvatar
+              <KioarAvatar
                 seed={row.refereeAvatarSeed ?? row.refereeSlug ?? row.id}
                 size={40}
               />

@@ -12,6 +12,7 @@ import {
   autosaveLinksAction,
   deleteAvatarAction,
   reorderBlocksAction,
+  saveAvatarSeedAction,
   savePageSettingsAction,
 } from "./autosave-actions";
 import { setBlockSpotlightAction } from "./spotlight-actions";
@@ -355,6 +356,7 @@ export default async function DashboardLinksPage() {
       savePageSettingsAction={savePageSettingsAction}
       autosaveAvatarAction={autosaveAvatarAction}
       deleteAvatarAction={deleteAvatarAction}
+      saveAvatarSeedAction={saveAvatarSeedAction}
       reorderBlocksAction={reorderBlocksAction}
       createBookingBlockAction={createBookingBlockAction}
       updateBookingBlockAction={updateBookingBlockAction}

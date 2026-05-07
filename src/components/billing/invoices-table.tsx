@@ -23,14 +23,6 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
   formatPersianDate,
   formatPersianNumber,
   toPersianDigits,
@@ -91,10 +83,9 @@ export function InvoicesTable({ invoices }: Props) {
     setPendingId(invoiceId);
     startTransition(async () => {
       try {
-        const res = await fetch(
-          `/api/billing/invoices/${invoiceId}/pay`,
-          { method: "POST" },
-        );
+        const res = await fetch(`/api/billing/invoices/${invoiceId}/pay`, {
+          method: "POST",
+        });
         const data = (await res.json().catch(() => null)) as
           | { ok: true; redirectUrl: string }
           | { error: string; message?: string }
@@ -120,7 +111,7 @@ export function InvoicesTable({ invoices }: Props) {
 
   if (invoices.length === 0) {
     return (
-      <div className="rounded-2xl border bg-white p-8 text-center text-sm text-zinc-500">
+      <div className="rounded-3xl bg-white p-10 text-center text-sm text-zinc-500 ring-1 ring-zinc-200">
         هنوز فاکتوری برای این صفحه ثبت نشده است.
       </div>
     );
@@ -136,14 +127,16 @@ export function InvoicesTable({ invoices }: Props) {
           return (
             <div
               key={inv.id}
-              className="space-y-3 rounded-2xl border bg-white p-4"
+              className="space-y-3 rounded-2xl bg-white p-4 ring-1 ring-zinc-200"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-0.5">
-                  <p className="text-[11px] text-zinc-500">شماره فاکتور</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                    شماره فاکتور
+                  </p>
                   <p
                     dir="ltr"
-                    className="text-sm font-semibold tracking-tight text-zinc-800"
+                    className="text-sm font-semibold tracking-tight text-zinc-900"
                   >
                     {persianizeNumber(inv.number)}
                   </p>
@@ -155,26 +148,28 @@ export function InvoicesTable({ invoices }: Props) {
               <div className="grid grid-cols-2 gap-3 text-[12px]">
                 <div>
                   <p className="text-zinc-500">پلن</p>
-                  <p className="font-medium">
+                  <p className="font-medium text-zinc-800">
                     {inv.planNameFa} ·{" "}
                     {inv.billingCycle === "annual" ? "سالانه" : "ماهانه"}
                   </p>
                 </div>
                 <div>
                   <p className="text-zinc-500">مبلغ</p>
-                  <p className="font-semibold">
+                  <p className="font-bold text-zinc-900">
                     {formatToman(inv.totalToman)} تومان
                   </p>
                 </div>
                 <div>
                   <p className="text-zinc-500">تاریخ صدور</p>
-                  <p dir="ltr">{formatPersianDate(new Date(inv.createdAt))}</p>
+                  <p dir="ltr" className="text-zinc-700">
+                    {formatPersianDate(new Date(inv.createdAt))}
+                  </p>
                 </div>
                 <div>
                   <p className="text-zinc-500">
                     {inv.status === "paid" ? "تاریخ پرداخت" : "مهلت پرداخت"}
                   </p>
-                  <p dir="ltr">
+                  <p dir="ltr" className="text-zinc-700">
                     {formatPersianDate(
                       new Date(
                         inv.status === "paid" && inv.paidAt
@@ -188,7 +183,7 @@ export function InvoicesTable({ invoices }: Props) {
               {inv.status === "unpaid" ? (
                 <Button
                   type="button"
-                  className="h-11 w-full"
+                  className="h-12 w-full text-sm font-bold"
                   disabled={isPending}
                   onClick={() => pay(inv.id)}
                 >
@@ -204,48 +199,105 @@ export function InvoicesTable({ invoices }: Props) {
         })}
       </div>
 
-      {/* Desktop table */}
-      <div className="hidden overflow-hidden rounded-2xl border bg-white lg:block">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="text-start">شماره</TableHead>
-              <TableHead className="text-start">پلن</TableHead>
-              <TableHead className="text-start">مبلغ</TableHead>
-              <TableHead className="text-start">وضعیت</TableHead>
-              <TableHead className="text-start">تاریخ</TableHead>
-              <TableHead className="text-end">عملیات</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {invoices.map((inv) => {
+      {/* Desktop table — sticky header so the column labels stay
+          visible while scrolling a long invoice history. Plain HTML
+          table so vertical sticky works inside the rounded container. */}
+      <div className="hidden rounded-3xl bg-white ring-1 ring-zinc-200 lg:block">
+        <table className="w-full border-separate border-spacing-0 text-right text-[13px]">
+          <thead className="sticky top-0 z-10">
+            <tr>
+              <th
+                scope="col"
+                className="rounded-ts-3xl border-b border-zinc-200 bg-white/95 px-5 py-3 text-start text-[12px] font-bold text-zinc-900 backdrop-blur-sm"
+              >
+                شماره
+              </th>
+              <th
+                scope="col"
+                className="border-b border-zinc-200 bg-white/95 px-5 py-3 text-start text-[12px] font-bold text-zinc-900 backdrop-blur-sm"
+              >
+                پلن
+              </th>
+              <th
+                scope="col"
+                className="border-b border-zinc-200 bg-white/95 px-5 py-3 text-start text-[12px] font-bold text-zinc-900 backdrop-blur-sm"
+              >
+                مبلغ
+              </th>
+              <th
+                scope="col"
+                className="border-b border-zinc-200 bg-white/95 px-5 py-3 text-start text-[12px] font-bold text-zinc-900 backdrop-blur-sm"
+              >
+                وضعیت
+              </th>
+              <th
+                scope="col"
+                className="border-b border-zinc-200 bg-white/95 px-5 py-3 text-start text-[12px] font-bold text-zinc-900 backdrop-blur-sm"
+              >
+                تاریخ
+              </th>
+              <th
+                scope="col"
+                className="rounded-te-3xl border-b border-zinc-200 bg-white/95 px-5 py-3 text-end text-[12px] font-bold text-zinc-900 backdrop-blur-sm"
+              >
+                عملیات
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {invoices.map((inv, i) => {
               const badge = STATUS_BADGE[inv.status];
               const isLoading = pendingId === inv.id && isPending;
+              const isLast = i === invoices.length - 1;
               return (
-                <TableRow key={inv.id}>
-                  <TableCell
+                <tr key={inv.id}>
+                  <td
                     dir="ltr"
-                    className="font-mono text-xs text-zinc-700"
+                    className={
+                      "px-5 py-4 font-mono text-xs text-zinc-700 " +
+                      (isLast ? "rounded-bs-3xl" : "border-b border-zinc-100")
+                    }
                   >
                     {persianizeNumber(inv.number)}
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td
+                    className={
+                      "px-5 py-4 " + (isLast ? "" : "border-b border-zinc-100")
+                    }
+                  >
                     <div className="space-y-0.5">
-                      <p className="text-sm font-medium">{inv.planNameFa}</p>
+                      <p className="text-sm font-medium text-zinc-800">
+                        {inv.planNameFa}
+                      </p>
                       <p className="text-[11px] text-zinc-500">
                         {inv.billingCycle === "annual" ? "سالانه" : "ماهانه"}
                       </p>
                     </div>
-                  </TableCell>
-                  <TableCell className="text-sm font-semibold">
+                  </td>
+                  <td
+                    className={
+                      "px-5 py-4 text-sm font-bold text-zinc-900 " +
+                      (isLast ? "" : "border-b border-zinc-100")
+                    }
+                  >
                     {formatToman(inv.totalToman)} تومان
-                  </TableCell>
-                  <TableCell>
+                  </td>
+                  <td
+                    className={
+                      "px-5 py-4 " + (isLast ? "" : "border-b border-zinc-100")
+                    }
+                  >
                     <Badge variant="outline" className={badge.className}>
                       {badge.label}
                     </Badge>
-                  </TableCell>
-                  <TableCell dir="ltr" className="text-xs text-zinc-600">
+                  </td>
+                  <td
+                    dir="ltr"
+                    className={
+                      "px-5 py-4 text-xs text-zinc-600 " +
+                      (isLast ? "" : "border-b border-zinc-100")
+                    }
+                  >
                     {formatPersianDate(
                       new Date(
                         inv.status === "paid" && inv.paidAt
@@ -253,12 +305,18 @@ export function InvoicesTable({ invoices }: Props) {
                           : inv.createdAt,
                       ),
                     )}
-                  </TableCell>
-                  <TableCell className="text-end">
+                  </td>
+                  <td
+                    className={
+                      "px-5 py-4 text-end " +
+                      (isLast ? "rounded-be-3xl" : "border-b border-zinc-100")
+                    }
+                  >
                     {inv.status === "unpaid" ? (
                       <Button
                         type="button"
                         size="sm"
+                        className="h-9 rounded-full font-bold"
                         disabled={isPending}
                         onClick={() => pay(inv.id)}
                       >
@@ -269,12 +327,12 @@ export function InvoicesTable({ invoices }: Props) {
                         )}
                       </Button>
                     ) : null}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               );
             })}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     </div>
   );

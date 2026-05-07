@@ -88,7 +88,9 @@ export function SiteHeaderClient({
                   href="/auth"
                   className={cn(
                     buttonVariants({ variant: "secondary", size: "sm" }),
-                    "hidden h-9 rounded-full px-4 text-[13px] font-medium sm:inline-flex",
+                    // Visible on every viewport — login is a primary action
+                    // on mobile too.
+                    "h-9 rounded-full px-3 text-[13px] font-medium sm:px-4",
                   )}
                 >
                   ورود
@@ -97,10 +99,10 @@ export function SiteHeaderClient({
                   href="/auth"
                   className={cn(
                     buttonVariants({ size: "sm" }),
-                    "h-9 rounded-full bg-ink px-4 text-[13px] font-medium text-paper hover:bg-ink/90",
+                    "h-9 rounded-full bg-ink px-3 text-[13px] font-medium text-paper hover:bg-ink/90 sm:px-4",
                   )}
                 >
-                  رایگان امتحان کن
+                  شروع رایگان
                 </Link>
               </>
             )}
@@ -163,7 +165,7 @@ export function SiteHeaderClient({
                 )}
                 onClick={closeMobile}
               >
-                رایگان امتحان کن
+                شروع رایگان
               </Link>
               <Link
                 href="/auth"

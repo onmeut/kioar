@@ -1,5 +1,4 @@
 const RESERVED_SLUGS = new Set([
-  "kioar",
   "admin",
   "api",
   "auth",

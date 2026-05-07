@@ -39,7 +39,7 @@ import { eq, asc } from "drizzle-orm";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { BoringAvatar } from "@/components/shared/boring-avatar";
+import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
 import { SlugInput } from "@/components/shared/slug-input";
@@ -181,7 +181,7 @@ export default async function InvitedPage({
                   <AvatarImage src={inviter.avatarUrl} alt={inviter.fullName} />
                 ) : null}
                 <AvatarFallback>
-                  <BoringAvatar
+                  <KioarAvatar
                     seed={inviter.avatarSeed ?? inviter.slug}
                     size={36}
                   />
@@ -349,7 +349,7 @@ export default async function InvitedPage({
                     />
                   ) : null}
                   <AvatarFallback>
-                    <BoringAvatar
+                    <KioarAvatar
                       seed={inviter.avatarSeed ?? inviter.slug}
                       size={56}
                     />

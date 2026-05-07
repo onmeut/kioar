@@ -1,26 +1,42 @@
 /**
- * Fixed colour palette used by every fallback avatar across the app.
- * Mirrors the brand: 3 weights of primary green + 2 black accents. The
- * `beam` variant produces the most identifiable shapes for ~80px circles.
+ * Single source of truth for the deterministic fallback avatar used
+ * everywhere a user has no uploaded picture.
  *
- * If you want the avatar to vary per-user you do NOT change the colours —
- * you change the `seed` (a.k.a. the `name` prop) which deterministically
- * picks shapes/positions inside this palette. The seed is generated once
- * per profile at creation and persisted on `profiles.avatar_seed`.
+ * We use **DiceBear** (`@dicebear/core` + `@dicebear/bottts-neutral`).
+ * Each profile gets a stable opaque `seed` (persisted on
+ * `profiles.avatar_seed`) which deterministically picks the bot's
+ * eyes, mouth, face, side, top, texture, **and background colour** —
+ * so two users always get visually distinct bots and the same user
+ * always gets the same one.
  *
- * This module is safe to import from BOTH server and client components —
- * it has no Node-only deps. Server-only helpers (e.g. seed generation)
- * live in `lib/avatar-seed.ts` instead.
+ * This module is **isomorphic**: no Node-only deps, safe to import
+ * from server components, client components, route handlers, and
+ * `sharp`-based rasterizers alike. Server-only seed *generation* still
+ * lives in `lib/avatar-seed.ts`.
  */
-export const BORING_AVATAR_COLORS = [
-  "#158867",
-  "#158867",
-  "#158867",
-  "#000000",
-  "#000000",
-] as const;
+import { createAvatar } from "@dicebear/core";
+import * as botttsNeutral from "@dicebear/bottts-neutral";
 
-export const BORING_AVATAR_VARIANT = "beam" as const;
+/** Default seed used when a profile has no `avatar_seed` (legacy NULLs). */
+const DEFAULT_SEED = "kioar";
 
-/** Mutable shape required by the `boring-avatars` React component prop. */
-export const BORING_AVATAR_COLORS_PROP: string[] = [...BORING_AVATAR_COLORS];
+/**
+ * Generate the SVG markup string for the deterministic Kioar fallback
+ * avatar. Use either by passing to `dangerouslySetInnerHTML` (UI) or
+ * to `sharp(Buffer.from(svg))` (server-side rasterisation).
+ *
+ * Background colour is part of the DiceBear seed output (default
+ * palette) — no external colour is forced. The caller decides on
+ * chrome (e.g. `rounded-full` wrapper).
+ */
+export function getKioarAvatarSvg(
+  seed: string | null | undefined,
+  options: { size?: number; radius?: number } = {},
+): string {
+  const { size = 80, radius = 0 } = options;
+  return createAvatar(botttsNeutral, {
+    seed: seed || DEFAULT_SEED,
+    radius,
+    size,
+  }).toString();
+}

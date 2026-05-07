@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { BrandMark } from "@/components/shared/brand-mark";
+import { TrustBadgesModal } from "@/components/marketing/trust-badges-modal";
 
 const footerColumns = [
   {
@@ -44,6 +45,25 @@ export function SiteFooter() {
               کارت ویزیت دیجیتال، QR زنده و کارت NFC فارسی برای کسانی که ارتباط
               برایشان مهم است.
             </p>
+            <div className="flex justify-end">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <a
+                referrerPolicy="origin"
+                target="_blank"
+                href="https://trustseal.enamad.ir/?id=724719&Code=XXjmUO742uWN3DdXHYA0akCPqwErlcEm"
+              >
+                <img
+                  referrerPolicy="origin"
+                  src="https://trustseal.enamad.ir/logo.aspx?id=724719&Code=XXjmUO742uWN3DdXHYA0akCPqwErlcEm"
+                  alt=""
+                  style={{ cursor: "pointer" }}
+                  {...({ code: "XXjmUO742uWN3DdXHYA0akCPqwErlcEm" } as Record<
+                    string,
+                    unknown
+                  >)}
+                />
+              </a>
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
@@ -69,22 +89,28 @@ export function SiteFooter() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col gap-3 border-t border-hairline pt-6 text-[12px] text-ink-soft sm:flex-row sm:items-center sm:justify-between">
-          <p dir="ltr">© ۲۰۲۶ Kioar. All rights reserved.</p>
-          <div className="flex items-center gap-5">
-            <a
-              href="mailto:hello@kioar.app"
-              className="transition-colors hover:text-ink"
-              dir="ltr"
-            >
-              hello@kioar.app
-            </a>
-            <Link href="/privacy" className="transition-colors hover:text-ink">
-              حریم خصوصی
-            </Link>
-            <Link href="/terms" className="transition-colors hover:text-ink">
-              شرایط استفاده
-            </Link>
+        <div className="mt-12 flex flex-col gap-4 border-t border-hairline pt-6 text-[12px] text-ink-soft">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p dir="ltr">© ۲۰۲۶ Kioar. All rights reserved.</p>
+            <div className="flex items-center gap-5">
+              <a
+                href="mailto:hello@kioar.app"
+                className="transition-colors hover:text-ink"
+                dir="ltr"
+              >
+                hello@kioar.app
+              </a>
+              <Link
+                href="/privacy"
+                className="transition-colors hover:text-ink"
+              >
+                حریم خصوصی
+              </Link>
+              <Link href="/terms" className="transition-colors hover:text-ink">
+                شرایط استفاده
+              </Link>
+              <TrustBadgesModal />
+            </div>
           </div>
         </div>
       </div>

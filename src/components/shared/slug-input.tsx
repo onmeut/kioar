@@ -97,7 +97,7 @@ export function SlugInput({
       <div
         dir="ltr"
         className={cn(
-          "relative flex items-center rounded-full border",
+          "relative flex w-full min-w-0 items-center rounded-full border",
           variant === "muted"
             ? "bg-muted border-transparent focus-within:ring-3 focus-within:ring-ring/20"
             : "bg-background ring-offset-background focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2",
@@ -118,7 +118,7 @@ export function SlugInput({
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="yourname"
+          placeholder="username"
           aria-label="نام کاربری"
           autoFocus={autoFocus}
           enterKeyHint={enterKeyHint}

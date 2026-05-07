@@ -1,18 +1,16 @@
 /**
  * Phase 12 — billing hub page for a specific page.
  *
- * Replaces the Phase 8 scaffold + Phase 9 inline plan-change UI with a
- * focused hub:
+ * Slim hub: identity + period info + quick nav. Plan picker /
+ * comparison / code redemption all live on `/pro` now (one canonical
+ * upgrade surface), so this page no longer duplicates them.
  *
- *   - Header card: current plan + status badge + period boundary.
- *   - Trial CTAs (one row per eligible trial).
- *   - 4 nav buttons → `plans` / `invoices` / `discount` / `cancel`.
- *
- * The plan picker now lives at `./billing/plans` (registry + comparison
- * table). Discount input at `./billing/discount`. Invoices at
- * `./billing/invoices`. Cancel confirmation at `./billing/cancel`.
- *
- * Pricing is read from the `plans` registry; no hardcoded tomans here.
+ * Surfaces:
+ *   - Page identity card (avatar + name + share host + plan badge).
+ *   - Status banners (success / failed / cancelled callbacks +
+ *     pending plan change / cancel-at-period-end).
+ *   - Trial CTAs (one row per eligible trial → /trial).
+ *   - Quick nav: مدیریت اشتراک و پلن‌ها (→ /pro) · فاکتورها · لغو اشتراک.
  */
 import Link from "next/link";
 import type { Route } from "next";
@@ -21,15 +19,14 @@ import {
   ChevronLeftIcon,
   CreditCardIcon,
   FileTextIcon,
-  TagIcon,
   XCircleIcon,
 } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { KioarAvatar } from "@/components/shared/kioar-avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { getDb } from "@/db";
 import { pageSubscriptions } from "@/db/schema";
 import { requireUser } from "@/lib/auth/session";
@@ -68,6 +65,24 @@ const STATUS_TONE: Record<string, string> = {
   grace: "border-amber-200 bg-amber-50 text-amber-800",
   expired: "border-zinc-200 bg-zinc-50 text-zinc-600",
   canceled: "border-zinc-200 bg-zinc-50 text-zinc-600",
+};
+
+const PLAN_BADGE: Record<
+  "free" | "pro" | "business",
+  { label: string; className: string }
+> = {
+  free: {
+    label: "رایگان",
+    className: "border-zinc-200 bg-zinc-50 text-zinc-600",
+  },
+  pro: {
+    label: "حرفه‌ای",
+    className: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  business: {
+    label: "کسب‌وکار",
+    className: "border-purple-200 bg-purple-50 text-purple-700",
+  },
 };
 
 function formatToman(value: number) {
@@ -118,24 +133,58 @@ export default async function PageBillingRoute({
     ? formatPersianDate(new Date(periodEndDate))
     : null;
 
-  const isPaid = sub.plan.key === "pro" || sub.plan.key === "business";
+  const planKey = sub.plan.key as "free" | "pro" | "business";
+  const isPaid = planKey === "pro" || planKey === "business";
   const cyclePrice =
     sub.billingCycle === "annual"
       ? sub.plan.priceAnnualToman
       : sub.plan.priceMonthlyToman;
+  const planBadge = PLAN_BADGE[planKey];
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:py-10">
-      <header className="space-y-1">
-        <p className="text-xs font-medium text-zinc-500">صورت‌حساب صفحه</p>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          {displayName}
-        </h1>
-        <p className="text-xs text-zinc-500" dir="ltr">
-          {shareHost}
-        </p>
-      </header>
+    <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-6 sm:py-10">
+      {/* Header — page identity, mirroring /pro page's "صفحه‌ی در حال
+          ارتقا" panel. */}
+      <section className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200">
+        <div className="flex items-center gap-4">
+          <div className="relative shrink-0">
+            <Avatar className="size-14 ring-2 ring-background [&_svg]:size-full!">
+              {page.avatarUrl ? (
+                <AvatarImage src={page.avatarUrl} alt={displayName} />
+              ) : (
+                <AvatarFallback className="bg-transparent p-0">
+                  <KioarAvatar seed={page.avatarSeed} size={56} />
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <Badge
+              variant="outline"
+              className={
+                "absolute -bottom-1 -inset-e-1 h-5 px-1.5 text-[9px] font-bold shadow-sm " +
+                planBadge.className
+              }
+            >
+              {planBadge.label}
+            </Badge>
+          </div>
+          <div className="min-w-0 space-y-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+              صورت‌حساب صفحه
+            </p>
+            <p className="truncate text-base font-bold text-zinc-900 sm:text-lg">
+              {displayName}
+            </p>
+            <p
+              dir="ltr"
+              className="truncate text-[11px] font-medium text-zinc-500"
+            >
+              {shareHost}
+            </p>
+          </div>
+        </div>
+      </section>
 
+      {/* Callback banners */}
       {paidParam ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
           پرداخت با موفقیت ثبت شد. شماره فاکتور:{" "}
@@ -154,155 +203,153 @@ export default async function PageBillingRoute({
         </div>
       ) : null}
 
-      <Card>
-        <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-          <div>
-            <CardTitle className="text-base">پلن فعلی</CardTitle>
-            <p className="mt-1 text-xs text-zinc-500">
-              مدیریت اشتراک، فاکتورها و کد تخفیف از اینجا انجام می‌شود.
+      {/* Current plan summary */}
+      <section className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0 space-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+              پلن فعلی
+            </p>
+            <p className="text-2xl font-bold tracking-tight text-zinc-900">
+              {sub.plan.nameFa}
+            </p>
+            <p className="text-xs text-zinc-500">
+              {isPaid ? (
+                <>
+                  <span className="font-semibold text-zinc-900">
+                    {formatToman(cyclePrice)} تومان
+                  </span>{" "}
+                  {sub.billingCycle === "annual" ? "در سال" : "در ماه"}
+                </>
+              ) : (
+                "پلن رایگان — برای همیشه"
+              )}
             </p>
           </div>
-          <Badge variant="outline" className={STATUS_TONE[sub.status]}>
-            {STATUS_LABELS[sub.status] ?? sub.status}
-          </Badge>
-        </CardHeader>
-        <CardContent className="space-y-3 text-sm">
-          <div className="flex items-end justify-between gap-3">
-            <div className="space-y-0.5">
-              <p className="text-xl font-bold tracking-tight">
-                {sub.plan.nameFa}
-              </p>
-              {isPaid ? (
-                <p className="text-[12px] text-zinc-500">
-                  {formatToman(cyclePrice)} تومان{" "}
-                  {sub.billingCycle === "annual" ? "در سال" : "در ماه"}
-                </p>
-              ) : (
-                <p className="text-[12px] text-zinc-500">
-                  پلن رایگان — برای همیشه
-                </p>
-              )}
-            </div>
+          <div className="flex flex-col items-start gap-2 sm:items-end">
+            <Badge variant="outline" className={STATUS_TONE[sub.status]}>
+              {STATUS_LABELS[sub.status] ?? sub.status}
+            </Badge>
             {periodEndLabel ? (
-              <div className="text-end text-[12px]">
-                <p className="text-zinc-500">
+              <div className="text-start sm:text-end">
+                <p className="text-[10px] uppercase tracking-wider text-zinc-400">
                   {sub.status === "trialing"
                     ? "پایان آزمایش"
                     : sub.status === "grace"
                       ? "پایان مهلت پرداخت"
                       : "پایان دوره"}
                 </p>
-                <p dir="ltr" className="font-semibold text-zinc-700">
+                <p dir="ltr" className="text-xs font-semibold text-zinc-700">
                   {periodEndLabel}
                 </p>
               </div>
             ) : null}
           </div>
+        </div>
 
-          {(sub.cancelAtPeriodEnd || sub.pendingPlanChangePlanId) &&
-          periodEndLabel ? (
-            <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-              {sub.cancelAtPeriodEnd ? (
-                <p>
-                  اشتراک شما در{" "}
-                  <span dir="ltr" className="font-semibold">
-                    {periodEndLabel}
-                  </span>{" "}
-                  لغو خواهد شد.
-                </p>
-              ) : null}
-              {sub.pendingPlanChangePlanId && sub.pendingPlanChange ? (
-                <p>
-                  تغییر پلن به «{sub.pendingPlanChange.nameFa}» در{" "}
-                  <span dir="ltr" className="font-semibold">
-                    {periodEndLabel}
-                  </span>{" "}
-                  اعمال خواهد شد.
-                </p>
-              ) : null}
-            </div>
-          ) : null}
-
-          <Separator />
-
-          <div className="grid gap-2 sm:grid-cols-2">
-            <BillingNavButton
-              href={`/dashboard/pages/${pageId}/billing/plans` as Route}
-              icon={<CreditCardIcon className="size-4" />}
-              label="مدیریت اشتراک و پلن‌ها"
-              primary
-            />
-            <BillingNavButton
-              href={`/dashboard/pages/${pageId}/billing/invoices` as Route}
-              icon={<FileTextIcon className="size-4" />}
-              label="فاکتورها"
-            />
-            <BillingNavButton
-              href={`/dashboard/pages/${pageId}/billing/discount` as Route}
-              icon={<TagIcon className="size-4" />}
-              label="کد تخفیف"
-            />
-            {isPaid ? (
-              <BillingNavButton
-                href={`/dashboard/pages/${pageId}/billing/cancel` as Route}
-                icon={<XCircleIcon className="size-4" />}
-                label="لغو اشتراک"
-                tone="danger"
-              />
+        {(sub.cancelAtPeriodEnd || sub.pendingPlanChangePlanId) &&
+        periodEndLabel ? (
+          <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+            {sub.cancelAtPeriodEnd ? (
+              <p>
+                اشتراک شما در{" "}
+                <span dir="ltr" className="font-semibold">
+                  {periodEndLabel}
+                </span>{" "}
+                لغو خواهد شد.
+              </p>
+            ) : null}
+            {sub.pendingPlanChangePlanId && sub.pendingPlanChange ? (
+              <p>
+                تغییر پلن به «{sub.pendingPlanChange.nameFa}» در{" "}
+                <span dir="ltr" className="font-semibold">
+                  {periodEndLabel}
+                </span>{" "}
+                اعمال خواهد شد.
+              </p>
             ) : null}
           </div>
-        </CardContent>
-      </Card>
+        ) : null}
+      </section>
 
+      {/* Quick nav — plan picker / discount code / comparison all live
+          on /pro now, so we link there as one entry point. */}
+      <section className="space-y-3">
+        <BillingNavButton
+          href={"/pro" as Route}
+          icon={<CreditCardIcon className="size-4" />}
+          label="مدیریت اشتراک و پلن‌ها"
+          primary
+        />
+        <BillingNavButton
+          href={`/dashboard/pages/${pageId}/billing/invoices` as Route}
+          icon={<FileTextIcon className="size-4" />}
+          label="فاکتورها"
+        />
+        {isPaid ? (
+          <BillingNavButton
+            href={`/dashboard/pages/${pageId}/billing/cancel` as Route}
+            icon={<XCircleIcon className="size-4" />}
+            label="لغو اشتراک"
+            tone="danger"
+          />
+        ) : null}
+      </section>
+
+      {/* Trial CTA — only when at least one plan is still trial-eligible
+          for this page. */}
       {eligibleTrials.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">آزمایش رایگان</CardTitle>
-            <p className="mt-1 text-xs text-zinc-500">
+        <section className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200 sm:p-6">
+          <div className="flex flex-col items-center gap-1 text-center">
+            <h2 className="text-lg font-bold text-zinc-900 sm:text-xl">
+              آزمایش رایگان
+            </h2>
+            <p className="text-xs leading-6 text-zinc-500 sm:text-sm">
               قبل از پرداخت، امکانات هر پلن را به‌صورت رایگان روی این صفحه تجربه
               کنید.
             </p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {eligibleTrials.map((option, idx) => (
-              <div key={option.id}>
-                {idx > 0 ? <Separator className="my-3" /> : null}
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold">{option.nameFa}</p>
-                      <Badge
-                        variant="outline"
-                        className="border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
-                      >
-                        {toPersianDigits(option.trialDays)} روز رایگان
-                      </Badge>
-                    </div>
-                    {option.descriptionFa ? (
-                      <p className="text-xs text-zinc-500">
-                        {option.descriptionFa}
-                      </p>
-                    ) : null}
-                    <p className="text-xs text-zinc-500">
-                      پس از آزمایش: {formatToman(option.priceMonthlyToman)}{" "}
-                      تومان در ماه
+          </div>
+          <div className="mt-4 space-y-3">
+            {eligibleTrials.map((option) => (
+              <div
+                key={option.id}
+                className="flex flex-col gap-3 rounded-2xl bg-white p-4 ring-1 ring-zinc-200 transition-all hover:ring-zinc-300 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-bold text-zinc-900 sm:text-lg">
+                      {option.nameFa}
                     </p>
+                    <Badge
+                      variant="outline"
+                      className="border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
+                    >
+                      {toPersianDigits(option.trialDays)} روز رایگان
+                    </Badge>
                   </div>
-                  <Button
-                    render={
-                      <Link
-                        href={`/dashboard/pages/${pageId}/trial` as Route}
-                      />
-                    }
-                    className="h-11 sm:w-auto"
-                  >
-                    شروع آزمایش رایگان
-                  </Button>
+                  {option.descriptionFa ? (
+                    <p className="text-xs leading-6 text-zinc-500 sm:text-[13px]">
+                      {option.descriptionFa}
+                    </p>
+                  ) : null}
+                  <p className="text-xs text-zinc-500">
+                    پس از آزمایش:{" "}
+                    <span className="font-semibold text-zinc-900">
+                      {formatToman(option.priceMonthlyToman)} تومان
+                    </span>{" "}
+                    در ماه
+                  </p>
                 </div>
+                <Button
+                  render={<Link href={"/trial" as Route} />}
+                  className="h-12 w-full text-sm font-bold sm:w-auto sm:min-w-32"
+                >
+                  شروع آزمایش رایگان
+                </Button>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </section>
       ) : null}
 
       <p className="text-center text-[11px] text-zinc-400">
@@ -329,15 +376,15 @@ function BillingNavButton({
     <Link
       href={href}
       className={
-        "flex h-12 items-center justify-between rounded-xl border px-4 text-sm font-medium transition-colors " +
+        "flex h-14 items-center justify-between rounded-2xl px-5 text-sm font-bold transition-colors " +
         (primary
-          ? "border-foreground bg-foreground text-background hover:bg-foreground/90"
+          ? "bg-zinc-900 text-white hover:bg-zinc-800"
           : tone === "danger"
-            ? "border-red-200 bg-white text-red-700 hover:bg-red-50"
-            : "border-zinc-200 bg-white text-zinc-800 hover:bg-zinc-50")
+            ? "bg-white text-red-700 ring-1 ring-red-200 hover:bg-red-50"
+            : "bg-white text-zinc-800 ring-1 ring-zinc-200 hover:ring-zinc-300")
       }
     >
-      <span className="flex items-center gap-2">
+      <span className="flex items-center gap-3">
         {icon}
         {label}
       </span>

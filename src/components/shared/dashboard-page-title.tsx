@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 
 const TITLE_MAP: Array<{ match: RegExp; title: string }> = [
   // Dashboard / app
-  { match: /^\/page(\/|$)/, title: "صفحه‌ی من" },
+  { match: /^\/me(\/|$)/, title: "لینک من" },
   { match: /^\/bookings(\/|$)/, title: "هماهنگی‌ها" },
   { match: /^\/forms(\/|$)/, title: "پاسخ‌های فرم" },
   { match: /^\/premium(\/|$)/, title: "کارت هوشمند" },
@@ -38,5 +38,5 @@ export function DashboardPageTitle({ fallback }: { fallback?: string }) {
   const match = TITLE_MAP.find((entry) => entry.match.test(pathname));
   const title = match?.title ?? fallback ?? "";
 
-  return <h1 className="truncate text-lg font-bold sm:text-xl">{title}</h1>;
+  return <h1 className="truncate text-md font-bold sm:text-lg">{title}</h1>;
 }

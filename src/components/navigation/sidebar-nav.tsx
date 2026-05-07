@@ -85,7 +85,7 @@ export type SidebarNavItem = {
   match?: "exact" | "prefix";
   /**
    * Visual treatment.
-   *  - `"primary"` — the centerpiece treatment (used for "صفحه‌ی من").
+   *  - `"primary"` — the centerpiece treatment (used for "لینک من").
    *    Taller, bolder typography, soft tinted background even when
    *    inactive; even more emphasis when active.
    *  - `"muted"`   — tertiary, dimmer (legacy support row treatment;
@@ -136,7 +136,7 @@ function formatBadge(count: number): string {
 export function SidebarNav({ items }: { items: SidebarNavItem[] }) {
   const pathname = usePathname();
 
-  // "صفحه‌ی من" gets a one-shot buzz on mount and every 60 s thereafter.
+  // "لینک من" gets a one-shot buzz on mount and every 60 s thereafter.
   const [myPageBuzzing, setMyPageBuzzing] = React.useState(true);
   const myPageBuzzTimer = React.useRef<ReturnType<typeof setTimeout> | null>(
     null,

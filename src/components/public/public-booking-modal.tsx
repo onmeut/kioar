@@ -38,6 +38,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   getPublicBookingSlotsAction,
   submitPublicBookingAction,
+  type PublicBookingSubmitResult,
 } from "@/app/[slug]/bookings/actions";
 import {
   formatShamsiMonthYear,
@@ -82,6 +83,16 @@ export type PublicBookingBlockData = {
   types: PublicBookingTypeData[];
 };
 
+export type PublicBookingSlotsAction = (input: {
+  blockId: string;
+  bookingTypeId: string;
+  dateIso: string;
+}) => Promise<{ ok: true; slots: string[] } | { ok: false; message: string }>;
+
+export type PublicBookingSubmitAction = (
+  input: unknown,
+) => Promise<PublicBookingSubmitResult>;
+
 type Stage =
   | { kind: "types" }
   | { kind: "calendar"; type: PublicBookingTypeData }
@@ -106,10 +117,14 @@ export function PublicBookingPill({
   block,
   defaultOpen = false,
   className,
+  getSlotsAction = getPublicBookingSlotsAction,
+  submitBookingAction = submitPublicBookingAction,
 }: {
   block: PublicBookingBlockData;
   defaultOpen?: boolean;
   className?: string;
+  getSlotsAction?: PublicBookingSlotsAction;
+  submitBookingAction?: PublicBookingSubmitAction;
 }) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -119,7 +134,7 @@ export function PublicBookingPill({
         type="button"
         onClick={() => setOpen(true)}
         className={cn(
-          "relative flex w-full items-center justify-center rounded-full bg-foreground/[0.04] px-4 py-4 transition-colors hover:bg-primary/8 active:bg-primary/12",
+          "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4 transition-colors hover:bg-primary/8 active:bg-primary/12",
           className,
         )}
       >
@@ -141,7 +156,13 @@ export function PublicBookingPill({
           {block.name}
         </span>
       </button>
-      <PublicBookingModal block={block} open={open} onOpenChange={setOpen} />
+      <PublicBookingModal
+        block={block}
+        open={open}
+        onOpenChange={setOpen}
+        getSlotsAction={getSlotsAction}
+        submitBookingAction={submitBookingAction}
+      />
     </>
   );
 }
@@ -150,10 +171,14 @@ function PublicBookingModal({
   block,
   open,
   onOpenChange,
+  getSlotsAction,
+  submitBookingAction,
 }: {
   block: PublicBookingBlockData;
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  getSlotsAction: PublicBookingSlotsAction;
+  submitBookingAction: PublicBookingSubmitAction;
 }) {
   const isMobile = useIsMobile();
   // See public-form-modal.tsx — same rationale: when rendered inside the
@@ -174,6 +199,7 @@ function PublicBookingModal({
     try {
       const persisted = window.localStorage.getItem(tzStorageKey);
       if (persisted && isValidTimezone(persisted)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setBookerTz(persisted);
         return;
       }
@@ -197,6 +223,7 @@ function PublicBookingModal({
   );
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (open) setStage({ kind: "types" });
   }, [open]);
 
@@ -273,6 +300,7 @@ function PublicBookingModal({
             dateIso={stage.dateIso}
             bookerTz={bookerTz}
             onChangeBookerTz={onChangeBookerTz}
+            getSlotsAction={getSlotsAction}
             onPick={(slotIso) =>
               setStage({
                 kind: "form",
@@ -288,9 +316,9 @@ function PublicBookingModal({
           <FormStep
             block={block}
             type={stage.type}
-            dateIso={stage.dateIso}
             slotIso={stage.slotIso}
             bookerTz={bookerTz}
+            submitBookingAction={submitBookingAction}
             onDone={(guestName) =>
               setStage({
                 kind: "confirmed",
@@ -335,7 +363,7 @@ function PublicBookingModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="h-[88vh] w-full max-w-[520px] gap-0 overflow-hidden p-0 sm:max-w-[520px]"
+        className="h-[88vh] w-full max-w-130 gap-0 overflow-hidden p-0 sm:max-w-130"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
@@ -363,12 +391,12 @@ function TypeList({
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
         {block.locationType === "online" ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/[0.04] px-3 py-1">
+          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/4 px-3 py-1">
             <VideoIcon className="size-3" />
             آنلاین
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/[0.04] px-3 py-1">
+          <span className="inline-flex items-center gap-1 rounded-full bg-foreground/4 px-3 py-1">
             <MapPinIcon className="size-3" />
             حضوری
           </span>
@@ -426,7 +454,7 @@ function CalendarStep({
   // Gregorian calendar. The backend still receives a Gregorian YYYY-MM-DD
   // string, but the visible grid (rows, columns, day numbers, month label)
   // is fully Shamsi.
-  const now = new Date();
+  const now = useMemo(() => new Date(), []);
   const [monthOffset, setMonthOffset] = useState(0);
 
   // First day of the displayed Shamsi month, expressed as a Tehran-shifted
@@ -541,7 +569,7 @@ function CalendarStep({
                 "grid h-11 place-items-center rounded-xl text-sm font-semibold transition-colors",
                 isPast
                   ? "text-muted-foreground/30"
-                  : "bg-foreground/[0.04] hover:bg-primary/10 hover:text-primary",
+                  : "bg-foreground/4 hover:bg-primary/10 hover:text-primary",
                 cell.isToday && !isPast ? "ring-1 ring-primary" : null,
               )}
             >
@@ -566,6 +594,7 @@ function TimesStep({
   dateIso,
   bookerTz,
   onChangeBookerTz,
+  getSlotsAction,
   onPick,
 }: {
   block: PublicBookingBlockData;
@@ -573,6 +602,7 @@ function TimesStep({
   dateIso: string;
   bookerTz: string;
   onChangeBookerTz: (tz: string) => void;
+  getSlotsAction: PublicBookingSlotsAction;
   onPick: (slotIso: string) => void;
 }) {
   const [slots, setSlots] = useState<string[] | null>(null);
@@ -582,9 +612,10 @@ function TimesStep({
 
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setError(null);
-    getPublicBookingSlotsAction({
+    getSlotsAction({
       blockId: block.id,
       bookingTypeId: type.id,
       dateIso,
@@ -610,7 +641,7 @@ function TimesStep({
     return () => {
       cancelled = true;
     };
-  }, [block.id, type.id, dateIso]);
+  }, [block.id, type.id, dateIso, getSlotsAction]);
 
   // dateIso is a Gregorian YYYY-MM-DD anchored to Tehran. Anchor to noon UTC
   // so the Tehran-tz formatter never lands on the wrong day for that ISO.
@@ -623,7 +654,7 @@ function TimesStep({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl bg-foreground/[0.04] px-4 py-3 text-sm">
+      <div className="rounded-2xl bg-foreground/4 px-4 py-3 text-sm">
         <p className="font-bold">{dateLabel}</p>
         <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-[12px] text-muted-foreground">
           <span>
@@ -639,10 +670,7 @@ function TimesStep({
                 setPickerOpen(false);
               }}
             >
-              <SelectTrigger
-                className="h-8 max-w-[260px] text-[12px]"
-                dir="ltr"
-              >
+              <SelectTrigger className="h-8 max-w-65 text-[12px]" dir="ltr">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -706,16 +734,16 @@ function TimesStep({
 function FormStep({
   block,
   type,
-  dateIso,
   slotIso,
   bookerTz,
+  submitBookingAction,
   onDone,
 }: {
   block: PublicBookingBlockData;
   type: PublicBookingTypeData;
-  dateIso: string;
   slotIso: string;
   bookerTz: string;
+  submitBookingAction: PublicBookingSubmitAction;
   onDone: (name: string) => void;
 }) {
   const [name, setName] = useState("");
@@ -738,7 +766,7 @@ function FormStep({
       return;
     }
     startTransition(async () => {
-      const res = await submitPublicBookingAction({
+      const res = await submitBookingAction({
         blockId: block.id,
         bookingTypeId: type.id,
         startsAtIso: slotIso,
@@ -760,17 +788,16 @@ function FormStep({
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div className="rounded-2xl bg-foreground/[0.04] px-4 py-3 text-sm">
+      <div className="rounded-2xl bg-foreground/4 px-4 py-3 text-sm">
         <p className="font-bold">{type.title}</p>
         <p className="text-[12px] text-muted-foreground">
-          {formatShamsiDateTimeInZone(slotIso, bookerTz)}{" "}
-          · به وقت <span dir="ltr">{bookerTz}</span>
+          {formatShamsiDateTimeInZone(slotIso, bookerTz)} · به وقت{" "}
+          <span dir="ltr">{bookerTz}</span>
         </p>
         {sameTz ? null : (
           <p className="mt-1 text-[11px] text-muted-foreground">
-            به وقت میزبان:{" "}
-            {formatShamsiDateTimeInZone(slotIso, block.timezone)} (
-            <span dir="ltr">{block.timezone}</span>)
+            به وقت میزبان: {formatShamsiDateTimeInZone(slotIso, block.timezone)}{" "}
+            (<span dir="ltr">{block.timezone}</span>)
           </p>
         )}
       </div>
@@ -869,7 +896,7 @@ function ConfirmedStep({
           {guestName} عزیز، جزئیات رزرو شما:
         </p>
       </div>
-      <div className="w-full rounded-2xl bg-foreground/[0.04] p-4 text-sm">
+      <div className="w-full rounded-2xl bg-foreground/4 p-4 text-sm">
         <div className="flex items-center justify-between py-1">
           <span className="text-muted-foreground">نوع</span>
           <span className="font-bold">{type.title}</span>
@@ -883,8 +910,7 @@ function ConfirmedStep({
             </span>
             {sameTz ? null : (
               <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
-                میزبان:{" "}
-                {formatShamsiDateTimeInZone(slotIso, block.timezone)} (
+                میزبان: {formatShamsiDateTimeInZone(slotIso, block.timezone)} (
                 <span dir="ltr">{block.timezone}</span>)
               </span>
             )}

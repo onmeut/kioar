@@ -5,8 +5,8 @@ import { siteConfig } from "@/lib/site";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/?source=pwa",
-    name: siteConfig.name,
-    short_name: siteConfig.shortName,
+    name: "Kioar",
+    short_name: "Kioar",
     description: siteConfig.description,
     lang: "fa-IR",
     dir: "rtl",
@@ -15,19 +15,61 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     display_override: ["standalone", "minimal-ui", "browser"],
     orientation: "portrait",
-    background_color: "#f7f4ee",
-    theme_color: "#195c54",
+    // Splash screen on Android uses background_color + the largest
+    // available `any` icon, centered. We want a fully brand-green
+    // splash with the brand mark in the middle — so the background
+    // matches the avatar SVG's green and the icon visually dissolves
+    // into a single solid surface (no visible "box" around the K).
+    // theme_color stays white so the in-app status bar remains white.
+    background_color: "#1ED760",
+    theme_color: "#ffffff",
     categories: ["business", "productivity", "social", "lifestyle"],
     prefer_related_applications: false,
     icons: [
       {
-        src: "/icons/icon-192.png",
+        src: "/icons/icon-72x72.png",
+        sizes: "72x72",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-96x96.png",
+        sizes: "96x96",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-128x128.png",
+        sizes: "128x128",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-144x144.png",
+        sizes: "144x144",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-152x152.png",
+        sizes: "152x152",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-192x192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/icons/icon-512.png",
+        src: "/icons/icon-384x384.png",
+        sizes: "384x384",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icons/icon-512x512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
@@ -46,25 +88,37 @@ export default function manifest(): MetadataRoute.Manifest {
         description: "دسترسی سریع به پروفایل و کارت دیجیتال",
         url: "/dashboard?source=pwa-shortcut",
         icons: [
-          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          {
+            src: "/icons/icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
         ],
       },
       {
-        name: "صفحه‌ی من",
+        name: "لینک من",
         short_name: "صفحه",
         description: "مدیریت بلاک‌ها و پیش‌نمایش پروفایل",
-        url: "/page?source=pwa-shortcut",
+        url: "/me?source=pwa-shortcut",
         icons: [
-          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          {
+            src: "/icons/icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
         ],
       },
       {
-        name: "رویدادها",
-        short_name: "رویدادها",
-        description: "مرور و ثبت‌نام در رویدادهای کی‌یو‌آر",
-        url: "/events?source=pwa-shortcut",
+        name: "کشف صفحات",
+        short_name: "صفحات",
+        description: "ساخت و مدیریت صفحه‌های عمومی کی‌یو‌آر",
+        url: "/me?source=pwa-shortcut-pages",
         icons: [
-          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          {
+            src: "/icons/icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
         ],
       },
       {
@@ -73,7 +127,11 @@ export default function manifest(): MetadataRoute.Manifest {
         description: "کارت هوشمند فیزیکی یا NFC",
         url: "/premium?source=pwa-shortcut",
         icons: [
-          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          {
+            src: "/icons/icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
         ],
       },
     ],

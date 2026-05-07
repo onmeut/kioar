@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BoringAvatar } from "@/components/shared/boring-avatar";
+import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 
@@ -125,7 +125,7 @@ export function RedeemGrid({
                   <AvatarImage src={page.avatarUrl} alt={page.slug} />
                 ) : null}
                 <AvatarFallback>
-                  <BoringAvatar seed={page.avatarSeed ?? page.slug} size={48} />
+                  <KioarAvatar seed={page.avatarSeed ?? page.slug} size={48} />
                 </AvatarFallback>
               </Avatar>
               <div className="min-w-0 flex-1">

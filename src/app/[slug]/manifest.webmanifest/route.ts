@@ -47,14 +47,11 @@ export async function GET(
     dir: "rtl",
     prefer_related_applications: false,
     icons: [
+      // PWA app icon: chromed (rounded square, avatar on brand bg). The
+      // 192/512 plain favicons under `/${slug}/icon.png` are different
+      // assets — those go to `<link rel="icon">` for browser tabs.
       {
-        src: `/${slug}/icon.png`,
-        sizes: "192x192",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: `/${slug}/icon-512.png`,
+        src: `/${slug}/app-icon.png`,
         sizes: "512x512",
         type: "image/png",
         purpose: "any",
@@ -70,8 +67,10 @@ export async function GET(
 
   return NextResponse.json(manifest, {
     headers: {
-      // Manifest can be cached briefly; we revalidate when the user edits.
-      "Cache-Control": "public, max-age=60, s-maxage=60",
+      // 10 min browser / 1 h CDN / serve stale up to 24 h while revalidating.
+      // Short enough that avatar/name changes propagate reasonably fast.
+      "Cache-Control":
+        "public, max-age=600, s-maxage=3600, stale-while-revalidate=86400",
       "Content-Type": "application/manifest+json; charset=utf-8",
     },
   });

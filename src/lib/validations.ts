@@ -374,12 +374,10 @@ export const pageSettingsFormSchema = z.object({
 });
 
 // Onboarding is intentionally the tiniest first-run flow: just enough data to
-// claim a slug and name the card. Avatar, bio, contact methods, links, etc.
+// claim a slug and name the page. Avatar, bio, contact methods, links, etc.
 // are deferred to the dashboard so users can reach `/page` fast.
 export const onboardingProfileSchema = z.object({
-  firstName: z.string().trim().min(1, "نام را وارد کنید.").max(40),
-  lastName: z.string().trim().min(1, "نام خانوادگی را وارد کنید.").max(40),
-  title: z.string().trim().min(2, "عنوان شغلی را وارد کنید.").max(80),
+  pageName: z.string().trim().min(1, "نام صفحه را وارد کنید.").max(80),
   slug: z
     .string()
     .trim()

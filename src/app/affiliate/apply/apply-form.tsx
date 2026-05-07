@@ -90,7 +90,7 @@ export function ApplyForm({
         label="لینک یا آدرس کانال"
         name="channelUrl"
         defaultValue=""
-        placeholder="@yourname یا https://..."
+        placeholder="@username یا https://..."
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}

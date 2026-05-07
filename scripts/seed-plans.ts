@@ -122,7 +122,7 @@ const FEATURES: FeatureSeed[] = [
   },
   {
     key: "kioar_username_url",
-    nameFa: "آدرس kioar.com/yourname",
+    nameFa: "آدرس kioar.com/username",
     category: "core",
     free: true,
     pro: true,

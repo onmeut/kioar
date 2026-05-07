@@ -78,7 +78,7 @@ export default async function AdminBillingConfigPage() {
   ];
 
   return (
-    <div className="section-shell space-y-6 py-6">
+    <div className="space-y-6">
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">تنظیمات صورت‌حساب</h1>
         <p className="text-sm text-muted-foreground">

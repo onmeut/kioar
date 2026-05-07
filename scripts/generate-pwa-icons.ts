@@ -1,155 +1,197 @@
-import { mkdir } from "node:fs/promises"
-import path from "node:path"
+/**
+ * Generates all Kioar app icons from the canonical brand avatar SVG.
+ *
+ * Source: /public/brand/brand-avatar.svg (1024x1024, green bg + black "K")
+ *
+ * Outputs:
+ *   /public/favicon.ico                      (16/32/48)
+ *   /public/favicon-16x16.png
+ *   /public/favicon-32x32.png
+ *   /public/apple-touch-icon.png             (180x180)
+ *   /public/og-image.png                     (1200x630, centered avatar)
+ *   /public/icons/icon-{72,96,128,144,152,192,384,512}.png
+ *   /public/icons/maskable-512.png           (with safe-area padding)
+ *   /public/icons/apple-touch-icon-{120,152,167,180}.png
+ *   /public/icons/mstile-150x150.png
+ *
+ *   Copies into /src/app/ for Next.js file-convention cache busting:
+ *   src/app/favicon.ico
+ *   src/app/icon.png          (512x512)
+ *   src/app/apple-icon.png    (180x180)
+ *   src/app/opengraph-image.png (1200x630)
+ *
+ * Run: npx tsx scripts/generate-pwa-icons.ts
+ */
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
+import path from "node:path";
 
-import sharp from "sharp"
+import pngToIco from "png-to-ico";
+import sharp from "sharp";
 
-const root = process.cwd()
-const publicDir = path.join(root, "public")
-const iconsDir = path.join(publicDir, "icons")
+const root = process.cwd();
+const publicDir = path.join(root, "public");
+const iconsDir = path.join(publicDir, "icons");
+const sourceSvgPath = path.join(publicDir, "brand", "brand-avatar.svg");
 
-type IconSpec = {
-  filename: string
-  size: number
-  maskable?: boolean
+// Brand background — matches the avatar SVG.
+const BRAND_GREEN = "#1ED760";
+
+type SquareSpec = { file: string; size: number; dir: "public" | "icons" };
+
+// Plain square renders straight from the source SVG.
+const squareIcons: SquareSpec[] = [
+  // PWA / web manifest
+  { file: "icon-72x72.png", size: 72, dir: "icons" },
+  { file: "icon-96x96.png", size: 96, dir: "icons" },
+  { file: "icon-128x128.png", size: 128, dir: "icons" },
+  { file: "icon-144x144.png", size: 144, dir: "icons" },
+  { file: "icon-152x152.png", size: 152, dir: "icons" },
+  { file: "icon-192x192.png", size: 192, dir: "icons" },
+  { file: "icon-384x384.png", size: 384, dir: "icons" },
+  { file: "icon-512x512.png", size: 512, dir: "icons" },
+  // Legacy aliases used by manifest.ts and layout.tsx today.
+  { file: "icon-192.png", size: 192, dir: "icons" },
+  { file: "icon-512.png", size: 512, dir: "icons" },
+  // Apple touch icons
+  { file: "apple-touch-icon-120x120.png", size: 120, dir: "icons" },
+  { file: "apple-touch-icon-152x152.png", size: 152, dir: "icons" },
+  { file: "apple-touch-icon-167x167.png", size: 167, dir: "icons" },
+  { file: "apple-touch-icon-180x180.png", size: 180, dir: "icons" },
+  // Microsoft tile
+  { file: "mstile-150x150.png", size: 150, dir: "icons" },
+  // Favicons
+  { file: "favicon-16x16.png", size: 16, dir: "public" },
+  { file: "favicon-32x32.png", size: 32, dir: "public" },
+];
+
+function targetPath(spec: SquareSpec) {
+  return path.join(spec.dir === "icons" ? iconsDir : publicDir, spec.file);
 }
 
-const icons: IconSpec[] = [
-  { filename: "icon-192.png", size: 192 },
-  { filename: "icon-512.png", size: 512 },
-  { filename: "maskable-512.png", size: 512, maskable: true },
-]
-
-function createSvg(size: number, maskable = false) {
-  const frameInset = Math.round(size * (maskable ? 0.15 : 0.08))
-  const cardSize = size - frameInset * 2
-  const cardRadius = Math.round(cardSize * 0.29)
-  const haloInset = Math.round(size * 0.055)
-  const symbolSize = Math.round(cardSize * 0.5)
-  const symbolRadius = Math.round(symbolSize * 0.3)
-  const symbolX = Math.round((size - symbolSize) / 2)
-  const symbolY = Math.round((size - symbolSize) / 2)
-  const innerBarWidth = Math.round(symbolSize * 0.44)
-  const innerBarHeight = Math.round(symbolSize * 0.12)
-  const innerBarX = Math.round((size - innerBarWidth) / 2)
-  const topBarY = Math.round(symbolY + symbolSize * 0.24)
-  const bottomBarY = Math.round(symbolY + symbolSize * 0.64)
-  const dotSize = Math.round(symbolSize * 0.16)
-  const dotX = Math.round(symbolX + symbolSize * 0.2)
-  const dotY = Math.round(symbolY + symbolSize * 0.62)
-  const glyphY = Math.round(symbolY + symbolSize * 0.63)
-  const glyphSize = Math.round(symbolSize * 0.55)
-  const glowRadius = Math.round(size * 0.42)
-
-  return `
-    <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">
-      <defs>
-        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stop-color="#195c54" />
-          <stop offset="56%" stop-color="#b7e4d3" />
-          <stop offset="100%" stop-color="#f5e5c7" />
-        </linearGradient>
-        <radialGradient id="glow" cx="0.22" cy="0.18" r="0.9">
-          <stop offset="0%" stop-color="rgba(255,255,255,0.6)" />
-          <stop offset="100%" stop-color="rgba(255,255,255,0)" />
-        </radialGradient>
-      </defs>
-
-      <rect width="${size}" height="${size}" rx="${Math.round(size * 0.24)}" fill="url(#bg)" />
-      <circle cx="${Math.round(size * 0.2)}" cy="${Math.round(size * 0.16)}" r="${glowRadius}" fill="url(#glow)" />
-
-      <rect
-        x="${haloInset}"
-        y="${haloInset}"
-        width="${size - haloInset * 2}"
-        height="${size - haloInset * 2}"
-        rx="${Math.round(size * 0.2)}"
-        fill="rgba(255,255,255,0.15)"
-        stroke="rgba(255,255,255,0.32)"
-        stroke-width="${Math.max(2, Math.round(size * 0.008))}"
-      />
-
-      <rect
-        x="${frameInset}"
-        y="${frameInset}"
-        width="${cardSize}"
-        height="${cardSize}"
-        rx="${cardRadius}"
-        fill="#0d2c2a"
-        fill-opacity="0.92"
-      />
-
-      <rect
-        x="${innerBarX}"
-        y="${topBarY}"
-        width="${innerBarWidth}"
-        height="${innerBarHeight}"
-        rx="${Math.round(innerBarHeight / 2)}"
-        fill="#f8efe0"
-        fill-opacity="0.98"
-      />
-      <rect
-        x="${innerBarX}"
-        y="${bottomBarY}"
-        width="${Math.round(innerBarWidth * 0.7)}"
-        height="${innerBarHeight}"
-        rx="${Math.round(innerBarHeight / 2)}"
-        fill="#b7e4d3"
-        fill-opacity="0.98"
-      />
-      <rect
-        x="${dotX}"
-        y="${dotY}"
-        width="${dotSize}"
-        height="${dotSize}"
-        rx="${Math.round(dotSize / 2)}"
-        fill="#b7e4d3"
-      />
-
-      <rect
-        x="${symbolX}"
-        y="${symbolY}"
-        width="${symbolSize}"
-        height="${symbolSize}"
-        rx="${symbolRadius}"
-        fill="rgba(255,255,255,0.04)"
-        stroke="rgba(255,255,255,0.08)"
-        stroke-width="${Math.max(1, Math.round(size * 0.006))}"
-      />
-
-      <text
-        x="50%"
-        y="${glyphY}"
-        text-anchor="middle"
-        direction="rtl"
-        font-size="${glyphSize}"
-        font-weight="800"
-        font-family="'Vazirmatn', 'Noto Sans Arabic', 'Tahoma', sans-serif"
-        fill="#ffffff"
-      >ک</text>
-    </svg>
-  `
+async function renderSquare(svg: Buffer, size: number, outFile: string) {
+  await sharp(svg, { density: Math.max(72, Math.ceil((size / 1024) * 600)) })
+    .resize(size, size, { fit: "cover" })
+    .png({ compressionLevel: 9 })
+    .toFile(outFile);
 }
 
-async function writeIcon({ filename, size, maskable = false }: IconSpec) {
-  const outputPath = path.join(iconsDir, filename)
-  const svg = createSvg(size, maskable)
+async function renderMaskable(svg: Buffer, size: number, outFile: string) {
+  // Maskable icons need ~10–15% safe-area padding around the logo so platforms
+  // can crop into circles/squircles without clipping the K.
+  const inner = Math.round(size * 0.72);
+  const inset = Math.round((size - inner) / 2);
 
-  await sharp(Buffer.from(svg))
-    .png({ compressionLevel: 9, quality: 100 })
-    .toFile(outputPath)
+  const innerPng = await sharp(svg, { density: 600 })
+    .resize(inner, inner, { fit: "cover" })
+    .png()
+    .toBuffer();
+
+  await sharp({
+    create: {
+      width: size,
+      height: size,
+      channels: 4,
+      background: BRAND_GREEN,
+    },
+  })
+    .composite([{ input: innerPng, left: inset, top: inset }])
+    .png({ compressionLevel: 9 })
+    .toFile(outFile);
+}
+
+async function renderOgImage(svg: Buffer, outFile: string) {
+  const W = 1200;
+  const H = 630;
+  const avatarSize = 360;
+
+  const avatar = await sharp(svg, { density: 600 })
+    .resize(avatarSize, avatarSize, { fit: "cover" })
+    .png()
+    .toBuffer();
+
+  // Rounded corners on the avatar tile.
+  const radius = 64;
+  const mask = Buffer.from(
+    `<svg width="${avatarSize}" height="${avatarSize}" xmlns="http://www.w3.org/2000/svg"><rect width="${avatarSize}" height="${avatarSize}" rx="${radius}" ry="${radius}" fill="#fff"/></svg>`,
+  );
+  const roundedAvatar = await sharp(avatar)
+    .composite([{ input: mask, blend: "dest-in" }])
+    .png()
+    .toBuffer();
+
+  const left = Math.round((W - avatarSize) / 2);
+  const top = Math.round((H - avatarSize) / 2);
+
+  await sharp({
+    create: { width: W, height: H, channels: 4, background: "#ffffff" },
+  })
+    .composite([{ input: roundedAvatar, left, top }])
+    .png({ compressionLevel: 9 })
+    .toFile(outFile);
+}
+
+async function renderFaviconIco(svg: Buffer) {
+  // Build 16/32/48 PNG buffers from source SVG, then bundle as ICO.
+  const buffers = await Promise.all(
+    [16, 32, 48].map((s) =>
+      sharp(svg, { density: 300 })
+        .resize(s, s, { fit: "cover" })
+        .png()
+        .toBuffer(),
+    ),
+  );
+  const ico = await pngToIco(buffers);
+  await writeFile(path.join(publicDir, "favicon.ico"), ico);
 }
 
 async function main() {
-  await mkdir(iconsDir, { recursive: true })
+  await mkdir(iconsDir, { recursive: true });
+  const svg = await readFile(sourceSvgPath);
 
-  await Promise.all(icons.map((icon) => writeIcon(icon)))
+  await Promise.all(
+    squareIcons.map((spec) => renderSquare(svg, spec.size, targetPath(spec))),
+  );
 
-  await sharp(Buffer.from(createSvg(180)))
-    .png({ compressionLevel: 9, quality: 100 })
-    .toFile(path.join(publicDir, "apple-touch-icon.png"))
+  // Apple touch icon at the canonical /public path (referenced by layout).
+  await renderSquare(svg, 180, path.join(publicDir, "apple-touch-icon.png"));
+
+  // Maskable PWA icon.
+  await renderMaskable(svg, 512, path.join(iconsDir, "maskable-512.png"));
+
+  // Open Graph share image.
+  await renderOgImage(svg, path.join(publicDir, "og-image.png"));
+
+  // favicon.ico (multi-size).
+  await renderFaviconIco(svg);
+
+  // ── Next.js app/ file-convention copies (cache-busted at build time) ──────
+  // These are what browsers and crawlers actually see in production.
+  // ALWAYS regenerate these alongside the public/ copies.
+  const appDir = path.join(root, "src", "app");
+  await Promise.all([
+    copyFile(
+      path.join(publicDir, "favicon.ico"),
+      path.join(appDir, "favicon.ico"),
+    ),
+    copyFile(
+      path.join(iconsDir, "icon-512x512.png"),
+      path.join(appDir, "icon.png"),
+    ),
+    copyFile(
+      path.join(publicDir, "apple-touch-icon.png"),
+      path.join(appDir, "apple-icon.png"),
+    ),
+    copyFile(
+      path.join(publicDir, "og-image.png"),
+      path.join(appDir, "opengraph-image.png"),
+    ),
+  ]);
+
+  // eslint-disable-next-line no-console
+  console.log("✔ Generated Kioar app icons from brand-avatar.svg");
 }
 
 main().catch((error) => {
-  console.error(error)
-  process.exitCode = 1
-})
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Route } from "next";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BarChart3Icon,
@@ -16,7 +16,6 @@ import {
   GiftIcon,
   HelpCircleIcon,
   HomeIcon,
-  ImageIcon,
   LayoutGridIcon,
   LinkIcon,
   LockIcon,
@@ -24,23 +23,14 @@ import {
   MailQuestionIcon,
   MegaphoneIcon,
   MessageCircleQuestionIcon,
-  PlusIcon,
   ReceiptIcon,
   ScrollTextIcon,
-  ShieldCheckIcon,
-  SlidersHorizontalIcon,
   SparklesIcon,
   TagIcon,
   UserIcon,
-  UsersIcon,
-  VideoIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { switchPageAction } from "@/app/(app)/dashboard/pages/actions";
-import { CreatePageDialog } from "@/components/dashboard/create-page-dialog";
-import { BoringAvatar } from "@/components/shared/boring-avatar";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   CommandDialog,
   CommandEmpty,
@@ -51,7 +41,6 @@ import {
   CommandSeparator,
   CommandShortcut,
 } from "@/components/ui/command";
-import { cn } from "@/lib/utils";
 
 export type CommandPalettePage = {
   id: string;
@@ -80,40 +69,6 @@ export interface CommandPaletteProps {
   publicUrl: string;
   /** Pre-resolved per-page entitlements for the *current* page only. */
   features: CommandPaletteFeatureFlags;
-  /** Whether the viewer's user role is `admin`. */
-  isAdmin: boolean;
-}
-
-const PLAN_LABEL: Record<CommandPalettePage["planKey"], string> = {
-  free: "رایگان",
-  pro: "پرو",
-  business: "بیزنس",
-};
-
-function PlanPill({
-  planKey,
-  isOnTrial,
-}: {
-  planKey: CommandPalettePage["planKey"];
-  isOnTrial: boolean;
-}) {
-  const label = isOnTrial ? "آزمایشی" : PLAN_LABEL[planKey];
-  const color =
-    planKey === "free"
-      ? "bg-zinc-100 text-zinc-600"
-      : planKey === "pro"
-        ? "bg-emerald-100 text-emerald-700"
-        : "bg-purple-100 text-purple-700";
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[10px] font-bold",
-        color,
-      )}
-    >
-      {label}
-    </span>
-  );
 }
 
 function LockedPill() {
@@ -135,11 +90,10 @@ function ProLockedPill() {
 }
 
 /**
- * Global ⌘K command palette. The shell is plan- and admin-aware:
+ * Global ⌘K command palette.
  *
- *  - Group order is fixed (pages → navigation → quick actions →
- *    tools → help → admin) so muscle-memory works regardless of which
- *    page the user is editing.
+ *  - Group order is fixed (navigation → quick actions → tools → help)
+ *    so muscle-memory works regardless of which page the user is editing.
  *  - Page-scoped routes bake the *current* `pageId` into the href at
  *    render time. Switching pages re-mounts the dashboard layout,
  *    which re-supplies fresh data here.
@@ -155,11 +109,8 @@ export function CommandPalette({
   currentPageId,
   publicUrl,
   features,
-  isAdmin,
 }: CommandPaletteProps) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
-  const [createOpen, setCreateOpen] = useState(false);
 
   const currentPage =
     pages.find((p) => p.id === currentPageId) ?? pages[0] ?? null;
@@ -175,20 +126,20 @@ export function CommandPalette({
 
   const goPage = (href: string) => run(() => router.push(href as Route));
 
-  const handleSwitchPage = (pageId: string) => {
-    if (pageId === currentPageId) {
-      onOpenChange(false);
-      return;
-    }
-    onOpenChange(false);
-    startTransition(async () => {
-      const result = await switchPageAction(pageId);
-      if (!result.ok) {
-        toast.error(result.message);
-        return;
+  // Trigger a quick action on the page editor. If the user is already on
+  // /me the action is dispatched as a custom event; otherwise we store it
+  // in sessionStorage and navigate — LinksPageClient picks it up on mount.
+  const triggerEditorAction = (action: string) => {
+    run(() => {
+      const isOnMe = window.location.pathname === "/me";
+      if (isOnMe) {
+        window.dispatchEvent(
+          new CustomEvent("cmd-palette-action", { detail: action }),
+        );
+      } else {
+        sessionStorage.setItem("kioar:pending-palette-action", action);
+        router.push("/me" as Route);
       }
-      router.push("/dashboard");
-      router.refresh();
     });
   };
 
@@ -241,69 +192,13 @@ export function CommandPalette({
         open={open}
         onOpenChange={onOpenChange}
         title="جستجو در کیوار"
-        description="میان‌برهای سراسری برای حرکت سریع بین صفحه‌ها، آمار، و ابزارها."
+        description="میان‌برهای سراسری برای حرکت سریع در داشبورد."
       >
         <CommandInput placeholder="جستجو در کیوار..." />
         <CommandList>
           <CommandEmpty>چیزی پیدا نشد.</CommandEmpty>
 
-          {/* ── Group 1 — Pages ────────────────────────────────────── */}
-          <CommandGroup heading="صفحه‌ها">
-            {pages.map((page) => {
-              const isCurrent = page.id === currentPageId;
-              return (
-                <CommandItem
-                  key={page.id}
-                  value={`${page.title}__${page.slug}__${page.id}`}
-                  keywords={[page.slug, page.title, `/${page.slug}`]}
-                  onSelect={() => handleSwitchPage(page.id)}
-                >
-                  <Avatar
-                    className={cn(
-                      "size-7 shrink-0 [&_svg]:size-full!",
-                      isCurrent &&
-                        "ring-2 ring-foreground ring-offset-2 ring-offset-popover",
-                    )}
-                  >
-                    {page.avatarUrl ? (
-                      <AvatarImage src={page.avatarUrl} alt={page.title} />
-                    ) : (
-                      <AvatarFallback className="bg-transparent p-0">
-                        <BoringAvatar seed={page.avatarSeed} size={28} />
-                      </AvatarFallback>
-                    )}
-                  </Avatar>
-                  <span className="flex min-w-0 flex-1 flex-col leading-tight">
-                    <span className="truncate text-sm font-semibold">
-                      {page.title}
-                    </span>
-                    <span
-                      dir="ltr"
-                      className="truncate text-start text-[11px] text-muted-foreground"
-                    >
-                      /{page.slug}
-                    </span>
-                  </span>
-                  <PlanPill planKey={page.planKey} isOnTrial={page.isOnTrial} />
-                </CommandItem>
-              );
-            })}
-            <CommandItem
-              value="new-page"
-              keywords={["page", "create", "new", "صفحه جدید", "ساخت صفحه"]}
-              onSelect={() => {
-                onOpenChange(false);
-                setTimeout(() => setCreateOpen(true), 0);
-              }}
-            >
-              <PlusIcon />
-              <span>صفحه‌ی جدید</span>
-            </CommandItem>
-          </CommandGroup>
-
-          <CommandSeparator />
-
-          {/* ── Group 2 — Navigation ──────────────────────────────── */}
+          {/* ── Group 1 — Navigation ──────────────────────────────── */}
           <CommandGroup heading="رفتن به">
             <CommandItem
               value="nav-dashboard"
@@ -315,11 +210,11 @@ export function CommandPalette({
             </CommandItem>
             <CommandItem
               value="nav-page"
-              keywords={["editor", "page", "links", "صفحه‌ی من", "ویرایش"]}
-              onSelect={() => goPage("/page")}
+              keywords={["editor", "page", "links", "لینک من", "ویرایش"]}
+              onSelect={() => goPage("/me")}
             >
               <LayoutGridIcon />
-              <span>صفحه‌ی من</span>
+              <span>لینک من</span>
             </CommandItem>
             <CommandItem
               value="nav-analytics"
@@ -392,7 +287,7 @@ export function CommandPalette({
             <CommandItem
               value="nav-profile"
               keywords={["profile", "account", "پروفایل", "حساب"]}
-              onSelect={() => goPage("/dashboard/profile")}
+              onSelect={() => goPage("/dashboard/account")}
             >
               <UserIcon />
               <span>پروفایل کاربری</span>
@@ -417,61 +312,48 @@ export function CommandPalette({
 
           <CommandSeparator />
 
-          {/* ── Group 3 — Quick Actions ───────────────────────────── */}
+          {/* ── Group 2 — Quick Actions ───────────────────────────── */}
           <CommandGroup heading="اقدامات سریع">
             <CommandItem
               value="action-add-link"
-              keywords={["link", "add", "new link", "افزودن لینک", "لینک جدید"]}
-              onSelect={() => goPage("/page?add=link")}
+              keywords={[
+                "link",
+                "add",
+                "new link",
+                "افزودن لینک",
+                "لینک جدید",
+                "بلاک",
+              ]}
+              onSelect={() => triggerEditorAction("add-block")}
             >
               <LinkIcon />
-              <span>افزودن لینک جدید</span>
-            </CommandItem>
-            <CommandItem
-              value="action-add-video"
-              keywords={["video", "ویدیو", "بلاک"]}
-              onSelect={() => goPage("/page?add=video")}
-            >
-              <VideoIcon />
-              <span>افزودن بلاک ویدیو</span>
-            </CommandItem>
-            <CommandItem
-              value="action-add-image"
-              keywords={["image", "gallery", "تصویر", "گالری"]}
-              onSelect={() => goPage("/page?add=image")}
-            >
-              <ImageIcon />
-              <span>افزودن بلاک تصویر / گالری</span>
-            </CommandItem>
-            <CommandItem
-              value="action-add-form"
-              keywords={["form", "contact", "فرم", "تماس"]}
-              onSelect={() =>
-                goPage(
-                  features.contactForm
-                    ? "/page?add=form"
-                    : `/dashboard/pages/${currentPageId}/billing/plans`,
-                )
-              }
-            >
-              <MailQuestionIcon />
-              <span>افزودن فرم تماس</span>
-              {!features.contactForm && <LockedPill />}
+              <span>افزودن لینک / بلاک جدید</span>
             </CommandItem>
             <CommandItem
               value="action-add-booking"
-              keywords={["booking", "reservation", "رزرو"]}
+              keywords={["booking", "reservation", "رزرو", "نوبت"]}
               onSelect={() =>
-                goPage(
-                  features.bookings
-                    ? "/page?add=booking"
-                    : `/dashboard/pages/${currentPageId}/billing/plans`,
-                )
+                features.bookings
+                  ? triggerEditorAction("add-booking")
+                  : goPage(`/dashboard/pages/${currentPageId}/billing/plans`)
               }
             >
               <CalendarClockIcon />
               <span>افزودن بلاک رزرو</span>
               {!features.bookings && <LockedPill />}
+            </CommandItem>
+            <CommandItem
+              value="action-add-form"
+              keywords={["form", "contact", "فرم", "تماس"]}
+              onSelect={() =>
+                features.contactForm
+                  ? triggerEditorAction("add-form")
+                  : goPage(`/dashboard/pages/${currentPageId}/billing/plans`)
+              }
+            >
+              <MailQuestionIcon />
+              <span>افزودن فرم تماس</span>
+              {!features.contactForm && <LockedPill />}
             </CommandItem>
             <CommandItem
               value="action-view-public"
@@ -520,7 +402,7 @@ export function CommandPalette({
 
           <CommandSeparator />
 
-          {/* ── Group 4 — Tools ───────────────────────────────────── */}
+          {/* ── Group 3 — Tools ───────────────────────────────────── */}
           <CommandGroup heading="ابزارها">
             {showDiscountEntry ? (
               <CommandItem
@@ -609,71 +491,8 @@ export function CommandPalette({
               <span>چه چیز جدید است؟</span>
             </CommandItem>
           </CommandGroup>
-
-          {isAdmin ? (
-            <>
-              <CommandSeparator />
-              {/* ── Group 6 — Admin (admins only) ──────────────────── */}
-              <CommandGroup heading="ادمین">
-                <CommandItem
-                  value="admin-users"
-                  keywords={["admin", "users", "کاربران", "ادمین"]}
-                  onSelect={() => goPage("/admin/users")}
-                >
-                  <UsersIcon />
-                  <span>جستجوی کاربران</span>
-                </CommandItem>
-                <CommandItem
-                  value="admin-pages"
-                  keywords={["admin", "pages", "صفحه‌ها", "ادمین"]}
-                  onSelect={() => goPage("/admin/pages")}
-                >
-                  <LayoutGridIcon />
-                  <span>جستجوی صفحه‌ها</span>
-                </CommandItem>
-                <CommandItem
-                  value="admin-billing"
-                  keywords={["admin", "invoices", "billing", "صورت‌حساب"]}
-                  onSelect={() => goPage("/admin/billing/invoices")}
-                >
-                  <ReceiptIcon />
-                  <span>صورت‌حساب‌ها</span>
-                </CommandItem>
-                <CommandItem
-                  value="admin-plans"
-                  keywords={["admin", "plans", "features", "پلن"]}
-                  onSelect={() => goPage("/admin/plans")}
-                >
-                  <SlidersHorizontalIcon />
-                  <span>پلن‌ها و قابلیت‌ها</span>
-                </CommandItem>
-                <CommandItem
-                  value="admin-discounts"
-                  keywords={["admin", "discounts", "تخفیف"]}
-                  onSelect={() => goPage("/admin/discounts")}
-                >
-                  <TagIcon />
-                  <span>تخفیف‌ها</span>
-                </CommandItem>
-                <CommandItem
-                  value="admin-sms"
-                  keywords={["admin", "sms", "پیامک"]}
-                  onSelect={() => goPage("/admin/sms")}
-                >
-                  <ShieldCheckIcon />
-                  <span>پیامک‌ها</span>
-                </CommandItem>
-              </CommandGroup>
-            </>
-          ) : null}
         </CommandList>
       </CommandDialog>
-
-      <CreatePageDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        existingCount={pages.length}
-      />
     </>
   );
 }

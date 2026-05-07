@@ -471,7 +471,7 @@ function AddLinkDialogBody({
                         pickCustom();
                       }
                     }}
-                    className="group flex aspect-square flex-col items-start justify-between rounded-3xl border bg-muted/30 p-3 text-start transition-colors hover:border-primary hover:bg-primary/5 sm:aspect-auto sm:h-24"
+                    className="group flex h-24 flex-col items-start justify-between rounded-3xl border bg-muted/30 p-3 text-start transition-colors hover:border-primary hover:bg-primary/5"
                   >
                     <span className="text-sm font-bold">{card.label}</span>
                     <CardIcon className="size-5 text-muted-foreground group-hover:text-primary" />
