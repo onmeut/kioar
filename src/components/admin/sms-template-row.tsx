@@ -6,11 +6,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { idleState } from "@/lib/action-state";
+import { formatPersianDateTime } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 
 import {
+  reconcileSmsTemplateAction,
   testSmsTemplateAction,
+  updateSmsBodyPreviewAction,
   updateSmsTemplateMappingAction,
 } from "@/app/admin/sms/actions";
 
@@ -21,6 +25,9 @@ type Props = {
   kavenegarTemplate: string | null;
   variableSchema: string[];
   isActive: boolean;
+  bodyFaPreview: string | null;
+  bodyPreviewUpdatedAt: Date | null;
+  kavenegarSyncedAt: Date | null;
 };
 
 export function SmsTemplateRow(props: Props) {
@@ -32,9 +39,25 @@ export function SmsTemplateRow(props: Props) {
     testSmsTemplateAction,
     idleState,
   );
+  const [bodyState, bodyAction] = useActionState(
+    updateSmsBodyPreviewAction,
+    idleState,
+  );
+  const [reconcileState, reconcileAction] = useActionState(
+    reconcileSmsTemplateAction,
+    idleState,
+  );
 
   const variables = props.variableSchema ?? [];
   const isMapped = Boolean(props.kavenegarTemplate);
+  const previewAt = props.bodyPreviewUpdatedAt
+    ? new Date(props.bodyPreviewUpdatedAt)
+    : null;
+  const syncedAt = props.kavenegarSyncedAt
+    ? new Date(props.kavenegarSyncedAt)
+    : null;
+  const outOfSync =
+    Boolean(previewAt) && (!syncedAt || previewAt!.getTime() > syncedAt.getTime());
 
   return (
     <article className="rounded-3xl border border-border bg-card p-4 shadow-sm">
@@ -53,6 +76,11 @@ export function SmsTemplateRow(props: Props) {
           ) : null}
         </div>
         <div className="flex items-center gap-2">
+          {outOfSync ? (
+            <span className="rounded-full bg-amber-500/10 px-2 py-1 text-[10px] font-medium text-amber-700">
+              نیاز به همگام‌سازی
+            </span>
+          ) : null}
           <span
             className={cn(
               "rounded-full px-2 py-1 text-[10px] font-medium",
@@ -169,6 +197,81 @@ export function SmsTemplateRow(props: Props) {
             )}
           >
             {testState.message}
+          </p>
+        ) : null}
+      </form>
+
+      <form
+        action={bodyAction}
+        className="mt-3 space-y-3 border-t border-border pt-3"
+      >
+        <input type="hidden" name="key" value={props.templateKey} />
+        <div className="grid gap-1.5">
+          <Label
+            htmlFor={`${props.templateKey}-body-preview`}
+            className="text-xs"
+          >
+            پیش‌نمایش متن فارسی (مرجع — متن واقعی از کاوه‌نگار ارسال می‌شود)
+          </Label>
+          <Textarea
+            id={`${props.templateKey}-body-preview`}
+            name="bodyFaPreview"
+            defaultValue={props.bodyFaPreview ?? ""}
+            placeholder="مثال: سلام {plan} عزیز، اشتراک شما {daysLeft} روز دیگر تجدید می‌شود."
+            rows={3}
+          />
+          <p className="text-[11px] text-muted-foreground" dir="ltr">
+            {previewAt
+              ? `last edited: ${formatPersianDateTime(previewAt)}`
+              : "preview not set"}
+            {syncedAt
+              ? ` · synced: ${formatPersianDateTime(syncedAt)}`
+              : " · never synced"}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button type="submit" variant="outline" className="h-11 sm:h-9">
+            ذخیره پیش‌نمایش
+          </Button>
+        </div>
+        {bodyState.message ? (
+          <p
+            className={cn(
+              "text-xs",
+              bodyState.status === "success"
+                ? "text-emerald-600"
+                : "text-rose-600",
+            )}
+          >
+            {bodyState.message}
+          </p>
+        ) : null}
+      </form>
+
+      <form
+        action={reconcileAction}
+        className="mt-3 flex flex-wrap items-center gap-3 border-t border-border pt-3"
+      >
+        <input type="hidden" name="key" value={props.templateKey} />
+        <Button
+          type="submit"
+          variant={outOfSync ? "default" : "outline"}
+          className="h-11 sm:h-9"
+        >
+          {outOfSync
+            ? "تأیید همگام‌سازی با کاوه‌نگار"
+            : "تأیید مجدد همگام‌سازی"}
+        </Button>
+        {reconcileState.message ? (
+          <p
+            className={cn(
+              "text-xs",
+              reconcileState.status === "success"
+                ? "text-emerald-600"
+                : "text-rose-600",
+            )}
+          >
+            {reconcileState.message}
           </p>
         ) : null}
       </form>

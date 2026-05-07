@@ -72,6 +72,93 @@ export async function updateSmsTemplateMappingAction(
   return { status: "success", message: "تمپلیت ذخیره شد." };
 }
 
+const bodyPreviewSchema = z.object({
+  key: z.string().trim().min(1),
+  bodyFaPreview: z
+    .string()
+    .trim()
+    .max(2000, "پیش‌نمایش پیامک بیش از حد طولانی است.")
+    .optional()
+    .default(""),
+});
+
+export async function updateSmsBodyPreviewAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+
+  const parsed = bodyPreviewSchema.safeParse({
+    key: formData.get("key"),
+    bodyFaPreview: formData.get("bodyFaPreview"),
+  });
+  if (!parsed.success) {
+    return {
+      status: "error",
+      fieldErrors: parsed.error.flatten().fieldErrors,
+      message: "اطلاعات پیش‌نمایش نامعتبر است.",
+    };
+  }
+
+  const db = getDb();
+  const existing = await db.query.smsTemplates.findFirst({
+    where: eq(smsTemplates.key, parsed.data.key),
+  });
+  if (!existing) return { status: "error", message: "تمپلیت پیدا نشد." };
+
+  await db
+    .update(smsTemplates)
+    .set({
+      bodyFaPreview: parsed.data.bodyFaPreview
+        ? parsed.data.bodyFaPreview
+        : null,
+      bodyPreviewUpdatedAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(eq(smsTemplates.key, parsed.data.key));
+
+  log.info("admin.sms.template.body_preview_update", {
+    key: parsed.data.key,
+    length: parsed.data.bodyFaPreview.length,
+  });
+
+  revalidatePath("/admin/sms");
+  return { status: "success", message: "پیش‌نمایش ذخیره شد." };
+}
+
+const reconcileSchema = z.object({
+  key: z.string().trim().min(1),
+});
+
+export async function reconcileSmsTemplateAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+
+  const parsed = reconcileSchema.safeParse({ key: formData.get("key") });
+  if (!parsed.success) {
+    return { status: "error", message: "تمپلیت نامعتبر است." };
+  }
+
+  const db = getDb();
+  const existing = await db.query.smsTemplates.findFirst({
+    where: eq(smsTemplates.key, parsed.data.key),
+  });
+  if (!existing) return { status: "error", message: "تمپلیت پیدا نشد." };
+
+  const now = new Date();
+  await db
+    .update(smsTemplates)
+    .set({ kavenegarSyncedAt: now, updatedAt: now })
+    .where(eq(smsTemplates.key, parsed.data.key));
+
+  log.info("admin.sms.template.reconcile", { key: parsed.data.key });
+
+  revalidatePath("/admin/sms");
+  return { status: "success", message: "وضعیت همگام‌سازی به‌روزرسانی شد." };
+}
+
 const testSendSchema = z.object({
   key: z.string().trim().min(1),
   phone: z

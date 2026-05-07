@@ -50,6 +50,11 @@ export default async function AdminSmsPage() {
 
   const unmapped = templates.filter((t) => !t.kavenegarTemplate).length;
   const inactive = templates.filter((t) => !t.isActive).length;
+  const outOfSync = templates.filter((t) => {
+    if (!t.bodyPreviewUpdatedAt) return false;
+    if (!t.kavenegarSyncedAt) return true;
+    return t.bodyPreviewUpdatedAt.getTime() > t.kavenegarSyncedAt.getTime();
+  }).length;
 
   return (
     <div className="section-shell space-y-8 py-6">
@@ -60,7 +65,7 @@ export default async function AdminSmsPage() {
         </p>
       </header>
 
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
         <Stat label="تمپلیت‌ها" value={templates.length} />
         <Stat
           label="نگاشت نشده"
@@ -71,6 +76,11 @@ export default async function AdminSmsPage() {
           label="غیرفعال"
           value={inactive}
           accent={inactive > 0 ? "warn" : "default"}
+        />
+        <Stat
+          label="نیاز به همگام‌سازی"
+          value={outOfSync}
+          accent={outOfSync > 0 ? "warn" : "default"}
         />
         <Stat
           label="ناموفق در صف"
@@ -100,6 +110,9 @@ export default async function AdminSmsPage() {
                 kavenegarTemplate={template.kavenegarTemplate}
                 variableSchema={template.variableSchema ?? []}
                 isActive={template.isActive}
+                bodyFaPreview={template.bodyFaPreview}
+                bodyPreviewUpdatedAt={template.bodyPreviewUpdatedAt}
+                kavenegarSyncedAt={template.kavenegarSyncedAt}
               />
             ))
           )}

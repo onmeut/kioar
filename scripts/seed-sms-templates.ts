@@ -120,6 +120,12 @@ const TEMPLATES: SmsTemplateSeed[] = [
     variableSchema: ["plan"],
   },
   {
+    key: "price_change_notice",
+    nameFa: "اطلاع تغییر قیمت",
+    descriptionFa: "اطلاع‌رسانی به مشترک قبل از اعمال قیمت جدید در تجدید بعدی.",
+    variableSchema: ["plan", "newAmount", "renewalDate"],
+  },
+  {
     key: "cancellation_confirmed",
     nameFa: "تأیید لغو",
     descriptionFa: "تأیید لغو اشتراک در پایان دوره فعلی.",
