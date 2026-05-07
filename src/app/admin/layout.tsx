@@ -43,6 +43,12 @@ const adminNavItems: SidebarNavItem[] = [
     match: "prefix",
   },
   {
+    href: "/admin/billing/config" as Route,
+    label: "تنظیمات صورت‌حساب",
+    icon: "billing",
+    match: "exact",
+  },
+  {
     href: "/admin/plans" as Route,
     label: "پلن‌ها و قابلیت‌ها",
     icon: "plans",
@@ -116,7 +122,7 @@ export default async function AdminLayout({
 
       <SidebarInset>
         <ImpersonationBar />
-        <header className="sticky top-0 z-20 border-b bg-background/84 backdrop-blur-sm">
+        <header className="sticky top-0 z-20 border-b bg-background/84 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
           <div className="flex h-14 items-center justify-between gap-3 px-4 sm:h-16 sm:px-6">
             <DashboardPageTitle />
           </div>

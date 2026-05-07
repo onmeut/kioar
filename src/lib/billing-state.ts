@@ -80,6 +80,10 @@ import { log } from "@/lib/log";
 import { enqueueSms, type SmsTemplateKey } from "@/lib/sms-queue";
 
 export const GRACE_PERIOD_DAYS = 7;
+/** Days before `current_period_end` at which paid-renewal SMS reminders fire. */
+export const PERIOD_REMINDER_OFFSETS_DAYS: readonly number[] = [5, 1];
+/** Days before `trial_ends_at` at which the trial-ending reminder fires. */
+export const TRIAL_REMINDER_OFFSET_DAYS = 3;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export type TransitionType =

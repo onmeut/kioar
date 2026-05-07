@@ -29,7 +29,7 @@ export type PriceBreakdown = {
   totalToman: number;
 };
 
-function getVatRate(): number {
+export function getVatRate(): number {
   const raw = process.env.BILLING_VAT_RATE?.trim();
   if (!raw) return 0;
   const n = Number(raw);
