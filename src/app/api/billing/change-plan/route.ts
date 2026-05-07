@@ -44,6 +44,7 @@ import { invoices, pageSubscriptions, payments, plans } from "@/db/schema";
 import { requireUser } from "@/lib/auth/session";
 import { computeProration } from "@/lib/billing-math";
 import { computeBillingTotals, computePeriodEnd } from "@/lib/billing-pricing";
+import { applyPriceLock, loadPriceLock } from "@/lib/billing-price-lock";
 import {
   attributeReferralAtCheckout,
   resolveCheckoutCode,
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
 
   const db = getDb();
 
-  const [targetPlan, sub] = await Promise.all([
+  const [targetPlanRow, sub] = await Promise.all([
     db.query.plans.findFirst({ where: eq(plans.key, parsed.planKey) }),
     db.query.pageSubscriptions.findFirst({
       where: eq(pageSubscriptions.pageId, page.id),
@@ -109,7 +110,7 @@ export async function POST(request: Request) {
     }),
   ]);
 
-  if (!targetPlan || !targetPlan.isActive) {
+  if (!targetPlanRow || !targetPlanRow.isActive) {
     return NextResponse.json({ error: "plan_not_found" }, { status: 404 });
   }
   if (!sub) {
@@ -119,6 +120,12 @@ export async function POST(request: Request) {
       { status: 404 },
     );
   }
+
+  // Phase 5: a grandfathered subscriber on this plan keeps their old
+  // price even when changing cycles. Manual plan-change in admin drops
+  // the lock; user-initiated change-plan honors it.
+  const priceLock = await loadPriceLock(db, page.id, targetPlanRow.id);
+  const targetPlan = applyPriceLock(targetPlanRow, priceLock);
 
   // Trialing pages are allowed to convert to a paid plan early. We treat
   // it as a fresh full-period checkout further down (see `isFreshCheckout`).
@@ -382,10 +389,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const oldPlanWithLock = applyPriceLock(
+    sub.plan,
+    await loadPriceLock(db, page.id, sub.plan.id),
+  );
   const oldPriceToman =
     sub.billingCycle === "annual"
-      ? sub.plan.priceAnnualToman
-      : sub.plan.priceMonthlyToman;
+      ? oldPlanWithLock.priceAnnualToman
+      : oldPlanWithLock.priceMonthlyToman;
   const newPriceToman =
     targetCycle === "annual"
       ? targetPlan.priceAnnualToman

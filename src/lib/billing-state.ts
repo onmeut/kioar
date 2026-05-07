@@ -313,6 +313,11 @@ export async function transitionForToday(
 
   // We pull only what we need; joining `users` for phone keeps the SMS
   // enqueue inside the same TX without a follow-up lookup.
+  //
+  // Phase 5: LEFT JOIN `subscription_price_locks` and let the lock's
+  // prices win when present. This keeps the trial-end invoice and any
+  // other price-derived field consistent with the rest of the renewal
+  // pipeline.
   const rows = (await db.execute(sql`
     SELECT
       s."id"                              AS "id",
@@ -327,14 +332,18 @@ export async function transitionForToday(
       s."pending_plan_change_plan_id"     AS "pendingPlanChangePlanId",
       p."key"                             AS "planKey",
       p."name_fa"                         AS "planNameFa",
-      p."price_monthly_toman"             AS "priceMonthlyToman",
-      p."price_annual_toman"              AS "priceAnnualToman",
+      coalesce(l."locked_monthly_toman", p."price_monthly_toman")
+                                          AS "priceMonthlyToman",
+      coalesce(l."locked_annual_toman", p."price_annual_toman")
+                                          AS "priceAnnualToman",
       pr."user_id"                        AS "userId",
       u."phone"                           AS "phone"
     FROM "page_subscriptions" s
     JOIN "plans"    p  ON p."id"  = s."plan_id"
     JOIN "profiles" pr ON pr."id" = s."page_id"
     JOIN "users"    u  ON u."id"  = pr."user_id"
+    LEFT JOIN "subscription_price_locks" l
+      ON l."page_id" = s."page_id" AND l."plan_id" = s."plan_id"
     WHERE p."key" <> 'free'
       AND s."status" IN ('active','trialing','pending_renewal','grace')
   `)) as unknown as SubRow[];

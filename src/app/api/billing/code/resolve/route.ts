@@ -25,6 +25,7 @@ import { getDb } from "@/db";
 import { plans } from "@/db/schema";
 import { requireUser } from "@/lib/auth/session";
 import { resolveCheckoutCode } from "@/lib/checkout-codes";
+import { resolveEffectivePlan } from "@/lib/billing-price-lock";
 import { getOwnedPageById } from "@/lib/pages";
 
 export const runtime = "nodejs";
@@ -56,12 +57,16 @@ export async function POST(request: Request) {
   }
 
   const db = getDb();
-  const plan = await db.query.plans.findFirst({
+  const planRow = await db.query.plans.findFirst({
     where: eq(plans.key, parsed.planKey),
   });
-  if (!plan || !plan.isActive) {
+  if (!planRow || !planRow.isActive) {
     return NextResponse.json({ error: "plan_not_found" }, { status: 404 });
   }
+
+  // Phase 5: any active price-lock for (page, plan) wins over catalog
+  // pricing for the entire downstream pipeline.
+  const { plan } = await resolveEffectivePlan(page.id, planRow, db);
 
   const subtotalToman =
     parsed.billingCycle === "annual"

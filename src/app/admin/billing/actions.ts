@@ -322,6 +322,40 @@ export async function adminManualPlanChangeAction(
 
     await rebuildEntitlements(tx, pageId);
 
+    // Phase 5: a manual plan change drops any existing price-lock — the
+    // lock was scoped to the OLD plan and would silently undercharge
+    // (or overcharge) the page on its new plan. We DELETE all locks for
+    // this page; if the admin needs to re-lock at the new plan they
+    // can do so explicitly via the page-level lock UI (Phase 8).
+    if (!samePlan) {
+      const dropped = (await tx.execute(sql`
+        DELETE FROM "subscription_price_locks"
+        WHERE "page_id" = ${pageId}::uuid
+        RETURNING "plan_id", "locked_monthly_toman", "locked_annual_toman"
+      `)) as unknown as Array<{
+        plan_id: string;
+        locked_monthly_toman: number;
+        locked_annual_toman: number;
+      }>;
+
+      if (dropped.length > 0) {
+        await recordAdminAudit(
+          {
+            actorUserId: viewer.user.id,
+            action: "subscription.price_lock_dropped_on_plan_change",
+            targetPageId: pageId,
+            reason: "automatic on manual plan change",
+            metadata: {
+              fromPlanId: sub.planId,
+              toPlanId: targetPlan.id,
+              droppedLocks: dropped,
+            },
+          },
+          tx,
+        );
+      }
+    }
+
     await recordAdminAudit(
       {
         actorUserId: viewer.user.id,

@@ -2161,8 +2161,8 @@ export const subscriptionPriceLocks = pgTable(
       .notNull()
       .references(() => plans.id, { onDelete: "restrict" }),
     billingCycle: billingCycleEnum("billing_cycle"),
-    lockedMonthlyToman: integer("locked_monthly_toman"),
-    lockedAnnualToman: integer("locked_annual_toman"),
+    lockedMonthlyToman: integer("locked_monthly_toman").notNull(),
+    lockedAnnualToman: integer("locked_annual_toman").notNull(),
     reason: text("reason"),
     lockedByUserId: uuid("locked_by_user_id").references(() => users.id, {
       onDelete: "set null",

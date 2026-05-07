@@ -20,6 +20,7 @@ import { getDb } from "@/db";
 import { plans } from "@/db/schema";
 import { requireUser } from "@/lib/auth/session";
 import { computeBillingTotals } from "@/lib/billing-pricing";
+import { resolveEffectivePlan } from "@/lib/billing-price-lock";
 import { validateDiscountCode } from "@/lib/discounts";
 import { getOwnedPageById } from "@/lib/pages";
 
@@ -52,12 +53,16 @@ export async function POST(request: Request) {
   }
 
   const db = getDb();
-  const plan = await db.query.plans.findFirst({
+  const planRow = await db.query.plans.findFirst({
     where: eq(plans.key, parsed.planKey),
   });
-  if (!plan || !plan.isActive) {
+  if (!planRow || !planRow.isActive) {
     return NextResponse.json({ error: "plan_not_found" }, { status: 404 });
   }
+
+  // Phase 5: honor any price-lock for this (page, plan) so the preview
+  // matches the actual checkout total.
+  const { plan } = await resolveEffectivePlan(page.id, planRow, db);
 
   const subtotalToman =
     parsed.billingCycle === "annual"

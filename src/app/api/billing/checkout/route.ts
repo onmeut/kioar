@@ -45,6 +45,7 @@ import {
   computePeriodEnd,
   type BillingCycle,
 } from "@/lib/billing-pricing";
+import { resolveEffectivePlan } from "@/lib/billing-price-lock";
 import {
   addMonthsUtc,
   findActiveRecurringRedemption,
@@ -92,12 +93,22 @@ export async function POST(request: Request) {
 
   const db = getDb();
 
-  const plan = await db.query.plans.findFirst({
+  const planRow = await db.query.plans.findFirst({
     where: eq(plans.key, parsed.planKey),
   });
-  if (!plan || !plan.isActive) {
+  if (!planRow || !planRow.isActive) {
     return NextResponse.json({ error: "plan_not_found" }, { status: 404 });
   }
+
+  // Phase 5: a grandfathered subscriber on this plan keeps their old
+  // price. The lock substitutes both monthly + annual on the plan
+  // record passed to all downstream pricing math (discount validation,
+  // computeBillingTotals).
+  const { plan, lock: priceLock } = await resolveEffectivePlan(
+    page.id,
+    planRow,
+    db,
+  );
 
   // Phase 11: resolve the discount before computing totals. Two paths:
   //   - User typed a code → full validation pipeline.

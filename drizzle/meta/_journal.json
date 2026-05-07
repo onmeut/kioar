@@ -239,6 +239,13 @@
       "when": 1778153320627,
       "tag": "0033_subscription_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1778157691689,
+      "tag": "0034_price_locks_not_null",
+      "breakpoints": true
     }
   ]
 }
