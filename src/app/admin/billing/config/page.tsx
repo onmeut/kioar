@@ -1,19 +1,16 @@
 /**
- * Phase 0 — read-only Billing Configuration page.
+ * Phase 2 — read-only Billing Configuration page.
  *
  * Surfaces the values that govern dunning math today, sourced from
- * code constants and env. Phase 2 will move these into `app_settings`
- * and switch this page to read-write; until then this is a transparency
- * surface for admins so nobody has to grep the codebase to know what
- * the grace window is.
+ * `app_settings` (with code-side fallbacks if a key is missing).
+ * Phase 3 wires the runtime billing modules to these same reads;
+ * Phase 13 makes this page read-write.
  */
 
 import {
-  GRACE_PERIOD_DAYS,
-  PERIOD_REMINDER_OFFSETS_DAYS,
-  TRIAL_REMINDER_OFFSET_DAYS,
-} from "@/lib/billing-state";
-import { getVatRate } from "@/lib/billing-pricing";
+  getAllSettings,
+  APP_SETTING_DEFINITIONS,
+} from "@/lib/app-settings";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatPersianNumber, toPersianDigits } from "@/lib/persian";
 
@@ -27,7 +24,7 @@ type Row = {
 };
 
 function formatPercent(n: number): string {
-  // n is fraction (0.09 → "۹٪"). Two-decimal max, trim trailing zeros.
+  if (n === 0) return "خاموش";
   const pct = n * 100;
   const fixed = pct.toFixed(2).replace(/\.?0+$/, "");
   return `${toPersianDigits(fixed)}٪`;
@@ -35,44 +32,48 @@ function formatPercent(n: number): string {
 
 export default async function AdminBillingConfigPage() {
   await requireAdmin();
-
-  const vatRate = (() => {
-    try {
-      return getVatRate();
-    } catch (err) {
-      return Number.NaN;
-    }
-  })();
+  const settings = await getAllSettings();
 
   const rows: Row[] = [
     {
       label: "دوره‌ی مهلت پس از پایان دوره",
-      value: `${formatPersianNumber(GRACE_PERIOD_DAYS)} روز`,
-      source: "src/lib/billing-state.ts → GRACE_PERIOD_DAYS",
-      hint: "از پایان دوره تا انقضا و تنزل به پلن رایگان.",
+      value: `${formatPersianNumber(settings["billing.grace_period_days"])} روز`,
+      source: "app_settings → billing.grace_period_days",
+      hint:
+        APP_SETTING_DEFINITIONS["billing.grace_period_days"].descriptionFa,
     },
     {
       label: "یادآور پیش از تجدید پرداخت",
-      value: `${PERIOD_REMINDER_OFFSETS_DAYS.map((d) =>
-        formatPersianNumber(d),
-      ).join("، ")} روز`,
-      source: "src/lib/billing-state.ts → PERIOD_REMINDER_OFFSETS_DAYS",
-      hint: "روزهای باقی‌مانده تا پایان دوره که پیامک یادآوری می‌رود.",
+      value: `${settings["billing.reminder_offsets_days"]
+        .map((d) => formatPersianNumber(d))
+        .join("، ")} روز`,
+      source: "app_settings → billing.reminder_offsets_days",
+      hint:
+        APP_SETTING_DEFINITIONS["billing.reminder_offsets_days"].descriptionFa,
     },
     {
       label: "یادآور پیش از پایان آزمایشی",
-      value: `${formatPersianNumber(TRIAL_REMINDER_OFFSET_DAYS)} روز`,
-      source: "src/lib/billing-state.ts → TRIAL_REMINDER_OFFSET_DAYS",
+      value: `${formatPersianNumber(settings["billing.trial_reminder_offset_days"])} روز`,
+      source: "app_settings → billing.trial_reminder_offset_days",
+      hint:
+        APP_SETTING_DEFINITIONS["billing.trial_reminder_offset_days"]
+          .descriptionFa,
     },
     {
       label: "نرخ مالیات بر ارزش افزوده",
-      value: Number.isNaN(vatRate)
-        ? "نامعتبر"
-        : vatRate === 0
-          ? "خاموش"
-          : formatPercent(vatRate),
-      source: "ENV → BILLING_VAT_RATE",
-      hint: "روی مبلغ پس از تخفیف اعمال می‌شود (گرد به‌عدد بانکداری).",
+      value: formatPercent(settings["billing.vat_rate"]),
+      source: "app_settings → billing.vat_rate",
+      hint: APP_SETTING_DEFINITIONS["billing.vat_rate"].descriptionFa,
+    },
+    {
+      label: "سیاست پیش‌فرض گرند‌فادرینگ",
+      value:
+        settings["billing.grandfathering_default_policy"] === "always_current"
+          ? "همه به قیمت جدید"
+          : "قفل قیمت قدیم برای فعلی‌ها",
+      source: "app_settings → billing.grandfathering_default_policy",
+      hint: APP_SETTING_DEFINITIONS["billing.grandfathering_default_policy"]
+        .descriptionFa,
     },
   ];
 
@@ -81,9 +82,9 @@ export default async function AdminBillingConfigPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">تنظیمات صورت‌حساب</h1>
         <p className="text-sm text-muted-foreground">
-          این صفحه فعلاً فقط برای مشاهده است. در فاز ۲ این مقادیر به جدول{" "}
-          <code dir="ltr">app_settings</code> منتقل می‌شوند و قابل ویرایش
-          خواهند بود.
+          مقادیر زیر از جدول <code dir="ltr">app_settings</code> خوانده
+          می‌شوند. اگر کلیدی موجود نباشد، مقدار پیش‌فرض ثبت‌شده در کد
+          استفاده می‌شود. در فاز ۱۳ این صفحه قابل ویرایش خواهد شد.
         </p>
       </header>
 
