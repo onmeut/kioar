@@ -128,7 +128,7 @@ export function SiteHeaderClient({
       {/* mobile menu backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-[38] md:hidden"
+          className="fixed inset-0 z-38 md:hidden"
           aria-hidden
           onClick={closeMobile}
         />
@@ -137,7 +137,7 @@ export function SiteHeaderClient({
       {/* mobile menu panel */}
       <div
         className={cn(
-          "fixed inset-x-0 top-16 z-[39] overflow-hidden border-b border-hairline/60 bg-paper/97 backdrop-blur-xl transition-all duration-200 md:hidden",
+          "fixed inset-x-0 top-16 z-39 overflow-hidden border-b border-hairline/60 bg-paper/97 backdrop-blur-xl transition-all duration-200 md:hidden",
           mobileOpen
             ? "max-h-120 opacity-100"
             : "max-h-0 opacity-0 pointer-events-none",

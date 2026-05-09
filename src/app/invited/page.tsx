@@ -1,29 +1,13 @@
 /**
  * `/invited?via=<code>` — public landing for visitors who clicked an
- * invite link. By the time they land here, `/r/:code` has already
- * written the `kioar_ref` cookie so even if `via` is stripped during
- * navigation, attribution is preserved. The `via` param is decorative
- * so we can greet the visitor with the inviter's name + avatar.
- *
- * Rebuild notes (vs the prior version):
- *
- *   - Marketing-shell aesthetic (paper / ink palette, marketing-shell
- *     container, hero gradient backdrop) instead of the generic
- *     dashboard look.
- *   - Inviter card: avatar (Boring Avatar fallback) + their first
- *     page's display name + a clickable @slug link to peek at their
- *     real Kioar page.
- *   - Inline username claim: SlugInput → server action that writes the
- *     `kioar_pending_slug` cookie, redirects to /auth. Onboarding will
- *     pre-fill the slug.
- *   - Gift callout uses Sparkles + Gift icons in a violet/orange
- *     gradient pill.
- *   - Value-prop "what you'll get" carousel matching the homepage tone
- *     (outcomes not features).
- *   - Mobile-first: hero + claim CTA in the first viewport.
+ * invite link. Shares the same visual language as /discover:
+ * - bg-muted page background
+ * - Discover-style full navbar (logo + nav links + auth CTAs)
+ * - Cards = bg-card on bg-muted, no borders/shadows
  */
 import type { Metadata } from "next";
 
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -31,20 +15,20 @@ import {
   GiftIcon,
   LinkIcon,
   QrCodeIcon,
-  SparklesIcon,
   TrendingUpIcon,
   UsersIcon,
+  type LucideIcon,
 } from "lucide-react";
 import { eq, asc } from "drizzle-orm";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
-import { BrandMark } from "@/components/shared/brand-mark";
 import { Button } from "@/components/ui/button";
 import { SlugInput } from "@/components/shared/slug-input";
 import { claimHandleAction } from "@/app/invited/actions";
 import { getReferrerByCode } from "@/lib/referrals";
+import { cn } from "@/lib/utils";
 import { getDb } from "@/db";
 import { profiles } from "@/db/schema";
 import {
@@ -159,146 +143,168 @@ export default async function InvitedPage({
     : null;
 
   return (
-    <div className="min-h-dvh bg-paper text-ink">
-      {/* Header */}
-      <header className="border-b border-hairline bg-paper/85 backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-5xl items-center justify-between px-4 sm:px-6">
-          <BrandMark variant="wordmark" href="/" />
-          <Button variant="ghost" size="sm" render={<Link href="/auth" />}>
-            ورود به حساب
-          </Button>
-        </div>
-      </header>
+    <div
+      dir="rtl"
+      className="relative min-h-dvh bg-muted font-sans pt-[env(safe-area-inset-top)]"
+    >
+      {/* Discover-style floating pill navbar */}
+      <div className="sticky top-4 z-30 mx-auto w-full max-w-3xl px-4">
+        <header className="flex h-16 w-full items-center justify-between rounded-full bg-card pl-2 pr-5 ring-1 ring-border">
+          {/* Logo */}
+          <Link
+            href="/"
+            aria-label="کیوآر"
+            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+          >
+            <Image
+              src="/brand/logo.svg"
+              alt=""
+              width={20}
+              height={24}
+              className="h-6 w-auto"
+              priority
+            />
+            <span className="hidden text-lg font-bold sm:inline">کیوآر</span>
+          </Link>
+          {/* Auth CTAs */}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/auth"
+              className="hidden h-11 items-center justify-center rounded-full bg-accent px-5 text-sm font-bold text-accent-foreground transition-colors hover:bg-accent/80 sm:flex"
+            >
+              ورود
+            </Link>
+            <Link
+              href="/auth"
+              className="flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-sm font-bold text-background transition-colors hover:bg-foreground/90"
+            >
+              ثبت‌نام رایگان
+            </Link>
+          </div>
+        </header>
+      </div>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="relative mx-auto w-full max-w-3xl px-4 pb-10 pt-10 sm:px-6 sm:pt-16">
-          {/* Inviter chip */}
+      <section className="mx-auto w-full max-w-3xl space-y-4 px-4 pb-10 pt-10 sm:px-6 sm:pt-14">
+        <div className="flex flex-col items-center gap-4 text-center">
+          {/* Inviter chip — avatar on end (RTL left), label then bold name */}
           {inviter ? (
-            <div className="flex items-center gap-3 rounded-full border border-hairline bg-paper-soft px-3 py-2 shadow-sm sm:w-fit">
-              <Avatar size="default" className="size-9">
+            <a
+              href={inviterUrl ?? undefined}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-sm transition hover:bg-card/80"
+            >
+              <span className="text-[11px] text-muted-foreground">
+                دعوت‌نامه‌ای از سمت
+              </span>
+              <span className="font-bold">{inviter.fullName}</span>
+              <Avatar className="size-7 rounded-full">
                 {inviter.avatarUrl ? (
                   <AvatarImage src={inviter.avatarUrl} alt={inviter.fullName} />
                 ) : null}
                 <AvatarFallback>
                   <KioarAvatar
                     seed={inviter.avatarSeed ?? inviter.slug}
-                    size={36}
+                    size={28}
                   />
                 </AvatarFallback>
               </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
-                  دعوت‌نامه‌ای از سمت
-                </p>
-                <p className="truncate text-sm font-bold text-ink">
-                  {inviter.fullName}
-                </p>
-              </div>
-              {inviterUrl ? (
-                <a
-                  href={inviterUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="shrink-0 rounded-full bg-white px-2.5 py-1 font-mono text-[11px] font-bold text-violet-700 ring-1 ring-violet-200 hover:bg-violet-50"
-                  dir="ltr"
-                >
-                  دیدن صفحه‌اش →
-                </a>
-              ) : null}
-            </div>
+            </a>
           ) : (
-            <div className="inline-flex items-center gap-2 rounded-full border border-hairline bg-paper-soft px-3 py-1.5 text-xs font-medium text-ink-soft">
-              <SparklesIcon className="size-3.5 text-violet-500" />
+            <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-2 text-xs font-medium text-muted-foreground">
+              <GiftIcon className="size-3.5 text-primary" />
               <span>دعوت‌نامه‌ی کی‌یو‌آر</span>
             </div>
           )}
 
-          {/* Headline */}
-          <h1 className="mt-6 text-[clamp(32px,6vw,52px)] font-semibold leading-[1.05] tracking-tight">
+          <h1 className="text-3xl font-bold leading-tight sm:text-4xl">
             {inviter ? (
               <>
-                <span className="text-violet-600">{inviter.fullName}</span> شما
-                را به <span className="whitespace-nowrap">کی‌یو‌آر</span> دعوت
-                کرد
+                <span className="text-primary">{inviter.fullName}</span> شما را
+                به کی‌یو‌آر دعوت کرد
               </>
             ) : (
-              <>
-                به کی‌یو‌آر خوش اومدی —{" "}
-                <span className="text-violet-600">یک ماه پرو</span> مهمون مایی
-              </>
+              <>یک ماه اشتراکِ پرو، مهمانِ ما</>
             )}
           </h1>
 
-          <p className="mt-5 max-w-xl text-[15px] leading-8 text-ink-soft sm:text-base">
+          <p className="max-w-sm text-sm leading-7 text-muted-foreground sm:text-[15px]">
             کی‌یو‌آر کارت ویزیت دیجیتالی هست که توش لینک، رزرو نوبت، فرم و QR
-            زنده رو یه‌جا داری. همین حالا نام کاربریت رو بگیر — ساختش کم‌تر از
-            دو دقیقه طول می‌کشه.
+            زنده رو یه‌جا داری. همین حالا نام کاربریت رو بگیر.
           </p>
+        </div>
 
-          {/* Gift callout */}
-          <div className="mt-7 flex items-start gap-3 overflow-hidden rounded-3xl border border-violet-200 bg-violet-50 p-4 sm:p-5">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-2xl bg-white text-violet-600 ring-1 ring-violet-200 shadow-sm">
-              <GiftIcon className="size-5" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <p className="text-sm font-bold text-violet-900">
-                  هدیه‌ی شما: ۳۰ روز پرو رایگان
-                </p>
-                <Badge
-                  variant="outline"
-                  className="border-violet-300 bg-white text-[10px] font-bold text-violet-700"
-                >
-                  خودکار
-                </Badge>
-              </div>
-              <p className="mt-1 text-[12px] leading-6 text-ink-soft">
-                وقتی پلن پرو رو روی صفحه‌ت فعال کنی، ۳۰ روز اضافه به دوره‌ی
-                اشتراکت اضافه می‌شه. بدون کد تخفیف، بدون مرحله‌ی اضافه — مهمون
-                {inviter ? ` ${inviter.fullName}` : " کی‌یو‌آر"} هستی.
+        {/* Username claim card */}
+        <form
+          action={claimHandleAction}
+          className="rounded-3xl bg-card p-5 space-y-3"
+        >
+          <label className="block text-sm font-bold">
+            نام کاربری دلخواهت رو همین الان قاپ بزن
+          </label>
+          <SlugInput
+            name="handle"
+            enterKeyHint="go"
+            autoFocus={false}
+            placeholder="elonmusc"
+          />
+          <Button
+            type="submit"
+            size="lg"
+            className="h-12 w-full rounded-full text-[15px] font-bold"
+          >
+            ساخت صفحه رایگان
+          </Button>
+        </form>
+
+        {/* Gift callout */}
+        <div className="rounded-3xl bg-white p-5">
+          <div className="mb-4 flex items-center justify-center gap-2">
+            <GiftIcon className="size-4 text-violet-700" />
+            <p className="text-sm font-bold text-violet-900">
+              هدیه‌ی دوطرفه: ۳۰ روز پرو رایگان
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl bg-violet-50 p-4 text-center">
+              <p className="text-xs font-medium text-violet-700">شما</p>
+              <p className="mt-1 text-3xl font-extrabold text-violet-900">
+                ۱ ماه
               </p>
+              <p className="text-xs text-violet-600">پرو رایگان</p>
+            </div>
+            <div className="rounded-2xl bg-violet-50 p-4 text-center">
+              <p className="text-xs font-medium text-violet-700">دوستت</p>
+              <p className="mt-1 text-3xl font-extrabold text-violet-900">
+                ۱ ماه
+              </p>
+              <p className="text-xs text-violet-600">پرو رایگان</p>
             </div>
           </div>
-
-          {/* Inline username claim */}
-          <form action={claimHandleAction} className="mt-7 grid gap-3">
-            <label className="text-xs font-bold text-ink">
-              نام کاربری دلخواهت رو همین الان قاپ بزن
-            </label>
-            <SlugInput name="handle" enterKeyHint="go" autoFocus={false} />
-            <Button
-              type="submit"
-              size="lg"
-              className="h-12 w-full rounded-full text-[15px] font-bold sm:w-auto sm:min-w-64"
-            >
-              ساخت رایگان حساب با این نام
-            </Button>
-            <p className="text-[11px] leading-6 text-ink-soft">
-              با یه شماره موبایل ثبت‌نام می‌کنی. هیچ کارت بانکی لازم نیست.
-            </p>
-          </form>
+          <p className="mt-3 text-center text-[11px] leading-5 text-violet-600/80">
+            توام بعدا می‌تونی دوستات رو دعوت کنی و اشتراک رایگان بگیری
+          </p>
         </div>
       </section>
 
-      {/* Value-prop carousel */}
-      <section className="bg-paper py-12 sm:py-16">
-        <div className="mx-auto w-full max-w-5xl px-4 sm:px-6">
-          <h2 className="text-[clamp(22px,3.5vw,34px)] font-semibold leading-[1.15] tracking-tight">
-            چی به دست میاری
-          </h2>
-          <p className="mt-2 max-w-xl text-[14px] leading-7 text-ink-soft">
-            نه یه لیست لینک خشک — یه صفحه‌ی فعال که برات نوبت می‌گیره، فرم پر
-            می‌کنه و آمار میده.
-          </p>
+      {/* Value-prop section */}
+      <section className="py-12 sm:py-16">
+        <div className="mx-auto w-full max-w-3xl px-4 sm:px-6">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold sm:text-3xl">چی به دست میاری</h2>
+            <p className="max-w-xl text-[14px] leading-7 text-muted-foreground">
+              نه یه لیست لینک خشک — یه صفحه‌ی فعال که برات نوبت می‌گیره، فرم پر
+              می‌کنه و آمار میده.
+            </p>
+          </div>
 
-          {/* Mobile: horizontal scroll. Desktop: 4-col grid. */}
-          <div className="mt-8 -mx-4 flex gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-4 sm:overflow-visible sm:px-0 lg:grid-cols-4 no-scrollbar">
+          <div className="mt-6 -mx-4 flex gap-3 overflow-x-auto px-4 pb-3 sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-3 sm:overflow-visible sm:px-0 no-scrollbar">
             <ValueCard
               icon={LinkIcon}
               title="یه لینک، کلِ کار"
               body="همه‌ی لینک‌ها، شبکه‌های اجتماعی و راه‌های تماس روی یه صفحه‌ی تمیز."
-              tone="violet"
+              tone="primary"
             />
             <ValueCard
               icon={CalendarCheckIcon}
@@ -321,27 +327,34 @@ export default async function InvitedPage({
           </div>
 
           {/* Trust line */}
-          <div className="mt-10 flex items-center gap-3 rounded-3xl border border-hairline bg-paper-soft px-4 py-4 sm:gap-4 sm:px-6">
+          <div className="mt-6 flex items-center gap-3 rounded-3xl bg-card px-4 py-4 sm:gap-4 sm:px-6">
             <div className="flex shrink-0 items-center -space-x-2 ltr:space-x-reverse">
-              <span className="size-9 rounded-full bg-violet-200 ring-2 ring-paper-soft" />
-              <span className="size-9 rounded-full bg-orange-200 ring-2 ring-paper-soft" />
-              <span className="size-9 rounded-full bg-emerald-200 ring-2 ring-paper-soft" />
+              <span className="size-9 rounded-full bg-primary/30 ring-2 ring-card" />
+              <span className="size-9 rounded-full bg-amber-200 ring-2 ring-card" />
+              <span className="size-9 rounded-full bg-emerald-200 ring-2 ring-card" />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-bold text-ink">
-                +۲۰۰ هزار ایرانی روی کی‌یو‌آر
-              </p>
-              <p className="text-[11px] leading-6 text-ink-soft">
+              <p className="text-sm font-bold">+۲۰۰ هزار ایرانی روی کی‌یو‌آر</p>
+              <p className="text-[11px] leading-6 text-muted-foreground">
                 ساخته شده برای کسب‌وکار واقعی — از فریلنسر تا کلینیک و رستوران.
               </p>
             </div>
           </div>
 
-          {/* Inviter peek */}
-          {inviter && inviterUrl ? (
-            <div className="mt-6 rounded-3xl border border-hairline bg-paper-soft p-5">
-              <div className="flex items-center gap-3">
-                <Avatar size="lg" className="size-14">
+          {/* Inviter peek — round avatar linking to their profile, chip below */}
+          {inviter && inviterUrl && inviterShareHost ? (
+            <div className="mt-4">
+              <p className="mb-2 text-sm font-bold">
+                صفحه‌ی {inviter.fullName} رو ببین
+              </p>
+              <a
+                href={inviterUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 rounded-3xl bg-card p-4 transition hover:bg-card/80"
+              >
+                {/* Avatar */}
+                <Avatar className="size-12 shrink-0 rounded-full">
                   {inviter.avatarUrl ? (
                     <AvatarImage
                       src={inviter.avatarUrl}
@@ -351,45 +364,48 @@ export default async function InvitedPage({
                   <AvatarFallback>
                     <KioarAvatar
                       seed={inviter.avatarSeed ?? inviter.slug}
-                      size={56}
+                      size={48}
                     />
                   </AvatarFallback>
                 </Avatar>
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-ink">
-                    صفحه‌ی {inviter.fullName} رو ببین
+
+                {/* Name + title */}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold">
+                    {inviter.fullName}
                   </p>
                   {inviter.title ? (
-                    <p className="truncate text-[12px] text-ink-soft">
+                    <p className="truncate text-xs text-muted-foreground">
                       {inviter.title}
                     </p>
                   ) : null}
-                  <p
-                    className="mt-0.5 truncate font-mono text-[11px] text-ink-soft"
-                    dir="ltr"
-                  >
-                    {inviterShareHost}/{inviter.slug}
-                  </p>
                 </div>
-                <a
-                  href={inviterUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="ms-auto shrink-0 rounded-full border border-violet-200 bg-white px-3 py-2 text-xs font-bold text-violet-700 hover:bg-violet-50"
+
+                {/* URL chip */}
+                <span
+                  dir="ltr"
+                  className="inline-flex h-9 shrink-0 items-center gap-2 rounded-full bg-muted px-3 text-sm font-medium text-foreground"
                 >
-                  باز کن
-                </a>
-              </div>
+                  <Image
+                    src="/brand/logo.svg"
+                    alt=""
+                    width={14}
+                    height={18}
+                    className="h-[16px] w-auto opacity-60"
+                  />
+                  <span>{inviterShareHost}</span>
+                </span>
+              </a>
             </div>
           ) : null}
 
           {/* Bottom CTA */}
-          <div className="mt-10 flex flex-col items-center gap-3 rounded-3xl border border-hairline bg-paper-soft p-6 text-center sm:p-10">
-            <UsersIcon className="size-7 text-violet-600" />
-            <h3 className="text-xl font-semibold sm:text-2xl">
-              همین الان شروع کن
-            </h3>
-            <p className="max-w-md text-[13px] leading-7 text-ink-soft">
+          <div className="mt-6 flex flex-col items-center gap-3 rounded-3xl bg-card p-6 text-center sm:p-10">
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <UsersIcon className="size-6" />
+            </span>
+            <h3 className="text-xl font-bold sm:text-2xl">همین الان شروع کن</h3>
+            <p className="max-w-md text-[13px] leading-7 text-muted-foreground">
               ساختن صفحه رایگانه. هدیه‌ی یک ماه پرو هم وقتی فعال کنی، خودکار
               اعمال می‌شه.
             </p>
@@ -398,7 +414,7 @@ export default async function InvitedPage({
               className="h-12 rounded-full px-8 text-[15px] font-bold"
               render={<Link href="/auth" />}
             >
-              رایگان شروع کن
+              ساخت صفحه رایگان
             </Button>
           </div>
         </div>
@@ -413,28 +429,29 @@ function ValueCard({
   body,
   tone,
 }: {
-  icon: React.ComponentType<{ className?: string }>;
+  icon: LucideIcon;
   title: string;
   body: string;
-  tone: "violet" | "emerald" | "amber" | "sky";
+  tone: "primary" | "emerald" | "amber" | "sky";
 }) {
-  const toneRing: Record<string, string> = {
-    violet: "bg-violet-100 text-violet-700",
+  const chip: Record<string, string> = {
+    primary: "bg-primary/10 text-primary",
     emerald: "bg-emerald-100 text-emerald-700",
     amber: "bg-amber-100 text-amber-700",
     sky: "bg-sky-100 text-sky-700",
   };
   return (
-    <div className="snap-start min-w-65 shrink-0 rounded-3xl border border-hairline bg-paper-soft p-5 transition hover:-translate-y-0.5 hover:shadow-[0_24px_60px_-30px_rgba(15,23,42,0.18)] sm:min-w-0">
-      <div
-        className={`flex size-11 items-center justify-center rounded-2xl ${toneRing[tone]}`}
+    <div className="snap-start min-w-65 shrink-0 rounded-3xl bg-card p-5 transition hover:bg-card/80 sm:min-w-0">
+      <span
+        className={cn(
+          "flex size-11 items-center justify-center rounded-2xl",
+          chip[tone],
+        )}
       >
         <Icon className="size-5" />
-      </div>
-      <h3 className="mt-4 text-[16px] font-semibold leading-tight tracking-tight">
-        {title}
-      </h3>
-      <p className="mt-2 text-[13px] leading-7 text-ink-soft">{body}</p>
+      </span>
+      <h3 className="mt-4 text-[16px] font-bold leading-tight">{title}</h3>
+      <p className="mt-2 text-[13px] leading-7 text-muted-foreground">{body}</p>
     </div>
   );
 }

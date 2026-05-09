@@ -4,6 +4,10 @@ import { z } from "zod";
 import { getDb } from "@/db";
 import { profileLinks, profiles } from "@/db/schema";
 import { generateAvatarSeed } from "@/lib/avatar-seed";
+import {
+  invalidateProfileCacheBySlug,
+  invalidateProfileCacheOnSlugChange,
+} from "@/lib/cache/profile-cache";
 import { getProfileWithLinksByUserId } from "@/lib/data";
 import {
   ensureFreeSubscriptionForPage,
@@ -169,6 +173,13 @@ export async function saveProfileDetailsForUser(
       }
       throw error;
     }
+    // Slug may have changed — invalidate both old and new keys so neither
+    // url serves stale data. `invalidateProfileCacheOnSlugChange` no-ops
+    // the redundant DEL when old===new.
+    await invalidateProfileCacheOnSlugChange(
+      existingProfile.slug,
+      parsed.data.slug,
+    );
   } else {
     try {
       await db.transaction(async (tx) => {
@@ -188,6 +199,8 @@ export async function saveProfileDetailsForUser(
       }
       throw error;
     }
+    // New page — drop any stale 404 sentinel under the freshly-claimed slug.
+    await invalidateProfileCacheBySlug(parsed.data.slug);
   }
 
   return { ok: true };
@@ -234,6 +247,10 @@ export async function savePageSettingsForUser(
     indexEnabled: formData.get("indexEnabled") ?? undefined,
     appIconKey: formData.get("appIconKey"),
     appIconColor: formData.get("appIconColor"),
+    discoverEnabled: formData.get("discoverEnabled") ?? undefined,
+    discoverCategory: formData.get("discoverCategory"),
+    city: formData.get("city"),
+    pageType: formData.get("pageType"),
   });
 
   if (!parsed.success) {
@@ -305,6 +322,10 @@ export async function savePageSettingsForUser(
         indexEnabled: parsed.data.indexEnabled,
         appIconKey: parsed.data.appIconKey,
         appIconColor: parsed.data.appIconColor,
+        discoverEnabled: parsed.data.discoverEnabled,
+        discoverCategory: parsed.data.discoverCategory,
+        city: parsed.data.city,
+        pageType: parsed.data.pageType,
         ogImageUrl,
         updatedAt: new Date(),
       })
@@ -319,6 +340,11 @@ export async function savePageSettingsForUser(
     }
     throw error;
   }
+
+  await invalidateProfileCacheOnSlugChange(
+    existingProfile.slug,
+    parsed.data.slug,
+  );
 
   return {
     ok: true,
@@ -378,6 +404,7 @@ export async function saveProfileLinksForUser(
     }
   });
 
+  await invalidateProfileCacheBySlug(existingProfile.slug);
   return { ok: true };
 }
 
@@ -423,6 +450,8 @@ export async function saveOnboardingProfileForUser(
   const parsed = onboardingProfileSchema.safeParse({
     pageName: formData.get("pageName"),
     slug: formData.get("slug"),
+    pageType: formData.get("pageType"),
+    discoverCategory: formData.get("discoverCategory"),
   });
 
   if (!parsed.success) {
@@ -457,6 +486,8 @@ export async function saveOnboardingProfileForUser(
   const nextValues = {
     slug: parsed.data.slug,
     fullName,
+    pageType: parsed.data.pageType,
+    discoverCategory: parsed.data.discoverCategory,
     isComplete: true,
     updatedAt: new Date(),
   };
@@ -491,6 +522,16 @@ export async function saveOnboardingProfileForUser(
       };
     }
     throw error;
+  }
+
+  // Old slug (only meaningful when an existing page renamed) + new slug.
+  if (existingProfile) {
+    await invalidateProfileCacheOnSlugChange(
+      existingProfile.slug,
+      parsed.data.slug,
+    );
+  } else {
+    await invalidateProfileCacheBySlug(parsed.data.slug);
   }
 
   return { ok: true, pageId, isFirstPage };

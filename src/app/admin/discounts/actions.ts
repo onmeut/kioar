@@ -193,7 +193,6 @@ export async function toggleDiscountCodeAction(
   return { status: "success", message: "وضعیت کد به‌روزرسانی شد." };
 }
 
-
 // ---------------------------------------------------------------------------
 // Phase 7 — bulk create + soft delete + batch deactivate.
 // ---------------------------------------------------------------------------
@@ -325,8 +324,7 @@ export async function bulkCreateDiscountCodesAction(
       endsAt,
       maxRedemptions:
         typeof v.maxRedemptions === "number" ? v.maxRedemptions : null,
-      maxPerUser:
-        typeof v.maxPerUser === "number" ? v.maxPerUser : null,
+      maxPerUser: typeof v.maxPerUser === "number" ? v.maxPerUser : null,
       firstTimeOnly: Boolean(v.firstTimeOnly),
       appliesToPlanKeys: planKeysFinal,
       appliesToBillingCycles: cyclesFinal,

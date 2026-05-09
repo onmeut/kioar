@@ -189,7 +189,8 @@ export async function POST(request: Request) {
     sub.status === "expired" ||
     sub.status === "canceled";
 
-  const isFreshCheckout = currentPlanKey === "free" || periodLapsed || sub.status === "trialing";
+  const isFreshCheckout =
+    currentPlanKey === "free" || periodLapsed || sub.status === "trialing";
 
   // ----- Branch A: fresh full-period checkout ---------------------------
   if (isFreshCheckout) {
@@ -637,6 +638,7 @@ async function applyFreeTotalChange(input: {
       .update(pageSubscriptions)
       .set({
         planId: input.plan.id,
+        planKey: input.plan.key,
         billingCycle: input.billingCycle,
         status: "active",
         currentPeriodStart: periodStart,

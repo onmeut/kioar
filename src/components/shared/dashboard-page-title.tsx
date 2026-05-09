@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 const TITLE_MAP: Array<{ match: RegExp; title: string }> = [
   // Dashboard / app
   { match: /^\/me(\/|$)/, title: "لینک من" },
+  { match: /^\/more(\/|$)/, title: "بیشتر" },
   { match: /^\/bookings(\/|$)/, title: "هماهنگی‌ها" },
   { match: /^\/forms(\/|$)/, title: "پاسخ‌های فرم" },
   { match: /^\/premium(\/|$)/, title: "کارت هوشمند" },

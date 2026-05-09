@@ -16,6 +16,7 @@ import {
   bookingBlockInputSchema,
   type BookingBlockInput,
 } from "@/lib/validations";
+import { invalidateProfileCacheBySlug } from "@/lib/cache/profile-cache";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
 type SaveResult<T = undefined> =
@@ -121,6 +122,7 @@ export async function createBookingBlockForUser(
     return block.id;
   });
 
+  await invalidateProfileCacheBySlug(profile.slug);
   return { ok: true, data: { id } };
 }
 
@@ -206,6 +208,7 @@ export async function updateBookingBlockForUser(
     );
   });
 
+  await invalidateProfileCacheBySlug(profile.slug);
   return { ok: true };
 }
 
@@ -225,6 +228,7 @@ export async function deleteBookingBlockForUser(
         eq(profileBookingBlocks.profileId, profile.id),
       ),
     );
+  await invalidateProfileCacheBySlug(profile.slug);
   return { ok: true };
 }
 
@@ -246,5 +250,6 @@ export async function toggleBookingBlockActiveForUser(
         eq(profileBookingBlocks.profileId, profile.id),
       ),
     );
+  await invalidateProfileCacheBySlug(profile.slug);
   return { ok: true };
 }

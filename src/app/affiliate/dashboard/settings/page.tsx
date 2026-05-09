@@ -26,10 +26,10 @@ export default async function AffiliateSettingsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-violet-700">
+        <p className="text-[11px] font-bold uppercaser text-violet-700">
           تنظیمات
         </p>
-        <h1 className="mt-1 text-[clamp(22px,3.5vw,30px)] font-semibold tracking-tight">
+        <h1 className="mt-1 text-[clamp(22px,3.5vw,30px)] font-semibold">
           اطلاعات حساب همکاری
         </h1>
       </div>
@@ -46,7 +46,7 @@ export default async function AffiliateSettingsPage() {
       </div>
 
       <div className="rounded-3xl border border-hairline bg-paper p-6">
-        <h2 className="text-[15px] font-bold tracking-tight">اطلاعات بانکی</h2>
+        <h2 className="text-[15px] font-bold">اطلاعات بانکی</h2>
         <p className="mt-1 text-[12px] leading-6 text-ink-soft">
           روی صورت‌حساب رسمی استفاده می‌شه. اگه عوض بشه، روی تسویه‌های بعدی
           اعمال می‌شه نه روی تسویه‌های قبلاً ثبت‌شده.

@@ -122,7 +122,7 @@ export function InstallPrompt() {
           <div className="flex size-16 items-center justify-center rounded-3xl bg-primary/10 ring-1 ring-primary/20">
             <span
               aria-hidden
-              className="text-2xl font-black text-primary"
+              className="text-2xl font-bold text-primary"
               style={{ fontFamily: "system-ui, -apple-system, sans-serif" }}
             >
               K
@@ -134,7 +134,7 @@ export function InstallPrompt() {
             </SheetTitle>
             <SheetDescription className="max-w-sm text-sm leading-6 text-muted-foreground">
               {iosFlow
-                ? "برای نصب کیوار روی آیفون: دکمه‌ی اشتراک‌گذاری مرورگر را بزنید و «افزودن به صفحه‌اصلی» را انتخاب کنید."
+                ? "برای نصب کیوآر روی آیفون: دکمه‌ی اشتراک‌گذاری مرورگر را بزنید و «افزودن به صفحه‌اصلی» را انتخاب کنید."
                 : "دسترسی سریع‌تر به داشبورد، کار آفلاین و اعلان‌ها — درست مثل یک اپ بومی."}
             </SheetDescription>
           </SheetHeader>

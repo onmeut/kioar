@@ -37,6 +37,7 @@ export type AdminAuditAction =
   | "plan_feature.toggle"
   | "plan_feature.update_limit"
   | "plan_feature.rebuild_all_pages"
+  | "plan_feature.rebuild_future_only"
   | "plan_settings.price_change_with_grandfather"
   | "plan_settings.price_change_without_grandfather"
   | "discount_code.batch_create"
@@ -164,8 +165,7 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   "subscription.price_lock_remove": "حذف قفل قیمت اشتراک",
   "subscription.price_lock_dropped_on_plan_change":
     "حذف قفل قیمت در پی تغییر پلن",
-  "subscription.apply_discount_to_next_renewal":
-    "اعمال کد تخفیف بر تجدید بعدی",
+  "subscription.apply_discount_to_next_renewal": "اعمال کد تخفیف بر تجدید بعدی",
   "subscription.simulate_renewal_dry_run": "شبیه‌سازی تجدید (آزمایشی)",
   "subscription.fire_sms_now": "ارسال فوری پیامک",
   "subscription.mock_zarinpal_verify": "تأیید آزمایشی پرداخت زرین‌پال",
@@ -174,6 +174,8 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   "plan_feature.toggle": "تغییر فعال‌بودن قابلیت در پلن",
   "plan_feature.update_limit": "ویرایش سقف قابلیت",
   "plan_feature.rebuild_all_pages": "بازسازی قابلیت‌ها برای همه صفحات",
+  "plan_feature.rebuild_future_only":
+    "اعمال ماتریس فقط برای اشتراک‌های جدید/تمدیدها",
   "plan_settings.price_change_with_grandfather":
     "تغییر قیمت پلن با حفظ قیمت قدیم برای فعلی‌ها",
   "plan_settings.price_change_without_grandfather":

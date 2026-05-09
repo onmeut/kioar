@@ -22,6 +22,7 @@ import {
   profileLinks,
   profileProductBlocks,
 } from "@/db/schema";
+import { invalidateProfileCacheBySlug } from "@/lib/cache/profile-cache";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
 export type BlockKind = "link" | "booking" | "form" | "product";
@@ -150,5 +151,6 @@ export async function reorderBlocksForUser(
     }
   });
 
+  await invalidateProfileCacheBySlug(profile.slug);
   return { ok: true };
 }

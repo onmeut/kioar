@@ -166,6 +166,7 @@ export async function GET(request: Request) {
       billingCycle: invoice.billingCycle,
       metadata: invoice.metadata,
     },
+    planKey: plan.key,
     refId,
     rawResponse: verifyResult.raw as Record<string, unknown>,
     now,

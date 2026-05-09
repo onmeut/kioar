@@ -127,8 +127,8 @@ function ForceExpireDialog({
           <DialogHeader>
             <DialogTitle>انقضای اجباری اشتراک</DialogTitle>
             <DialogDescription>
-              اشتراک به‌فوریت منقضی می‌شود، دوره به این لحظه می‌رسد و
-              قابلیت‌های پلن پولی برداشته می‌شوند.
+              اشتراک به‌فوریت منقضی می‌شود، دوره به این لحظه می‌رسد و قابلیت‌های
+              پلن پولی برداشته می‌شوند.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3 py-4">
@@ -147,11 +147,7 @@ function ForceExpireDialog({
             ) : null}
           </div>
           <DialogFooter>
-            <Button
-              type="submit"
-              variant="destructive"
-              disabled={pending}
-            >
+            <Button type="submit" variant="destructive" disabled={pending}>
               {pending ? "در حال ثبت…" : "تأیید انقضا"}
             </Button>
           </DialogFooter>
@@ -210,9 +206,9 @@ function PriceLockDialog({
         <DialogHeader>
           <DialogTitle>قفل قیمت اشتراک</DialogTitle>
           <DialogDescription>
-            قیمت پلن این صفحه را روی مقدار دلخواه قفل می‌کنید. تمدیدها و
-            تغییر چرخه‌ها از این مقدار استفاده می‌کنند تا زمانی که قفل برداشته
-            شود یا پلن دستی عوض شود.
+            قیمت پلن این صفحه را روی مقدار دلخواه قفل می‌کنید. تمدیدها و تغییر
+            چرخه‌ها از این مقدار استفاده می‌کنند تا زمانی که قفل برداشته شود یا
+            پلن دستی عوض شود.
           </DialogDescription>
         </DialogHeader>
 
@@ -290,7 +286,10 @@ function PriceLockDialog({
         </form>
 
         {priceLock ? (
-          <form action={removeAction} className="space-y-3 border-t border-border pt-4">
+          <form
+            action={removeAction}
+            className="space-y-3 border-t border-border pt-4"
+          >
             <input type="hidden" name="pageId" value={pageId} />
             <div>
               <Label htmlFor="lock-remove-reason">دلیل حذف قفل</Label>
@@ -341,7 +340,12 @@ function ApplyDiscountDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <Button size="sm" variant="outline" className="h-9 gap-1" type="button">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-9 gap-1"
+            type="button"
+          >
             <TicketIcon className="size-4" />
             اعمال تخفیف بر تمدید بعدی
           </Button>
@@ -363,8 +367,8 @@ function ApplyDiscountDialog({
                 کد فعلی در صف:{" "}
                 <span className="font-mono" dir="ltr">
                   {pendingDiscountCode}
-                </span>
-                {" "}— انتخاب کد جدید جای آن را می‌گیرد.
+                </span>{" "}
+                — انتخاب کد جدید جای آن را می‌گیرد.
               </p>
             ) : null}
             <div>

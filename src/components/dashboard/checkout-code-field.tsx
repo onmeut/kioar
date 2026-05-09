@@ -25,13 +25,18 @@
  */
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { CheckCircle2Icon, Loader2Icon, TagIcon, XIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  ChevronUpIcon,
+  Loader2Icon,
+  TagIcon,
+  XIcon,
+} from "lucide-react";
 
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { formatPersianNumber, toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
 
@@ -264,7 +269,7 @@ export function CheckoutCodeField({
       <button
         type="button"
         onClick={() => setExpanded(true)}
-        className="tap-target inline-flex w-full items-center justify-between rounded-xl border border-dashed border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50"
+        className="tap-target inline-flex w-full items-center justify-between rounded-full border border-dashed border-zinc-200 bg-white px-5 py-3 text-sm text-zinc-600 transition hover:border-zinc-300 hover:bg-zinc-50"
       >
         <span className="flex items-center gap-2">
           <TagIcon className="size-4 text-zinc-400" />
@@ -276,71 +281,61 @@ export function CheckoutCodeField({
   }
 
   return (
-    <div className="space-y-2 rounded-xl border bg-white p-3">
-      <div className="flex items-center justify-between gap-2">
-        <Label htmlFor="checkout-code" className="text-xs text-zinc-600">
-          کد دعوت یا تخفیف
-        </Label>
-        <button
-          type="button"
-          onClick={() => {
-            setExpanded(false);
-            setCode("");
-            setError(null);
-          }}
-          className="text-xs text-zinc-500 hover:text-zinc-700"
-        >
-          بستن
-        </button>
-      </div>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <Input
-          id="checkout-code"
-          dir="ltr"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          autoComplete="off"
-          enterKeyHint="go"
-          value={code}
-          onChange={(e) => handleChange(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              if (debounceRef.current) clearTimeout(debounceRef.current);
-              void resolveAndApply(code);
-            }
-          }}
-          placeholder="مثلاً xqfm یا WELCOME20"
-          className="h-11 flex-1"
-          autoFocus
-        />
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 sm:w-auto"
-          disabled={!code.trim() || (isPending && pendingCode === code.trim())}
-          onClick={() => {
+    <div className="flex items-center gap-2">
+      <Input
+        id="checkout-code"
+        dir="ltr"
+        autoCapitalize="none"
+        autoCorrect="off"
+        spellCheck={false}
+        autoComplete="off"
+        enterKeyHint="go"
+        value={code}
+        onChange={(e) => handleChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
             if (debounceRef.current) clearTimeout(debounceRef.current);
             void resolveAndApply(code);
-          }}
-        >
-          {isPending && pendingCode === code.trim() ? (
-            <Loader2Icon className="size-4 animate-spin" />
-          ) : (
-            "اعمال"
-          )}
-        </Button>
-      </div>
+          }
+        }}
+        placeholder="مثلاً WELCOME20 یا xqfm"
+        className="h-12 flex-1 rounded-full px-5 text-sm"
+        autoFocus
+      />
+      <Button
+        type="button"
+        variant="default"
+        className="h-12 rounded-full px-6 text-sm font-bold"
+        disabled={!code.trim() || (isPending && pendingCode === code.trim())}
+        onClick={() => {
+          if (debounceRef.current) clearTimeout(debounceRef.current);
+          void resolveAndApply(code);
+        }}
+      >
+        {isPending && pendingCode === code.trim() ? (
+          <Loader2Icon className="size-4 animate-spin" />
+        ) : (
+          "اعمال"
+        )}
+      </Button>
+      <button
+        type="button"
+        onClick={() => {
+          setExpanded(false);
+          setCode("");
+          setError(null);
+        }}
+        aria-label="بستن"
+        className="flex size-12 shrink-0 items-center justify-center rounded-full border border-zinc-200 text-zinc-400 transition hover:border-zinc-300 hover:text-zinc-600"
+      >
+        <ChevronUpIcon className="size-4" />
+      </button>
       {error ? (
-        <p className="text-xs text-red-600" role="alert">
-          ❌ {error}
+        <p className="sr-only" role="alert">
+          {error}
         </p>
-      ) : (
-        <p className="text-[11px] text-zinc-500">
-          کد را وارد کنید — به‌صورت خودکار بررسی می‌شود.
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -135,7 +135,7 @@ function Tile({
       >
         <Icon className="size-4" />
       </div>
-      <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="mt-3 text-[11px] font-medium uppercaser text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 text-[18px] font-bold">{value}</p>
@@ -160,7 +160,7 @@ function Stat({
           : "border-border bg-background"
       }`}
     >
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="text-[11px] font-medium uppercaser text-muted-foreground">
         {label}
       </p>
       <p

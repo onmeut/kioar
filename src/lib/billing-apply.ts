@@ -32,18 +32,18 @@ import {
 type Invoice = typeof invoicesTable.$inferSelect;
 type Payment = typeof paymentsTable.$inferSelect;
 import { computePeriodEnd } from "@/lib/billing-pricing";
+import { invalidateProfileCacheById } from "@/lib/cache/profile-cache";
 import { rebuildEntitlements } from "@/lib/entitlements";
+import { log } from "@/lib/log";
 
 export type ApplyVerifiedPaymentInput = {
   payment: Pick<Payment, "id" | "invoiceId">;
   invoice: Pick<
     Invoice,
-    | "id"
-    | "pageId"
-    | "planId"
-    | "billingCycle"
-    | "metadata"
+    "id" | "pageId" | "planId" | "billingCycle" | "metadata"
   >;
+  /** Denormalized plan key — written to page_subscriptions.plan_key. */
+  planKey: string;
   refId: string;
   rawResponse: Record<string, unknown>;
   now?: Date;
@@ -58,9 +58,19 @@ export type ApplyVerifiedPaymentResult = {
 export async function applyVerifiedPayment(
   input: ApplyVerifiedPaymentInput,
 ): Promise<ApplyVerifiedPaymentResult> {
+  const startedAt = Date.now();
   const db = getDb();
   const now = input.now ?? new Date();
-  const { payment, invoice, refId, rawResponse } = input;
+  const { payment, invoice, refId, rawResponse, planKey } = input;
+
+  log.info("billing.apply.start", {
+    invoiceId: invoice.id,
+    pageId: invoice.pageId,
+    planId: invoice.planId,
+    planKey,
+    billingCycle: invoice.billingCycle,
+    paymentId: payment.id,
+  });
 
   // Proration invoices preserve the user's already-paid period.
   const meta = (invoice.metadata ?? {}) as Record<string, unknown>;
@@ -104,6 +114,7 @@ export async function applyVerifiedPayment(
       .update(pageSubscriptions)
       .set({
         planId: invoice.planId,
+        planKey,
         billingCycle: invoice.billingCycle,
         status: "active",
         currentPeriodStart: newPeriodStart,
@@ -114,6 +125,20 @@ export async function applyVerifiedPayment(
       .where(eq(pageSubscriptions.pageId, invoice.pageId));
 
     await rebuildEntitlements(tx, invoice.pageId);
+  });
+
+  // Plan changed → entitlement set changed → the public page may now
+  // render booking/form/product blocks that were previously hidden
+  // (or vice versa). Drop the cache so the next visit reflects reality.
+  await invalidateProfileCacheById(invoice.pageId);
+
+  log.info("billing.apply.ok", {
+    invoiceId: invoice.id,
+    pageId: invoice.pageId,
+    planKey,
+    newPeriodStart: newPeriodStart.toISOString(),
+    newPeriodEnd: newPeriodEnd.toISOString(),
+    durationMs: Date.now() - startedAt,
   });
 
   return {

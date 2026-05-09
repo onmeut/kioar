@@ -373,12 +373,25 @@
   }
 
   /*
-   * contain:paint makes fixed children position inside the card, but the
-   * sidebar container still uses h-svh (= full viewport). Override to 100%
-   * so it fills the card height (which is already the correct remaining height).
+   * On desktop the sidebar container is position:fixed relative to the
+   * viewport (top:0 by default from inset-y-0). When the promo bar is
+   * active it sits in the same stacking context at z-30, covering the
+   * sidebar's top portion. Fix: push the sidebar down by the bar's exact
+   * height and shrink its height to match so it fills exactly from the
+   * bar's bottom edge to the viewport bottom.
+   *
+   * The sidebar inner div gets a matching top-start corner radius so its
+   * bg-sidebar background is clipped to the same curve as the card
+   * container's rounded-t-3xl, letting the zinc-950 outer background show
+   * through — matching the left corner.
    */
   .promo-layout [data-slot="sidebar-container"] {
-    height: 100%;
+    top: 3rem; /* matches h-12 promo bar */
+    height: calc(100dvh - 3rem);
+  }
+
+  .promo-layout [data-sidebar="sidebar"] {
+    border-top-right-radius: var(--radius-3xl);
   }
 
   .touch-pan-y {

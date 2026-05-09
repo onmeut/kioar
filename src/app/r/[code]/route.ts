@@ -22,6 +22,7 @@ import { log } from "@/lib/log";
 import { writeReferralCookie } from "@/lib/referral-cookie";
 import { createClickRecord } from "@/lib/referrals";
 import { getClientIp } from "@/lib/request-ip";
+import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,6 @@ export async function GET(
   ctx: { params: Promise<{ code: string }> },
 ) {
   const { code } = await ctx.params;
-  const url = new URL(request.url);
   const userAgent = request.headers.get("user-agent");
 
   let cookieId: string | null = null;
@@ -38,7 +38,7 @@ export async function GET(
     const ip = await getClientIp();
     const click = await createClickRecord({ code, ip, userAgent });
     if (!click) {
-      return NextResponse.redirect(new URL("/", url));
+      return NextResponse.redirect(absoluteUrl("/"));
     }
     cookieId = click.cookieId;
   } catch (err) {
@@ -49,12 +49,12 @@ export async function GET(
     // Don't block the visitor on infra errors — let them land on /invited
     // without attribution. Better UX than a 500 page.
     return NextResponse.redirect(
-      new URL(`/invited?via=${encodeURIComponent(code)}`, url),
+      absoluteUrl(`/invited?via=${encodeURIComponent(code)}`),
     );
   }
 
   if (cookieId) await writeReferralCookie(cookieId);
   return NextResponse.redirect(
-    new URL(`/invited?via=${encodeURIComponent(code)}`, url),
+    absoluteUrl(`/invited?via=${encodeURIComponent(code)}`),
   );
 }

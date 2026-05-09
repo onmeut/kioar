@@ -148,15 +148,13 @@ const TEMPLATES: SmsTemplateSeed[] = [
   {
     key: "affiliate_application_received",
     nameFa: "ثبت درخواست همکاری در فروش",
-    descriptionFa:
-      "تأیید دریافت فرم درخواست همکاری در فروش به متقاضی.",
+    descriptionFa: "تأیید دریافت فرم درخواست همکاری در فروش به متقاضی.",
     variableSchema: ["name"],
   },
   {
     key: "affiliate_application_approved",
     nameFa: "تأیید همکاری در فروش",
-    descriptionFa:
-      "تأیید درخواست همکاری در فروش به همراه کد اختصاصی شریک.",
+    descriptionFa: "تأیید درخواست همکاری در فروش به همراه کد اختصاصی شریک.",
     variableSchema: ["name", "code", "pct"],
   },
   {
@@ -168,15 +166,13 @@ const TEMPLATES: SmsTemplateSeed[] = [
   {
     key: "affiliate_application_needs_info",
     nameFa: "درخواست تکمیل اطلاعات همکاری",
-    descriptionFa:
-      "از متقاضی همکاری در فروش می‌خواهد اطلاعات تکمیلی بفرستد.",
+    descriptionFa: "از متقاضی همکاری در فروش می‌خواهد اطلاعات تکمیلی بفرستد.",
     variableSchema: ["name"],
   },
   {
     key: "affiliate_referee_rewarded",
     nameFa: "هدیه پذیرش از طریق شریک",
-    descriptionFa:
-      "اطلاع به دعوت‌شده درباره سه ماه هدیه پرو با کد شریک.",
+    descriptionFa: "اطلاع به دعوت‌شده درباره سه ماه هدیه پرو با کد شریک.",
     variableSchema: ["months"],
   },
   {

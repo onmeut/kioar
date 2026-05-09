@@ -56,7 +56,9 @@ export function BulkCreateDiscountDialog() {
   const fieldErr = (k: string) => state.fieldErrors?.[k]?.[0] ?? null;
 
   const successBatchId =
-    state.status === "success" ? ((state as BulkCreateResult).batchId ?? null) : null;
+    state.status === "success"
+      ? ((state as BulkCreateResult).batchId ?? null)
+      : null;
   const successCount =
     state.status === "success" ? ((state as BulkCreateResult).count ?? 0) : 0;
 
@@ -246,11 +248,7 @@ export function BulkCreateDiscountDialog() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="bcd-starts">شروع اعتبار</Label>
-                <Input
-                  id="bcd-starts"
-                  name="startsAt"
-                  type="datetime-local"
-                />
+                <Input id="bcd-starts" name="startsAt" type="datetime-local" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="bcd-ends">پایان اعتبار</Label>

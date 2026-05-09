@@ -65,10 +65,10 @@ export default async function AffiliateResourcesPage() {
   return (
     <div className="space-y-10">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-violet-700">
+        <p className="text-[11px] font-bold uppercaser text-violet-700">
           منابع و کیت برند
         </p>
-        <h1 className="mt-1 text-[clamp(22px,3.5vw,30px)] font-semibold tracking-tight">
+        <h1 className="mt-1 text-[clamp(22px,3.5vw,30px)] font-semibold">
           هرچی برای پخش لینک نیاز داری
         </h1>
         <p className="mt-2 max-w-2xl text-[13px] leading-7 text-ink-soft">
@@ -98,7 +98,7 @@ export default async function AffiliateResourcesPage() {
 
       {/* Snippets */}
       <section>
-        <h2 className="mb-3 text-[16px] font-semibold tracking-tight">
+        <h2 className="mb-3 text-[16px] font-semibold">
           متن‌های آماده
         </h2>
         <p className="mb-4 text-[12px] leading-6 text-ink-soft">
@@ -113,7 +113,7 @@ export default async function AffiliateResourcesPage() {
 
       {/* Brand kit */}
       <section className="rounded-3xl border border-hairline bg-paper-soft p-6">
-        <h2 className="text-[16px] font-semibold tracking-tight">کیت برند</h2>
+        <h2 className="text-[16px] font-semibold">کیت برند</h2>
         <p className="mt-1 max-w-xl text-[12px] leading-6 text-ink-soft">
           لوگو و آیکن‌ کی‌یو‌آر برای استفاده در محتوای تبلیغاتی. لطفاً لوگو رو
           بدون تغییر شکل، رنگ یا چرخش استفاده کن.
@@ -135,7 +135,7 @@ export default async function AffiliateResourcesPage() {
 
       {/* Guidelines */}
       <section className="rounded-3xl border border-amber-200 bg-amber-50/60 p-6">
-        <h2 className="text-[15px] font-semibold tracking-tight text-amber-950">
+        <h2 className="text-[15px] font-semibold text-amber-950">
           قوانین تبلیغات
         </h2>
         <ul className="mt-3 space-y-2 text-[13px] leading-7 text-amber-950/90">
@@ -226,7 +226,7 @@ function BrandTile({
       </div>
       <div className="flex items-center justify-between gap-2 px-3 py-2.5">
         <span className="text-[12px] font-bold text-ink">{label}</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+        <span className="text-[10px] font-bold uppercaser text-ink-soft">
           {zip ? "ZIP" : "SVG"}
         </span>
       </div>

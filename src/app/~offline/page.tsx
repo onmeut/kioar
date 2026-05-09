@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 
 export default function OfflinePage() {
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-4 py-16">
+    <main className="flex min-h-dvh flex-col items-center justify-center bg-muted px-4 py-16">
       <div className="flex w-full max-w-sm flex-col items-center gap-8 text-center">
         {/* Icon */}
         <div className="flex size-16 items-center justify-center rounded-3xl border border-border bg-muted text-muted-foreground">

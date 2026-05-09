@@ -131,12 +131,12 @@ export function InvoicesTable({ invoices }: Props) {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-0.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+                  <p className="text-[10px] font-semibold uppercaser text-zinc-400">
                     شماره فاکتور
                   </p>
                   <p
                     dir="ltr"
-                    className="text-sm font-semibold tracking-tight text-zinc-900"
+                    className="text-sm font-semibold text-zinc-900"
                   >
                     {persianizeNumber(inv.number)}
                   </p>

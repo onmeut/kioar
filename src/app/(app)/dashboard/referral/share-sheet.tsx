@@ -143,23 +143,25 @@ export function ShareSheet({
       />
       <SheetContent
         side="bottom"
-        className="sm:max-w-lg! sm:mx-auto! sm:rounded-t-3xl"
+        className="flex flex-col p-0 sm:max-w-lg! sm:mx-auto! sm:rounded-t-3xl max-h-[90dvh] overflow-hidden"
       >
-        <SheetHeader className="text-start">
+        {/* Fixed header — never scrolls */}
+        <SheetHeader className="shrink-0 border-b border-border px-5 pt-5 pb-4 text-start">
           <SheetTitle>اشتراک‌گذاری دعوت</SheetTitle>
           <SheetDescription>
             یکی از این متن‌ها رو انتخاب کن و توی هر کانالی که می‌خوای بفرست.
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex flex-col gap-4 px-4 pb-2">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {/* OG-preview card */}
-          <div className="rounded-2xl border border-zinc-200 bg-zinc-50 p-3">
-            <div className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+          <div className="rounded-2xl border border-border bg-muted/40 p-3">
+            <div className="text-[10px] font-medium text-muted-foreground mb-2">
               پیش‌نمایش لینک در پیام‌رسان‌ها
             </div>
-            <div className="mt-2 overflow-hidden rounded-xl border border-zinc-200 bg-white">
-              <div className="flex aspect-1200/630 w-full items-center justify-center bg-violet-500">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <div className="flex aspect-[1200/630] w-full items-center justify-center bg-violet-500">
                 <div className="text-center text-white">
                   <div className="text-xs font-medium opacity-80">
                     دعوت‌نامه‌ی کی‌یو‌آر
@@ -172,11 +174,14 @@ export function ShareSheet({
                   </div>
                 </div>
               </div>
-              <div className="border-t border-zinc-200 px-3 py-2 text-[11px]">
-                <div className="truncate font-mono text-zinc-400" dir="ltr">
+              <div className="border-t border-border px-3 py-2 text-[11px]">
+                <div
+                  className="truncate font-mono text-muted-foreground"
+                  dir="ltr"
+                >
                   kioar.com
                 </div>
-                <div className="mt-0.5 font-semibold text-zinc-800">
+                <div className="mt-0.5 font-semibold text-foreground">
                   دعوت‌نامه‌ی {inviterName} برای کی‌یو‌آر
                 </div>
               </div>
@@ -195,8 +200,8 @@ export function ShareSheet({
                 className={cn(
                   "h-9 rounded-full border px-3 text-xs font-semibold transition",
                   v.id === activeId
-                    ? "border-zinc-900 bg-zinc-900 text-white"
-                    : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50",
+                    ? "border-foreground bg-foreground text-background"
+                    : "border-border bg-card text-foreground hover:bg-muted/50",
                 )}
               >
                 {v.tone}
@@ -207,13 +212,13 @@ export function ShareSheet({
           {/* Message body */}
           <div
             dir={active.lang === "en" ? "ltr" : "rtl"}
-            className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm leading-7 text-zinc-800 whitespace-pre-line"
+            className="rounded-2xl border border-border bg-card p-4 text-sm leading-7 text-foreground whitespace-pre-line"
           >
             {active.body}
           </div>
 
-          {/* Channels grid */}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {/* Channels — 2×2 grid, full-width buttons */}
+          <div className="grid grid-cols-2 gap-2">
             <ChannelButton
               href={tg}
               icon={<SendIcon className="size-4" />}
@@ -229,14 +234,14 @@ export function ShareSheet({
             <ChannelButton
               href={x}
               icon={<ShareIcon className="size-4" />}
-              label="X"
+              label="X (توییتر)"
               tone="bg-zinc-900 text-white hover:bg-zinc-800"
             />
             <button
               type="button"
               onClick={() => copyText(inviteUrl, "copy")}
               className={cn(
-                "tap-target inline-flex h-11 items-center justify-center gap-2 rounded-xl border bg-white text-sm font-semibold text-zinc-800 transition hover:bg-zinc-50",
+                "tap-target inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-border bg-card text-sm font-semibold text-foreground transition hover:bg-muted/50",
               )}
             >
               {copied === "copy" ? (
@@ -253,11 +258,12 @@ export function ShareSheet({
             </button>
           </div>
 
-          <div className="flex flex-col gap-2 sm:flex-row">
+          {/* Secondary actions */}
+          <div className="grid grid-cols-2 gap-2">
             <Button
               type="button"
               variant="outline"
-              className="h-11 flex-1 gap-2"
+              className="h-11 gap-2"
               onClick={() => copyText(active.body, "more")}
             >
               {copied === "more" ? (
@@ -272,19 +278,16 @@ export function ShareSheet({
                 </>
               )}
             </Button>
-            <Button
-              type="button"
-              className="h-11 flex-1 gap-2"
-              onClick={nativeShare}
-            >
+            <Button type="button" className="h-11 gap-2" onClick={nativeShare}>
               <Share2Icon className="size-4" />
-              اشتراک‌گذاری سریع
+              اشتراک‌گذاری
             </Button>
           </div>
         </div>
 
-        <SheetFooter className="text-center">
-          <p className="text-[11px] leading-5 text-zinc-500">
+        {/* Fixed footer */}
+        <SheetFooter className="shrink-0 border-t border-border px-5 py-3 text-center">
+          <p className="text-[11px] leading-5 text-muted-foreground">
             وقتی دوستت با لینک تو ثبت‌نام کنه و پروی رو فعال کنه، یک ماه پرو
             مهمون شماست — هر دو طرف.
           </p>
@@ -311,7 +314,7 @@ function ChannelButton({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "tap-target inline-flex h-11 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition",
+        "tap-target inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl text-sm font-semibold transition",
         tone,
       )}
     >

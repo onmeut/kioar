@@ -17,10 +17,10 @@ export default async function AffiliateEarningsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-violet-700">
+        <p className="text-[11px] font-bold uppercaser text-violet-700">
           درآمد و دفترچه‌ی فروش
         </p>
-        <h1 className="mt-1 text-[clamp(22px,3.5vw,30px)] font-semibold tracking-tight">
+        <h1 className="mt-1 text-[clamp(22px,3.5vw,30px)] font-semibold">
           هر فروشی که از طرف تو اومده
         </h1>
       </div>
@@ -99,7 +99,7 @@ export default async function AffiliateEarningsPage() {
           {/* Desktop table */}
           <div className="hidden overflow-x-auto rounded-3xl border border-hairline bg-paper lg:block">
             <table className="w-full text-start">
-              <thead className="bg-paper-soft text-[11px] uppercase tracking-wider text-ink-soft">
+              <thead className="bg-paper-soft text-[11px] uppercaser text-ink-soft">
                 <tr>
                   <Th>مخاطب</Th>
                   <Th>تاریخ</Th>
@@ -192,7 +192,7 @@ function Sum({
           : "border-hairline bg-paper-soft"
       }`}
     >
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <p className="text-[11px] font-medium uppercaser text-ink-soft">
         {label}
       </p>
       <p
@@ -285,7 +285,7 @@ function Td({
 function KV({ k, v }: { k: string; v: string }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-ink-soft">{k}</p>
+      <p className="text-[10px] uppercaser text-ink-soft">{k}</p>
       <p className="font-mono text-[13px] font-bold text-ink" dir="ltr">
         {v}
       </p>

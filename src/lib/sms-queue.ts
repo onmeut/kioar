@@ -232,6 +232,11 @@ export async function processSmsQueue(options?: {
             "attempts" = "attempts" + 1, "last_error" = NULL
         WHERE "id" = ${row.id}
       `);
+      log.info("sms.send.ok", {
+        id: row.id,
+        templateKey: row.templateKey,
+        attempts: row.attempts + 1,
+      });
       result.sent += 1;
     } catch (err) {
       const message = (err as Error).message ?? "unknown_error";

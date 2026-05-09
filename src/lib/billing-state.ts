@@ -77,6 +77,7 @@ import {
 } from "@/lib/billing-pricing";
 import { rebuildEntitlements } from "@/lib/entitlements";
 import { allocateInvoiceNumber } from "@/lib/invoice-numbering";
+import { invalidateProfileCacheById } from "@/lib/cache/profile-cache";
 import { log } from "@/lib/log";
 import { enqueueSms, type SmsTemplateKey } from "@/lib/sms-queue";
 
@@ -238,7 +239,10 @@ export function evaluateTransitions(
   if (sub.status === "active" || sub.status === "pending_renewal") {
     const daysUntilEnd = diffDays(now, sub.currentPeriodEnd);
 
-    if (daysUntilEnd > 0 && config.periodReminderOffsetsDays.includes(daysUntilEnd)) {
+    if (
+      daysUntilEnd > 0 &&
+      config.periodReminderOffsetsDays.includes(daysUntilEnd)
+    ) {
       // Map offset → existing transition type. We keep two specific
       // transitions (5d / 1d) so the idempotency log keys remain stable
       // and the SMS template keys (`renewal_reminder_5d` / `_1d`) line
@@ -344,7 +348,7 @@ export async function transitionForToday(
     JOIN "users"    u  ON u."id"  = pr."user_id"
     LEFT JOIN "subscription_price_locks" l
       ON l."page_id" = s."page_id" AND l."plan_id" = s."plan_id"
-    WHERE p."key" <> 'free'
+    WHERE s."plan_key" <> 'free'
       AND s."status" IN ('active','trialing','pending_renewal','grace')
   `)) as unknown as SubRow[];
 
@@ -367,6 +371,14 @@ export async function transitionForToday(
         };
         if (fired) {
           result.applied.push(entry);
+          // Plan/entitlement changes happen inside `applyTransition`. The
+          // public page renderer's view depends on entitlements, so drop
+          // the cache here so the next visit reflects the new state
+          // instead of waiting for the 5-min TTL. SMS-only transitions
+          // (reminders, no plan change) also flow through here — the
+          // extra DEL is cheap (O(1) Redis op) and keeps the rule
+          // simple: "every fired transition invalidates".
+          await invalidateProfileCacheById(sub.pageId);
         } else {
           result.skipped.push(entry);
         }
@@ -542,6 +554,7 @@ async function applyTransition(
           .update(pageSubscriptions)
           .set({
             planId: freePlanId,
+            planKey: "free",
             billingCycle: "monthly",
             status: "expired",
             currentPeriodStart: now,
@@ -569,6 +582,7 @@ async function applyTransition(
           .update(pageSubscriptions)
           .set({
             planId: freePlanId,
+            planKey: "free",
             billingCycle: "monthly",
             status: "canceled",
             currentPeriodStart: now,
@@ -603,6 +617,7 @@ async function applyTransition(
             .update(pageSubscriptions)
             .set({
               planId: freePlanId,
+              planKey: "free",
               billingCycle: "monthly",
               status: "active",
               currentPeriodStart: now,

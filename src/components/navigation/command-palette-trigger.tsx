@@ -91,7 +91,7 @@ export function CommandPaletteTrigger({
     const timeout = window.setTimeout(() => {
       toast("نکته: با ⌘K همه‌جا دسترسی سریع داری", {
         description:
-          "میان‌بر صفحه‌کلید جدید کیوار: جستجو، رفتن به، و اقدامات سریع.",
+          "میان‌بر صفحه‌کلید جدید کیوآر: جستجو، رفتن به، و اقدامات سریع.",
         duration: 8000,
         action: {
           label: "متوجه شدم",
@@ -133,7 +133,7 @@ export function CommandPaletteTrigger({
       >
         <SearchIcon className="size-4 shrink-0" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-start">
-          جستجو در کیوار...
+          جستجو در کیوآر...
         </span>
         <kbd
           dir="ltr"

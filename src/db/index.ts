@@ -24,6 +24,19 @@ import * as schema from "./schema";
  *   `DATABASE_SSL=require` enables TLS. `DATABASE_SSL=no-verify` enables TLS
  *   but skips cert validation (managed Postgres providers with self-signed
  *   intermediates). Default: off (local docker / pgbouncer on a private net).
+ *
+ * Slow-query observability:
+ *   Enable `pg_stat_statements` to trace expensive queries without app-side
+ *   wiring. In `postgresql.conf`:
+ *     shared_preload_libraries = 'pg_stat_statements'
+ *   Then once per database: `CREATE EXTENSION IF NOT EXISTS pg_stat_statements;`
+ *   Top consumers:
+ *     SELECT query, calls, total_exec_time, mean_exec_time
+ *     FROM pg_stat_statements
+ *     ORDER BY total_exec_time DESC LIMIT 20;
+ *   The extension records every executed statement automatically — no
+ *   client-side instrumentation required, and the cost is negligible at
+ *   our query volume.
  */
 
 type SslOption = false | "require" | { rejectUnauthorized: boolean };
@@ -84,6 +97,30 @@ function createDatabase(url: string) {
 type Database = ReturnType<typeof createDatabase>["db"];
 type Client = ReturnType<typeof createDatabase>["client"];
 
+/**
+ * Process-level singleton — intentional, and runtime-specific.
+ *
+ * **Why `globalThis`?**
+ * Next.js standalone output (our deployment target: `output: "standalone"`
+ * in `next.config.ts`) runs as a single, long-lived Node.js process. Hot
+ * module replacement in `next dev` re-evaluates module files on change but
+ * does NOT restart the process, so a plain module-level `const db = drizzle(…)`
+ * would leak a new connection pool on every HMR cycle. Stashing the
+ * instance on `globalThis` survives re-evaluation and keeps connection
+ * count stable.
+ *
+ * **The serverless / edge footgun.**
+ * In serverless runtimes (Vercel Lambda, AWS Lambda) each worker is a
+ * short-lived, isolated V8 context. `globalThis` there is per-invocation,
+ * not per-process, so the singleton buys nothing — every cold-start creates
+ * a fresh pool anyway. Worse, on edge runtimes (Cloudflare Workers) the
+ * `postgres` driver uses TCP sockets which are not available; the module
+ * would throw at import time. This codebase targets a single persistent
+ * Node process (Docker + `next start`) so neither scenario applies, but
+ * **do not copy this pattern into a serverless or edge deployment** without
+ * replacing the driver with a WebSocket-safe HTTP client (e.g. Neon's
+ * `@neondatabase/serverless`) and removing the `globalThis` guard.
+ */
 declare global {
   // eslint-disable-next-line no-var
   var __kioarDb: Database | undefined;

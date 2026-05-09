@@ -7,6 +7,7 @@ import {
 } from "@/lib/oauth/zoom";
 import { upsertOAuthAccount } from "@/lib/oauth/store";
 import { verifyOAuthState } from "@/lib/oauth/state";
+import { getBaseUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,7 @@ export async function GET(request: Request) {
   const code = url.searchParams.get("code");
   const stateRaw = url.searchParams.get("state");
   const error = url.searchParams.get("error");
-  const base =
-    process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ??
-    `${url.protocol}//${url.host}`;
+  const base = getBaseUrl();
 
   if (error) {
     return NextResponse.redirect(

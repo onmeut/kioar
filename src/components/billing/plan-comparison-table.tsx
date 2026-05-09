@@ -73,23 +73,22 @@ export async function PlanComparisonTable({ plans }: Props) {
   });
 
   return (
-    <div className="rounded-3xl bg-white ring-1 ring-zinc-200">
-      <table className="w-full border-separate border-spacing-0 text-right text-[12px] sm:text-[13px]">
+    <div className="overflow-hidden rounded-3xl bg-white ring-1 ring-zinc-200">
+      <table className="w-full border-separate border-spacing-0 text-right text-sm sm:text-[15px]">
         <thead className="sticky top-0 z-10">
           <tr>
             <th
               scope="col"
-              className="rounded-ts-3xl border-b border-zinc-200 bg-white/95 px-3 py-3 text-start text-[11px] font-bold text-zinc-900 backdrop-blur-sm sm:px-5 sm:py-4 sm:text-[13px]"
+              className="border-b border-zinc-200 bg-white/95 px-4 py-4 text-start text-sm font-bold text-zinc-900 backdrop-blur-sm sm:px-6 sm:py-5 sm:text-base"
             >
               امکانات
             </th>
-            {sortedPlans.map((p, i) => (
+            {sortedPlans.map((p) => (
               <th
                 key={p.id}
                 scope="col"
                 className={cn(
-                  "border-b border-zinc-200 px-1 py-3 text-center text-[11px] font-bold text-zinc-900 backdrop-blur-sm sm:px-3 sm:py-4 sm:text-[13px]",
-                  i === sortedPlans.length - 1 && "rounded-te-3xl",
+                  "border-b border-zinc-200 px-2 py-4 text-center text-sm font-bold text-zinc-900 backdrop-blur-sm sm:px-4 sm:py-5 sm:text-base",
                   p.key === "pro" ? "bg-zinc-50/95" : "bg-white/95",
                 )}
               >
@@ -104,7 +103,7 @@ export async function PlanComparisonTable({ plans }: Props) {
               <tr>
                 <td
                   colSpan={1 + sortedPlans.length}
-                  className="border-b border-zinc-100 bg-zinc-50/60 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-zinc-500 sm:px-5 sm:text-[11px]"
+                  className="border-b border-zinc-100 bg-zinc-50/70 px-4 py-3 text-[13px] font-bold text-zinc-500 sm:px-6 sm:text-sm"
                 >
                   {CATEGORY_LABELS[category] ?? category}
                 </td>
@@ -117,13 +116,13 @@ export async function PlanComparisonTable({ plans }: Props) {
                   <tr key={feature.id}>
                     <td
                       className={cn(
-                        "border-b border-zinc-100 px-3 py-3 font-medium text-zinc-800 sm:px-5",
+                        "border-b border-zinc-100 px-4 py-4 text-[13px] font-medium text-zinc-800 sm:px-6 sm:text-[15px]",
                         isLastRow && "border-b-0",
                       )}
                     >
                       {feature.nameFa}
                     </td>
-                    {sortedPlans.map((p, i) => {
+                    {sortedPlans.map((p) => {
                       const planGrants = grantsByPlan.get(p.id);
                       const has = planGrants?.has(feature.id) ?? false;
                       const limit = planGrants?.get(feature.id);
@@ -131,13 +130,9 @@ export async function PlanComparisonTable({ plans }: Props) {
                         <td
                           key={p.id}
                           className={cn(
-                            "border-b border-zinc-100 px-1 py-3 text-center sm:px-3",
+                            "border-b border-zinc-100 px-2 py-4 text-center sm:px-4",
                             p.key === "pro" && "bg-zinc-50/60",
                             isLastRow && "border-b-0",
-                            isLastRow &&
-                              i === sortedPlans.length - 1 &&
-                              "rounded-be-3xl",
-                            isLastRow && i === 0 && "rounded-bs-3xl",
                           )}
                         >
                           {has ? (
@@ -146,10 +141,31 @@ export async function PlanComparisonTable({ plans }: Props) {
                                 {toPersianDigits(formatPersianNumber(limit))}
                               </span>
                             ) : (
-                              <CheckIcon className="mx-auto size-4 text-emerald-600" />
+                              <span
+                                className={cn(
+                                  "mx-auto flex size-6 items-center justify-center rounded-full sm:size-7",
+                                  p.key === "pro"
+                                    ? "bg-emerald-100"
+                                    : p.key === "business"
+                                      ? "bg-purple-100"
+                                      : "bg-zinc-100",
+                                )}
+                              >
+                                <CheckIcon
+                                  strokeWidth={3}
+                                  className={cn(
+                                    "size-3.5 sm:size-4",
+                                    p.key === "pro"
+                                      ? "text-emerald-600"
+                                      : p.key === "business"
+                                        ? "text-purple-600"
+                                        : "text-zinc-400",
+                                  )}
+                                />
+                              </span>
                             )
                           ) : (
-                            <MinusIcon className="mx-auto size-3 text-zinc-300" />
+                            <MinusIcon className="mx-auto size-4 text-zinc-300" />
                           )}
                         </td>
                       );

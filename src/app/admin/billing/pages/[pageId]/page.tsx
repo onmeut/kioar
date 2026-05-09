@@ -223,7 +223,7 @@ export default async function AdminBillingPageDetailPage({
     priceLockRows,
     activeDiscountCodes,
   ] = await Promise.all([
-      db.execute(sql`
+    db.execute(sql`
         SELECT
           "id", "number", "status"::text AS status, "total_toman",
           "subtotal_toman", "discount_amount_toman", "vat_toman",
@@ -234,7 +234,7 @@ export default async function AdminBillingPageDetailPage({
         ORDER BY "created_at" DESC
         LIMIT 50
       `) as unknown as Promise<InvoiceRow[]>,
-      db.execute(sql`
+    db.execute(sql`
         SELECT
           pay."id"          AS id,
           i."number"        AS invoice_number,
@@ -251,7 +251,7 @@ export default async function AdminBillingPageDetailPage({
         ORDER BY pay."created_at" DESC
         LIMIT 50
       `) as unknown as Promise<PaymentRow[]>,
-      db.execute(sql`
+    db.execute(sql`
         SELECT
           e."feature_key"  AS feature_key,
           e."source"::text AS source,
@@ -265,7 +265,7 @@ export default async function AdminBillingPageDetailPage({
         ORDER BY f."category" ASC NULLS LAST, f."display_order" ASC NULLS LAST,
                  e."feature_key" ASC
       `) as unknown as Promise<EntitlementRow[]>,
-      db.execute(sql`
+    db.execute(sql`
         SELECT
           sq."id"             AS id,
           sq."template_key"   AS template_key,
@@ -280,20 +280,20 @@ export default async function AdminBillingPageDetailPage({
         ORDER BY sq."created_at" DESC
         LIMIT 30
       `) as unknown as Promise<SmsRow[]>,
-      db.execute(sql`
+    db.execute(sql`
         SELECT "key", "name_fa", "category"
         FROM "features"
         ORDER BY "category" ASC NULLS LAST, "display_order" ASC NULLS LAST,
                  "name_fa" ASC
       `) as unknown as Promise<FeatureRow[]>,
-      db.execute(sql`
+    db.execute(sql`
         SELECT "key"::text AS key, "name_fa"
         FROM "plans"
         WHERE "is_active" = true
         ORDER BY "display_order" ASC
       `) as unknown as Promise<PlanRow[]>,
-      getAuditLogForPage(pageId, 30),
-      db.execute(sql`
+    getAuditLogForPage(pageId, 30),
+    db.execute(sql`
         SELECT
           "locked_monthly_toman" AS locked_monthly_toman,
           "locked_annual_toman"  AS locked_annual_toman,
@@ -303,23 +303,23 @@ export default async function AdminBillingPageDetailPage({
         WHERE "page_id" = ${pageId}::uuid
         LIMIT 1
       `) as unknown as Promise<
-        Array<{
-          locked_monthly_toman: number;
-          locked_annual_toman: number;
-          reason: string | null;
-          locked_at: Date;
-        }>
-      >,
-      db.execute(sql`
+      Array<{
+        locked_monthly_toman: number;
+        locked_annual_toman: number;
+        reason: string | null;
+        locked_at: Date;
+      }>
+    >,
+    db.execute(sql`
         SELECT "id", "code", "name_fa"
         FROM "discount_codes"
         WHERE "is_active" = true AND "deleted_at" IS NULL
         ORDER BY "code" ASC
         LIMIT 200
       `) as unknown as Promise<
-        Array<{ id: string; code: string; name_fa: string }>
-      >,
-    ]);
+      Array<{ id: string; code: string; name_fa: string }>
+    >,
+  ]);
 
   const priceLock = priceLockRows[0]
     ? {

@@ -4,6 +4,7 @@ import { FormInputIcon, SendIcon } from "lucide-react";
 
 import { BlockCard } from "@/components/dashboard/block-card";
 import { SpotlightStarButton } from "@/components/dashboard/spotlight-star-button";
+import type { RequiredPlanTier } from "@/lib/block-features";
 import { toPersianDigits } from "@/lib/persian";
 import type {
   BlockAnimationStyle,
@@ -34,6 +35,9 @@ export type FormBlockRowProps = {
   /** Phase 5: render in a read-only locked state when the page lacks the
    * `business_lead_capture_form` entitlement. */
   locked?: boolean;
+  /** Lowest paid plan that currently grants the form feature, sourced
+   * from the live `plan_features` matrix. Drives lock chip colour. */
+  lockedPlan?: RequiredPlanTier;
   /** Phase 6 — Spotlight gating. */
   pinAllowed?: boolean;
   animateAllowed?: boolean;
@@ -57,6 +61,7 @@ export function FormBlockRow({
   dragProps,
   isDragging,
   locked = false,
+  lockedPlan = "business",
   pinAllowed = false,
   animateAllowed = false,
   onSpotlightChange,
@@ -66,7 +71,7 @@ export function FormBlockRow({
       dragProps={dragProps}
       isDragging={isDragging}
       locked={locked}
-      lockedPlan="business"
+      lockedPlan={lockedPlan}
       icon={
         <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
           <FormInputIcon className="size-5" />

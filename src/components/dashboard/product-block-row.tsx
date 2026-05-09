@@ -5,6 +5,7 @@ import { TagIcon } from "lucide-react";
 import { BlockCard } from "@/components/dashboard/block-card";
 import { SpotlightStarButton } from "@/components/dashboard/spotlight-star-button";
 import { LinkIconBubble } from "@/components/dashboard/link-icon-picker";
+import type { RequiredPlanTier } from "@/lib/block-features";
 import { toPersianDigits } from "@/lib/persian";
 import type {
   BlockAnimationStyle,
@@ -31,8 +32,11 @@ export type ProductBlockRowProps = {
   /** Phase 5 — render in a read-only locked state when the page lacks
    * the `products_block` entitlement. With the default plan matrix this
    * is never true (every plan grants the boolean), but admins can revoke
-   * it manually. */
+   * it manually or move it to a higher tier from `/admin/plans`. */
   locked?: boolean;
+  /** Lowest paid plan that currently grants `products_block`, sourced
+   * from the live `plan_features` matrix. Drives lock chip colour. */
+  lockedPlan?: RequiredPlanTier;
   pinAllowed?: boolean;
   animateAllowed?: boolean;
   onSpotlightChange?: (next: {
@@ -49,6 +53,7 @@ export function ProductBlockRow({
   dragProps,
   isDragging,
   locked = false,
+  lockedPlan = "pro",
   pinAllowed = false,
   animateAllowed = false,
   onSpotlightChange,
@@ -59,9 +64,7 @@ export function ProductBlockRow({
       dragProps={dragProps}
       isDragging={isDragging}
       locked={locked}
-      // products_block is a Free-grantable feature, so any locked state
-      // is an out-of-band revoke; "pro" is a fine cosmetic default.
-      lockedPlan="pro"
+      lockedPlan={lockedPlan}
       icon={
         block.iconKey || block.iconUrl || block.imageUrl ? (
           <LinkIconBubble

@@ -7,10 +7,7 @@
  * Phase 13 makes this page read-write.
  */
 
-import {
-  getAllSettings,
-  APP_SETTING_DEFINITIONS,
-} from "@/lib/app-settings";
+import { getAllSettings, APP_SETTING_DEFINITIONS } from "@/lib/app-settings";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatPersianNumber, toPersianDigits } from "@/lib/persian";
 
@@ -39,8 +36,7 @@ export default async function AdminBillingConfigPage() {
       label: "دوره‌ی مهلت پس از پایان دوره",
       value: `${formatPersianNumber(settings["billing.grace_period_days"])} روز`,
       source: "app_settings → billing.grace_period_days",
-      hint:
-        APP_SETTING_DEFINITIONS["billing.grace_period_days"].descriptionFa,
+      hint: APP_SETTING_DEFINITIONS["billing.grace_period_days"].descriptionFa,
     },
     {
       label: "یادآور پیش از تجدید پرداخت",
@@ -48,16 +44,15 @@ export default async function AdminBillingConfigPage() {
         .map((d) => formatPersianNumber(d))
         .join("، ")} روز`,
       source: "app_settings → billing.reminder_offsets_days",
-      hint:
-        APP_SETTING_DEFINITIONS["billing.reminder_offsets_days"].descriptionFa,
+      hint: APP_SETTING_DEFINITIONS["billing.reminder_offsets_days"]
+        .descriptionFa,
     },
     {
       label: "یادآور پیش از پایان آزمایشی",
       value: `${formatPersianNumber(settings["billing.trial_reminder_offset_days"])} روز`,
       source: "app_settings → billing.trial_reminder_offset_days",
-      hint:
-        APP_SETTING_DEFINITIONS["billing.trial_reminder_offset_days"]
-          .descriptionFa,
+      hint: APP_SETTING_DEFINITIONS["billing.trial_reminder_offset_days"]
+        .descriptionFa,
     },
     {
       label: "نرخ مالیات بر ارزش افزوده",
@@ -82,9 +77,9 @@ export default async function AdminBillingConfigPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">تنظیمات صورت‌حساب</h1>
         <p className="text-sm text-muted-foreground">
-          مقادیر زیر از جدول <code dir="ltr">app_settings</code> خوانده
-          می‌شوند. اگر کلیدی موجود نباشد، مقدار پیش‌فرض ثبت‌شده در کد
-          استفاده می‌شود. در فاز ۱۳ این صفحه قابل ویرایش خواهد شد.
+          مقادیر زیر از جدول <code dir="ltr">app_settings</code> خوانده می‌شوند.
+          اگر کلیدی موجود نباشد، مقدار پیش‌فرض ثبت‌شده در کد استفاده می‌شود. در
+          فاز ۱۳ این صفحه قابل ویرایش خواهد شد.
         </p>
       </header>
 

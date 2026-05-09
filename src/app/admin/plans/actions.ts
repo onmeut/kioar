@@ -54,7 +54,10 @@ export async function adminTogglePlanFeatureAction(
       `);
       await recordAdminAudit(
         {
-          action: limitValue === null ? "plan_feature.toggle" : "plan_feature.update_limit",
+          action:
+            limitValue === null
+              ? "plan_feature.toggle"
+              : "plan_feature.update_limit",
           actorUserId: admin.user.id,
           metadata: { planId, featureId, enabled: true, limitValue },
         },
@@ -86,6 +89,23 @@ export async function adminTogglePlanFeatureAction(
 
 const rebuildSchema = z.object({
   planId: z.string().uuid(),
+  /**
+   * Scope of the rebuild:
+   *   - `all_now`     → rebuild every page currently on this plan now.
+   *                     Existing subscribers immediately see the new
+   *                     matrix (added features unlock, removed features
+   *                     lock). Admin-grant + promo entitlements are
+   *                     preserved by `rebuildEntitlements`.
+   *   - `future_only` → no-op against existing pages. The `plan_features`
+   *                     matrix was already saved by the toggle action,
+   *                     so any *new* subscription, plan change, trial
+   *                     start, or renewal will pick it up automatically
+   *                     (every billing transition calls
+   *                     `rebuildEntitlements`). Existing subscribers keep
+   *                     their current entitlements until their next
+   *                     billing event.
+   */
+  scope: z.enum(["all_now", "future_only"]).default("all_now"),
 });
 
 export async function adminRebuildPlanEntitlementsAction(
@@ -93,16 +113,51 @@ export async function adminRebuildPlanEntitlementsAction(
   formData: FormData,
 ): Promise<ActionState> {
   const admin = await requireAdmin();
-  const parsed = rebuildSchema.safeParse({ planId: formData.get("planId") });
+  const parsed = rebuildSchema.safeParse({
+    planId: formData.get("planId"),
+    scope: formData.get("scope") ?? "all_now",
+  });
   if (!parsed.success) {
     return { status: "error", message: "شناسه پلن نامعتبر است." };
   }
+  const { planId, scope } = parsed.data;
   const db = getDb();
+
+  if (scope === "future_only") {
+    // Count affected (informational) but do not rebuild. The matrix
+    // change is already persisted; new/renewing subscribers will pick
+    // it up on their next billing transition (`rebuildEntitlements` is
+    // called from checkout, change-plan, trial start/expiry, and the
+    // billing-state transitions in `lib/billing-state.ts`).
+    let pageCount = 0;
+    await db.transaction(async (tx) => {
+      const rows = (await tx.execute(sql`
+        SELECT COUNT(*)::int AS c FROM "page_subscriptions"
+        WHERE "plan_id" = ${planId}::uuid
+      `)) as unknown as { c: number }[];
+      pageCount = rows[0]?.c ?? 0;
+      await recordAdminAudit(
+        {
+          action: "plan_feature.rebuild_future_only",
+          actorUserId: admin.user.id,
+          metadata: { planId, scope: "future_only", pageCount },
+        },
+        tx,
+      );
+    });
+    revalidatePath("/admin/plans");
+    return {
+      status: "success",
+      message:
+        "ماتریس برای اشتراک‌های جدید و تمدیدها از این لحظه اعمال می‌شود. اشتراک‌های فعلی تا پایان دوره کنونی بدون تغییر می‌مانند.",
+    };
+  }
+
   let rebuilt = 0;
   await db.transaction(async (tx) => {
     const rows = (await tx.execute(sql`
       SELECT "page_id" FROM "page_subscriptions"
-      WHERE "plan_id" = ${parsed.data.planId}::uuid
+      WHERE "plan_id" = ${planId}::uuid
     `)) as unknown as { page_id: string }[];
     for (const r of rows) {
       await rebuildEntitlements(tx, r.page_id);
@@ -112,7 +167,7 @@ export async function adminRebuildPlanEntitlementsAction(
       {
         action: "plan_feature.rebuild_all_pages",
         actorUserId: admin.user.id,
-        metadata: { planId: parsed.data.planId, pageCount: rebuilt },
+        metadata: { planId, scope: "all_now", pageCount: rebuilt },
       },
       tx,
     );

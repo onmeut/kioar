@@ -3,22 +3,21 @@
 /**
  * Phase 9 — billing actions card (client island).
  *
- * Renders three things on `/dashboard/pages/{id}/billing`:
+ * Renders two things on `/dashboard/pages/{id}/billing`:
  *
- *   1. **Plan picker** — one row per active plan in the registry
- *      (Free + Pro + Business). Each row shows the price for the
- *      currently-selected billing cycle and a button whose label depends
- *      on the disposition vs the user's current plan:
+ *   1. **Plan picker** — one card per active plan in the registry
+ *      (Free + Pro + Business), laid out as 3 columns on desktop. Each
+ *      card shows the price for the currently-selected billing cycle
+ *      and a button whose label depends on the disposition vs the
+ *      user's current plan:
  *         - "پلن فعلی"            (same plan, same cycle, no pending)
  *         - "ارتقا و پرداخت"       (upgrade ⇒ Zarinpal redirect)
  *         - "اعمال در پایان دوره"  (downgrade ⇒ scheduled)
  *         - "خرید"                 (free → paid full checkout)
  *
- *   2. **Cancel / reactivate** — only when on a paid plan.
- *
- *   3. **Pending state banner** — surfaces `cancelAtPeriodEnd` and
+ *   2. **Pending plan-change banner** — surfaces
  *      `pendingPlanChangePlanId` so the user always sees what's
- *      scheduled and can undo it.
+ *      scheduled.
  *
  * All money + days render via `formatPersianNumber` + `toPersianDigits`.
  * Prices come from server props (sourced from the registry); never
@@ -27,7 +26,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckIcon, Loader2Icon } from "lucide-react";
+import { Loader2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -65,7 +64,6 @@ export type BillingActionsState = {
     | "grace"
     | "expired"
     | "canceled";
-  cancelAtPeriodEnd: boolean;
   pendingPlanChangePlanId: string | null;
   pendingPlanChangeNameFa: string | null;
   trialEndsAt: string | null;
@@ -120,10 +118,7 @@ export function BillingActionsCard({ state }: Props) {
   })();
 
   const post = async (
-    path:
-      | "/api/billing/change-plan"
-      | "/api/billing/cancel"
-      | "/api/billing/reactivate",
+    path: "/api/billing/change-plan",
     body: Record<string, unknown>,
     actionKey: string,
     successMessage: string,
@@ -216,26 +211,6 @@ export function BillingActionsCard({ state }: Props) {
     );
   };
 
-  const handleCancel = () => {
-    if (!window.confirm("اشتراک در پایان دوره لغو می‌شود. ادامه می‌دهید؟"))
-      return;
-    void post(
-      "/api/billing/cancel",
-      { pageId: state.pageId },
-      "cancel",
-      "لغو در پایان دوره ثبت شد.",
-    );
-  };
-
-  const handleReactivate = () => {
-    void post(
-      "/api/billing/reactivate",
-      { pageId: state.pageId },
-      "reactivate",
-      "اشتراک شما دوباره فعال شد.",
-    );
-  };
-
   const periodEndDate = state.trialEndsAt ?? state.currentPeriodEnd;
   const periodEndLabel = periodEndDate
     ? formatPersianDate(new Date(periodEndDate))
@@ -250,8 +225,7 @@ export function BillingActionsCard({ state }: Props) {
               مدیریت اشتراک
             </h2>
             <p className="text-xs leading-6 text-zinc-500 sm:text-sm">
-              تغییر پلن، چرخه‌ی صورت‌حساب، یا لغو اشتراک این صفحه از اینجا قابل
-              انجام است.
+              تغییر پلن یا چرخی‌ صورت‌حساب این صفحه از اینجا انجام می‌شود.
             </p>
           </div>
 
@@ -276,19 +250,9 @@ export function BillingActionsCard({ state }: Props) {
           </Tabs>
         </div>
 
-        {(state.cancelAtPeriodEnd || state.pendingPlanChangePlanId) &&
-        periodEndLabel ? (
+        {state.pendingPlanChangePlanId && periodEndLabel ? (
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            {state.cancelAtPeriodEnd ? (
-              <p>
-                اشتراک شما در{" "}
-                <span dir="ltr" className="font-semibold">
-                  {periodEndLabel}
-                </span>{" "}
-                لغو خواهد شد.
-              </p>
-            ) : null}
-            {state.pendingPlanChangePlanId && state.pendingPlanChangeNameFa ? (
+            {state.pendingPlanChangeNameFa ? (
               <p>
                 تغییر پلن به «{state.pendingPlanChangeNameFa}» در{" "}
                 <span dir="ltr" className="font-semibold">
@@ -300,32 +264,13 @@ export function BillingActionsCard({ state }: Props) {
           </div>
         ) : null}
 
-        {/* Code entry: collapsed by default, expandable. The applied
-            code rides along on the next "ارتقا و پرداخت" click — see
-            handleChange. We hide it when the user is already on a paid
-            plan with no upgrade path (the only paid options are equal
-            or downgrades), since attribution codes are first-purchase
-            only and discount stacking on proration isn't supported. */}
-        {sortedOptions.some(
-          (o) =>
-            o.key !== "free" &&
-            !(
-              isPaid &&
-              !onTrial &&
-              (cycle === "annual" ? o.priceAnnualToman : o.priceMonthlyToman) <=
-                currentPriceToman &&
-              o.id !== state.currentPlanId
-            ),
-        ) ? (
-          <CheckoutCodeField
-            pageId={state.pageId}
-            billingCycle={cycle}
-            applied={appliedCode}
-            onChange={setAppliedCode}
-          />
-        ) : null}
-
-        <div className="space-y-3">
+        {/* Code entry intentionally rendered AFTER plan cards — it's a
+            secondary action, not the first thing the user should see.
+            Hidden when there's no buyable upgrade target (paid user
+            already on top tier or all options are equal/downgrades).
+            Attribution codes are first-purchase-only and discount
+            stacking on proration isn't supported. */}
+        <div className="grid gap-4 md:grid-cols-3">
           {sortedOptions.map((option) => {
             const isCurrent = option.id === state.currentPlanId;
             const sameCycle = cycle === state.currentBillingCycle;
@@ -360,7 +305,7 @@ export function BillingActionsCard({ state }: Props) {
             const buttonLabel = isExactCurrent
               ? "پلن فعلی"
               : cycleMismatch
-                ? "تغییر چرخه پشتیبانی نمی‌شود"
+                ? "پلن فعلی"
                 : isFreeTarget
                   ? "تغییر به رایگان"
                   : isDowngrade
@@ -375,126 +320,113 @@ export function BillingActionsCard({ state }: Props) {
               <div
                 key={option.id}
                 className={cn(
-                  "flex flex-col gap-3 rounded-2xl bg-white p-4 ring-1 transition-all sm:flex-row sm:items-center sm:justify-between",
+                  "flex flex-col rounded-2xl bg-white p-5 ring-1 transition-all",
                   isExactCurrent
-                    ? "ring-2 ring-zinc-900"
+                    ? option.key === "business"
+                      ? "shadow-sm ring-2 ring-purple-500"
+                      : option.key === "pro"
+                        ? "shadow-sm ring-2 ring-emerald-500"
+                        : "shadow-sm ring-2 ring-zinc-400"
                     : "ring-zinc-200 hover:ring-zinc-300",
                 )}
               >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-base font-bold text-zinc-900 sm:text-lg">
+                {/* Plan name + current badge */}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <h3 className="text-2xl font-bold text-zinc-900">
                       {option.nameFa}
-                    </p>
+                    </h3>
                     {isCurrent ? (
                       <Badge
                         variant="outline"
-                        className={
-                          onTrial
-                            ? "border-blue-200 bg-blue-50 text-[11px] text-blue-700"
-                            : "border-emerald-200 bg-emerald-50 text-[11px] text-emerald-700"
-                        }
-                      >
-                        {onTrial ? (
-                          "آزمایشی"
-                        ) : (
-                          <>
-                            <CheckIcon className="me-1 size-3" /> فعلی
-                          </>
+                        className={cn(
+                          "text-[11px] font-bold",
+                          option.key === "pro"
+                            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                            : option.key === "business"
+                              ? "border-purple-200 bg-purple-50 text-purple-700"
+                              : "border-zinc-200 bg-zinc-50 text-zinc-600",
                         )}
+                      >
+                        {onTrial ? "پلن فعلی · آزمایشی" : "پلن فعلی"}
                       </Badge>
                     ) : null}
                   </div>
                   {option.descriptionFa ? (
-                    <p className="text-xs leading-6 text-zinc-500 sm:text-[13px]">
+                    <p className="text-[13px] leading-5 text-zinc-500">
                       {option.descriptionFa}
                     </p>
                   ) : null}
-                  <p className="text-xs text-zinc-500">
-                    {option.key === "free" ? (
-                      "رایگان — برای همیشه"
-                    ) : (
-                      <>
-                        <span className="font-semibold text-zinc-900">
-                          {formatToman(targetPrice)} تومان
-                        </span>{" "}
-                        {cycle === "annual" ? "در سال" : "در ماه"}
-                      </>
-                    )}
-                  </p>
                 </div>
-                <Button
-                  type="button"
-                  variant={isUpgrade ? "default" : "outline"}
-                  className={cn(
-                    "h-12 w-full text-sm font-bold sm:w-auto sm:min-w-32",
-                    isExactCurrent && "pointer-events-none opacity-60",
+
+                {/* Divider */}
+                <div className="my-5 border-t border-zinc-100" />
+
+                {/* Price — hero element */}
+                <div className="flex-1 space-y-0.5">
+                  {option.key === "free" ? null : (
+                    <>
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-[32px] font-extrabold leading-none text-zinc-900">
+                          {formatToman(targetPrice)}
+                        </span>
+                        <span className="text-sm font-medium text-zinc-500">
+                          تومان
+                        </span>
+                      </div>
+                      <p className="pt-1 text-[13px] text-zinc-400">
+                        {cycle === "annual" ? "سالانه" : "ماهانه"}
+                      </p>
+                    </>
                   )}
-                  disabled={
-                    isExactCurrent ||
-                    cycleMismatch ||
-                    isPending ||
-                    pendingAction !== null
-                  }
-                  onClick={() => handleChange(option)}
-                >
-                  {isLoading ? (
-                    <Loader2Icon className="size-4 animate-spin" />
-                  ) : (
-                    buttonLabel
-                  )}
-                </Button>
+                </div>
+
+                {/* CTA */}
+                <div className="pt-6">
+                  <Button
+                    type="button"
+                    variant={isUpgrade ? "default" : "outline"}
+                    className={cn(
+                      "h-11 w-full text-sm font-bold",
+                      isExactCurrent && "pointer-events-none opacity-60",
+                    )}
+                    disabled={
+                      isExactCurrent ||
+                      cycleMismatch ||
+                      isPending ||
+                      pendingAction !== null
+                    }
+                    onClick={() => handleChange(option)}
+                  >
+                    {isLoading ? (
+                      <Loader2Icon className="size-4 animate-spin" />
+                    ) : (
+                      buttonLabel
+                    )}
+                  </Button>
+                </div>
               </div>
             );
           })}
         </div>
 
-        {isPaid &&
-        (state.status === "active" ||
-          state.status === "trialing" ||
-          state.status === "pending_renewal") ? (
-          <div className="rounded-2xl bg-zinc-50 p-3 ring-1 ring-zinc-200">
-            {state.cancelAtPeriodEnd ? (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-zinc-600">
-                  لغو در پایان دوره ثبت شده است.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 sm:w-auto"
-                  disabled={isPending}
-                  onClick={handleReactivate}
-                >
-                  {pendingAction === "reactivate" && isPending ? (
-                    <Loader2Icon className="size-4 animate-spin" />
-                  ) : (
-                    "فعال‌سازی مجدد"
-                  )}
-                </Button>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-xs text-zinc-600">
-                  اگر دیگر مایل به ادامه‌ی اشتراک نیستید، می‌توانید آن را در
-                  پایان دوره‌ی فعلی لغو کنید.
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="h-11 text-red-600 hover:bg-red-50 hover:text-red-700 sm:w-auto"
-                  disabled={isPending}
-                  onClick={handleCancel}
-                >
-                  {pendingAction === "cancel" && isPending ? (
-                    <Loader2Icon className="size-4 animate-spin" />
-                  ) : (
-                    "لغو اشتراک"
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
+        {sortedOptions.some(
+          (o) =>
+            o.key !== "free" &&
+            !(
+              isPaid &&
+              !onTrial &&
+              (cycle === "annual" ? o.priceAnnualToman : o.priceMonthlyToman) <=
+                currentPriceToman &&
+              o.id !== state.currentPlanId
+            ),
+        ) ? (
+          <CheckoutCodeField
+            pageId={state.pageId}
+            billingCycle={cycle}
+            applied={appliedCode}
+            onChange={setAppliedCode}
+          />
         ) : null}
       </div>
     </section>

@@ -54,7 +54,7 @@ export default async function PricingRoute() {
   const ctaTargetForFree: Route = viewer ? ("/dashboard" as Route) : "/auth";
 
   return (
-    <div dir="rtl" className="min-h-dvh bg-zinc-50 text-foreground">
+    <div dir="rtl" className="min-h-dvh bg-muted text-foreground">
       <header className="sticky top-0 z-20 border-b border-zinc-200 bg-white/85 backdrop-blur-md">
         <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
           <BrandMark variant="wordmark" href="/" />
@@ -70,10 +70,10 @@ export default async function PricingRoute() {
 
       <main className="mx-auto w-full max-w-6xl px-4 pb-20 pt-10 sm:px-6 sm:pt-16">
         <section className="mx-auto max-w-2xl space-y-3 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+          <p className="text-xs font-semibold uppercase text-emerald-700">
             قیمت‌گذاری شفاف
           </p>
-          <h1 className="font-heading text-3xl font-extrabold tracking-tight sm:text-4xl">
+          <h1 className="font-heading text-3xl font-extrabold sm:text-4xl">
             پلنی که با شما رشد می‌کند
           </h1>
           <p className="text-sm leading-7 text-zinc-600 sm:text-[15px]">
@@ -93,7 +93,7 @@ export default async function PricingRoute() {
 
         <section className="mt-14 space-y-4">
           <div className="text-center">
-            <h2 className="text-xl font-bold tracking-tight sm:text-2xl">
+            <h2 className="text-xl font-bold sm:text-2xl">
               مقایسه‌ی کامل امکانات
             </h2>
             <p className="mt-1 text-xs text-zinc-500">

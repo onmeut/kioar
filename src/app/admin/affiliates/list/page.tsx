@@ -26,7 +26,7 @@ export default async function AdminAffiliatesListPage() {
       <AdminAffiliatesNav />
 
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-[16px] font-semibold tracking-tight">
+        <h2 className="text-[16px] font-semibold">
           لیست همکاران
         </h2>
         <span className="text-[12px] text-muted-foreground">
@@ -86,7 +86,7 @@ export default async function AdminAffiliatesListPage() {
           {/* Desktop table */}
           <div className="hidden overflow-x-auto rounded-2xl border border-border bg-background lg:block">
             <table className="w-full text-start">
-              <thead className="bg-muted/50 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-muted/50 text-[11px] uppercaser text-muted-foreground">
                 <tr>
                   <Th>همکار</Th>
                   <Th>کد</Th>
@@ -188,7 +188,7 @@ function Td({
 function KV({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <p className="text-[10px] uppercaser text-muted-foreground">
         {k}
       </p>
       <p

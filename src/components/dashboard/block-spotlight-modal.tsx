@@ -157,7 +157,7 @@ function SpotlightForm({
                   type="button"
                   onClick={() => setAnimationStyle(style)}
                   className={cn(
-                    "rounded-2xl border bg-background px-3 py-4 text-center text-xs font-bold tracking-wider transition-colors",
+                    "rounded-2xl border bg-background px-3 py-4 text-center text-xs font-boldr transition-colors",
                     isActive
                       ? "border-foreground text-foreground"
                       : "border-border text-muted-foreground hover:text-foreground",

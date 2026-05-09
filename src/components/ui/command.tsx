@@ -39,7 +39,7 @@ function Command({
 
 function CommandDialog({
   title = "جستجو",
-  description = "میان‌برهای سراسری کیوار را جستجو کنید.",
+  description = "میان‌برهای سراسری کیوآر را جستجو کنید.",
   children,
   className,
   showCloseButton = true,
@@ -67,7 +67,7 @@ function CommandDialog({
             "**:[[cmdk-group-heading]]:text-muted-foreground",
             "**:[[cmdk-group-heading]]:px-3 **:[[cmdk-group-heading]]:py-2",
             "**:[[cmdk-group-heading]]:text-[11px] **:[[cmdk-group-heading]]:font-bold",
-            "**:[[cmdk-group-heading]]:uppercase **:[[cmdk-group-heading]]:tracking-wider",
+            "**:[[cmdk-group-heading]]:uppercase",
             "**:[[cmdk-group]]:px-2",
             "[&_[cmdk-input-wrapper]_svg]:size-4",
             "**:[[cmdk-input]]:h-12",
@@ -191,10 +191,7 @@ function CommandShortcut({
   return (
     <span
       data-slot="command-shortcut"
-      className={cn(
-        "ms-auto text-[10.5px] tracking-widest text-muted-foreground",
-        className,
-      )}
+      className={cn("ms-auto text-[10.5px]st text-muted-foreground", className)}
       {...props}
     />
   );

@@ -48,10 +48,10 @@ export default async function AffiliateApplyPage() {
       <SiteHeader />
       <main className="marketing-shell py-10 sm:py-16">
         <div className="mx-auto max-w-2xl">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-violet-700">
+          <p className="text-[11px] font-bold uppercaser text-violet-700">
             درخواست همکاری در فروش
           </p>
-          <h1 className="mt-2 text-[clamp(28px,5vw,40px)] font-semibold leading-[1.1] tracking-tight">
+          <h1 className="mt-2 text-[clamp(28px,5vw,40px)] font-semibold leading-[1.1]">
             یه فرم کوتاه پر کن — تیم ما همون روز جواب می‌ده
           </h1>
           <p className="mt-3 text-[14px] leading-7 text-ink-soft">

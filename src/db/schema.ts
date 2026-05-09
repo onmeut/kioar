@@ -267,6 +267,33 @@ export const profiles = pgTable(
      * column for finer control, but this is the page-level default.
      */
     timezone: text("timezone"),
+    /**
+     * Discover (kioar.com/discover) opt-in. When true AND the page is
+     * complete + published, the page is listed publicly in the directory.
+     * Default ON — new pages join Discover by default; users can opt out
+     * from page settings at any time. Existing pages were backfilled to
+     * `true` in migration 0037.
+     */
+    discoverEnabled: boolean("discover_enabled").default(true).notNull(),
+    /**
+     * Stable slug from the hardcoded Discover category list (see
+     * `src/lib/discover.ts`). Nullable — pages can opt-in without picking
+     * a category, in which case they only show under "همه".
+     */
+    discoverCategory: text("discover_category"),
+    /**
+     * Page archetype, captured during onboarding. One of `personal` or
+     * `business` (validated at the app layer; stored as plain text so
+     * we don't pay the cost of a Postgres ENUM migration the next time
+     * we add a value). Nullable for legacy rows; the editor exposes a
+     * field in page settings so users can fill it in later.
+     */
+    pageType: text("page_type"),
+    /**
+     * Free-text city (Persian). Used by Discover cards and an optional
+     * badge under the name on the public page. Not indexed/searched.
+     */
+    city: text("city"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -281,6 +308,12 @@ export const profiles = pgTable(
   (table) => [
     index("profiles_user_id_idx").on(table.userId),
     uniqueIndex("profiles_slug_idx").on(table.slug),
+    // Discover listing reads filter by enabled + category + complete; this
+    // composite index keeps the directory query cheap as it grows.
+    index("profiles_discover_idx").on(
+      table.discoverEnabled,
+      table.discoverCategory,
+    ),
   ],
 );
 
@@ -1171,6 +1204,13 @@ export const pageSubscriptions = pgTable(
     pendingDiscountQueuedAt: timestamp("pending_discount_queued_at", {
       withTimezone: true,
     }),
+    /**
+     * Denormalized copy of `plans.key` for the page's current plan.
+     * Allows the billing cron to filter out Free rows without joining
+     * `plans`. Kept in sync by every write site that also sets `planId`.
+     * `plan_id` remains the FK source of truth.
+     */
+    planKey: text("plan_key"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1186,6 +1226,9 @@ export const pageSubscriptions = pgTable(
       table.status,
       table.currentPeriodEnd,
     ),
+    index("ps_status_plan_key_idx")
+      .on(table.status, table.planKey)
+      .where(sql`${table.planKey} <> 'free'`),
     index("page_subscriptions_pending_discount_idx")
       .on(table.pendingDiscountCodeId)
       .where(sql`${table.pendingDiscountCodeId} IS NOT NULL`),
@@ -1389,6 +1432,8 @@ export const billingTransitionsLog = pgTable(
     pageId: uuid("page_id")
       .notNull()
       .references(() => profiles.id, { onDelete: "cascade" }),
+    // TODO(archival): purge rows where created_at < now() - interval '7 years'.
+    // Financial audit trail — 7-year window matches standard accounting retention.
     /**
      * Transition identifier. Free-form text — adding a new transition
      * type is a code change in `lib/billing-state.ts`, not a migration.
@@ -1481,6 +1526,8 @@ export const smsQueue = pgTable(
   "sms_queue",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    // TODO(archival): purge rows where status IN ('sent','failed') AND updated_at < now() - interval '30 days'.
+    // Sent/failed rows are inert; the idempotency index stays useful for ~30 days post-dispatch.
     /** Optional owner FK — nullable because cron paths only have phone. */
     userId: uuid("user_id").references(() => users.id, {
       onDelete: "set null",
@@ -1679,6 +1726,8 @@ export const adminAuditLog = pgTable(
   "admin_audit_log",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    // TODO(archival): purge rows where created_at < now() - interval '5 years'.
+    // Human-initiated admin actions; 5-year window balances compliance with table size.
     actorUserId: uuid("actor_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "restrict" }),
@@ -1788,6 +1837,8 @@ export const referralCodes = pgTable("referral_codes", {
 });
 
 export const referrals = pgTable("referrals", {
+  // TODO(archival): purge rows where status IN ('clicked','rejected') AND clicked_at < now() - interval '2 years'.
+  // Never-converted clicks have no financial relevance after 2 years; converted rows should be retained with invoices.
   id: uuid("id").primaryKey().defaultRandom(),
   referrerUserId: uuid("referrer_user_id")
     .notNull()
@@ -2171,9 +2222,7 @@ export const subscriptionPriceLocks = pgTable(
       .defaultNow()
       .notNull(),
   },
-  (table) => [
-    index("subscription_price_locks_plan_id_idx").on(table.planId),
-  ],
+  (table) => [index("subscription_price_locks_plan_id_idx").on(table.planId)],
 );
 
 export const subscriptionPriceLocksRelations = relations(

@@ -1,7 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import type { Route } from "next";
 
 import { type ActionState } from "@/lib/action-state";
 import {
@@ -13,6 +12,7 @@ import {
   requireUser,
 } from "@/lib/auth/session";
 import { saveOnboardingProfileForUser } from "@/lib/profile-service";
+import { startTrial } from "@/lib/trial";
 
 export async function saveOnboardingProfileAction(
   _prevState: ActionState,
@@ -43,8 +43,19 @@ export async function saveOnboardingProfileAction(
     await continuePendingEventRegistrationOrRedirect(viewer.user.id);
   }
 
+  // Auto-start the trial for every newly created page — no extra
+  // opt-in screen needed. Plan is chosen from the user's selected page
+  // type: "business" pages get the Business trial, everyone else gets
+  // Pro. Errors are intentionally swallowed so a missing plan config
+  // never blocks the user from reaching their dashboard.
   if (result.isFirstPage) {
-    redirect("/trial" as Route);
+    const pageType = formData.get("pageType");
+    const planKey = pageType === "business" ? "business" : "pro";
+    await startTrial({
+      pageId: result.pageId,
+      planKey,
+      ownerId: viewer.user.id,
+    });
   }
   redirect("/me");
 }

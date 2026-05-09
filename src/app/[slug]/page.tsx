@@ -11,6 +11,7 @@ import { getDb } from "@/db";
 import { profileStatsByDay } from "@/db/schema";
 import { sql } from "drizzle-orm";
 import { getPublicProfileBySlug } from "@/lib/data";
+import { tehranIsoDate } from "@/lib/date/persian";
 import { isIconKey } from "@/lib/link-icons";
 import { profileShareUrl } from "@/lib/profile-domains";
 import { submitFormAction } from "@/lib/public-form-actions";
@@ -159,6 +160,31 @@ export default async function PublicProfilePage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+
+  /*
+   * Caching architecture — read this before touching this fetch.
+   *
+   * `getPublicProfileBySlug` is a Redis read-through cache wrapper defined
+   * in `src/lib/data.ts`. It calls `withProfileCache` (see
+   * `src/lib/cache/profile-cache.ts`) which:
+   *
+   *   1. Checks Redis for `kioar:page:v1:{slug}` (300s TTL on hits, 60s on
+   *      404 sentinels). Returns the cached payload when present.
+   *   2. On cache miss, runs the real multi-table DB query via
+   *      `loadPublicProfileBySlug` and writes the result back to Redis.
+   *   3. Fails open on any Redis error — the DB query always runs as the
+   *      fallback so the page keeps rendering even if Redis is down.
+   *
+   * Any write path that changes what this page renders MUST call one of
+   * the `invalidateProfileCache*` helpers in `src/lib/cache/profile-cache.ts`
+   * after its DB transaction commits, or visitors will see stale data for
+   * up to 5 minutes. The full list of required invalidation sites is
+   * documented in CLAUDE.md under "Public profile cache — MANDATORY".
+   *
+   * This route is marked `force-dynamic` so Next.js never tries to
+   * statically prerender it — the caching layer is Redis, not the
+   * Next.js build cache.
+   */
   const profile = await getPublicProfileBySlug(slug);
 
   if (!profile) {
@@ -166,7 +192,10 @@ export default async function PublicProfilePage({
   }
 
   // Fire-and-forget: increment today's view counter without blocking the render.
-  const today = new Date().toISOString().slice(0, 10);
+  // Day key anchors to Asia/Tehran (CLAUDE.md mandates `tehranIsoDate` for
+  // backend day-keys); using UTC would shift counts off-day for ~3.5 h
+  // every evening for Iranian visitors.
+  const today = tehranIsoDate(new Date());
   void getDb()
     .insert(profileStatsByDay)
     .values({ profileId: profile.id, statDate: today, views: 1, linkClicks: 0 })
@@ -205,7 +234,7 @@ export default async function PublicProfilePage({
   return (
     <main
       dir="rtl"
-      className="relative min-h-dvh overflow-x-hidden bg-card text-foreground"
+      className="relative min-h-dvh overflow-x-hidden bg-muted text-foreground"
     >
       <div className="relative mx-auto flex min-h-dvh w-full max-w-145 flex-col pt-[env(safe-area-inset-top)] lg:pt-10">
         <PublicProfileCard
@@ -228,13 +257,15 @@ export default async function PublicProfilePage({
             </div>
           }
           footerSlot={
-            <Link
-              href="https://kioar.com?ref=profile"
-              className="inline-flex items-center gap-1.5 rounded-full border border-sidebar-border bg-sidebar px-4 py-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-70"
-            >
-              <Image src="/brand/logo.svg" alt="" width={13} height={16} />
-              <span>ساخته‌شده با کی‌یو‌آر</span>
-            </Link>
+            <div className="flex flex-col items-center gap-3">
+              <Link
+                href="https://kioar.com?ref=profile"
+                className="inline-flex items-center gap-1.5 rounded-full border border-sidebar-border bg-sidebar px-4 py-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-70"
+              >
+                <Image src="/brand/logo.svg" alt="" width={13} height={16} />
+                <span>ساخته‌شده با کی‌یو‌آر</span>
+              </Link>
+            </div>
           }
           profile={{
             fullName: profile.fullName,
@@ -245,6 +276,7 @@ export default async function PublicProfilePage({
             email: profile.email,
             avatarUrl: profile.avatarUrl,
             avatarSeed: profile.avatarSeed,
+            city: profile.city,
             links: profile.links.map((link) => ({
               id: link.id,
               label: link.label,

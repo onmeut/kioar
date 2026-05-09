@@ -151,7 +151,7 @@ export default async function AdminApplicationsPage({
                 </div>
 
                 <div className="mt-3 rounded-xl bg-muted/50 px-4 py-3 text-[12px] leading-7 text-foreground/90">
-                  <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <p className="text-[10px] font-bold uppercaser text-muted-foreground">
                     برنامه‌ی تبلیغ
                   </p>
                   <p className="mt-1 whitespace-pre-line">
@@ -203,7 +203,7 @@ function KV({
 }) {
   return (
     <div>
-      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+      <p className="text-[10px] font-bold uppercaser text-muted-foreground">
         {k}
       </p>
       {link ? (

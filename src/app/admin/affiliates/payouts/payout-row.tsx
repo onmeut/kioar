@@ -228,7 +228,7 @@ function CopyField({
   return (
     <div className="rounded-xl border border-border bg-muted/30 px-3 py-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <p className="text-[10px] font-bold uppercaser text-muted-foreground">
           {label}
         </p>
         <button

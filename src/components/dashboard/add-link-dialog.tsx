@@ -8,6 +8,7 @@ import {
   FormInputIcon,
   GlobeIcon,
   Link2Icon,
+  LockIcon,
   Loader2Icon,
   MailIcon,
   MusicIcon,
@@ -34,6 +35,10 @@ import type { LinkMetadata } from "@/lib/link-metadata";
 import { detectIconKey, type IconKey } from "@/lib/link-icons";
 import { cn } from "@/lib/utils";
 import { isSafeLinkUrl, normalizeLinkUrl } from "@/lib/validations";
+import {
+  UpgradePlanModal,
+  type UpgradePlanTier,
+} from "@/components/dashboard/upgrade-plan-modal";
 
 import type { EditableLink } from "./links-manager.types";
 import { type LinkIconPickerValue } from "./link-icon-picker";
@@ -221,6 +226,15 @@ type AddLinkDialogProps = {
   /** Invoked when the "product" feature card is picked. The dialog closes
    *  itself; the caller is responsible for opening the product builder. */
   onAddProduct?: () => void;
+  /** When true, the bookings card shows a lock badge and opens upgrade modal on click. */
+  bookingsLocked?: boolean;
+  bookingsRequiredPlan?: UpgradePlanTier;
+  /** When true, the form card shows a lock badge and opens upgrade modal on click. */
+  formsLocked?: boolean;
+  formsRequiredPlan?: UpgradePlanTier;
+  /** When true, the product card shows a lock badge and opens upgrade modal on click. */
+  productsLocked?: boolean;
+  productsRequiredPlan?: UpgradePlanTier;
 };
 
 export function AddLinkDialog({
@@ -231,6 +245,12 @@ export function AddLinkDialog({
   onAddBooking,
   onAddForm,
   onAddProduct,
+  bookingsLocked = false,
+  bookingsRequiredPlan = "business",
+  formsLocked = false,
+  formsRequiredPlan = "business",
+  productsLocked = false,
+  productsRequiredPlan = "pro",
 }: AddLinkDialogProps) {
   const isMobile = useIsMobile();
 
@@ -250,6 +270,12 @@ export function AddLinkDialog({
             onAddBooking={onAddBooking}
             onAddForm={onAddForm}
             onAddProduct={onAddProduct}
+            bookingsLocked={bookingsLocked}
+            bookingsRequiredPlan={bookingsRequiredPlan}
+            formsLocked={formsLocked}
+            formsRequiredPlan={formsRequiredPlan}
+            productsLocked={productsLocked}
+            productsRequiredPlan={productsRequiredPlan}
           />
         </SheetContent>
       </Sheet>
@@ -270,6 +296,12 @@ export function AddLinkDialog({
           onAddBooking={onAddBooking}
           onAddForm={onAddForm}
           onAddProduct={onAddProduct}
+          bookingsLocked={bookingsLocked}
+          bookingsRequiredPlan={bookingsRequiredPlan}
+          formsLocked={formsLocked}
+          formsRequiredPlan={formsRequiredPlan}
+          productsLocked={productsLocked}
+          productsRequiredPlan={productsRequiredPlan}
         />
       </DialogContent>
     </Dialog>
@@ -285,6 +317,12 @@ function AddLinkDialogBody({
   onAddBooking,
   onAddForm,
   onAddProduct,
+  bookingsLocked,
+  bookingsRequiredPlan,
+  formsLocked,
+  formsRequiredPlan,
+  productsLocked,
+  productsRequiredPlan,
 }: {
   onClose: () => void;
   onSubmit: (link: Omit<EditableLink, "id" | "sortOrder">) => void;
@@ -292,6 +330,12 @@ function AddLinkDialogBody({
   onAddBooking?: () => void;
   onAddForm?: () => void;
   onAddProduct?: () => void;
+  bookingsLocked?: boolean;
+  bookingsRequiredPlan?: UpgradePlanTier;
+  formsLocked?: boolean;
+  formsRequiredPlan?: UpgradePlanTier;
+  productsLocked?: boolean;
+  productsRequiredPlan?: UpgradePlanTier;
 }) {
   const [step, setStep] = useState<Step>("pick");
   const [activeCategory, setActiveCategory] =
@@ -306,6 +350,10 @@ function AddLinkDialogBody({
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lastFetchedUrl, setLastFetchedUrl] = useState<string | null>(null);
+  const [upgradeModal, setUpgradeModal] = useState<{
+    plan: UpgradePlanTier;
+    featureName: string;
+  } | null>(null);
 
   const filteredPresets = useMemo(
     () =>
@@ -453,28 +501,86 @@ function AddLinkDialogBody({
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               {FEATURE_CARDS.map((card) => {
                 const CardIcon = card.icon;
+                const isLocked =
+                  (card.key === "bookings" && bookingsLocked) ||
+                  (card.key === "form" && formsLocked) ||
+                  (card.key === "product" && productsLocked);
+                const lockedPlan =
+                  card.key === "bookings"
+                    ? bookingsRequiredPlan
+                    : card.key === "form"
+                      ? formsRequiredPlan
+                      : card.key === "product"
+                        ? productsRequiredPlan
+                        : undefined;
                 return (
                   <button
                     key={card.key}
                     type="button"
                     onClick={() => {
                       if (card.key === "bookings") {
-                        onClose();
-                        onAddBooking?.();
+                        if (bookingsLocked) {
+                          setUpgradeModal({
+                            plan: bookingsRequiredPlan ?? "business",
+                            featureName: "بلاک هماهنگ",
+                          });
+                        } else {
+                          onClose();
+                          onAddBooking?.();
+                        }
                       } else if (card.key === "form") {
-                        onClose();
-                        onAddForm?.();
+                        if (formsLocked) {
+                          setUpgradeModal({
+                            plan: formsRequiredPlan ?? "business",
+                            featureName: "بلاک فرم",
+                          });
+                        } else {
+                          onClose();
+                          onAddForm?.();
+                        }
                       } else if (card.key === "product") {
-                        onClose();
-                        onAddProduct?.();
+                        if (productsLocked) {
+                          setUpgradeModal({
+                            plan: productsRequiredPlan ?? "pro",
+                            featureName: "بلاک محصول",
+                          });
+                        } else {
+                          onClose();
+                          onAddProduct?.();
+                        }
                       } else {
                         pickCustom();
                       }
                     }}
-                    className="group flex h-24 flex-col items-start justify-between rounded-3xl border bg-muted/30 p-3 text-start transition-colors hover:border-primary hover:bg-primary/5"
+                    className={cn(
+                      "group relative flex h-24 flex-col items-start justify-between rounded-3xl border bg-muted/30 p-3 text-start transition-colors",
+                      isLocked
+                        ? "cursor-pointer opacity-80 hover:border-border hover:bg-muted/40"
+                        : "hover:border-primary hover:bg-primary/5",
+                    )}
                   >
+                    {isLocked && lockedPlan ? (
+                      <span
+                        className={cn(
+                          "absolute end-2.5 top-2.5 inline-flex size-5 items-center justify-center rounded-full",
+                          lockedPlan === "pro"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-purple-100 text-purple-700",
+                        )}
+                        aria-label={
+                          lockedPlan === "pro" ? "پلن حرفه‌ای" : "پلن کسب‌وکار"
+                        }
+                      >
+                        <LockIcon className="size-3" aria-hidden />
+                      </span>
+                    ) : null}
                     <span className="text-sm font-bold">{card.label}</span>
-                    <CardIcon className="size-5 text-muted-foreground group-hover:text-primary" />
+                    <CardIcon
+                      className={cn(
+                        "size-5 text-muted-foreground",
+                        !isLocked && "group-hover:text-primary",
+                      )}
+                    />
                   </button>
                 );
               })}
@@ -576,6 +682,15 @@ function AddLinkDialogBody({
           onSubmit={handleSubmit}
         />
       )}
+
+      {upgradeModal ? (
+        <UpgradePlanModal
+          open={true}
+          onClose={() => setUpgradeModal(null)}
+          plan={upgradeModal.plan}
+          featureName={upgradeModal.featureName}
+        />
+      ) : null}
     </div>
   );
 }

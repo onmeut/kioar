@@ -86,8 +86,8 @@ export default async function AdminPlansPricingPage() {
       <header className="space-y-2">
         <h1 className="text-2xl font-semibold">قیمت‌گذاری پلن‌ها</h1>
         <p className="text-sm text-muted-foreground">
-          تغییر قیمت یک پلن دو حالت دارد: «همه به قیمت جدید» (پیش‌فرض) یا
-          «قفل قیمت قدیم برای فعلی‌ها» که برای هر اشتراک فعلی یک ردیف در
+          تغییر قیمت یک پلن دو حالت دارد: «همه به قیمت جدید» (پیش‌فرض) یا «قفل
+          قیمت قدیم برای فعلی‌ها» که برای هر اشتراک فعلی یک ردیف در
           <code dir="ltr">subscription_price_locks</code> ثبت می‌کند.
         </p>
       </header>
@@ -157,12 +157,12 @@ export default async function AdminPlansPricingPage() {
       <aside className="rounded-xl border border-dashed border-border bg-muted/30 p-4 text-xs text-muted-foreground space-y-1">
         <p>
           مالیات بر ارزش افزوده در صفحه‌ی{" "}
-          <code dir="ltr">/admin/billing/config</code> تنظیم می‌شود و روی
-          مبلغ پس از تخفیف اعمال خواهد شد.
+          <code dir="ltr">/admin/billing/config</code> تنظیم می‌شود و روی مبلغ
+          پس از تخفیف اعمال خواهد شد.
         </p>
         <p>
-          درصد سالانه فقط برای محاسبه‌ی کمکی فرم است — مبلغ نهایی همان
-          عددی است که در فیلد سالانه ذخیره می‌شود.
+          درصد سالانه فقط برای محاسبه‌ی کمکی فرم است — مبلغ نهایی همان عددی است
+          که در فیلد سالانه ذخیره می‌شود.
         </p>
       </aside>
     </div>

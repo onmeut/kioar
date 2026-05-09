@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { otpCodes, rateLimitBuckets, sessions } from "@/db/schema";
 import { log } from "@/lib/log";
+import { withRequestContext } from "@/lib/log-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,6 +30,17 @@ export const dynamic = "force-dynamic";
 const CLEANUP_LOCK_KEY = BigInt("7427301519462395");
 
 async function handle(request: Request) {
+  return withRequestContext(
+    {
+      requestId: request.headers.get("x-request-id") ?? undefined,
+      route: "cron.cleanup",
+    },
+    () => runCleanup(request),
+  );
+}
+
+async function runCleanup(request: Request) {
+  const startedAt = Date.now();
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     // Fail closed when the secret is missing so a misconfigured deployment
@@ -42,6 +54,7 @@ async function handle(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  log.info("cron.cleanup.start");
   const db = getDb();
 
   const lockRows = await db.execute<{ locked: boolean }>(
@@ -51,7 +64,10 @@ async function handle(request: Request) {
     (lockRows as unknown as Array<{ locked: boolean }>)[0]?.locked,
   );
   if (!locked) {
-    log.info("cron.cleanup.skipped", { reason: "lock_held" });
+    log.info("cron.cleanup.skipped", {
+      reason: "lock_held",
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ok: true, skipped: true });
   }
 
@@ -60,6 +76,8 @@ async function handle(request: Request) {
       .delete(otpCodes)
       .where(
         or(
+          // 1-day grace beyond the 3-minute OTP TTL: lets any in-flight
+          // verification complete before the row is garbage-collected.
           lt(otpCodes.expiresAt, sql`now() - interval '1 day'`),
           and(
             isNotNull(otpCodes.consumedAt),
@@ -93,7 +111,10 @@ async function handle(request: Request) {
       rateLimitBuckets: deletedBuckets.length,
     };
 
-    log.info("cron.cleanup", summary);
+    log.info("cron.cleanup.ok", {
+      ...summary,
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ok: true, ...summary });
   } finally {
     await db.execute(sql`select pg_advisory_unlock(${CLEANUP_LOCK_KEY})`);

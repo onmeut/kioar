@@ -13,6 +13,7 @@ import {
   type FormFieldInput,
   formBlockSchema,
 } from "@/lib/validations";
+import { invalidateProfileCacheById } from "@/lib/cache/profile-cache";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
 export type FormBlockRow = typeof profileFormBlocks.$inferSelect;
@@ -140,6 +141,7 @@ export async function createFormBlockForUser(
     return created.id;
   });
 
+  await invalidateProfileCacheById(profileId);
   return { ok: true, id };
 }
 
@@ -230,6 +232,7 @@ export async function updateFormBlockForUser(
     }
   });
 
+  await invalidateProfileCacheById(profileId);
   return { ok: true, id: blockId };
 }
 
@@ -248,6 +251,7 @@ export async function deleteFormBlockForUser(
         eq(profileFormBlocks.profileId, profileId),
       ),
     );
+  await invalidateProfileCacheById(profileId);
   return { ok: true };
 }
 
@@ -268,6 +272,7 @@ export async function setFormBlockActiveForUser(
         eq(profileFormBlocks.profileId, profileId),
       ),
     );
+  await invalidateProfileCacheById(profileId);
   return { ok: true };
 }
 

@@ -17,8 +17,8 @@ export default async function AdminBillingTestToolsPage() {
       <header>
         <h1 className="text-xl font-bold">ابزارهای آزمایشی صورت‌حساب</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          این بخش تنها در محیط توسعه فعال است. هیچ‌کدام از این ابزارها وارد
-          محیط Production نمی‌شوند.
+          این بخش تنها در محیط توسعه فعال است. هیچ‌کدام از این ابزارها وارد محیط
+          Production نمی‌شوند.
         </p>
       </header>
 

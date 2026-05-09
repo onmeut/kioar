@@ -31,6 +31,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { transitionForToday } from "@/lib/billing-state";
 import { log } from "@/lib/log";
+import { withRequestContext } from "@/lib/log-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,6 +41,17 @@ export const dynamic = "force-dynamic";
 const BILLING_LOCK_KEY = BigInt("7427301519462396");
 
 async function handle(request: Request) {
+  return withRequestContext(
+    {
+      requestId: request.headers.get("x-request-id") ?? undefined,
+      route: "cron.billing",
+    },
+    () => runBilling(request),
+  );
+}
+
+async function runBilling(request: Request) {
+  const startedAt = Date.now();
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "cron_disabled" }, { status: 503 });
@@ -51,6 +63,7 @@ async function handle(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  log.info("cron.billing.start");
   const db = getDb();
 
   const lockRows = await db.execute<{ locked: boolean }>(
@@ -60,18 +73,22 @@ async function handle(request: Request) {
     (lockRows as unknown as Array<{ locked: boolean }>)[0]?.locked,
   );
   if (!locked) {
-    log.info("cron.billing.skipped", { reason: "lock_held" });
+    log.info("cron.billing.skipped", {
+      reason: "lock_held",
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ok: true, skipped: true });
   }
 
   try {
     const result = await transitionForToday(new Date());
 
-    log.info("cron.billing", {
+    log.info("cron.billing.ok", {
       scanned: result.scanned,
       applied: result.applied.length,
       skipped: result.skipped.length,
       errors: result.errors.length,
+      durationMs: Date.now() - startedAt,
     });
 
     return NextResponse.json({

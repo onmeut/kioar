@@ -97,9 +97,7 @@ export function PlanPricingForm({
       (annualDiscountPercent ?? null) ===
       (computeFromPercent ? percentN : null);
     return (
-      monthlyN !== priceMonthlyToman ||
-      annualN !== priceAnnualToman ||
-      !samePct
+      monthlyN !== priceMonthlyToman || annualN !== priceAnnualToman || !samePct
     );
   }, [
     monthlyN,
@@ -135,9 +133,7 @@ export function PlanPricingForm({
           <Input
             id={`monthly-${planId}`}
             value={monthly}
-            onChange={(e) =>
-              setMonthly(e.target.value.replace(/[^\d]/g, ""))
-            }
+            onChange={(e) => setMonthly(e.target.value.replace(/[^\d]/g, ""))}
             dir="ltr"
             inputMode="numeric"
             autoComplete="off"
@@ -192,9 +188,7 @@ export function PlanPricingForm({
             <Input
               id={`percent-${planId}`}
               value={percent}
-              onChange={(e) =>
-                setPercent(e.target.value.replace(/[^\d]/g, ""))
-              }
+              onChange={(e) => setPercent(e.target.value.replace(/[^\d]/g, ""))}
               dir="ltr"
               inputMode="numeric"
               autoComplete="off"
@@ -284,9 +278,7 @@ export function PlanPricingForm({
               </div>
 
               <fieldset className="space-y-2">
-                <legend className="text-sm font-medium">
-                  سیاست اعمال
-                </legend>
+                <legend className="text-sm font-medium">سیاست اعمال</legend>
                 <label className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-muted/40">
                   <input
                     type="radio"
@@ -322,8 +314,8 @@ export function PlanPricingForm({
                     <p className="text-xs text-muted-foreground">
                       برای هر اشتراک فعال یک ردیف در{" "}
                       <code dir="ltr">subscription_price_locks</code> ساخته
-                      می‌شود تا تجدیدش با قیمت قدیم انجام شود. اشتراک‌های
-                      جدید قیمت جدید را می‌بینند.
+                      می‌شود تا تجدیدش با قیمت قدیم انجام شود. اشتراک‌های جدید
+                      قیمت جدید را می‌بینند.
                     </p>
                   </div>
                 </label>
@@ -332,10 +324,7 @@ export function PlanPricingForm({
               {policy === "always_current" ? (
                 <div className="flex items-center justify-between gap-3 rounded-lg border border-dashed border-border p-3">
                   <div className="space-y-0.5">
-                    <Label
-                      htmlFor={`notify-${planId}`}
-                      className="text-sm"
-                    >
+                    <Label htmlFor={`notify-${planId}`} className="text-sm">
                       اطلاع‌رسانی پیامکی به مشترکان
                     </Label>
                     <p className="text-[11px] text-muted-foreground">

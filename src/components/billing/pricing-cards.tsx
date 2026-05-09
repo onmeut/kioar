@@ -20,12 +20,7 @@ import { CheckIcon, SparklesIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatPersianNumber, toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
@@ -152,7 +147,7 @@ export function PricingCards({
                 </div>
               ) : null}
               <CardHeader className="space-y-2 pb-3">
-                <CardTitle className="text-lg font-bold tracking-tight">
+                <CardTitle className="text-lg font-bold">
                   {plan.nameFa}
                 </CardTitle>
                 {plan.descriptionFa ? (
@@ -165,23 +160,21 @@ export function PricingCards({
                 <div className="space-y-1">
                   {isFree ? (
                     <div className="flex items-baseline gap-1">
-                      <span className="text-3xl font-extrabold tracking-tight">
-                        رایگان
-                      </span>
+                      <span className="text-3xl font-extrabold">رایگان</span>
                     </div>
                   ) : (
                     <>
                       <div className="flex items-baseline gap-1.5">
-                        <span className="text-3xl font-extrabold tracking-tight">
+                        <span className="text-3xl font-extrabold">
                           {formatToman(price)}
                         </span>
                         <span className="text-xs font-medium text-zinc-500">
-                          تومان / {cycle === "annual" ? "سال" : "ماه"}
+                          تومان / {cycle === "annual" ? "سالانه" : "ماهانه"}
                         </span>
                       </div>
                       {perMonth ? (
                         <p className="text-[11px] text-zinc-500">
-                          معادل {formatToman(perMonth)} تومان در ماه
+                          معادل {formatToman(perMonth)} تومان ماهانه
                         </p>
                       ) : null}
                       {plan.trialDays > 0 ? (
@@ -216,7 +209,8 @@ export function PricingCards({
                         ? "ارتقا و پرداخت"
                         : `شروع ${plan.trialDays > 0 ? "آزمایش رایگان" : "اشتراک"}`}
                     <span className="sr-only">
-                      {" "}— چرخه: {cycle === "annual" ? "سالانه" : "ماهانه"}
+                      {" "}
+                      — چرخه: {cycle === "annual" ? "سالانه" : "ماهانه"}
                     </span>
                   </Button>
                 </div>

@@ -7,6 +7,7 @@ import { getDb } from "@/db";
 import { profiles } from "@/db/schema";
 import { type ActionState } from "@/lib/action-state";
 import { requireCompletedProfile } from "@/lib/auth/session";
+import { invalidateProfileCacheBySlug } from "@/lib/cache/profile-cache";
 import {
   savePageSettingsForUser,
   saveProfileDetailsForUser,
@@ -102,6 +103,8 @@ export async function autosaveAvatarAction(
     .set({ avatarUrl, updatedAt: new Date() })
     .where(eq(profiles.id, viewer.profile.id));
 
+  await invalidateProfileCacheBySlug(viewer.profile.slug);
+
   revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
 
@@ -145,6 +148,8 @@ export async function saveAvatarSeedAction(
     await deletePublicImage(oldUrl);
   }
 
+  await invalidateProfileCacheBySlug(viewer.profile.slug);
+
   revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
 
@@ -174,6 +179,8 @@ export async function deleteAvatarAction(
   if (oldUrl) {
     await deletePublicImage(oldUrl);
   }
+
+  await invalidateProfileCacheBySlug(viewer.profile.slug);
 
   revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);

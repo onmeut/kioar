@@ -15,12 +15,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { eq } from "drizzle-orm";
-import {
-  ChevronLeftIcon,
-  CreditCardIcon,
-  FileTextIcon,
-  XCircleIcon,
-} from "lucide-react";
+import { ChevronLeftIcon, CreditCardIcon, FileTextIcon } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
@@ -128,17 +123,40 @@ export default async function PageBillingRoute({
   const paidParam = typeof sp.paid === "string" ? sp.paid : null;
   const billingParam = typeof sp.billing === "string" ? sp.billing : null;
 
-  const periodEndDate = sub.trialEndsAt ?? sub.currentPeriodEnd;
+  // ── Effective subscription state ──────────────────────────────────────────
+  // The billing cron may lag (especially in dev/staging), leaving a row in
+  // status="trialing" after trial_ends_at has passed. Compute the effective
+  // state to avoid showing stale badge/plan info.
+  const now = new Date();
+  const isActivelyTrialing =
+    sub.status === "trialing" &&
+    sub.trialEndsAt != null &&
+    sub.trialEndsAt > now;
+  const isEffectivelyFree =
+    sub.status === "expired" ||
+    sub.status === "canceled" ||
+    (sub.status === "trialing" && !isActivelyTrialing);
+
+  const effectivePlanKey: "free" | "pro" | "business" = isEffectivelyFree
+    ? "free"
+    : (sub.plan.key as "free" | "pro" | "business");
+  const effectiveStatus: typeof sub.status =
+    isEffectivelyFree && sub.status === "trialing" ? "expired" : sub.status;
+
+  const periodEndDate = isActivelyTrialing
+    ? sub.trialEndsAt
+    : sub.currentPeriodEnd;
   const periodEndLabel = periodEndDate
     ? formatPersianDate(new Date(periodEndDate))
     : null;
 
-  const planKey = sub.plan.key as "free" | "pro" | "business";
+  const planKey = effectivePlanKey;
   const isPaid = planKey === "pro" || planKey === "business";
-  const cyclePrice =
-    sub.billingCycle === "annual"
+  const cyclePrice = isPaid
+    ? sub.billingCycle === "annual"
       ? sub.plan.priceAnnualToman
-      : sub.plan.priceMonthlyToman;
+      : sub.plan.priceMonthlyToman
+    : 0;
   const planBadge = PLAN_BADGE[planKey];
 
   return (
@@ -168,7 +186,7 @@ export default async function PageBillingRoute({
             </Badge>
           </div>
           <div className="min-w-0 space-y-0.5">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+            <p className="text-[10px] font-semibold uppercaser text-zinc-400">
               صورت‌حساب صفحه
             </p>
             <p className="truncate text-base font-bold text-zinc-900 sm:text-lg">
@@ -207,11 +225,11 @@ export default async function PageBillingRoute({
       <section className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
+            <p className="text-[10px] font-semibold uppercaser text-zinc-400">
               پلن فعلی
             </p>
-            <p className="text-2xl font-bold tracking-tight text-zinc-900">
-              {sub.plan.nameFa}
+            <p className="text-2xl font-bold text-zinc-900">
+              {isEffectivelyFree ? PLAN_BADGE.free.label : sub.plan.nameFa}
             </p>
             <p className="text-xs text-zinc-500">
               {isPaid ? (
@@ -219,7 +237,7 @@ export default async function PageBillingRoute({
                   <span className="font-semibold text-zinc-900">
                     {formatToman(cyclePrice)} تومان
                   </span>{" "}
-                  {sub.billingCycle === "annual" ? "در سال" : "در ماه"}
+                  {sub.billingCycle === "annual" ? "سالانه" : "ماهانه"}
                 </>
               ) : (
                 "پلن رایگان — برای همیشه"
@@ -227,15 +245,15 @@ export default async function PageBillingRoute({
             </p>
           </div>
           <div className="flex flex-col items-start gap-2 sm:items-end">
-            <Badge variant="outline" className={STATUS_TONE[sub.status]}>
-              {STATUS_LABELS[sub.status] ?? sub.status}
+            <Badge variant="outline" className={STATUS_TONE[effectiveStatus]}>
+              {STATUS_LABELS[effectiveStatus] ?? effectiveStatus}
             </Badge>
             {periodEndLabel ? (
               <div className="text-start sm:text-end">
-                <p className="text-[10px] uppercase tracking-wider text-zinc-400">
-                  {sub.status === "trialing"
+                <p className="text-[10px] uppercaser text-zinc-400">
+                  {isActivelyTrialing
                     ? "پایان آزمایش"
-                    : sub.status === "grace"
+                    : effectiveStatus === "grace"
                       ? "پایان مهلت پرداخت"
                       : "پایان دوره"}
                 </p>
@@ -247,19 +265,9 @@ export default async function PageBillingRoute({
           </div>
         </div>
 
-        {(sub.cancelAtPeriodEnd || sub.pendingPlanChangePlanId) &&
-        periodEndLabel ? (
+        {sub.pendingPlanChangePlanId && periodEndLabel ? (
           <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
-            {sub.cancelAtPeriodEnd ? (
-              <p>
-                اشتراک شما در{" "}
-                <span dir="ltr" className="font-semibold">
-                  {periodEndLabel}
-                </span>{" "}
-                لغو خواهد شد.
-              </p>
-            ) : null}
-            {sub.pendingPlanChangePlanId && sub.pendingPlanChange ? (
+            {sub.pendingPlanChange ? (
               <p>
                 تغییر پلن به «{sub.pendingPlanChange.nameFa}» در{" "}
                 <span dir="ltr" className="font-semibold">
@@ -286,14 +294,6 @@ export default async function PageBillingRoute({
           icon={<FileTextIcon className="size-4" />}
           label="فاکتورها"
         />
-        {isPaid ? (
-          <BillingNavButton
-            href={`/dashboard/pages/${pageId}/billing/cancel` as Route}
-            icon={<XCircleIcon className="size-4" />}
-            label="لغو اشتراک"
-            tone="danger"
-          />
-        ) : null}
       </section>
 
       {/* Trial CTA — only when at least one plan is still trial-eligible
@@ -337,7 +337,7 @@ export default async function PageBillingRoute({
                     <span className="font-semibold text-zinc-900">
                       {formatToman(option.priceMonthlyToman)} تومان
                     </span>{" "}
-                    در ماه
+                    ماهانه
                   </p>
                 </div>
                 <Button
@@ -364,13 +364,11 @@ function BillingNavButton({
   icon,
   label,
   primary = false,
-  tone = "neutral",
 }: {
   href: Route;
   icon: React.ReactNode;
   label: string;
   primary?: boolean;
-  tone?: "neutral" | "danger";
 }) {
   return (
     <Link
@@ -379,9 +377,7 @@ function BillingNavButton({
         "flex h-14 items-center justify-between rounded-2xl px-5 text-sm font-bold transition-colors " +
         (primary
           ? "bg-zinc-900 text-white hover:bg-zinc-800"
-          : tone === "danger"
-            ? "bg-white text-red-700 ring-1 ring-red-200 hover:bg-red-50"
-            : "bg-white text-zinc-800 ring-1 ring-zinc-200 hover:ring-zinc-300")
+          : "bg-white text-zinc-800 ring-1 ring-zinc-200 hover:ring-zinc-300")
       }
     >
       <span className="flex items-center gap-3">

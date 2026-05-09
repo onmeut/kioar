@@ -107,6 +107,10 @@ type ProfileSnapshot = {
   indexEnabled: boolean;
   appIconKey: string | null;
   appIconColor: string;
+  discoverEnabled: boolean;
+  discoverCategory: string | null;
+  city: string | null;
+  pageType: string | null;
 };
 
 type LinksPageClientProps = {
@@ -207,6 +211,12 @@ type LinksPageClientProps = {
   formsLocked?: boolean;
   /** Phase 5: same idea for product blocks (`products_block`). */
   productsLocked?: boolean;
+  /** Lowest paid plan that currently grants the feature — drives the lock
+   * chip colour (Pro=emerald, Business=purple). Sourced from the live
+   * `plan_features` matrix, not the seed naming convention. */
+  bookingsRequiredPlan?: "pro" | "business";
+  formsRequiredPlan?: "pro" | "business";
+  productsRequiredPlan?: "pro" | "business";
   /** Per-block items cap from the page's entitlement
    * (`products_max_items_per_block`). Falls back to the absolute hard cap
    * (300) when unset. */
@@ -257,6 +267,9 @@ export function LinksPageClient({
   bookingsLocked = false,
   formsLocked = false,
   productsLocked = false,
+  bookingsRequiredPlan = "business",
+  formsRequiredPlan = "business",
+  productsRequiredPlan = "pro",
   productItemsCap,
   pinAllowed = false,
   animateAllowed = false,
@@ -914,6 +927,10 @@ export function LinksPageClient({
     fd.set("indexEnabled", next.indexEnabled ? "on" : "off");
     fd.set("appIconKey", next.appIconKey ?? "");
     fd.set("appIconColor", next.appIconColor ?? "");
+    fd.set("discoverEnabled", next.discoverEnabled ? "on" : "off");
+    fd.set("discoverCategory", next.discoverCategory ?? "");
+    fd.set("city", next.city ?? "");
+    fd.set("pageType", next.pageType ?? "");
     if (next.ogImageRemove) fd.set("ogImageRemove", "1");
     if (next.ogImageFile) fd.set("ogImage", next.ogImageFile);
 
@@ -940,6 +957,10 @@ export function LinksPageClient({
       indexEnabled: next.indexEnabled,
       appIconKey: next.appIconKey,
       appIconColor: next.appIconColor,
+      discoverEnabled: next.discoverEnabled,
+      discoverCategory: next.discoverCategory,
+      city: next.city,
+      pageType: next.pageType,
     }));
     router.refresh();
     return { ok: true as const };
@@ -1171,6 +1192,7 @@ export function LinksPageClient({
                             handleToggleBookingActive(block.id, v)
                           }
                           locked={bookingsLocked}
+                          lockedPlan={bookingsRequiredPlan}
                           pinAllowed={pinAllowed}
                           animateAllowed={animateAllowed}
                           onSpotlightChange={(next) =>
@@ -1197,6 +1219,7 @@ export function LinksPageClient({
                             handleToggleFormActive(block.id, v)
                           }
                           locked={formsLocked}
+                          lockedPlan={formsRequiredPlan}
                           pinAllowed={pinAllowed}
                           animateAllowed={animateAllowed}
                           onSpotlightChange={(next) =>
@@ -1221,6 +1244,7 @@ export function LinksPageClient({
                           handleToggleProductActive(product.id, v)
                         }
                         locked={productsLocked}
+                        lockedPlan={productsRequiredPlan}
                         pinAllowed={pinAllowed}
                         animateAllowed={animateAllowed}
                         onSpotlightChange={(next) =>
@@ -1320,6 +1344,12 @@ export function LinksPageClient({
           setEditingProductBlock(null);
           setProductBuilderOpen(true);
         }}
+        bookingsLocked={bookingsLocked}
+        bookingsRequiredPlan={bookingsRequiredPlan}
+        formsLocked={formsLocked}
+        formsRequiredPlan={formsRequiredPlan}
+        productsLocked={productsLocked}
+        productsRequiredPlan={productsRequiredPlan}
       />
 
       <FormBuilderDialog
@@ -1395,6 +1425,10 @@ export function LinksPageClient({
           indexEnabled: profile.indexEnabled,
           appIconKey: profile.appIconKey,
           appIconColor: profile.appIconColor,
+          discoverEnabled: profile.discoverEnabled,
+          discoverCategory: profile.discoverCategory,
+          city: profile.city,
+          pageType: profile.pageType,
         }}
         preview={{
           fullName: profile.fullName,
@@ -1558,6 +1592,7 @@ function SortableBookingBlock({
   onDelete,
   onToggleActive,
   locked,
+  lockedPlan,
   pinAllowed,
   animateAllowed,
   onSpotlightChange,
@@ -1569,6 +1604,7 @@ function SortableBookingBlock({
   onDelete: () => Promise<void> | void;
   onToggleActive: (next: boolean) => Promise<void> | void;
   locked?: boolean;
+  lockedPlan?: "pro" | "business";
   pinAllowed: boolean;
   animateAllowed: boolean;
   onSpotlightChange: (next: {
@@ -1603,6 +1639,7 @@ function SortableBookingBlock({
         dragProps={dragProps}
         isDragging={isDragging}
         locked={locked}
+        lockedPlan={lockedPlan}
         pinAllowed={pinAllowed}
         animateAllowed={animateAllowed}
         onSpotlightChange={onSpotlightChange}
@@ -1620,6 +1657,7 @@ function SortableFormBlock({
   onDelete,
   onToggleActive,
   locked,
+  lockedPlan,
   pinAllowed,
   animateAllowed,
   onSpotlightChange,
@@ -1631,6 +1669,7 @@ function SortableFormBlock({
   onDelete: () => void;
   onToggleActive: (next: boolean) => void;
   locked?: boolean;
+  lockedPlan?: "pro" | "business";
   pinAllowed: boolean;
   animateAllowed: boolean;
   onSpotlightChange: (next: {
@@ -1665,6 +1704,7 @@ function SortableFormBlock({
         dragProps={dragProps}
         isDragging={isDragging}
         locked={locked}
+        lockedPlan={lockedPlan}
         pinAllowed={pinAllowed}
         animateAllowed={animateAllowed}
         onSpotlightChange={onSpotlightChange}
@@ -1680,6 +1720,7 @@ function SortableProductBlock({
   onDelete,
   onToggleActive,
   locked,
+  lockedPlan,
   pinAllowed,
   animateAllowed,
   onSpotlightChange,
@@ -1690,6 +1731,7 @@ function SortableProductBlock({
   onDelete: () => void;
   onToggleActive: (next: boolean) => void;
   locked?: boolean;
+  lockedPlan?: "pro" | "business";
   pinAllowed: boolean;
   animateAllowed: boolean;
   onSpotlightChange: (next: {
@@ -1723,6 +1765,7 @@ function SortableProductBlock({
         dragProps={dragProps}
         isDragging={isDragging}
         locked={locked}
+        lockedPlan={lockedPlan}
         pinAllowed={pinAllowed}
         animateAllowed={animateAllowed}
         onSpotlightChange={onSpotlightChange}

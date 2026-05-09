@@ -191,10 +191,10 @@ export function CommandPalette({
       <CommandDialog
         open={open}
         onOpenChange={onOpenChange}
-        title="جستجو در کیوار"
+        title="جستجو در کیوآر"
         description="میان‌برهای سراسری برای حرکت سریع در داشبورد."
       >
-        <CommandInput placeholder="جستجو در کیوار..." />
+        <CommandInput placeholder="جستجو در کیوآر..." />
         <CommandList>
           <CommandEmpty>چیزی پیدا نشد.</CommandEmpty>
 

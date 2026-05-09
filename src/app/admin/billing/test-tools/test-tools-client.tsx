@@ -69,11 +69,7 @@ function DryRunCard() {
             <Label htmlFor="dry-reason">دلیل</Label>
             <Textarea id="dry-reason" name="reason" required minLength={3} />
           </div>
-          <Button
-            type="submit"
-            disabled={pending}
-            className="w-full sm:w-auto"
-          >
+          <Button type="submit" disabled={pending} className="w-full sm:w-auto">
             {pending ? "در حال اجرا…" : "اجرای آزمایشی"}
           </Button>
           <StatusLine state={state} />
@@ -125,7 +121,11 @@ function FireSmsCard({ smsTemplateKeys }: { smsTemplateKeys: string[] }) {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="sms-template">قالب پیامک</Label>
-            <Select name="templateKey" required defaultValue={smsTemplateKeys[0]}>
+            <Select
+              name="templateKey"
+              required
+              defaultValue={smsTemplateKeys[0]}
+            >
               <SelectTrigger id="sms-template" dir="ltr">
                 <SelectValue />
               </SelectTrigger>
@@ -142,11 +142,7 @@ function FireSmsCard({ smsTemplateKeys }: { smsTemplateKeys: string[] }) {
             <Label htmlFor="sms-reason">دلیل</Label>
             <Textarea id="sms-reason" name="reason" required minLength={3} />
           </div>
-          <Button
-            type="submit"
-            disabled={pending}
-            className="w-full sm:w-auto"
-          >
+          <Button type="submit" disabled={pending} className="w-full sm:w-auto">
             {pending ? "در حال ارسال…" : "افزودن به صف"}
           </Button>
           <StatusLine state={state} />
@@ -164,7 +160,9 @@ function MockVerifyCard() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">تأیید آزمایشی پرداخت زرین‌پال</CardTitle>
+        <CardTitle className="text-base">
+          تأیید آزمایشی پرداخت زرین‌پال
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form action={formAction} className="space-y-3">
@@ -199,11 +197,7 @@ function MockVerifyCard() {
             <Label htmlFor="mv-reason">دلیل</Label>
             <Textarea id="mv-reason" name="reason" required minLength={3} />
           </div>
-          <Button
-            type="submit"
-            disabled={pending}
-            className="w-full sm:w-auto"
-          >
+          <Button type="submit" disabled={pending} className="w-full sm:w-auto">
             {pending ? "در حال اعمال…" : "اعمال تأیید آزمایشی"}
           </Button>
           <StatusLine state={state} />

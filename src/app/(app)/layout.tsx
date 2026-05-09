@@ -1,11 +1,9 @@
 import type { Route } from "next";
 import { signOutAction } from "@/app/(app)/dashboard/actions";
 import { ImpersonationBar } from "@/components/admin/impersonation-bar";
-import {
-  MeHeaderActions,
-  MeSettingsButton,
-} from "@/components/dashboard/me-header-actions";
+import { MeHeaderActions } from "@/components/dashboard/me-header-actions";
 import { CommandPaletteTrigger } from "@/components/navigation/command-palette-trigger";
+import { MobileHeaderContent } from "@/components/navigation/mobile-header-content";
 import { PageSwitcher } from "@/components/navigation/page-switcher";
 import {
   SidebarIconRow,
@@ -62,16 +60,11 @@ export default async function DashboardLayout({
     switcherItems.find((p) => p.id === viewer.profile.id) ?? switcherItems[0];
   const currentPageId = currentPage?.id ?? viewer.profile.id;
 
-  // Promo bar visibility: only while the *current* page is on an active
-  // trial that hasn't lapsed yet. Paid pages (and Free pages with no
-  // trial) skip the bar entirely, which also tells the layout to drop
-  // its dark wrapper + rounded-top container so the body sits flush.
-  // Gating on trial status — not plan key — keeps this aligned with
-  // BILLING.md's "do not compare plan keys in product code" rule.
+  // Promo bar visibility: show for free plan pages (post-trial upgrade
+  // CTA) and during an active trial (countdown). Paid pages get a flush
+  // full-bleed surface with no bar.
   const showPromoBar = Boolean(
-    currentPage?.isOnTrial &&
-    currentPage.trialEndsAt &&
-    currentPage.trialEndsAt.getTime() > Date.now(),
+    currentPage && (currentPage.planKey === "free" || currentPage.isOnTrial),
   );
 
   // Single round-trip — see `lib/sidebar-counts.ts`. Failure here must
@@ -180,7 +173,7 @@ export default async function DashboardLayout({
       }
       style={
         showPromoBar
-          ? ({ "--promo-bar-height": "2.5rem" } as React.CSSProperties)
+          ? ({ "--promo-bar-height": "3rem" } as React.CSSProperties)
           : undefined
       }
     >
@@ -188,12 +181,13 @@ export default async function DashboardLayout({
         <ProPromoBar
           isOnTrial={currentPage!.isOnTrial}
           trialEndsAt={currentPage!.trialEndsAt}
+          planKey={currentPage!.planKey as "free" | "pro" | "business"}
         />
       ) : null}
       <div
         className={
           showPromoBar
-            ? "flex min-h-0 flex-1 rounded-t-3xl bg-background isolate"
+            ? "flex min-h-0 flex-1 rounded-t-3xl overflow-hidden bg-background isolate"
             : "flex min-h-0 flex-1 bg-background isolate"
         }
       >
@@ -243,33 +237,30 @@ export default async function DashboardLayout({
           <SidebarInset className="flex h-full flex-col overflow-hidden">
             <ImpersonationBar />
             <header className="shrink-0 z-20 border-b bg-background/84 backdrop-blur-sm pt-[env(safe-area-inset-top)]">
-              {/* Mobile: settings gear (start, /me-only) + absolutely-
-                  centred page-switcher + end actions. The page title
-                  is intentionally absent on mobile — the page-switcher
-                  carries the page identity and the bottom-nav
-                  communicates the current section. */}
-              <div className="relative flex h-14 items-center px-3 sm:h-14 sm:px-6 md:hidden">
-                <MeSettingsButton />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <div className="pointer-events-auto">
-                    <PageSwitcher
-                      pages={switcherItems}
-                      currentPageId={viewer.profile.id}
-                      signOut={signOutAction}
-                      variant="compact"
-                    />
-                  </div>
-                </div>
-                <div className="ms-auto flex items-center gap-1">
-                  <MeHeaderActions
-                    publicUrl={publicUrl}
-                    slug={viewer.profile.slug}
-                    displayName={
-                      viewer.profile.fullName || viewer.profile.title || "کارت"
-                    }
-                    host={`${viewer.profile.domain}/${viewer.profile.slug}`}
-                  />
-                </div>
+              {/* Mobile: single client component that switches layout
+                  by route. On /more it renders the page title + plan
+                  pill + switcher. Everywhere else the switcher is
+                  centred and /me gets gear + share actions. */}
+              <div className="md:hidden">
+                <MobileHeaderContent
+                  pages={switcherItems}
+                  currentPageId={viewer.profile.id}
+                  signOut={signOutAction}
+                  publicUrl={publicUrl}
+                  slug={viewer.profile.slug}
+                  displayName={
+                    viewer.profile.fullName || viewer.profile.title || "کارت"
+                  }
+                  host={`${viewer.profile.domain}/${viewer.profile.slug}`}
+                  planKey={currentPage?.planKey ?? "free"}
+                  isOnTrial={currentPage?.isOnTrial ?? false}
+                  trialEndsAt={currentPage?.trialEndsAt ?? null}
+                  billingHref={
+                    currentPage?.planKey === "pro"
+                      ? (`/dashboard/pages/${currentPageId}/billing` as Route)
+                      : "/pro"
+                  }
+                />
               </div>
 
               {/* Desktop: 3-column grid that perfectly centres the

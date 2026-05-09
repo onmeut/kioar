@@ -68,7 +68,7 @@ export default async function AdminAffiliateDetailPage({
       <div className="rounded-2xl border border-border bg-background p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h2 className="text-[18px] font-semibold tracking-tight">
+            <h2 className="text-[18px] font-semibold">
               {detail.profile?.displayName || "—"}
             </h2>
             <p
@@ -149,7 +149,7 @@ export default async function AdminAffiliateDetailPage({
 
       {/* Banking */}
       <div className="rounded-2xl border border-border bg-background p-5">
-        <h3 className="text-[15px] font-semibold tracking-tight">
+        <h3 className="text-[15px] font-semibold">
           اطلاعات بانکی
         </h3>
         <p className="mt-1 text-[12px] leading-6 text-muted-foreground">
@@ -171,7 +171,7 @@ export default async function AdminAffiliateDetailPage({
 
       {/* Admin notes */}
       <div className="rounded-2xl border border-border bg-background p-5">
-        <h3 className="text-[15px] font-semibold tracking-tight">
+        <h3 className="text-[15px] font-semibold">
           یادداشت‌های داخلی
         </h3>
         <p className="mt-1 text-[12px] leading-6 text-muted-foreground">
@@ -188,7 +188,7 @@ export default async function AdminAffiliateDetailPage({
 
       {/* Payouts */}
       <div>
-        <h3 className="mb-3 text-[15px] font-semibold tracking-tight">
+        <h3 className="mb-3 text-[15px] font-semibold">
           تسویه‌ها
         </h3>
         {detail.payouts.length === 0 ? (
@@ -228,7 +228,7 @@ export default async function AdminAffiliateDetailPage({
 
       {/* Ledger */}
       <div>
-        <h3 className="mb-3 text-[15px] font-semibold tracking-tight">
+        <h3 className="mb-3 text-[15px] font-semibold">
           دفترچه‌ی پورسانت
         </h3>
         {detail.ledger.length === 0 ? (
@@ -238,7 +238,7 @@ export default async function AdminAffiliateDetailPage({
         ) : (
           <div className="overflow-x-auto rounded-2xl border border-border bg-background">
             <table className="w-full text-start">
-              <thead className="bg-muted/50 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-muted/50 text-[11px] uppercaser text-muted-foreground">
                 <tr>
                   <Th>مخاطب</Th>
                   <Th>تاریخ</Th>
@@ -315,7 +315,7 @@ export default async function AdminAffiliateDetailPage({
 function KV({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+      <p className="text-[10px] uppercaser text-muted-foreground">
         {k}
       </p>
       <p
@@ -345,7 +345,7 @@ function Stat({
           : "border-border bg-background"
       }`}
     >
-      <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+      <p className="text-[10px] font-medium uppercaser text-muted-foreground">
         {label}
       </p>
       <p

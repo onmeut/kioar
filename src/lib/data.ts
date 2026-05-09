@@ -23,6 +23,12 @@ import {
   sessions,
   users,
 } from "@/db/schema";
+import { blockKindToFeatureKey } from "@/lib/block-features";
+import { getPublicActiveBookingBlocks } from "@/lib/booking-data";
+import { withProfileCache } from "@/lib/cache/profile-cache";
+import { getPageEntitlements } from "@/lib/entitlements";
+import { getPublicActiveFormBlocks } from "@/lib/form-service";
+import { getPublicActiveProductBlocks } from "@/lib/product-service";
 import { isReservedSlug } from "@/lib/slug";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
@@ -52,8 +58,13 @@ export async function getPublicProfileBySlug(slug: string) {
   if (isReservedSlug(slug)) {
     return null;
   }
+  return withProfileCache(slug, () => loadPublicProfileBySlug(slug));
+}
 
+async function loadPublicProfileBySlug(slug: string) {
   const db = getDb();
+
+  // Wave 1 — profile must exist and be complete before anything else proceeds.
   const profile = await db.query.profiles.findFirst({
     where: and(eq(profiles.slug, slug), eq(profiles.isComplete, true)),
   });
@@ -62,65 +73,42 @@ export async function getPublicProfileBySlug(slug: string) {
     return null;
   }
 
-  const links = await db
-    .select()
-    .from(profileLinks)
-    .where(
-      and(
-        eq(profileLinks.profileId, profile.id),
-        eq(profileLinks.isActive, true),
-      ),
-    )
-    .orderBy(asc(profileLinks.sortOrder));
+  const bookingKey = blockKindToFeatureKey("booking");
+  const formKey = blockKindToFeatureKey("form");
+  const productKey = blockKindToFeatureKey("product");
 
-  // Phase 5 — entitlement-driven graceful degradation. If the page's
-  // current plan doesn't include a block kind, the public renderer hides
-  // the block entirely (as if it never existed). The editor still shows
-  // it in a locked, read-only state — see `(app)/page/page.tsx`.
-  const { pageHasFeature } = await import("@/lib/entitlements");
-  const { blockKindToFeatureKey } = await import("@/lib/block-features");
+  // Wave 2 — all queries that only need profile.id run in parallel.
+  // getPageEntitlements fetches the full entitlement map for this page in
+  // one DB round-trip. We then probe the map per block kind rather than
+  // calling pageHasFeature three times — this is correct even in route-
+  // handler contexts where React cache() is a no-op (no shared render scope).
+  const [links, entitlements, owner] = await Promise.all([
+    db
+      .select()
+      .from(profileLinks)
+      .where(
+        and(
+          eq(profileLinks.profileId, profile.id),
+          eq(profileLinks.isActive, true),
+        ),
+      )
+      .orderBy(asc(profileLinks.sortOrder)),
+    getPageEntitlements(profile.id),
+    db.query.users.findFirst({ where: eq(users.id, profile.userId) }),
+  ]);
 
-  const bookingFeature = blockKindToFeatureKey("booking");
-  const bookingsGranted =
-    bookingFeature === null ||
-    (await pageHasFeature(profile.id, bookingFeature));
-  let bookingBlocks: Awaited<
-    ReturnType<typeof import("@/lib/booking-data").getPublicActiveBookingBlocks>
-  > = [];
-  if (bookingsGranted) {
-    const { getPublicActiveBookingBlocks } = await import("@/lib/booking-data");
-    bookingBlocks = await getPublicActiveBookingBlocks(profile.id);
-  }
+  // A null feature key means "no gate" — block is always visible.
+  const bookingsGranted = bookingKey === null || entitlements.has(bookingKey);
+  const formsGranted = formKey === null || entitlements.has(formKey);
+  const productsGranted = productKey === null || entitlements.has(productKey);
 
-  const formFeature = blockKindToFeatureKey("form");
-  const formsGranted =
-    formFeature === null || (await pageHasFeature(profile.id, formFeature));
-  let formBlocks: Awaited<
-    ReturnType<typeof import("@/lib/form-service").getPublicActiveFormBlocks>
-  > = [];
-  if (formsGranted) {
-    const { getPublicActiveFormBlocks } = await import("@/lib/form-service");
-    formBlocks = await getPublicActiveFormBlocks(profile.id);
-  }
-
-  const productFeature = blockKindToFeatureKey("product");
-  const productsGranted =
-    productFeature === null ||
-    (await pageHasFeature(profile.id, productFeature));
-  let productBlocks: Awaited<
-    ReturnType<
-      typeof import("@/lib/product-service").getPublicActiveProductBlocks
-    >
-  > = [];
-  if (productsGranted) {
-    const { getPublicActiveProductBlocks } =
-      await import("@/lib/product-service");
-    productBlocks = await getPublicActiveProductBlocks(profile.id);
-  }
-
-  const owner = await db.query.users.findFirst({
-    where: eq(users.id, profile.userId),
-  });
+  // Wave 3 — block content is conditional on entitlements. The three
+  // fetches are independent of each other so they run in parallel.
+  const [bookingBlocks, formBlocks, productBlocks] = await Promise.all([
+    bookingsGranted ? getPublicActiveBookingBlocks(profile.id) : [],
+    formsGranted ? getPublicActiveFormBlocks(profile.id) : [],
+    productsGranted ? getPublicActiveProductBlocks(profile.id) : [],
+  ]);
 
   return {
     ...profile,

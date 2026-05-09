@@ -54,7 +54,7 @@ export function SidebarUpgradeCard({
   return (
     <UpgradeCard
       eyebrow="ارتقا"
-      title="امکانات نامحدود کیوار"
+      title="امکانات نامحدود کیوآر"
       subtitle="آمار پیشرفته، بلاک‌های ویژه و حذف برندینگ."
       href={"/pro" as Route}
       ariaLabel="خرید اشتراک پرو"
@@ -137,7 +137,7 @@ function UpgradeCard({
       {/* Sparkle + eyebrow */}
       <div className="mb-2 flex items-center gap-2 text-primary">
         <SparkleMark />
-        <span className="text-[11px] font-bold uppercase tracking-[0.14em]">
+        <span className="text-[11px] font-bold uppercase">
           {eyebrow}
         </span>
       </div>

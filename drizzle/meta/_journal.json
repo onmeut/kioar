@@ -246,6 +246,34 @@
       "when": 1778157691689,
       "tag": "0034_price_locks_not_null",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1778192043501,
+      "tag": "0036_furry_black_bolt",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1778197368448,
+      "tag": "0037_page_type_discover_default",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1778300000000,
+      "tag": "0038_plan_key_denormalize",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1778300001000,
+      "tag": "0039_plan_key_sync_trigger",
+      "breakpoints": true
     }
   ]
 }

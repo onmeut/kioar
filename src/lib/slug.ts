@@ -3,6 +3,7 @@ const RESERVED_SLUGS = new Set([
   "api",
   "auth",
   "dashboard",
+  "discover",
   "events",
   "onboarding",
   "u",

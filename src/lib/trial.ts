@@ -46,6 +46,7 @@ import {
   users,
 } from "@/db/schema";
 import { rebuildEntitlements } from "@/lib/entitlements";
+import { invalidateProfileCacheById } from "@/lib/cache/profile-cache";
 import { log } from "@/lib/log";
 import { writeCurrentPageIdCookie } from "@/lib/page-cookie";
 import { enqueueSms } from "@/lib/sms-queue";
@@ -278,6 +279,7 @@ export async function startTrial(
       .update(pageSubscriptions)
       .set({
         planId: targetPlan.id,
+        planKey,
         // Keep monthly as the implicit cycle for trials — the user picks
         // a real cycle when they convert via checkout (Phase 9).
         billingCycle: "monthly",
@@ -295,6 +297,11 @@ export async function startTrial(
 
     await rebuildEntitlements(tx, pageId);
   });
+
+  // Trial start changed entitlements — drop the cached public page so
+  // pro/business-only blocks (bookings, lead-capture forms, etc.) become
+  // visible immediately instead of after the 5-min TTL.
+  await invalidateProfileCacheById(pageId);
 
   await enqueueSms({
     templateKey: "trial_started",

@@ -18,6 +18,7 @@ import {
   productSections,
   profileProductBlocks,
 } from "@/db/schema";
+import { invalidateProfileCacheById } from "@/lib/cache/profile-cache";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 import {
   PRODUCT_ITEMS_HARD_CAP,
@@ -251,6 +252,7 @@ export async function createProductBlockForUser(
     return created.id;
   });
 
+  await invalidateProfileCacheById(profileId);
   return { ok: true, id };
 }
 
@@ -398,6 +400,7 @@ export async function updateProductBlockForUser(
     }
   });
 
+  await invalidateProfileCacheById(profileId);
   return { ok: true, id: blockId };
 }
 
@@ -416,6 +419,7 @@ export async function deleteProductBlockForUser(
         eq(profileProductBlocks.profileId, profileId),
       ),
     );
+  await invalidateProfileCacheById(profileId);
   return { ok: true };
 }
 
@@ -436,6 +440,7 @@ export async function setProductBlockActiveForUser(
         eq(profileProductBlocks.profileId, profileId),
       ),
     );
+  await invalidateProfileCacheById(profileId);
   return { ok: true };
 }
 

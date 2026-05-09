@@ -1,15 +1,15 @@
 import type { Route } from "next";
 import Link from "next/link";
 import {
-  BarChart3Icon,
   BellIcon,
   CalendarClockIcon,
   CalendarDaysIcon,
   ChevronLeftIcon,
   CreditCardIcon,
+  FileTextIcon,
   FormInputIcon,
   GiftIcon,
-  GlobeIcon,
+  HandshakeIcon,
   HelpCircleIcon,
   type LucideIcon,
   LogOutIcon,
@@ -18,9 +18,9 @@ import {
 } from "lucide-react";
 
 import { signOutAction } from "@/app/(app)/dashboard/actions";
-import { PageSwitcher } from "@/components/navigation/page-switcher";
 import { Button } from "@/components/ui/button";
 import { requireCompletedProfile } from "@/lib/auth/session";
+import { getAffiliateStateForUser } from "@/lib/affiliate";
 import { listOwnedPagesWithPlan } from "@/lib/pages";
 import { toPersianDigits } from "@/lib/persian";
 import { getReferralAvailableMonths } from "@/lib/referrals";
@@ -63,28 +63,23 @@ export default async function MorePage() {
     switcherItems.find((p) => p.id === viewer.profile.id) ?? switcherItems[0];
   const currentPageId = currentPage?.id ?? viewer.profile.id;
 
-  const badgeCounts = await getSidebarBadgeCounts(
-    currentPageId,
-    viewer.user.id,
-  ).catch(() => ({ bookings: 0, forms: 0, notifications: 0 }));
+  const [badgeCounts, referralAvailableMonths, affiliateState] =
+    await Promise.all([
+      getSidebarBadgeCounts(currentPageId, viewer.user.id).catch(() => ({
+        bookings: 0,
+        forms: 0,
+        notifications: 0,
+      })),
+      getReferralAvailableMonths(viewer.user.id).catch(() => 0),
+      getAffiliateStateForUser(viewer.user.id).catch(() => ({ kind: "none" as const })),
+    ]);
 
-  const referralAvailableMonths = await getReferralAvailableMonths(
-    viewer.user.id,
-  ).catch(() => 0);
-
-  const tools: MoreRow[] = [
-    {
-      href: "/me" as Route,
-      label: "لینک من",
-      icon: GlobeIcon,
-      description: "ویرایش بلاک‌ها و تنظیمات صفحه",
-    },
-    {
-      href: "/dashboard",
-      label: "آمار",
-      icon: BarChart3Icon,
-      description: "بازدید، کلیک و عملکرد بلاک‌ها",
-    },
+  // ── ابزارها ──────────────────────────────────────────────────────
+  // Routes that appear in the main bottom-nav (لینک من, آمار) are
+  // intentionally omitted here — the tab bar already surfaces them.
+  // We only surface secondary destinations the user can't reach
+  // without coming here.
+  const toolsRows: MoreRow[] = [
     {
       href: "/bookings" as Route,
       label: "هماهنگی‌ها",
@@ -109,6 +104,7 @@ export default async function MorePage() {
     },
   ];
 
+  // ── حساب و اشتراک ────────────────────────────────────────────────
   const accountRows: MoreRow[] = [
     {
       href: "/dashboard/account" as Route,
@@ -123,20 +119,38 @@ export default async function MorePage() {
     },
   ];
 
-  // Plan-aware billing row: free → upgrade page; pro → page-scoped
-  // billing; business → no row (matches sidebar upgrade-card logic).
-  if (currentPage?.planKey === "free") {
+  // Plan-aware billing:
+  //   free (no trial) → ارتقا به پرو
+  //   free on trial   → مدیریت اشتراک آزمایشی  → billing hub
+  //   pro             → مدیریت اشتراک           → billing hub
+  //   business        → no row (reached via admin/settings)
+  if (currentPage?.planKey === "free" && !currentPage.isOnTrial) {
     accountRows.push({
       href: "/pro" as Route,
       label: "ارتقا به پرو",
       icon: ReceiptIcon,
       description: "حذف برندینگ، آمار پیشرفته و بلاک‌های ویژه",
     });
+  } else if (
+    currentPage?.planKey === "free" &&
+    currentPage.isOnTrial
+  ) {
+    accountRows.push({
+      href: `/dashboard/pages/${currentPageId}/billing` as Route,
+      label: "مدیریت اشتراک آزمایشی",
+      icon: ReceiptIcon,
+    });
   } else if (currentPage?.planKey === "pro") {
     accountRows.push({
       href: `/dashboard/pages/${currentPageId}/billing` as Route,
       label: "مدیریت اشتراک",
       icon: ReceiptIcon,
+    });
+    // فاکتورها is only meaningful once the user has an active subscription
+    accountRows.push({
+      href: `/dashboard/pages/${currentPageId}/billing/invoices` as Route,
+      label: "فاکتورها",
+      icon: FileTextIcon,
     });
   }
 
@@ -154,6 +168,26 @@ export default async function MorePage() {
         : undefined,
   });
 
+  // ── کسب درآمد ────────────────────────────────────────────────────
+  // Affiliate link: approved → dashboard; applied/pending → apply page;
+  // none / rejected → apply page (shows fresh application form).
+  const affiliateRows: MoreRow[] = [
+    {
+      href: (affiliateState.kind === "approved"
+        ? "/affiliate/dashboard"
+        : "/affiliate/apply") as Route,
+      label: "همکاری در فروش",
+      icon: HandshakeIcon,
+      description:
+        affiliateState.kind === "approved"
+          ? "پنل درآمد و کمیسیون شما"
+          : affiliateState.kind === "pending"
+            ? "درخواست شما در حال بررسی است"
+            : "پورسانت از هر فروش موفق",
+    },
+  ];
+
+  // ── پشتیبانی ─────────────────────────────────────────────────────
   const supportRows: MoreRow[] = [
     {
       href: "/help" as Route,
@@ -164,19 +198,10 @@ export default async function MorePage() {
 
   return (
     <div className="md:hidden">
-      <div className="section-shell space-y-6 py-6">
-        <header className="flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-bold">بیشتر</h1>
-          <PageSwitcher
-            pages={switcherItems}
-            currentPageId={currentPageId}
-            signOut={signOutAction}
-            variant="compact"
-          />
-        </header>
-
-        <MoreSection title="ابزارها" rows={tools} />
-        <MoreSection title="حساب" rows={accountRows} />
+      <div className="section-shell space-y-5 py-6">
+        <MoreSection title="ابزارها" rows={toolsRows} />
+        <MoreSection title="حساب و اشتراک" rows={accountRows} />
+        <MoreSection title="کسب درآمد" rows={affiliateRows} />
         <MoreSection title="پشتیبانی" rows={supportRows} />
 
         <form action={signOutAction}>
@@ -197,18 +222,16 @@ export default async function MorePage() {
 function MoreSection({ title, rows }: { title: string; rows: MoreRow[] }) {
   return (
     <section className="space-y-2">
-      <h2 className="px-1 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+      <h2 className="px-1 text-xs font-bold uppercaser text-muted-foreground">
         {title}
       </h2>
       <ul className="overflow-hidden rounded-2xl border border-border bg-card">
-        {rows.map((row, i) => {
+        {rows.map((row) => {
           const Icon = row.icon;
           return (
             <li
               key={row.href}
-              className={cn(
-                "border-b border-border/70 last:border-b-0",
-              )}
+              className={cn("border-b border-border/70 last:border-b-0")}
             >
               <Link
                 href={row.href}

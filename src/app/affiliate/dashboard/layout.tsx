@@ -59,7 +59,7 @@ export default async function AffiliateDashboardLayout({
         </header>
         <main className="marketing-shell py-16">
           <div className="mx-auto max-w-2xl rounded-3xl border border-hairline bg-paper-soft p-8 text-center">
-            <h1 className="text-[24px] font-semibold tracking-tight">
+            <h1 className="text-[24px] font-semibold">
               {state.kind === "pending"
                 ? "درخواستت در حال بررسیه"
                 : "به اطلاعات بیشتر نیاز داریم"}
@@ -94,7 +94,7 @@ export default async function AffiliateDashboardLayout({
           <div className="flex items-center gap-3">
             <BrandMark variant="wordmark" href={"/affiliate" as Route} />
             <span className="hidden h-5 w-px bg-hairline sm:block" />
-            <span className="hidden text-[12px] font-bold uppercase tracking-wider text-violet-700 sm:block">
+            <span className="hidden text-[12px] font-bold uppercaser text-violet-700 sm:block">
               همکاری در فروش
             </span>
           </div>

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
+import type { Route } from "next";
 import { ChevronDownIcon, LogOutIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { switchPageAction } from "@/app/(app)/dashboard/pages/actions";
-import { CreatePageDialog } from "@/components/dashboard/create-page-dialog";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -98,7 +98,7 @@ function PageAvatar({
   return (
     <Avatar
       className={cn(
-        "shrink-0 overflow-hidden transition-shadow [&_svg]:!size-full",
+        "shrink-0 overflow-hidden transition-shadow [&_svg]:size-full!",
         highlighted &&
           "ring-2 ring-foreground ring-offset-4 ring-offset-popover",
       )}
@@ -117,8 +117,11 @@ function PageAvatar({
 
 /**
  * Sidebar-header dropdown that names the page being edited and lets the
- * user switch to another of their owned pages or open the inline
- * CreatePageDialog. Light theme; Persian copy.
+ * user switch to another of their owned pages or jump to the full-page
+ * "Add new page" onboarding flow at `/onboarding/new-page`. The latter
+ * reuses the exact same `<OnboardingForm>` as first-run signup so the
+ * experience is identical whether it's the user's first page or fifth.
+ * Light theme; Persian copy.
  */
 export function PageSwitcher({
   pages,
@@ -128,7 +131,6 @@ export function PageSwitcher({
 }: PageSwitcherProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [createOpen, setCreateOpen] = useState(false);
 
   const current = pages.find((p) => p.id === currentPageId) ?? pages[0];
 
@@ -177,7 +179,7 @@ export function PageSwitcher({
       <DropdownMenuSeparator />
 
       <DropdownMenuItem
-        onClick={() => setCreateOpen(true)}
+        onClick={() => router.push("/onboarding/new-page" as Route)}
         className="cursor-pointer items-center gap-3 py-2"
       >
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">
@@ -203,47 +205,39 @@ export function PageSwitcher({
 
   if (variant === "compact") {
     return (
-      <>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            disabled={isPending}
-            aria-label={`صفحه‌ی فعلی: ${current.title}`}
-            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-background ps-1 pe-2.5 transition-colors hover:bg-muted disabled:opacity-60"
-          >
-            <PageAvatar page={current} size={26} />
-            <span className="max-w-[5rem] truncate text-sm font-semibold leading-none">
-              {current.title}
-            </span>
-            <ChevronDownIcon
-              className="size-4 shrink-0 text-muted-foreground"
-              aria-hidden
-            />
-          </DropdownMenuTrigger>
-          {dropdownContent}
-        </DropdownMenu>
-        <CreatePageDialog
-          open={createOpen}
-          onOpenChange={setCreateOpen}
-          existingCount={pages.length}
-        />
-      </>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          disabled={isPending}
+          aria-label={`صفحه‌ی فعلی: ${current.title}`}
+          className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border bg-background ps-1 pe-2.5 transition-colors hover:bg-muted disabled:opacity-60"
+        >
+          <PageAvatar page={current} size={26} />
+          <span className="max-w-20 truncate text-sm font-semibold leading-none">
+            {current.title}
+          </span>
+          <ChevronDownIcon
+            className="size-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+        </DropdownMenuTrigger>
+        {dropdownContent}
+      </DropdownMenu>
     );
   }
 
   return (
-    <>
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <DropdownMenu>
-            <SidebarMenuButton
-              render={<DropdownMenuTrigger />}
-              tooltip={current.title}
-              className="h-auto cursor-pointer gap-3 px-2 py-2"
-              disabled={isPending}
-            >
-              <PageAvatar page={current} size={32} />
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                {current.title}
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <DropdownMenu>
+          <SidebarMenuButton
+            render={<DropdownMenuTrigger />}
+            tooltip={current.title}
+            className="h-auto cursor-pointer gap-3 px-2 py-2"
+            disabled={isPending}
+          >
+            <PageAvatar page={current} size={32} />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+              {current.title}
               </span>
               <PlanBadge
                 planKey={current.planKey}
@@ -255,16 +249,9 @@ export function PageSwitcher({
               />
             </SidebarMenuButton>
 
-            {dropdownContent}
-          </DropdownMenu>
-        </SidebarMenuItem>
-      </SidebarMenu>
-
-      <CreatePageDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        existingCount={pages.length}
-      />
-    </>
+          {dropdownContent}
+        </DropdownMenu>
+      </SidebarMenuItem>
+    </SidebarMenu>
   );
 }

@@ -43,7 +43,11 @@ import {
 import { getDb } from "@/db";
 import { bookings, formSubmissions } from "@/db/schema";
 import { inArray, sql } from "drizzle-orm";
-import { getPageEntitlementLimit, pageHasFeature } from "@/lib/entitlements";
+import {
+  getFeatureLockTier,
+  getPageEntitlementLimit,
+  pageHasFeature,
+} from "@/lib/entitlements";
 import { blockKindToFeatureKey } from "@/lib/block-features";
 import type {
   ProductBlockCurrency,
@@ -294,6 +298,25 @@ export default async function DashboardLinksPage() {
       ? !(await pageHasFeature(pageId, productFeature))
       : false;
 
+  // Phase 5 + admin matrix: each locked block row needs to know which
+  // tier currently grants its feature so the lock chip can render in
+  // the right colour (Pro=emerald, Business=purple). We read the live
+  // `plan_features` matrix instead of trusting the seed naming convention
+  // — admins can move e.g. `products_block` to Business-only via
+  // /admin/plans and the chip must follow.
+  const bookingsRequiredPlan =
+    bookingsLocked && bookingFeature
+      ? ((await getFeatureLockTier(bookingFeature)) ?? "business")
+      : "business";
+  const formsRequiredPlan =
+    formsLocked && formFeature
+      ? ((await getFeatureLockTier(formFeature)) ?? "business")
+      : "business";
+  const productsRequiredPlan =
+    productsLocked && productFeature
+      ? ((await getFeatureLockTier(productFeature)) ?? "pro")
+      : "pro";
+
   const rawProductBlocks = pageId
     ? await getProductBlocksByUserId(viewer.user.id)
     : [];
@@ -343,6 +366,10 @@ export default async function DashboardLinksPage() {
         indexEnabled: profile?.indexEnabled ?? true,
         appIconKey: profile?.appIconKey ?? null,
         appIconColor: profile?.appIconColor ?? "",
+        discoverEnabled: profile?.discoverEnabled ?? false,
+        discoverCategory: profile?.discoverCategory ?? null,
+        city: profile?.city ?? null,
+        pageType: profile?.pageType ?? null,
       }}
       initialLinks={links}
       initialBookingBlocks={bookingBlocks}
@@ -374,6 +401,9 @@ export default async function DashboardLinksPage() {
       bookingsLocked={bookingsLocked}
       formsLocked={formsLocked}
       productsLocked={productsLocked}
+      bookingsRequiredPlan={bookingsRequiredPlan}
+      formsRequiredPlan={formsRequiredPlan}
+      productsRequiredPlan={productsRequiredPlan}
       productItemsCap={productItemsCap}
       pinAllowed={pinAllowed}
       animateAllowed={animateAllowed}

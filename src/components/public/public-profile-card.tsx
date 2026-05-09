@@ -27,6 +27,7 @@ import {
 import { PublicAnimatedBlock } from "@/components/public/public-animated-block";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import type { ActionState } from "@/lib/action-state";
+
 import {
   spotlightAnimationClass,
   spotlightAnimationClassOnce,
@@ -60,6 +61,8 @@ export type PublicProfileCardData = {
   avatarUrl: string | null;
   /** Stable seed used by the DiceBear fallback when no avatar is set. */
   avatarSeed: string | null;
+  /** Free-text city — displayed under the name if available. */
+  city?: string | null;
   links: PublicLink[];
   bookingBlocks?: Array<
     PublicBookingBlockData & {
@@ -182,6 +185,11 @@ export function PublicProfileCard({
         {profile.title ? (
           <p className="mt-1 text-sm font-semibold text-muted-foreground sm:text-[15px]">
             {profile.title}
+          </p>
+        ) : null}
+        {profile.city ? (
+          <p className="mt-2 text-[12px] font-medium text-muted-foreground">
+            {profile.city}
           </p>
         ) : null}
       </div>

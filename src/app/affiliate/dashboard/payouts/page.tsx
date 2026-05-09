@@ -42,10 +42,10 @@ export default async function PayoutsPage({
   return (
     <div className="space-y-8">
       <div>
-        <p className="text-[11px] font-bold uppercase tracking-wider text-violet-700">
+        <p className="text-[11px] font-bold uppercaser text-violet-700">
           تسویه
         </p>
-        <h1 className="mt-1 text-[clamp(22px,3.5vw,30px)] font-semibold tracking-tight">
+        <h1 className="mt-1 text-[clamp(22px,3.5vw,30px)] font-semibold">
           درآمدت رو به شبا واریز کن
         </h1>
       </div>
@@ -101,7 +101,7 @@ export default async function PayoutsPage({
         </div>
 
         <div className="rounded-3xl border border-hairline bg-paper p-6">
-          <h2 className="text-[15px] font-bold tracking-tight">
+          <h2 className="text-[15px] font-bold">
             درخواست تسویه
           </h2>
           <p className="mt-1 text-[12px] leading-6 text-ink-soft">
@@ -122,7 +122,7 @@ export default async function PayoutsPage({
 
       {/* History */}
       <section>
-        <h2 className="mb-3 text-[16px] font-semibold tracking-tight">
+        <h2 className="mb-3 text-[16px] font-semibold">
           تاریخچه‌ی تسویه‌ها
         </h2>
 
@@ -217,7 +217,7 @@ function PayoutStatusPill({
 function KV({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-wider text-ink-soft">{k}</p>
+      <p className="text-[10px] uppercaser text-ink-soft">{k}</p>
       <p
         className={`text-[13px] text-ink ${mono ? "font-mono font-bold" : "font-medium"}`}
         dir={mono ? "ltr" : undefined}

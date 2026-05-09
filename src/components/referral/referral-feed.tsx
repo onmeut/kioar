@@ -96,19 +96,19 @@ export function ReferralFeed({ rows }: { rows: ReferralFeedClientRow[] }) {
   if (rows.length === 0) {
     return (
       <div className="px-6 py-10 text-center">
-        <p className="text-sm font-bold text-zinc-900">
-          هنوز کسی روی لینکت کلیک نکرده
+        <p className="text-sm font-bold text-foreground">
+          هنوز هیچ ثبت‌نامی نداری
         </p>
-        <p className="mx-auto mt-2 max-w-sm text-xs leading-6 text-zinc-500">
+        <p className="mx-auto mt-2 max-w-sm text-xs leading-6 text-muted-foreground">
           لینک شخصیت رو توی استوری اینستا، یه پیام واتس‌اپی، یا بایوی پروفایلت
-          بذار. اولین کلیک‌ها معمولاً همون اولِ راهن.
+          بذار. اولین ثبت‌نام‌ها معمولاً همون اولِ راهن.
         </p>
       </div>
     );
   }
 
   return (
-    <ul className="divide-y divide-zinc-100">
+    <ul className="divide-y divide-border">
       {rows.map((r) => (
         <Row key={r.id} row={r} />
       ))}
@@ -145,7 +145,7 @@ function Row({ row }: { row: ReferralFeedClientRow }) {
       {/* Avatar */}
       <div className="shrink-0">
         {isGhost ? (
-          <div className="flex size-10 items-center justify-center rounded-full bg-zinc-100 text-zinc-400">
+          <div className="flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <MousePointerClickIcon className="size-4" />
           </div>
         ) : (
@@ -170,17 +170,17 @@ function Row({ row }: { row: ReferralFeedClientRow }) {
       <div className="min-w-0 flex-1">
         {isGhost ? (
           <>
-            <p className="truncate text-sm font-semibold text-zinc-700">
+            <p className="truncate text-sm font-semibold text-foreground">
               کسی روی لینک شما کلیک کرد
             </p>
-            <p className="text-[11px] text-zinc-400">
+            <p className="text-[11px] text-muted-foreground">
               {timestamp} • هنوز ثبت‌نام نکرده
             </p>
           </>
         ) : (
           <>
             <div className="flex items-center gap-2">
-              <p className="truncate text-sm font-bold text-zinc-900">
+              <p className="truncate text-sm font-bold text-foreground">
                 {row.refereeName?.trim() || `@${row.refereeSlug}`}
               </p>
               {row.refereePlanKey === "pro" ||
@@ -193,13 +193,13 @@ function Row({ row }: { row: ReferralFeedClientRow }) {
                 </Badge>
               ) : null}
             </div>
-            <div className="flex items-center gap-1.5 text-[11px] text-zinc-500">
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               {profileUrl ? (
                 <a
                   href={profileUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 truncate font-mono text-zinc-500 hover:text-violet-700"
+                  className="inline-flex items-center gap-1 truncate font-mono text-muted-foreground hover:text-primary"
                   dir="ltr"
                 >
                   @{row.refereeSlug}

@@ -33,6 +33,7 @@ import {
   profiles,
 } from "@/db/schema";
 import { generateAvatarSeed } from "@/lib/avatar-seed";
+import { invalidateProfileCacheBySlug } from "@/lib/cache/profile-cache";
 import {
   readCurrentPageIdCookie,
   writeCurrentPageIdCookie,
@@ -124,6 +125,10 @@ export type CreatePageInput = {
   slug: string;
   fullName: string;
   title?: string | null;
+  /** Page archetype captured during onboarding. Optional. */
+  pageType?: string | null;
+  /** Discover category slug. Optional — listed under "همه" when null. */
+  discoverCategory?: string | null;
 };
 
 export type CreatePageResult =
@@ -164,6 +169,7 @@ export async function ensureFreeSubscriptionForPage(
   await tx.insert(pageSubscriptions).values({
     pageId,
     planId: freePlan.id,
+    planKey: freePlan.key,
     billingCycle: "monthly",
     status: "active",
     // 100-year sentinel — see file header.
@@ -215,6 +221,10 @@ export async function createPageForOwner(
           slug,
           fullName: input.fullName.trim() || null,
           title: input.title?.trim() || null,
+          pageType: input.pageType?.trim() || null,
+          discoverCategory: input.discoverCategory?.trim() || null,
+          // `discover_enabled` defaults to TRUE at the column level
+          // (migration 0037), so new pages join the directory by default.
           avatarSeed: generateAvatarSeed(),
           // A new page starts incomplete; the owner can flesh it out from
           // the editor. We mark it complete & published so the public URL
@@ -229,6 +239,10 @@ export async function createPageForOwner(
       await ensureFreeSubscriptionForPage(tx, created.id);
       return created;
     });
+    // A previous visit to /[slug] (back when the slug was unclaimed) may
+    // have cached the 404 sentinel; drop it so the new page is visible
+    // immediately instead of after 60s.
+    await invalidateProfileCacheBySlug(slug);
     return { ok: true, page };
   } catch (error) {
     // 23505 = unique_violation. With the user_id unique gone, the only
@@ -310,15 +324,42 @@ export async function listOwnedPagesWithPlan(
     .where(eq(profiles.userId, ownerId))
     .orderBy(asc(profiles.createdAt));
 
-  return rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    fullName: r.fullName,
-    title: r.title,
-    avatarUrl: r.avatarUrl,
-    avatarSeed: r.avatarSeed,
-    planKey: (r.planKey ?? "free") as "free" | "pro" | "business",
-    isOnTrial: r.status === "trialing",
-    trialEndsAt: r.trialEndsAt ?? null,
-  }));
+  const now = Date.now();
+  return rows.map((r) => {
+    // An active trial requires both the trialing status AND a future end date.
+    // If the cron hasn't run yet after the trial elapsed, we must NOT treat
+    // the row as still-trialing — that would show a negative or zero countdown
+    // and keep the "آزمایشی" badge alive indefinitely in dev/staging.
+    const isActivelyTrialing =
+      r.status === "trialing" &&
+      r.trialEndsAt != null &&
+      r.trialEndsAt.getTime() > now;
+
+    // A page is "effectively free" when there is no active paid entitlement:
+    // - No subscription row (null status)
+    // - Subscription expired or canceled (cron already downgraded it)
+    // - Was trialing but trial_ends_at has passed (cron hasn't run yet)
+    // Grace-period pages still have their paid entitlements, so we preserve
+    // the plan key for them until the cron fires grace_ended_to_expired.
+    const isEffectivelyFree =
+      !r.status ||
+      r.status === "expired" ||
+      r.status === "canceled" ||
+      (r.status === "trialing" && !isActivelyTrialing);
+
+    return {
+      id: r.id,
+      slug: r.slug,
+      fullName: r.fullName,
+      title: r.title,
+      avatarUrl: r.avatarUrl,
+      avatarSeed: r.avatarSeed,
+      planKey: (isEffectivelyFree ? "free" : (r.planKey ?? "free")) as
+        | "free"
+        | "pro"
+        | "business",
+      isOnTrial: isActivelyTrialing,
+      trialEndsAt: r.trialEndsAt ?? null,
+    };
+  });
 }

@@ -251,6 +251,43 @@ export async function getPageEntitlementLimit(
  * transaction's executor; callers using top-level `getDb()` can pass that
  * directly because the API surface is identical.
  */
+/**
+ * Lowest **paid** plan tier that currently grants `featureKey` per the
+ * live `plan_features` matrix. Used by the editor to color the lock
+ * chip on a gated block row:
+ *   - "pro"      → emerald chip ("ارتقا به حرفه‌ای")
+ *   - "business" → purple chip ("ارتقا به کسب‌وکار")
+ *   - null       → no paid plan grants it (matrix has it on Free only,
+ *                  or no plan at all). Caller should fall back to "pro"
+ *                  defensively — a locked-yet-Free feature usually means
+ *                  an admin-revoke, not a true upgrade path.
+ *
+ * This intentionally does NOT honour the `business_*` / non-prefix naming
+ * convention (`featureKeyToRequiredPlan`); admins can edit the matrix
+ * freely from `/admin/plans`, and the chip must reflect the *current*
+ * state of `plan_features`, not the original seed convention.
+ *
+ * Cached per render via React's `cache()` so multiple gated rows on the
+ * same page collapse to one query per feature.
+ */
+export const getFeatureLockTier = cache(
+  async (featureKey: FeatureKeyArg): Promise<"pro" | "business" | null> => {
+    const db = getDb();
+    const rows = (await db.execute(sql`
+      SELECT p."key" AS plan_key
+      FROM "plan_features" pf
+      JOIN "plans" p    ON p."id" = pf."plan_id"
+      JOIN "features" f ON f."id" = pf."feature_id"
+      WHERE f."key" = ${featureKey}
+        AND p."is_active" = true
+        AND p."key" IN ('pro', 'business')
+      ORDER BY p."display_order" ASC
+      LIMIT 1
+    `)) as unknown as { plan_key: "pro" | "business" }[];
+    return rows[0]?.plan_key ?? null;
+  },
+);
+
 export async function rebuildEntitlements(
   tx: { execute(query: ReturnType<typeof sql>): Promise<unknown> },
   pageId: string,

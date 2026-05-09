@@ -223,10 +223,7 @@ export default async function AdminBillingOverviewPage() {
                           {r.slug}
                         </Link>
                       </td>
-                      <td
-                        className="px-3 py-2 font-mono text-xs"
-                        dir="ltr"
-                      >
+                      <td className="px-3 py-2 font-mono text-xs" dir="ltr">
                         {r.invoice_number ?? "—"}
                       </td>
                       <td className="px-3 py-2 text-xs">

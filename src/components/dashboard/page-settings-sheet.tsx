@@ -37,6 +37,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -45,6 +52,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { DISCOVER_CATEGORIES, IRANIAN_CITIES } from "@/lib/discover";
+import { PAGE_TYPES } from "@/lib/page-type";
 import { type ProfileDomain } from "@/lib/profile-domains";
 import { type IconKey } from "@/lib/link-icons";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
@@ -63,6 +72,10 @@ export type PageSettingsValues = {
   indexEnabled: boolean;
   appIconKey: IconKey | null;
   appIconColor: string;
+  discoverEnabled: boolean;
+  discoverCategory: string | null;
+  city: string | null;
+  pageType: string | null;
 };
 
 type Result =
@@ -515,6 +528,90 @@ export function PageSettingsSheet({
           </div>
         </section>
 
+        {/* ---- Discover ---- */}
+        <section className="space-y-3">
+          <SectionTitle
+            title="دیسکاور"
+            hint="اگر روشن باشد، صفحه‌ات در فهرست عمومی کیوآر (kioar.com/discover) دیده می‌شود تا کاربران تازه‌ای پیدایش کنند."
+          />
+          <div className="flex items-center justify-between gap-3 rounded-2xl border bg-muted/40 px-3 py-3">
+            <div className="space-y-0.5">
+              <Label className="text-sm font-medium">نمایش در دیسکاور</Label>
+              <p className="text-[11px] text-muted-foreground">
+                فقط صفحه‌های منتشرشده و کامل در دیسکاور لیست می‌شوند.
+              </p>
+            </div>
+            <Switch
+              checked={values.discoverEnabled}
+              onCheckedChange={(c) => patch("discoverEnabled", Boolean(c))}
+            />
+          </div>
+
+          <Field id="page-category" label="دسته‌بندی">
+            <Select
+              value={values.discoverCategory ?? "__none"}
+              onValueChange={(v) =>
+                patch("discoverCategory", v === "__none" ? null : v)
+              }
+              disabled={!values.discoverEnabled}
+            >
+              <SelectTrigger id="page-category" className="h-11 w-full">
+                <SelectValue placeholder="یک دسته انتخاب کن" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">بدون دسته‌بندی</SelectItem>
+                {DISCOVER_CATEGORIES.map((c) => (
+                  <SelectItem key={c.slug} value={c.slug}>
+                    <span className="me-1">{c.emoji}</span>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field id="page-type" label="نوع صفحه">
+            <Select
+              value={values.pageType ?? "__none"}
+              onValueChange={(v) =>
+                patch("pageType", v === "__none" ? null : v)
+              }
+            >
+              <SelectTrigger id="page-type" className="h-11 w-full">
+                <SelectValue placeholder="نوع صفحه را انتخاب کن" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">انتخاب نشده</SelectItem>
+                {PAGE_TYPES.map((t) => (
+                  <SelectItem key={t.slug} value={t.slug}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <Field id="page-city" label="شهر">
+            <Select
+              value={values.city ?? "__none"}
+              onValueChange={(v) => patch("city", v === "__none" ? null : v)}
+              disabled={!values.discoverEnabled}
+            >
+              <SelectTrigger id="page-city" className="h-11 w-full">
+                <SelectValue placeholder="شهرت را انتخاب کن" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none">انتخاب نشده</SelectItem>
+                {IRANIAN_CITIES.map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </Field>
+        </section>
+
         {/* ---- Destructive: delete page ---- */}
         <section className="space-y-2 pt-2">
           <SectionTitle title="منطقه‌ی خطرناک" />
@@ -828,7 +925,7 @@ function GooglePreview({
           ) : avatarSeed ? (
             <KioarAvatar seed={avatarSeed} size={28} />
           ) : (
-            <span className="flex size-full items-center justify-center text-xs font-black text-neutral-700">
+            <span className="flex size-full items-center justify-center text-xs font-bold text-neutral-700">
               {fallbackChar}
             </span>
           )}
@@ -921,9 +1018,7 @@ function SocialSharePreview({
           ) : null}
         </button>
         <div className="space-y-1 p-3" dir="ltr">
-          <div className="text-xs uppercase tracking-wide text-neutral-500">
-            {host}
-          </div>
+          <div className="text-xs uppercase text-neutral-500">{host}</div>
           <div className="line-clamp-1 text-sm font-semibold text-neutral-900">
             {title}
           </div>
@@ -970,7 +1065,7 @@ function BrowserAndAppPreview({
         <KioarAvatar seed={avatarSeed} size={size} />
       ) : (
         <span
-          className="flex size-full items-center justify-center font-black text-neutral-700"
+          className="flex size-full items-center justify-center font-bold text-neutral-700"
           style={{ fontSize: Math.round(size * 0.55) }}
         >
           {fallbackChar}

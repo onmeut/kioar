@@ -184,7 +184,7 @@ export function SidebarNav({ items }: { items: SidebarNavItem[] }) {
             )
           : item.tone === "muted"
             ? "h-8 gap-3 px-3 text-[13px] text-muted-foreground hover:text-foreground"
-            : "h-10 gap-3 px-3 text-sm";
+            : "h-10 gap-3 px-3 text-sm font-semibold [&>svg]:size-4.5";
 
         const isMyPage = item.href === ("/me" as Route);
 
@@ -210,7 +210,7 @@ export function SidebarNav({ items }: { items: SidebarNavItem[] }) {
                   className={cn(
                     "ms-auto rounded-md border border-border/70 bg-background/80",
                     "px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground",
-                    "tabular-nums leading-none tracking-wide",
+                    "tabular-nums leading-none",
                     "[font-family:system-ui,-apple-system,sans-serif]",
                     "hidden md:inline-flex group-data-[collapsible=icon]:hidden",
                   )}

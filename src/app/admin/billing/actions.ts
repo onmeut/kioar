@@ -11,6 +11,7 @@ import { type ActionState } from "@/lib/action-state";
 import { requireAdmin } from "@/lib/auth/session";
 import { computePeriodEnd } from "@/lib/billing-pricing";
 import { rebuildEntitlements } from "@/lib/entitlements";
+import { invalidateProfileCacheById } from "@/lib/cache/profile-cache";
 import { log } from "@/lib/log";
 
 const REASON_MAX = 500;
@@ -24,18 +25,12 @@ const reasonSchema = z
 
 const grantSchema = z.object({
   pageId: z.string().uuid(),
-  featureKey: z
-    .string()
-    .trim()
-    .min(1, "کلید قابلیت اجباری است.")
-    .max(120),
-  expiresInDays: z
-    .union([z.string(), z.undefined()])
-    .transform((v) => {
-      if (!v || !v.trim()) return null;
-      const n = Number.parseInt(v.trim(), 10);
-      return Number.isFinite(n) && n > 0 ? n : null;
-    }),
+  featureKey: z.string().trim().min(1, "کلید قابلیت اجباری است.").max(120),
+  expiresInDays: z.union([z.string(), z.undefined()]).transform((v) => {
+    if (!v || !v.trim()) return null;
+    const n = Number.parseInt(v.trim(), 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }),
   reason: reasonSchema,
 });
 
@@ -87,6 +82,10 @@ export async function adminGrantEntitlementAction(
       tx,
     );
   });
+
+  // Entitlement granted → cached page may be missing the new feature
+  // (e.g. bookings) → invalidate so it shows up immediately.
+  await invalidateProfileCacheById(pageId);
 
   log.info("admin.entitlement.grant", {
     adminId: viewer.user.id,
@@ -143,6 +142,10 @@ export async function adminRevokeEntitlementAction(
       tx,
     );
   });
+
+  // Entitlement revoked → the public page must stop rendering blocks
+  // that just lost their gate.
+  await invalidateProfileCacheById(pageId);
 
   log.info("admin.entitlement.revoke", {
     adminId: viewer.user.id,
@@ -240,6 +243,10 @@ export async function adminExtendPeriodAction(
     );
   });
 
+  // Period change can resurrect from grace/expired → entitlements come
+  // back → invalidate so the public page reflects the new state.
+  await invalidateProfileCacheById(pageId);
+
   log.info("admin.subscription.extend_period", {
     adminId: viewer.user.id,
     pageId,
@@ -305,6 +312,7 @@ export async function adminManualPlanChangeAction(
       .update(pageSubscriptions)
       .set({
         planId: targetPlan.id,
+        planKey,
         billingCycle: nextCycle,
         // Manual override always lands as `active` (no trial, no grace).
         status: planKey === "free" ? "expired" : "active",
@@ -374,6 +382,9 @@ export async function adminManualPlanChangeAction(
     );
   });
 
+  // Plan changed → entitlement set changed → drop the cached page.
+  await invalidateProfileCacheById(pageId);
+
   log.info("admin.subscription.manual_plan_change", {
     adminId: viewer.user.id,
     pageId,
@@ -415,27 +426,35 @@ export async function adminMarkInvoicePaidAction(
       i."id" AS id,
       i."page_id" AS page_id,
       i."plan_id" AS plan_id,
+      p."key" AS plan_key,
       i."billing_cycle"::text AS billing_cycle,
       i."status"::text AS status,
       i."total_toman" AS total_toman
     FROM "invoices" i
+    JOIN "plans" p ON p."id" = i."plan_id"
     WHERE i."id" = ${invoiceId}::uuid
     LIMIT 1
   `);
-  const row = (inv as unknown as Array<{
-    id: string;
-    page_id: string;
-    plan_id: string;
-    billing_cycle: "monthly" | "annual";
-    status: string;
-    total_toman: number;
-  }>)[0];
+  const row = (
+    inv as unknown as Array<{
+      id: string;
+      page_id: string;
+      plan_id: string;
+      plan_key: string;
+      billing_cycle: "monthly" | "annual";
+      status: string;
+      total_toman: number;
+    }>
+  )[0];
   if (!row) return { status: "error", message: "فاکتور یافت نشد." };
   if (row.status === "paid") {
     return { status: "error", message: "این فاکتور پیشاپیش پرداخت شده است." };
   }
   if (row.status === "canceled") {
-    return { status: "error", message: "نمی‌توان فاکتور لغو شده را پرداخت کرد." };
+    return {
+      status: "error",
+      message: "نمی‌توان فاکتور لغو شده را پرداخت کرد.",
+    };
   }
 
   const now = new Date();
@@ -452,16 +471,17 @@ export async function adminMarkInvoicePaidAction(
       where: eq(pageSubscriptions.pageId, row.page_id),
     });
     if (sub) {
-      const baseline =
-        sub.currentPeriodEnd > now ? sub.currentPeriodEnd : now;
+      const baseline = sub.currentPeriodEnd > now ? sub.currentPeriodEnd : now;
       const newEnd = computePeriodEnd(baseline, row.billing_cycle);
       await tx
         .update(pageSubscriptions)
         .set({
           planId: row.plan_id,
+          planKey: row.plan_key,
           billingCycle: row.billing_cycle,
           status: "active",
-          currentPeriodStart: sub.currentPeriodEnd > now ? sub.currentPeriodStart : now,
+          currentPeriodStart:
+            sub.currentPeriodEnd > now ? sub.currentPeriodStart : now,
           currentPeriodEnd: newEnd,
           updatedAt: now,
         })
@@ -481,6 +501,10 @@ export async function adminMarkInvoicePaidAction(
       tx,
     );
   });
+
+  // Plan/period possibly changed (resurrected from grace) and
+  // entitlements rebuilt → invalidate the public page cache.
+  await invalidateProfileCacheById(row.page_id);
 
   log.info("admin.invoice.mark_paid", {
     adminId: viewer.user.id,
@@ -523,7 +547,10 @@ export async function adminCancelInvoiceAction(
   const row = rows[0];
   if (!row) return { status: "error", message: "فاکتور یافت نشد." };
   if (row.status === "paid") {
-    return { status: "error", message: "نمی‌توان فاکتور پرداخت‌شده را لغو کرد." };
+    return {
+      status: "error",
+      message: "نمی‌توان فاکتور پرداخت‌شده را لغو کرد.",
+    };
   }
   if (row.status === "canceled") {
     return { status: "error", message: "این فاکتور پیشاپیش لغو شده است." };
@@ -625,6 +652,9 @@ export async function adminForceExpireSubscriptionAction(
       tx,
     );
   });
+
+  // Force-expire dropped entitlements to free → invalidate cached page.
+  await invalidateProfileCacheById(pageId);
 
   log.info("admin.subscription.force_expire", {
     adminId: viewer.user.id,

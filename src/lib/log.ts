@@ -1,15 +1,54 @@
 import "server-only";
 
+import { getRequestContext } from "@/lib/log-context";
+
 /**
  * Structured JSON logger. No external deps — prints one JSON object per line
  * to stdout/stderr so any log collector (Loki, Vector, Filebeat, journald)
  * can ingest it. Use this in server code instead of `console.log`.
  *
- * Never pass secrets as fields. We explicitly redact a small set of common
- * sensitive keys as a safety net.
+ * Level filter
+ * ------------
+ * Controlled by `LOG_LEVEL` (one of `debug` | `info` | `warn` | `error`).
+ * Default in production: `info`. Default in development: `debug`. Set
+ * `LOG_LEVEL=debug` in prod to temporarily get verbose logs without a
+ * redeploy of the level constant. Unknown values fall back to `info`.
+ *
+ * Request correlation
+ * -------------------
+ * If the caller is running inside `withRequestContext()` (see
+ * `lib/log-context.ts`), every emitted line gets a `requestId` and
+ * (optional) `route` field automatically. Outside that scope (legacy
+ * code, scripts, tests) lines emit without correlation — never throws.
+ *
+ * Redaction
+ * ---------
+ * A small set of common sensitive keys is replaced with `"[REDACTED]"`.
+ * This is a safety net only; never rely on it as your sole defence —
+ * the right thing is to not pass secrets as fields in the first place.
  */
 
 type LogLevel = "debug" | "info" | "warn" | "error";
+
+const LEVEL_PRIORITY: Record<LogLevel, number> = {
+  debug: 10,
+  info: 20,
+  warn: 30,
+  error: 40,
+};
+
+function resolveMinLevel(): LogLevel {
+  const raw = process.env.LOG_LEVEL?.trim().toLowerCase();
+  if (raw === "debug" || raw === "info" || raw === "warn" || raw === "error") {
+    return raw;
+  }
+  return process.env.NODE_ENV === "production" ? "info" : "debug";
+}
+
+// Resolved once per process so the per-call check is a single object lookup.
+// A redeploy is required to change the level — that's intentional.
+const MIN_LEVEL: LogLevel = resolveMinLevel();
+const MIN_PRIORITY = LEVEL_PRIORITY[MIN_LEVEL];
 
 const SENSITIVE_KEYS = new Set([
   "password",
@@ -49,10 +88,21 @@ function redact(value: unknown): unknown {
 }
 
 function emit(level: LogLevel, msg: string, fields?: Record<string, unknown>) {
+  if (LEVEL_PRIORITY[level] < MIN_PRIORITY) return;
+
+  const ctx = getRequestContext();
+  const correlation: Record<string, unknown> = {};
+  if (ctx) {
+    correlation.requestId = ctx.requestId;
+    if (ctx.route) correlation.route = ctx.route;
+    if (ctx.fields) Object.assign(correlation, ctx.fields);
+  }
+
   const payload = {
     ts: new Date().toISOString(),
     level,
     msg,
+    ...correlation,
     ...(fields ? (redact(fields) as Record<string, unknown>) : {}),
   };
   const line = JSON.stringify(payload);
@@ -70,8 +120,6 @@ function emit(level: LogLevel, msg: string, fields?: Record<string, unknown>) {
 
 export const log = {
   debug(msg: string, fields?: Record<string, unknown>) {
-    if (process.env.NODE_ENV === "production" && process.env.LOG_DEBUG !== "1")
-      return;
     emit("debug", msg, fields);
   },
   info(msg: string, fields?: Record<string, unknown>) {

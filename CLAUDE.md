@@ -220,6 +220,21 @@ The trigger is **capability**, not file type. A new component is a feature only 
 
 If unsure, ask before assuming.
 
+## Public profile cache — MANDATORY
+
+The public profile page (`/[slug]`) is read-through cached in Redis via `src/lib/cache/profile-cache.ts`. Key format `kioar:page:v1:{slug}`, TTL 300s for hits, 60s for the 404 sentinel. Fail-open: every Redis error logs and falls through to the DB loader.
+
+Locked-in rules:
+
+- **Any new write path that affects what the public page renders MUST call an `invalidateProfileCache*` helper after the transaction commits**, never inside `tx`. The current invalidation map lives in `src/lib/cache/profile-cache.ts`.
+- Pick the right helper:
+  - `invalidateProfileCacheBySlug(slug)` — slug already in scope (most block/profile mutations, page deletion).
+  - `invalidateProfileCacheById(pageId)` — only `pageId` in scope (billing/admin/cron/entitlement paths). Does an internal slug lookup.
+  - `invalidateProfileCacheOnSlugChange(oldSlug, newSlug)` — slug change, drops both keys.
+- The renderer reads ISO 8601 UTC `Date` instances; the cache reviver only revives strings matching `/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/`. Don't ship pre-formatted Shamsi or zoned strings on the cached payload.
+- Mutations that affect the cached shape: profile fields, slug, avatar, links, blocks (booking/form/product/spotlight/order), plan/entitlement changes (paid checkout, trial start, cron transitions, admin grants/revokes/force-expire/manual plan change/mark invoice paid). Things that DO NOT affect rendering (price locks, future-renewal discounts, referral period extensions that only bump `currentPeriodEnd`, invoice cancel) skip invalidation.
+- Metrics keys: `kioar:metrics:profile_cache:{hit|miss|not_found_hit|error}` (Redis INCR). Don't add per-slug counters — cardinality is unbounded.
+
 ## Hard "do not"s
 
 - **NO GRADIENTS.** Never use `bg-gradient-*`, `bg-linear-*`, `bg-[radial-gradient(...)]`, `bg-[conic-gradient(...)]`, `bg-[linear-gradient(...)]`, or any CSS `gradient` function anywhere in the UI — not as backgrounds, not as text fills (`bg-clip-text`), not as decorative blobs. Use solid colors only. This is a hard rule the designer explicitly set.

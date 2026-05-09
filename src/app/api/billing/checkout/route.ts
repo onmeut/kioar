@@ -220,6 +220,7 @@ export async function POST(request: Request) {
         .update(pageSubscriptions)
         .set({
           planId: plan.id,
+          planKey: plan.key,
           billingCycle: parsed.billingCycle,
           status: "active",
           currentPeriodStart: now,

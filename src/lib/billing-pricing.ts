@@ -69,19 +69,14 @@ export function computeBillingTotals(input: {
   const { plan, billingCycle, discountAmountToman = 0 } = input;
 
   const subtotal =
-    billingCycle === "annual"
-      ? plan.priceAnnualToman
-      : plan.priceMonthlyToman;
+    billingCycle === "annual" ? plan.priceAnnualToman : plan.priceMonthlyToman;
 
   if (!Number.isInteger(subtotal) || subtotal < 0) {
     throw new Error(
       `plan price (${billingCycle}) is not a non-negative integer: ${subtotal}`,
     );
   }
-  if (
-    !Number.isInteger(discountAmountToman) ||
-    discountAmountToman < 0
-  ) {
+  if (!Number.isInteger(discountAmountToman) || discountAmountToman < 0) {
     throw new Error(
       `discountAmountToman must be a non-negative integer, got ${discountAmountToman}`,
     );

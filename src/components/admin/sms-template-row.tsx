@@ -57,7 +57,8 @@ export function SmsTemplateRow(props: Props) {
     ? new Date(props.kavenegarSyncedAt)
     : null;
   const outOfSync =
-    Boolean(previewAt) && (!syncedAt || previewAt!.getTime() > syncedAt.getTime());
+    Boolean(previewAt) &&
+    (!syncedAt || previewAt!.getTime() > syncedAt.getTime());
 
   return (
     <article className="rounded-3xl border border-border bg-card p-4 shadow-sm">

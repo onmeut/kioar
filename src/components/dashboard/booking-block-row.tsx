@@ -10,6 +10,7 @@ import type {
   EditableBookingBlockWithId,
   ProviderConnection,
 } from "@/components/dashboard/booking.types";
+import type { RequiredPlanTier } from "@/lib/block-features";
 import type {
   BlockAnimationStyle,
   BlockSpotlight,
@@ -29,6 +30,9 @@ export type BookingBlockRowProps = {
   /** Phase 5: render in a read-only locked state when the page lacks the
    * `business_bookings` entitlement. The owner still sees their config. */
   locked?: boolean;
+  /** Lowest paid plan that currently grants the booking feature, sourced
+   * from the live `plan_features` matrix. Drives lock chip colour. */
+  lockedPlan?: RequiredPlanTier;
   /** Phase 6 — Spotlight gating. */
   pinAllowed?: boolean;
   animateAllowed?: boolean;
@@ -54,6 +58,7 @@ export function BookingBlockRow({
   dragProps,
   isDragging,
   locked = false,
+  lockedPlan = "business",
   pinAllowed = false,
   animateAllowed = false,
   onSpotlightChange,
@@ -67,7 +72,7 @@ export function BookingBlockRow({
         dragProps={dragProps}
         isDragging={isDragging}
         locked={locked}
-        lockedPlan="business"
+        lockedPlan={lockedPlan}
         icon={
           <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
             <CalendarIcon className="size-5" />

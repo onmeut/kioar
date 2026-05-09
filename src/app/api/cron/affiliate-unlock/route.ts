@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { unlockMaturedCommissions } from "@/lib/affiliate";
 import { log } from "@/lib/log";
+import { withRequestContext } from "@/lib/log-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +21,17 @@ export const dynamic = "force-dynamic";
 const AFFILIATE_UNLOCK_LOCK_KEY = BigInt("4427301519462399");
 
 async function handle(request: Request) {
+  return withRequestContext(
+    {
+      requestId: request.headers.get("x-request-id") ?? undefined,
+      route: "cron.affiliate_unlock",
+    },
+    () => runAffiliateUnlock(request),
+  );
+}
+
+async function runAffiliateUnlock(request: Request) {
+  const startedAt = Date.now();
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "cron_disabled" }, { status: 503 });
@@ -29,6 +41,7 @@ async function handle(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  log.info("cron.affiliate_unlock.start");
   const db = getDb();
   const lockRows = await db.execute<{ locked: boolean }>(
     sql`select pg_try_advisory_lock(${AFFILIATE_UNLOCK_LOCK_KEY}) as locked`,
@@ -37,16 +50,25 @@ async function handle(request: Request) {
     (lockRows as unknown as Array<{ locked: boolean }>)[0]?.locked,
   );
   if (!locked) {
-    log.info("cron.affiliate_unlock.skipped", { reason: "lock_held" });
+    log.info("cron.affiliate_unlock.skipped", {
+      reason: "lock_held",
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ok: true, skipped: true });
   }
 
   try {
     const result = await unlockMaturedCommissions(new Date());
-    log.info("cron.affiliate_unlock.ok", { unlocked: result.unlocked });
+    log.info("cron.affiliate_unlock.ok", {
+      unlocked: result.unlocked,
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ok: true, unlocked: result.unlocked });
   } catch (error) {
-    log.error("cron.affiliate_unlock.failed", { error });
+    log.error("cron.affiliate_unlock.failed", {
+      error,
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ error: "internal_error" }, { status: 500 });
   } finally {
     await db.execute(

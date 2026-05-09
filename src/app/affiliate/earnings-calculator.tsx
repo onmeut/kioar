@@ -133,7 +133,7 @@ function Result({
       }`}
     >
       <p
-        className={`text-[11px] font-medium uppercase tracking-wider ${
+        className={`text-[11px] font-medium uppercaser ${
           highlight ? "text-white/80" : "text-ink-soft"
         }`}
       >

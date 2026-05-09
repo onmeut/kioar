@@ -62,9 +62,9 @@ third party reviews paperwork.
       `ssh-agent`). Do not commit it anywhere.
 - [ ] `~/.ssh/config` has a host alias so you don't fat-finger the IP:
       `    Host kioar-staging
-  HostName <fill-after-provisioning>
-  User deploy
-  IdentityFile ~/.ssh/kioar_deploy`
+HostName <fill-after-provisioning>
+User deploy
+IdentityFile ~/.ssh/kioar_deploy`
 
 ### 0.3 — Zarinpal merchant account (multi-day lead time)
 
@@ -827,7 +827,7 @@ the container. Run this **from your laptop**, not from the server:
 # ~/deploy.sh — run from your laptop
 set -euo pipefail
 
-SERVER="deploy@37.32.30.145"
+SERVER="deploy@37.152.187.2"
 SSH_KEY="$HOME/.ssh/kioar_deploy"
 REMOTE_PATH="/srv/kioar/app"
 LOCAL_PATH="$HOME/kioar-app/"

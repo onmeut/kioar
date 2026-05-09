@@ -14,6 +14,7 @@ import {
   type BlockAnimationStyle,
   type BlockSpotlight,
 } from "@/lib/block-spotlight";
+import { invalidateProfileCacheBySlug } from "@/lib/cache/profile-cache";
 import { pageHasFeature } from "@/lib/entitlements";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
@@ -65,6 +66,7 @@ export async function setBlockSpotlightForUser(
             eq(profileLinks.profileId, profile.id),
           ),
         );
+      await invalidateProfileCacheBySlug(profile.slug);
       return { ok: true };
     case "form":
       await db
@@ -76,6 +78,7 @@ export async function setBlockSpotlightForUser(
             eq(profileFormBlocks.profileId, profile.id),
           ),
         );
+      await invalidateProfileCacheBySlug(profile.slug);
       return { ok: true };
     case "booking":
       await db
@@ -87,6 +90,7 @@ export async function setBlockSpotlightForUser(
             eq(profileBookingBlocks.profileId, profile.id),
           ),
         );
+      await invalidateProfileCacheBySlug(profile.slug);
       return { ok: true };
   }
 }

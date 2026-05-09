@@ -2,7 +2,6 @@
 
 import { useState, type ReactNode } from "react";
 import { GripVerticalIcon, LockIcon, MoreHorizontalIcon } from "lucide-react";
-import Link from "next/link";
 
 import {
   AlertDialog,
@@ -21,15 +20,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 import type { RequiredPlanTier } from "@/lib/block-features";
+import { UpgradePlanModal } from "@/components/dashboard/upgrade-plan-modal";
 
 /**
  * Visual shell shared by every block on the dashboard "links" page —
@@ -233,57 +227,43 @@ export function BlockCard({
   );
 }
 
-const LOCKED_PLAN_COPY: Record<
-  RequiredPlanTier,
-  { name: string; tooltip: string; chipClass: string; ariaLabel: string }
-> = {
-  pro: {
-    name: "حرفه‌ای",
-    tooltip: "این قابلیت در پلن حرفه‌ای فعال می‌شود. برای ارتقا کلیک کنید.",
-    chipClass:
-      "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 hover:text-emerald-800",
-    ariaLabel: "ارتقا به پلن حرفه‌ای",
-  },
-  business: {
-    name: "کسب‌وکار",
-    tooltip: "این قابلیت در پلن کسب‌وکار فعال می‌شود. برای ارتقا کلیک کنید.",
-    chipClass:
-      "bg-purple-50 text-purple-700 ring-1 ring-purple-200 hover:bg-purple-100 hover:text-purple-800",
-    ariaLabel: "ارتقا به پلن کسب‌وکار",
-  },
+const LOCKED_CHIP_CLASSES: Record<RequiredPlanTier, string> = {
+  pro: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-100 hover:text-emerald-800",
+  business:
+    "bg-purple-50 text-purple-700 ring-1 ring-purple-200 hover:bg-purple-100 hover:text-purple-800",
+};
+
+const LOCKED_ARIA_LABELS: Record<RequiredPlanTier, string> = {
+  pro: "ارتقا به پلن حرفه‌ای",
+  business: "ارتقا به پلن کسب‌وکار",
 };
 
 /**
  * Compact lock affordance shown in place of the `Switch` when a block is
  * gated. Sized to match the switch exactly (24×44) so locked rows have the
  * same visual rhythm as active rows — no jumping action cluster as you
- * scroll past mixed states. Click routes to `/pro`; tooltip carries the
- * "this is a Pro/Business feature" message.
+ * scroll past mixed states. Clicking opens the upgrade modal.
  */
 function LockedPlanChip({ plan }: { plan: RequiredPlanTier }) {
-  const copy = LOCKED_PLAN_COPY[plan];
+  const [modalOpen, setModalOpen] = useState(false);
   return (
-    <TooltipProvider delay={150}>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <Link
-              href="/pro"
-              aria-label={copy.ariaLabel}
-              className={cn(
-                "inline-flex h-6 w-11 items-center justify-center rounded-full transition-colors",
-                copy.chipClass,
-              )}
-            />
-          }
-        >
-          <LockIcon className="size-3.5" aria-hidden />
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-56 text-center">
-          <span className="block font-bold">قفل پلن {copy.name}</span>
-          <span className="mt-0.5 block opacity-90">{copy.tooltip}</span>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <>
+      <button
+        type="button"
+        aria-label={LOCKED_ARIA_LABELS[plan]}
+        onClick={() => setModalOpen(true)}
+        className={cn(
+          "inline-flex h-6 w-11 items-center justify-center rounded-full transition-colors",
+          LOCKED_CHIP_CLASSES[plan],
+        )}
+      >
+        <LockIcon className="size-3.5" aria-hidden />
+      </button>
+      <UpgradePlanModal
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        plan={plan}
+      />
+    </>
   );
 }

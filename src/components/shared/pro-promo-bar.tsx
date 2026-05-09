@@ -16,39 +16,43 @@ function daysRemaining(trialEndsAt: Date): number {
 }
 
 export interface ProPromoBarProps {
-  /**
-   * Whether the *current* page is on a trial subscription
-   * (status === "trialing"). Drives the bar's primary purpose — the
-   * countdown to trial expiry. We gate on trial status rather than
-   * plan key so the bar disappears the moment the user upgrades,
-   * downgrades, or the trial converts/expires (see BILLING.md "do not
-   * compare plan keys in product code").
-   */
   isOnTrial: boolean;
   /** End-of-trial timestamp from `page_subscriptions.trial_ends_at`. */
   trialEndsAt: Date | null;
+  /**
+   * Current plan key for the page. Used to keep showing the upgrade CTA
+   * after the trial expires and the page reverts to Free.
+   */
+  planKey: "free" | "pro" | "business";
 }
 
 /**
  * Slim promo strip shown full-width above the authenticated shell.
- * Dark background so the content card below can sit on it with
- * rounded-top corners. Renders only while the current page is on an
- * active trial — the parent layout drops its dark background + rounded
- * container in lockstep when this returns null, so paid pages get a
- * flush, full-bleed surface.
+ * Dark background so the content card below sits on it with rounded-top
+ * corners. Visible for two states:
+ *   1. Active trial  — countdown "X روز تا پایان نسخه آزمایشی"
+ *   2. Free plan     — upgrade CTA (also covers post-trial fallback)
+ * Paid pages receive a flush, full-bleed surface with no bar.
  */
-export function ProPromoBar({ isOnTrial, trialEndsAt }: ProPromoBarProps) {
-  if (!isOnTrial || !trialEndsAt) return null;
-  const days = daysRemaining(trialEndsAt);
-  if (days <= 0) return null;
+export function ProPromoBar({
+  isOnTrial,
+  trialEndsAt,
+  planKey,
+}: ProPromoBarProps) {
+  const isActiveTrial =
+    isOnTrial && trialEndsAt && daysRemaining(trialEndsAt) > 0;
+
+  if (!isActiveTrial && planKey !== "free") return null;
 
   return (
     <div
       dir="rtl"
-      className="flex h-12 items-center justify-center gap-3 bg-zinc-950 px-4 text-xs font-semibold sm:text-sm"
+      className="relative z-30 flex h-12 shrink-0 items-center justify-center gap-3 bg-zinc-950 px-4 text-xs font-semibold sm:text-sm"
     >
       <span className="text-white">
-        {toPersianDigits(days)} روز تا پایان نسخه آزمایشی
+        {isActiveTrial && trialEndsAt
+          ? `${toPersianDigits(daysRemaining(trialEndsAt))} روز تا پایان نسخه آزمایشی`
+          : "برای ادامه‌ی دسترسی کامل، اشتراک بگیرید"}
       </span>
       <Link
         href={"/pro" as const}

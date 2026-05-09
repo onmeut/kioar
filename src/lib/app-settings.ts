@@ -30,8 +30,7 @@ export const APP_SETTING_DEFINITIONS = {
   "billing.grace_period_days": {
     schema: z.number().int().min(0).max(60),
     fallback: 7,
-    descriptionFa:
-      "روزهای مهلت پس از پایان دوره — قبل از تنزل به پلن رایگان.",
+    descriptionFa: "روزهای مهلت پس از پایان دوره — قبل از تنزل به پلن رایگان.",
   },
   "billing.reminder_offsets_days": {
     schema: z.array(z.number().int().min(0).max(60)).max(8),
@@ -42,7 +41,8 @@ export const APP_SETTING_DEFINITIONS = {
   "billing.trial_reminder_offset_days": {
     schema: z.number().int().min(0).max(60),
     fallback: 3,
-    descriptionFa: "روزهای باقی‌مانده تا پایان آزمایشی که پیامک یادآوری می‌رود.",
+    descriptionFa:
+      "روزهای باقی‌مانده تا پایان آزمایشی که پیامک یادآوری می‌رود.",
   },
   "billing.vat_rate": {
     schema: z.number().min(0).max(0.5),
@@ -74,9 +74,12 @@ export async function getSetting<K extends AppSettingKey>(
   db: Database = getDb(),
 ): Promise<AppSettingValue<K>> {
   const def = APP_SETTING_DEFINITIONS[key];
-  const row = await db.query.appSettings.findFirst({
-    where: eq(appSettings.key, key),
-  });
+  const rows = await db
+    .select()
+    .from(appSettings)
+    .where(eq(appSettings.key, key))
+    .limit(1);
+  const row = rows[0];
   if (!row) {
     return def.fallback as AppSettingValue<K>;
   }
@@ -97,7 +100,7 @@ export async function getSetting<K extends AppSettingKey>(
 export async function getAllSettings(
   db: Database = getDb(),
 ): Promise<{ [K in AppSettingKey]: AppSettingValue<K> }> {
-  const rows = await db.query.appSettings.findMany();
+  const rows = await db.select().from(appSettings);
   const byKey = new Map(rows.map((r) => [r.key, r.value] as const));
   const out = {} as { [K in AppSettingKey]: AppSettingValue<K> };
   for (const key of KEYS) {

@@ -156,7 +156,7 @@ const FEATURES: FeatureSeed[] = [
   // ---- branding
   {
     key: "remove_branding",
-    nameFa: "حذف برندینگ کیوار",
+    nameFa: "حذف برندینگ کیوآر",
     category: "branding",
     free: false,
     pro: true,

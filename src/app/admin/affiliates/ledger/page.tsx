@@ -203,7 +203,7 @@ export default async function AdminAffiliateLedgerPage({
           {/* Desktop table */}
           <div className="hidden overflow-hidden rounded-2xl border border-border bg-background lg:block">
             <table className="w-full text-end text-[13px]">
-              <thead className="bg-muted text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              <thead className="bg-muted text-[11px] font-bold uppercaser text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2">همکار</th>
                   <th className="px-3 py-2">رفری</th>

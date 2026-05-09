@@ -26,7 +26,7 @@ export default function AffiliateApplyThanksPage() {
           <div className="mx-auto flex size-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700">
             <MailCheckIcon className="size-7" />
           </div>
-          <h1 className="mt-6 text-[clamp(28px,5vw,40px)] font-semibold leading-[1.1] tracking-tight">
+          <h1 className="mt-6 text-[clamp(28px,5vw,40px)] font-semibold leading-[1.1]">
             درخواستت رسید 👋
           </h1>
           <p className="mt-4 text-[14px] leading-8 text-ink-soft sm:text-[15px]">

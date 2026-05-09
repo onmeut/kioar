@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import { normalizeIranianPhone } from "@/lib/phone";
 import { toEnglishDigits } from "@/lib/persian";
+import { isDiscoverCategorySlug } from "@/lib/discover";
 import { isIconKey } from "@/lib/link-icons";
+import { isPageTypeSlug } from "@/lib/page-type";
 import { DEFAULT_PROFILE_DOMAIN, isProfileDomain } from "@/lib/profile-domains";
 import { isReservedSlug, normalizeSlug } from "@/lib/slug";
 
@@ -371,11 +373,44 @@ export const pageSettingsFormSchema = z.object({
     .refine((v) => v === null || /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(v), {
       message: "رنگ نامعتبر است.",
     }),
+  // Discover (kioar.com/discover) — opt-in directory listing.
+  discoverEnabled: z
+    .union([z.literal("on"), z.literal("off"), z.boolean()])
+    .default(false)
+    .transform((v) => (typeof v === "boolean" ? v : v === "on" ? true : false)),
+  discoverCategory: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null))
+    .refine((v) => v === null || isDiscoverCategorySlug(v), {
+      message: "دسته‌بندی نامعتبر است.",
+    }),
+  city: z
+    .string()
+    .trim()
+    .max(60, "نام شهر حداکثر ۶۰ کاراکتر می‌تواند باشد.")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  // Page archetype (Personal | Business). Editable from page settings; not
+  // plan-gated.
+  pageType: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null))
+    .refine((v) => v === null || isPageTypeSlug(v), {
+      message: "نوع صفحه نامعتبر است.",
+    }),
 });
 
-// Onboarding is intentionally the tiniest first-run flow: just enough data to
-// claim a slug and name the page. Avatar, bio, contact methods, links, etc.
-// are deferred to the dashboard so users can reach `/page` fast.
+// Onboarding captures the page's identity in four steps: slug, page name,
+// page type (Personal/Business), and an optional discover category. We
+// keep the field set tiny on purpose — avatars, bios, contacts and links
+// are deferred to the dashboard so users can reach `/me` fast.
 export const onboardingProfileSchema = z.object({
   pageName: z.string().trim().min(1, "نام صفحه را وارد کنید.").max(80),
   slug: z
@@ -388,6 +423,25 @@ export const onboardingProfileSchema = z.object({
     })
     .refine((value) => !isReservedSlug(value), {
       message: "این نام کاربری رزرو شده است. نام دیگری انتخاب کنید.",
+    }),
+  pageType: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null))
+    .refine((v) => v === null || isPageTypeSlug(v), {
+      message: "نوع صفحه نامعتبر است.",
+    }),
+  // Category is skippable — Discover lists categoryless pages under "همه".
+  discoverCategory: z
+    .string()
+    .trim()
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null))
+    .refine((v) => v === null || isDiscoverCategorySlug(v), {
+      message: "دسته‌بندی نامعتبر است.",
     }),
 });
 

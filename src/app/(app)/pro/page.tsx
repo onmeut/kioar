@@ -34,10 +34,6 @@ import { getDb } from "@/db";
 import { pageSubscriptions } from "@/db/schema";
 import { requireCompletedProfile } from "@/lib/auth/session";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
-import {
-  DEFAULT_PROFILE_DOMAIN,
-  profileShareHost,
-} from "@/lib/profile-domains";
 
 export const metadata = {
   title: "ارتقا پلن",
@@ -88,6 +84,36 @@ export default async function ProRoute() {
 
   const activePlans = allPlans.filter((p) => p.isActive);
 
+  // ── Effective subscription state ─────────────────────────────────────────
+  // The billing cron may not have run yet (especially in dev/staging), so the
+  // DB can still show status="trialing" even though trial_ends_at is in the
+  // past. We must NOT trust raw DB status for UI decisions — compute the
+  // effective state the same way `listOwnedPagesWithPlan` does.
+  const now = new Date();
+  const isActivelyTrialing =
+    sub.status === "trialing" &&
+    sub.trialEndsAt != null &&
+    sub.trialEndsAt > now;
+  const isEffectivelyFree =
+    sub.status === "expired" ||
+    sub.status === "canceled" ||
+    (sub.status === "trialing" && !isActivelyTrialing);
+
+  const effectivePlanKey: "free" | "pro" | "business" = isEffectivelyFree
+    ? "free"
+    : (sub.plan.key as "free" | "pro" | "business");
+  // Use "expired" so BillingActionsCard treats the user as a free/upgrade
+  // candidate rather than still-trialing. For all other statuses keep as-is.
+  const effectiveStatus =
+    isEffectivelyFree && sub.status === "trialing"
+      ? ("expired" as const)
+      : sub.status;
+  // When effectively free, point currentPlanId at the free plan row so the
+  // Free card highlights as "پلن فعلی" in the picker.
+  const effectivePlan = isEffectivelyFree
+    ? (allPlans.find((p) => p.key === "free") ?? sub.plan)
+    : sub.plan;
+
   const planOptions: BillingPlanOption[] = activePlans.map((p) => ({
     id: p.id,
     key: p.key as "free" | "pro" | "business",
@@ -99,14 +125,18 @@ export default async function ProRoute() {
 
   const billingState: BillingActionsState = {
     pageId: page.id,
-    currentPlanKey: sub.plan.key as "free" | "pro" | "business",
-    currentPlanId: sub.planId,
+    currentPlanKey: effectivePlanKey,
+    currentPlanId: effectivePlan.id,
     currentBillingCycle: sub.billingCycle,
-    status: sub.status,
-    cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+    status: effectiveStatus,
     pendingPlanChangePlanId: sub.pendingPlanChangePlanId,
     pendingPlanChangeNameFa: sub.pendingPlanChange?.nameFa ?? null,
-    trialEndsAt: sub.trialEndsAt ? sub.trialEndsAt.toISOString() : null,
+    // Only pass trialEndsAt while the trial is still live so the card
+    // doesn't surface a stale past date in the "پایان دوره" banner.
+    trialEndsAt:
+      isActivelyTrialing && sub.trialEndsAt
+        ? sub.trialEndsAt.toISOString()
+        : null,
     currentPeriodEnd: sub.currentPeriodEnd
       ? sub.currentPeriodEnd.toISOString()
       : null,
@@ -115,14 +145,10 @@ export default async function ProRoute() {
 
   const displayName =
     page.fullName?.trim() || page.title?.trim() || `/${page.slug}`;
-  const shareHost = profileShareHost(
-    page.slug,
-    page.domain ?? DEFAULT_PROFILE_DOMAIN,
-  );
-  const planBadge = PLAN_BADGE[sub.plan.key as "free" | "pro" | "business"];
+  const planBadge = PLAN_BADGE[effectivePlanKey];
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:py-10">
+    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-6 sm:py-10">
       {/* Header — matches the trial-claim screen aesthetic. */}
       <header className="flex flex-col items-center gap-5 text-center">
         <BrandMark variant="mark" className="size-12" />
@@ -131,51 +157,36 @@ export default async function ProRoute() {
             پلن‌ها و اشتراک
           </h1>
           <p className="px-2 text-sm leading-7 text-zinc-600 sm:text-[15px]">
-            پلن این صفحه را تغییر دهید، چرخه‌ی صورت‌حساب را عوض کنید، یا اشتراک
-            را لغو کنید.
+            پلن این صفحه را تغییر دهید یا چرخه‌ی صورت‌حساب را عوض کنید.
           </p>
         </div>
       </header>
 
-      {/* "صفحه‌ی در حال ارتقا" panel — keeps the user oriented to which
-          page this checkout will affect. Restyled to the trial page's
-          rounded-3xl + ring-1 ring-zinc-200 aesthetic. */}
+      {/* Page identity card — shows which page this checkout affects. */}
       <section className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
-            <div className="relative shrink-0">
-              <Avatar className="size-14 ring-2 ring-background [&_svg]:size-full!">
-                {page.avatarUrl ? (
-                  <AvatarImage src={page.avatarUrl} alt={displayName} />
-                ) : (
-                  <AvatarFallback className="bg-transparent p-0">
-                    <KioarAvatar seed={page.avatarSeed} size={56} />
-                  </AvatarFallback>
-                )}
-              </Avatar>
+            <Avatar className="size-14 shrink-0 rounded-2xl ring-2 ring-background [&_svg]:size-full!">
+              {page.avatarUrl ? (
+                <AvatarImage src={page.avatarUrl} alt={displayName} />
+              ) : (
+                <AvatarFallback className="bg-transparent p-0">
+                  <KioarAvatar seed={page.avatarSeed} size={56} />
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+              <p className="truncate text-xl font-bold text-zinc-900 sm:text-2xl">
+                {displayName}
+              </p>
               <Badge
                 variant="outline"
                 className={
-                  "absolute -bottom-1 -inset-e-1 h-5 px-1.5 text-[9px] font-bold shadow-sm " +
-                  planBadge.className
+                  "h-6 px-2 text-[11px] font-bold " + planBadge.className
                 }
               >
-                {planBadge.label}
+                {isActivelyTrialing ? `پلن فعلی · آزمایشی` : planBadge.label}
               </Badge>
-            </div>
-            <div className="min-w-0 space-y-0.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-400">
-                در حال ارتقای این صفحه
-              </p>
-              <p className="truncate text-base font-bold text-zinc-900 sm:text-lg">
-                {displayName}
-              </p>
-              <p
-                dir="ltr"
-                className="truncate text-[11px] font-medium text-zinc-500"
-              >
-                {shareHost}
-              </p>
             </div>
           </div>
           <Button
@@ -193,8 +204,8 @@ export default async function ProRoute() {
 
       <BillingActionsCard state={billingState} />
 
-      <section className="space-y-3">
-        <div className="flex flex-col items-center gap-1 text-center">
+      <section className="space-y-3 pt-6 sm:pt-10">
+        <div className="flex flex-col items-center gap-2 pb-2 text-center sm:gap-3 sm:pb-4">
           <h2 className="text-xl font-bold text-zinc-900 sm:text-2xl">
             مقایسه‌ی امکانات پلن‌ها
           </h2>

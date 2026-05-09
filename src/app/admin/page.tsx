@@ -251,7 +251,7 @@ export default async function AdminPage() {
 
       {/* Header */}
       <header className="space-y-1">
-        <h1 className="text-2xl font-bold tracking-tight">نمای کلی</h1>
+        <h1 className="text-2xl font-bold">نمای کلی</h1>
         <p className="text-sm text-muted-foreground">
           خلاصه‌ای از وضعیت پلتفرم، اشتراک‌ها، درآمد و فعالیت‌های اخیر.
         </p>

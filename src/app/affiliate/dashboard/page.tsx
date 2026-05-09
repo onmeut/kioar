@@ -44,10 +44,10 @@ export default async function AffiliateDashboardOverview() {
     <div className="space-y-8">
       {/* Hero */}
       <section className="rounded-3xl border border-hairline bg-paper-soft p-6 sm:p-8">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-violet-700">
+        <p className="text-[11px] font-bold uppercaser text-violet-700">
           لینک اختصاصی شما
         </p>
-        <h1 className="mt-2 text-[clamp(22px,3.5vw,32px)] font-semibold leading-[1.15] tracking-tight">
+        <h1 className="mt-2 text-[clamp(22px,3.5vw,32px)] font-semibold leading-[1.15]">
           هرجا که می‌تونی به اشتراکش بذار
         </h1>
         <p className="mt-3 max-w-xl text-[13px] leading-7 text-ink-soft">
@@ -128,7 +128,7 @@ export default async function AffiliateDashboardOverview() {
       {/* Recent ledger */}
       <section>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[16px] font-semibold tracking-tight">
+          <h2 className="text-[16px] font-semibold">
             آخرین فروش‌ها
           </h2>
           <Link
@@ -208,7 +208,7 @@ function Stat({
       >
         <Icon className="size-4" />
       </div>
-      <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-ink-soft">
+      <p className="mt-3 text-[11px] font-medium uppercaser text-ink-soft">
         {label}
       </p>
       <p className="mt-1 text-[18px] font-bold leading-tight text-ink">

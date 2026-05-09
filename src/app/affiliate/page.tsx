@@ -16,6 +16,7 @@
  */
 import type { Metadata } from "next";
 import type { Route } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import {
@@ -35,8 +36,6 @@ import {
   UsersIcon,
 } from "lucide-react";
 
-import { SiteHeader } from "@/components/marketing/site-header";
-import { SiteFooter } from "@/components/marketing/site-footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EarningsCalculator } from "@/app/affiliate/earnings-calculator";
@@ -74,30 +73,66 @@ export default async function AffiliateLandingPage() {
   const holdingDays = settings.holdingPeriodDays;
 
   return (
-    <div className="min-h-dvh bg-paper text-ink">
-      <SiteHeader />
+    <div
+      dir="rtl"
+      className="min-h-dvh bg-muted font-sans pt-[env(safe-area-inset-top)]"
+    >
+      {/* Discover-style floating pill navbar */}
+      <div className="sticky top-4 z-30 mx-auto w-full max-w-6xl px-5">
+        <header className="flex h-16 w-full items-center justify-between rounded-full bg-card pl-2 pr-5 ring-1 ring-border">
+          <Link
+            href="/"
+            aria-label="کیوآر"
+            className="flex items-center gap-2 transition-opacity hover:opacity-80"
+          >
+            <Image
+              src="/brand/logo.svg"
+              alt=""
+              width={20}
+              height={24}
+              className="h-6 w-auto"
+              priority
+            />
+            <span className="hidden text-lg font-bold sm:inline">کیوآر</span>
+          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/auth"
+              className="hidden h-11 items-center justify-center rounded-full bg-accent px-5 text-sm font-bold text-accent-foreground transition-colors hover:bg-accent/80 sm:flex"
+            >
+              ورود
+            </Link>
+            <Link
+              href="/auth"
+              className="flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-sm font-bold text-background transition-colors hover:bg-foreground/90"
+            >
+              ثبت‌نام رایگان
+            </Link>
+          </div>
+        </header>
+      </div>
 
       {/* Hero */}
-      <section className="relative overflow-hidden">
-        <div className="marketing-shell relative z-10 pt-16 pb-12 sm:pt-24 sm:pb-16">
-          <div className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-violet-50/60 px-3 py-1.5 text-xs font-medium text-violet-700">
-            <HandshakeIcon className="size-3.5" />
+      <section className="mx-auto w-full max-w-6xl px-5 pt-16 pb-12 sm:pt-24 sm:pb-16">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground ring-1 ring-border">
+            <HandshakeIcon className="size-3.5 text-primary" />
             <span>برنامه‌ی همکاری در فروش کی‌یو‌آر</span>
           </div>
 
-          <h1 className="mt-5 max-w-4xl text-[clamp(36px,7vw,64px)] font-semibold leading-[1.02] tracking-tight">
-            مخاطبت رو به <span className="text-violet-600">درآمد ماهانه</span>{" "}
-            تبدیل کن
+          <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
+            مخاطبت رو به{" "}
+            <span className="text-primary">درآمد ماهانه</span> تبدیل کن
           </h1>
 
-          <p className="mt-6 max-w-2xl text-[15px] leading-9 text-ink-soft sm:text-[17px]">
+          <p className="max-w-xl text-[15px] leading-9 text-muted-foreground sm:text-[17px]">
             روی هر فروش سالانه‌ی پلن پرو که از معرفی تو بیاد،{" "}
             {toPersianDigits(commissionPct)}٪ پورسانت نقدی می‌گیری. به شبای خودت
             واریز می‌شه. مخاطبت هم ۳ ماه پرو رایگان مهمون توئه. بدون سقف، بدون
             قرارداد طولانی.
           </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button
               size="lg"
               className="h-12 rounded-full px-6 text-[15px] font-bold sm:min-w-56"
@@ -117,15 +152,12 @@ export default async function AffiliateLandingPage() {
           </div>
 
           {/* Stat row */}
-          <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="mt-4 grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
             <Stat
               label="پورسانت روی فروش سالانه"
               value={`${toPersianDigits(commissionPct)}٪`}
             />
-            <Stat
-              label="هدیه به مخاطب"
-              value={`${toPersianDigits(3)} ماه پرو`}
-            />
+            <Stat label="هدیه به مخاطب" value={`${toPersianDigits(3)} ماه پرو`} />
             <Stat
               label="حداقل تسویه"
               value={`${formatPersianNumber(Math.round(minWithdrawalToman / 1000))} هزار تومان`}
@@ -139,59 +171,61 @@ export default async function AffiliateLandingPage() {
       </section>
 
       {/* Calculator */}
-      <section className="border-y border-hairline bg-paper-soft/50 py-16 sm:py-20">
-        <div className="marketing-shell">
-          <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
-            <div>
-              <Badge
-                variant="outline"
-                className="border-emerald-200 bg-emerald-50/70 text-[10px] font-bold uppercase tracking-wider text-emerald-700"
-              >
-                ماشین‌حساب درآمد
-              </Badge>
-              <h2 className="mt-4 text-[clamp(26px,4.5vw,40px)] font-semibold leading-[1.1] tracking-tight">
-                ببین ماهی چقدر می‌تونی دربیاری
-              </h2>
-              <p className="mt-4 text-[14px] leading-8 text-ink-soft sm:text-[15px]">
-                اسلایدر رو حرکت بده. هر فروش سالانه‌ی پلن پرو ({" "}
-                <span className="font-mono font-bold text-ink" dir="ltr">
-                  {formatPersianNumber(yearlyToman)}
-                </span>{" "}
-                تومان) با کد تو، {toPersianDigits(commissionPct)}٪ سهم تو می‌شه.
-                عدد ماشین‌حساب خام‌ترین حالت ممکنه — به زبان دیگه: همه‌چی نقد،
-                بدون مالیات مازاد، بدون شرط مازاد.
-              </p>
+      <section className="py-16 sm:py-20">
+        <div className="mx-auto w-full max-w-6xl px-5">
+          <div className="rounded-3xl bg-card p-6 sm:p-10">
+            <div className="grid gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1.5 text-[11px] font-bold text-emerald-700">
+                  ماشین‌حساب درآمد
+                </div>
+                <h2 className="mt-4 text-[clamp(26px,4.5vw,40px)] font-bold leading-[1.1]">
+                  ببین ماهی چقدر می‌تونی دربیاری
+                </h2>
+                <p className="mt-4 text-[14px] leading-8 text-muted-foreground sm:text-[15px]">
+                  اسلایدر رو حرکت بده. هر فروش سالانه‌ی پلن پرو ({" "}
+                  <span
+                    className="font-mono font-bold text-foreground"
+                    dir="ltr"
+                  >
+                    {formatPersianNumber(yearlyToman)}
+                  </span>{" "}
+                  تومان) با کد تو، {toPersianDigits(commissionPct)}٪ سهم تو
+                  می‌شه. عدد ماشین‌حساب خام‌ترین حالت ممکنه — به زبان دیگه:
+                  همه‌چی نقد، بدون مالیات مازاد، بدون شرط مازاد.
+                </p>
 
-              <ul className="mt-6 space-y-3 text-[13px] leading-7 text-ink-soft">
-                <Bullet>تسویه‌ی مستقیم به شبای خودت</Bullet>
-                <Bullet>بدون سقف ماهانه — هرچقدر بیاری، هرچقدر سهم</Bullet>
-                <Bullet>گزارش زنده‌ی کلیک، ثبت‌نام و فروش</Bullet>
-              </ul>
+                <ul className="mt-6 space-y-3 text-[13px] leading-7 text-muted-foreground">
+                  <Bullet>تسویه‌ی مستقیم به شبای خودت</Bullet>
+                  <Bullet>بدون سقف ماهانه — هرچقدر بیاری، هرچقدر سهم</Bullet>
+                  <Bullet>گزارش زنده‌ی کلیک، ثبت‌نام و فروش</Bullet>
+                </ul>
+              </div>
+
+              <EarningsCalculator
+                yearlyToman={yearlyToman}
+                commissionPct={commissionPct}
+              />
             </div>
-
-            <EarningsCalculator
-              yearlyToman={yearlyToman}
-              commissionPct={commissionPct}
-            />
           </div>
         </div>
       </section>
 
       {/* Who it's for */}
       <section className="py-16 sm:py-24">
-        <div className="marketing-shell">
+        <div className="mx-auto w-full max-w-6xl px-5">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-[clamp(26px,4.5vw,40px)] font-semibold leading-[1.1] tracking-tight">
+            <h2 className="text-[clamp(26px,4.5vw,40px)] font-bold leading-[1.1]">
               برای کی ساخته شده؟
             </h2>
-            <p className="mt-4 text-[14px] leading-8 text-ink-soft sm:text-[15px]">
+            <p className="mt-4 text-[14px] leading-8 text-muted-foreground sm:text-[15px]">
               کی‌یو‌آر یه ابزار حرفه‌ای برای فریلنسرها، کلینیک‌ها و کسب‌وکارهای
               کوچیک ایرانیه. اگه با همچین مخاطبی کار می‌کنی، این برنامه برای
               توئه.
             </p>
           </div>
 
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <AudienceCard
               title="کریتورهای اینستاگرام و یوتیوب"
               body="اگه درباره‌ی برندسازی، فریلنسری، کسب‌وکار آنلاین یا مارکتینگ تولید محتوا می‌کنی، مخاطبت دقیقاً همینه."
@@ -217,24 +251,18 @@ export default async function AffiliateLandingPage() {
       </section>
 
       {/* How it works */}
-      <section
-        id="how-it-works"
-        className="border-y border-hairline bg-paper-soft/50 py-16 sm:py-24"
-      >
-        <div className="marketing-shell">
+      <section id="how-it-works" className="py-16 sm:py-24">
+        <div className="mx-auto w-full max-w-6xl px-5">
           <div className="mx-auto max-w-3xl text-center">
-            <Badge
-              variant="outline"
-              className="border-violet-200 bg-white text-[10px] font-bold uppercase tracking-wider text-violet-700"
-            >
+            <div className="inline-flex items-center gap-2 rounded-full bg-card px-3 py-1.5 text-[11px] font-bold text-primary ring-1 ring-border">
               چطور کار می‌کنه
-            </Badge>
-            <h2 className="mt-4 text-[clamp(26px,4.5vw,40px)] font-semibold leading-[1.1] tracking-tight">
+            </div>
+            <h2 className="mt-4 text-[clamp(26px,4.5vw,40px)] font-bold leading-[1.1]">
               چهار قدم تا اولین واریزی
             </h2>
           </div>
 
-          <div className="mt-12 grid gap-5 lg:grid-cols-4">
+          <div className="mt-10 grid gap-3 lg:grid-cols-4">
             <Step
               num={1}
               icon={BadgeCheckIcon}
@@ -265,19 +293,16 @@ export default async function AffiliateLandingPage() {
 
       {/* Commission terms */}
       <section className="py-16 sm:py-24">
-        <div className="marketing-shell">
+        <div className="mx-auto w-full max-w-6xl px-5">
           <div className="grid gap-10 lg:grid-cols-[1fr_1.4fr] lg:items-start lg:gap-14">
             <div>
-              <Badge
-                variant="outline"
-                className="border-orange-200 bg-orange-50/60 text-[10px] font-bold uppercase tracking-wider text-orange-700"
-              >
+              <div className="inline-flex items-center gap-2 rounded-full bg-amber-100 px-3 py-1.5 text-[11px] font-bold text-amber-700">
                 شرایط شفاف
-              </Badge>
-              <h2 className="mt-4 text-[clamp(26px,4.5vw,40px)] font-semibold leading-[1.1] tracking-tight">
+              </div>
+              <h2 className="mt-4 text-[clamp(26px,4.5vw,40px)] font-bold leading-[1.1]">
                 هیچ ستاره‌ای زیر متن نیست
               </h2>
-              <p className="mt-4 text-[14px] leading-8 text-ink-soft sm:text-[15px]">
+              <p className="mt-4 text-[14px] leading-8 text-muted-foreground sm:text-[15px]">
                 هر چیزی که قراره بهت بگیم رو همین‌جا گفتیم. شرایط روزِ ثبت‌نامت
                 توی پرونده‌ت ذخیره می‌شه و تا وقتی تو فعالی، تغییر نمی‌کنه.
               </p>
@@ -319,20 +344,20 @@ export default async function AffiliateLandingPage() {
         </div>
       </section>
 
-      {/* Rules / what's not allowed */}
-      <section className="border-y border-hairline bg-paper-soft/50 py-16 sm:py-20">
-        <div className="marketing-shell">
+      {/* Rules */}
+      <section className="py-16 sm:py-20">
+        <div className="mx-auto w-full max-w-6xl px-5">
           <div className="mx-auto max-w-3xl">
-            <h2 className="text-[clamp(22px,3.5vw,32px)] font-semibold leading-[1.15] tracking-tight">
+            <h2 className="text-[clamp(22px,3.5vw,32px)] font-bold leading-[1.15]">
               قواعد بازی
             </h2>
-            <p className="mt-3 text-[14px] leading-8 text-ink-soft sm:text-[15px]">
+            <p className="mt-3 text-[14px] leading-8 text-muted-foreground sm:text-[15px]">
               برای حفظ کیفیت برند و انصاف بین همکاران، چند خط قرمز داریم. اگه
               توی این محدوده‌ها حرکت کنی، هیچ مشکلی پیش نمیاد.
             </p>
           </div>
 
-          <div className="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-2">
+          <div className="mx-auto mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">
             <RuleRow ok>محتوای صادقانه و مرتبط با مخاطب واقعی خودت</RuleRow>
             <RuleRow ok>ریویو، آموزش، استفاده‌ی شخصی، لیست ابزار</RuleRow>
             <RuleRow ok>پست استوری، کپشن، توضیحات یوتیوب، بیو</RuleRow>
@@ -347,17 +372,17 @@ export default async function AffiliateLandingPage() {
 
       {/* FAQ */}
       <section className="py-16 sm:py-24">
-        <div className="marketing-shell">
+        <div className="mx-auto w-full max-w-6xl px-5">
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="text-[clamp(26px,4.5vw,40px)] font-semibold leading-[1.1] tracking-tight">
+            <h2 className="text-[clamp(26px,4.5vw,40px)] font-bold leading-[1.1]">
               سوال‌های پرتکرار
             </h2>
-            <p className="mt-3 text-[14px] leading-8 text-ink-soft sm:text-[15px]">
+            <p className="mt-3 text-[14px] leading-8 text-muted-foreground sm:text-[15px]">
               اگه جواب سوالت اینجا نبود، توی فرم درخواست بنویس — معمولاً ظرف یک
               روز جواب می‌دیم.
             </p>
           </div>
-          <div className="mx-auto mt-10 max-w-3xl">
+          <div className="mx-auto mt-8 max-w-3xl">
             <FaqAccordion
               items={[
                 {
@@ -399,14 +424,16 @@ export default async function AffiliateLandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="border-t border-hairline bg-paper-soft/50 py-16 sm:py-24">
-        <div className="marketing-shell">
-          <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-3xl border border-hairline bg-paper p-8 text-center shadow-[0_24px_60px_-30px_rgba(15,23,42,0.18)] sm:p-12">
-            <PartyPopperIcon className="size-9 text-violet-600" />
-            <h2 className="text-[clamp(24px,4vw,36px)] font-semibold leading-[1.15] tracking-tight">
+      <section className="py-16 sm:py-24">
+        <div className="mx-auto w-full max-w-6xl px-5">
+          <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-3xl bg-card p-8 text-center sm:p-12">
+            <span className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+              <PartyPopperIcon className="size-6" />
+            </span>
+            <h2 className="text-[clamp(24px,4vw,36px)] font-bold leading-[1.15]">
               آماده‌ای شروع کنی؟
             </h2>
-            <p className="max-w-md text-[14px] leading-7 text-ink-soft sm:text-[15px]">
+            <p className="max-w-md text-[14px] leading-7 text-muted-foreground sm:text-[15px]">
               فرم درخواست کوتاهه. تیم ما معمولاً همون روز جواب می‌ده. وقتی تأیید
               بشی، لینک اختصاصیت آماده‌ست و می‌تونی شروع کنی.
             </p>
@@ -418,11 +445,11 @@ export default async function AffiliateLandingPage() {
               <ArrowLeftIcon className="size-4" />
               درخواست بده
             </Button>
-            <p className="text-[11px] leading-6 text-ink-soft">
+            <p className="text-[11px] leading-6 text-muted-foreground">
               با ارسال درخواست، با{" "}
               <Link
                 href={"/legal/affiliate-terms" as Route}
-                className="underline"
+                className="underline underline-offset-2"
               >
                 قواعد برنامه
               </Link>{" "}
@@ -431,8 +458,6 @@ export default async function AffiliateLandingPage() {
           </div>
         </div>
       </section>
-
-      <SiteFooter />
     </div>
   );
 }
@@ -443,11 +468,9 @@ export default async function AffiliateLandingPage() {
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-hairline bg-paper-soft/60 px-4 py-3">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-ink-soft">
-        {label}
-      </p>
-      <p className="mt-1 text-[18px] font-bold leading-tight text-ink sm:text-[20px]">
+    <div className="rounded-2xl bg-card px-4 py-3 text-center">
+      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
+      <p className="mt-1 text-[18px] font-bold leading-tight text-foreground sm:text-[20px]">
         {value}
       </p>
     </div>
@@ -456,7 +479,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
-    <li className="flex items-start gap-2.5">
+    <li className="flex items-start gap-2.5 text-muted-foreground">
       <CheckCircle2Icon className="mt-0.5 size-4 shrink-0 text-emerald-600" />
       <span>{children}</span>
     </li>
@@ -479,16 +502,14 @@ function AudienceCard({
     sky: "bg-sky-100 text-sky-700",
   };
   return (
-    <div className="rounded-3xl border border-hairline bg-paper-soft p-5 transition hover:-translate-y-0.5 hover:shadow-[0_24px_60px_-30px_rgba(15,23,42,0.18)]">
+    <div className="rounded-3xl bg-card p-5 transition hover:bg-card/80">
       <div
         className={`flex size-11 items-center justify-center rounded-2xl ${toneRing[tone]}`}
       >
         <UsersIcon className="size-5" />
       </div>
-      <h3 className="mt-4 text-[16px] font-semibold leading-tight tracking-tight">
-        {title}
-      </h3>
-      <p className="mt-2 text-[13px] leading-7 text-ink-soft">{body}</p>
+      <h3 className="mt-4 text-[16px] font-bold leading-tight">{title}</h3>
+      <p className="mt-2 text-[13px] leading-7 text-muted-foreground">{body}</p>
     </div>
   );
 }
@@ -505,19 +526,17 @@ function Step({
   body: string;
 }) {
   return (
-    <div className="relative rounded-3xl border border-hairline bg-paper p-6">
+    <div className="rounded-3xl bg-card p-6">
       <div className="flex items-center gap-3">
         <div className="flex size-10 items-center justify-center rounded-2xl bg-violet-100 text-violet-700">
           <Icon className="size-5" />
         </div>
-        <span className="font-mono text-[28px] font-bold text-ink-soft/40">
+        <span className="font-mono text-[28px] font-bold text-muted-foreground/40">
           {toPersianDigits(num)}
         </span>
       </div>
-      <h3 className="mt-4 text-[17px] font-semibold leading-tight tracking-tight">
-        {title}
-      </h3>
-      <p className="mt-2 text-[13px] leading-7 text-ink-soft">{body}</p>
+      <h3 className="mt-4 text-[17px] font-bold leading-tight">{title}</h3>
+      <p className="mt-2 text-[13px] leading-7 text-muted-foreground">{body}</p>
     </div>
   );
 }
@@ -532,14 +551,12 @@ function Term({
   body: string;
 }) {
   return (
-    <div className="rounded-3xl border border-hairline bg-paper-soft p-5">
-      <div className="flex size-10 items-center justify-center rounded-2xl bg-white text-violet-700 ring-1 ring-hairline">
+    <div className="rounded-3xl bg-card p-5">
+      <div className="flex size-10 items-center justify-center rounded-2xl bg-muted text-violet-700">
         <Icon className="size-5" />
       </div>
-      <h3 className="mt-4 text-[15px] font-semibold leading-tight tracking-tight">
-        {title}
-      </h3>
-      <p className="mt-2 text-[13px] leading-7 text-ink-soft">{body}</p>
+      <h3 className="mt-4 text-[15px] font-bold leading-tight">{title}</h3>
+      <p className="mt-2 text-[13px] leading-7 text-muted-foreground">{body}</p>
     </div>
   );
 }
@@ -553,10 +570,8 @@ function RuleRow({
 }) {
   return (
     <div
-      className={`flex items-start gap-3 rounded-2xl border px-4 py-3 ${
-        ok
-          ? "border-emerald-200 bg-emerald-50/40"
-          : "border-rose-200 bg-rose-50/40"
+      className={`flex items-start gap-3 rounded-2xl px-4 py-3 ${
+        ok ? "bg-emerald-50" : "bg-rose-50"
       }`}
     >
       <span
@@ -566,7 +581,7 @@ function RuleRow({
       >
         {ok ? "✓" : "×"}
       </span>
-      <span className="text-[13px] leading-6 text-ink">{children}</span>
+      <span className="text-[13px] leading-6 text-foreground">{children}</span>
     </div>
   );
 }

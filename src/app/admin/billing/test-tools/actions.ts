@@ -107,7 +107,13 @@ export async function simulateRenewalDryRunAction(
     pageId: string;
     planId: string;
     billingCycle: "monthly" | "annual";
-    status: "trialing" | "active" | "pending_renewal" | "grace" | "canceled" | "expired";
+    status:
+      | "trialing"
+      | "active"
+      | "pending_renewal"
+      | "grace"
+      | "canceled"
+      | "expired";
     currentPeriodStart: Date;
     currentPeriodEnd: Date;
     trialEndsAt: Date | null;
@@ -164,7 +170,12 @@ export async function simulateRenewalDryRunAction(
 
 const fireSmsSchema = z.object({
   pageId: z.string().uuid(),
-  templateKey: z.enum(TEST_TOOLS_SMS_TEMPLATE_KEYS as unknown as [SmsTemplateKey, ...SmsTemplateKey[]]),
+  templateKey: z.enum(
+    TEST_TOOLS_SMS_TEMPLATE_KEYS as unknown as [
+      SmsTemplateKey,
+      ...SmsTemplateKey[],
+    ],
+  ),
   reason: reasonSchema,
 });
 
@@ -198,7 +209,11 @@ export async function fireSmsNowAction(
     JOIN "plans" p ON p."id" = s."plan_id"
     WHERE pr."id" = ${pageId}::uuid
     LIMIT 1
-  `)) as unknown as Array<{ userId: string; phone: string; planNameFa: string }>;
+  `)) as unknown as Array<{
+    userId: string;
+    phone: string;
+    planNameFa: string;
+  }>;
 
   const owner = rows[0];
   if (!owner) {
@@ -273,11 +288,13 @@ export async function mockZarinpalVerifyAction(
       i."id"             AS "invoiceId",
       i."page_id"        AS "pageId",
       i."plan_id"        AS "planId",
+      p."key"            AS "planKey",
       i."billing_cycle"  AS "billingCycle",
       i."metadata"       AS "metadata",
       i."status"::text   AS "status",
       pay."id"           AS "paymentId"
     FROM "invoices" i
+    JOIN "plans" p ON p."id" = i."plan_id"
     LEFT JOIN "payments" pay ON pay."invoice_id" = i."id"
     WHERE i."id" = ${invoiceId}::uuid
     ORDER BY pay."created_at" DESC NULLS LAST
@@ -292,7 +309,7 @@ export async function mockZarinpalVerifyAction(
     paymentId: string | null;
   }>;
 
-  const inv = rows[0];
+  const inv = rows[0] as ((typeof rows)[0] & { planKey: string }) | undefined;
   if (!inv) {
     return { status: "error", message: "فاکتور یافت نشد." };
   }
@@ -315,6 +332,7 @@ export async function mockZarinpalVerifyAction(
       billingCycle: inv.billingCycle,
       metadata: inv.metadata,
     },
+    planKey: inv.planKey,
     refId,
     rawResponse: { source: "admin_mock_verify", refId },
   });

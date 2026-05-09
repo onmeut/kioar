@@ -267,9 +267,7 @@ export default async function AdminAuditPage({
                 <div className="flex gap-2">
                   <dt className="text-muted-foreground">ادمین:</dt>
                   <dd dir="ltr" className="font-mono">
-                    {r.actor_phone
-                      ? formatPhoneDisplay(r.actor_phone)
-                      : "—"}
+                    {r.actor_phone ? formatPhoneDisplay(r.actor_phone) : "—"}
                   </dd>
                 </div>
                 {r.target_page_slug ? (
@@ -418,7 +416,8 @@ function Pagination({
 }) {
   const buildHref = (p: number): Route => {
     const sp = new URLSearchParams();
-    if (params.action && params.action !== "all") sp.set("action", params.action);
+    if (params.action && params.action !== "all")
+      sp.set("action", params.action);
     if (params.actorPhone) sp.set("actorPhone", params.actorPhone);
     if (params.pageId) sp.set("pageId", params.pageId);
     if (params.slug) sp.set("slug", params.slug);

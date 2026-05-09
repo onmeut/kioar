@@ -25,6 +25,7 @@ interface SlugInputProps {
   /** Visual variant — "muted" matches the muted phone-input style */
   variant?: "default" | "muted";
   className?: string;
+  placeholder?: string;
 }
 
 export function SlugInput({
@@ -36,6 +37,7 @@ export function SlugInput({
   size = "md",
   variant = "default",
   className,
+  placeholder = "username",
 }: SlugInputProps) {
   const [value, setValue] = useState(defaultValue);
   const [status, setStatus] = useState<Status>("idle");
@@ -118,7 +120,7 @@ export function SlugInput({
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
-          placeholder="username"
+          placeholder={placeholder}
           aria-label="نام کاربری"
           autoFocus={autoFocus}
           enterKeyHint={enterKeyHint}

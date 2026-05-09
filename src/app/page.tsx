@@ -202,7 +202,7 @@ const profilePreview = {
 } satisfies PublicProfileCardData;
 
 const footerLinks: Array<{ label: string; href: Route }> = [
-  { label: "صفحات دیگران", href: "#" as Route },
+  { label: "صفحات دیگران", href: "/discover" },
   { label: "تعرفه‌ها", href: "/pricing" },
   { label: "راهنما", href: "/help" },
 ];
@@ -319,13 +319,13 @@ export default async function LandingPage() {
           </Link>
 
           <nav className="flex items-center gap-3 text-xs font-semibold sm:text-sm">
-            <a
-              href="#"
-              className="hidden items-center gap-1 text-white/80 transition-colors hover:text-white md:inline-flex"
+            <Link
+              href="/discover"
+              className="hidden items-center gap-1 rounded-full border border-white/20 px-3 py-1.5 text-white/80 transition-colors hover:border-white/40 hover:text-white hover:bg-white/5 md:inline-flex"
             >
               <span>صفحات دیگران</span>
               <ArrowUpRightIcon className="size-3.5" />
-            </a>
+            </Link>
             <Link
               href="/auth"
               className="inline-flex h-9 items-center justify-center rounded-full border border-white/10 bg-white/10 px-4 text-white transition-colors hover:bg-white/16"
@@ -359,7 +359,6 @@ export default async function LandingPage() {
                             alt=""
                             width={22}
                             height={25}
-                            style={{ width: "22px", height: "auto" }}
                           />
                         </span>
                         <span className="tap-target inline-flex size-10 items-center justify-center rounded-full bg-foreground/7 text-foreground">
@@ -377,7 +376,6 @@ export default async function LandingPage() {
                           alt=""
                           width={14}
                           height={16}
-                          style={{ width: "14px", height: "auto" }}
                         />
                         <span>ساخته‌شده با کی‌یو‌آر</span>
                       </Link>
@@ -390,7 +388,7 @@ export default async function LandingPage() {
 
           <section className="order-1 flex max-w-xl flex-col items-center text-center md:items-start md:text-right md:justify-self-end md:pb-12">
             <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-[28px] border border-white/10 bg-black/16 px-4 py-3 pl-5 shadow-[0_28px_70px_-42px_rgba(0,0,0,0.95)] backdrop-blur-sm">
-              <span className="rounded-full border border-white/8 px-3 py-1 text-[10px] font-black text-white/44">
+              <span className="rounded-full border border-white/8 px-3 py-1 text-[10px] font-bold text-white/44">
                 نسخه پریمیوم
               </span>
               <span className="whitespace-nowrap text-[12px] font-bold text-white/90 ">
@@ -410,7 +408,7 @@ export default async function LandingPage() {
               <div className="hero-cta-ring w-fit">
                 <Link
                   href="/auth"
-                  className="relative inline-flex h-15 items-center justify-center gap-2.5 rounded-full bg-[#1ED760] px-9 text-lg font-bold text-[#03140b] transition-colors hover:bg-[#18c653]"
+                  className="relative inline-flex h-15 items-center justify-center gap-2.5 rounded-full bg-[#1ED760] px-5 text-lg font-bold text-[#03140b] transition-colors hover:bg-[#18c653]"
                 >
                   ساخت صفحه رایگان
                   <ArrowLeftIcon className="size-5" />
@@ -438,25 +436,15 @@ export default async function LandingPage() {
                   />
                 </Link>
                 <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-sm font-semibold md:justify-start">
-                  {footerLinks.map((item) =>
-                    item.href === "#" ? (
-                      <a
-                        key={item.label}
-                        href="#"
-                        className="transition-colors hover:text-white"
-                      >
-                        {item.label}
-                      </a>
-                    ) : (
-                      <Link
-                        key={item.label}
-                        href={item.href}
-                        className="transition-colors hover:text-white"
-                      >
-                        {item.label}
-                      </Link>
-                    ),
-                  )}
+                  {footerLinks.map((item) => (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className="transition-colors hover:text-white"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
                   <TrustBadgesModal variant="dark" />
                 </div>
               </div>

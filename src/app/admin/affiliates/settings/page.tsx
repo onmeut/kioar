@@ -24,7 +24,7 @@ export default async function AdminAffiliateSettingsPage({
     <section className="section-shell space-y-5 py-6">
       <AdminAffiliatesNav />
 
-      <h2 className="text-[16px] font-semibold tracking-tight">
+      <h2 className="text-[16px] font-semibold">
         تنظیمات همکاری در فروش
       </h2>
       <p className="max-w-2xl text-[12px] leading-7 text-muted-foreground">

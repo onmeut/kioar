@@ -235,10 +235,7 @@ export default async function AdminDiscountsPage() {
                             id={c.id}
                             isActive={c.isActive}
                           />
-                          <SoftDeleteDiscountButton
-                            id={c.id}
-                            code={c.code}
-                          />
+                          <SoftDeleteDiscountButton id={c.id} code={c.code} />
                         </div>
                       </td>
                     </tr>

@@ -14,6 +14,10 @@ import {
   requireAdmin,
   startImpersonation as startImpersonationHelper,
 } from "@/lib/auth/session";
+import {
+  invalidateProfileCacheBySlug,
+  invalidateProfileCacheOnSlugChange,
+} from "@/lib/cache/profile-cache";
 import { log } from "@/lib/log";
 import { ensureFreeSubscriptionForPage } from "@/lib/pages";
 import { profileDetailsFormSchema } from "@/lib/validations";
@@ -98,7 +102,10 @@ export async function adminUpdateUserProfileAction(
     : null;
 
   if (pageId && (!existing || existing.userId !== userId)) {
-    return { status: "error", message: "صفحه انتخابی متعلق به این کاربر نیست." };
+    return {
+      status: "error",
+      message: "صفحه انتخابی متعلق به این کاربر نیست.",
+    };
   }
 
   const values = {
@@ -114,6 +121,8 @@ export async function adminUpdateUserProfileAction(
 
   if (existing) {
     await db.update(profiles).set(values).where(eq(profiles.id, existing.id));
+    // Slug may have changed; drop both old and new keys.
+    await invalidateProfileCacheOnSlugChange(existing.slug, parsed.data.slug);
   } else {
     // No pageId provided AND no existing page → create the user's first
     // page (initial onboarding from admin).
@@ -124,6 +133,8 @@ export async function adminUpdateUserProfileAction(
         .returning();
       await ensureFreeSubscriptionForPage(tx, created.id);
     });
+    // New page — drop any stale 404 sentinel under the freshly-claimed slug.
+    await invalidateProfileCacheBySlug(parsed.data.slug);
   }
 
   log.info("admin.user.profile_updated", {

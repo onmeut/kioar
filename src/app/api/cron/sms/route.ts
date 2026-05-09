@@ -26,6 +26,7 @@ import { NextResponse } from "next/server";
 
 import { getDb } from "@/db";
 import { log } from "@/lib/log";
+import { withRequestContext } from "@/lib/log-context";
 import { processSmsQueue } from "@/lib/sms-queue";
 
 export const runtime = "nodejs";
@@ -35,6 +36,17 @@ export const dynamic = "force-dynamic";
 const SMS_LOCK_KEY = BigInt("7427301519462397");
 
 async function handle(request: Request) {
+  return withRequestContext(
+    {
+      requestId: request.headers.get("x-request-id") ?? undefined,
+      route: "cron.sms",
+    },
+    () => runSms(request),
+  );
+}
+
+async function runSms(request: Request) {
+  const startedAt = Date.now();
   const secret = process.env.CRON_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "cron_disabled" }, { status: 503 });
@@ -46,6 +58,7 @@ async function handle(request: Request) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
+  log.info("cron.sms.start");
   const db = getDb();
 
   const lockRows = await db.execute<{ locked: boolean }>(
@@ -55,18 +68,22 @@ async function handle(request: Request) {
     (lockRows as unknown as Array<{ locked: boolean }>)[0]?.locked,
   );
   if (!locked) {
-    log.info("cron.sms.skipped", { reason: "lock_held" });
+    log.info("cron.sms.skipped", {
+      reason: "lock_held",
+      durationMs: Date.now() - startedAt,
+    });
     return NextResponse.json({ ok: true, skipped: true });
   }
 
   try {
     const result = await processSmsQueue({ now: new Date() });
 
-    log.info("cron.sms", {
+    log.info("cron.sms.ok", {
       scanned: result.scanned,
       sent: result.sent,
       retried: result.retried,
       failed: result.failed,
+      durationMs: Date.now() - startedAt,
     });
 
     return NextResponse.json({
