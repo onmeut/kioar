@@ -11,11 +11,9 @@ WORKDIR /app
 # Copy only files needed for install — maximizes cache hits
 COPY package.json package-lock.json ./
 
-# Use Runflare mirror (Iranian npm proxy) + BuildKit cache mount
+# Use npmmirror.com (free global mirror, accessible from Iran) + BuildKit cache mount
 RUN --mount=type=cache,id=npm,target=/root/.npm \
-    npm config set registry https://mirror-npm.runflare.com --global && \
-    npm config set strict-ssl false --global && \
-    npm ci --loglevel=error --no-fund --legacy-peer-deps
+    npm ci --registry https://registry.npmmirror.com --loglevel=error --no-fund --legacy-peer-deps
 
 # ---------- Stage 2: migrator ------------------------------------------------
 # Lightweight image that runs `drizzle-kit migrate` against the real DB.
