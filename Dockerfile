@@ -11,9 +11,10 @@ WORKDIR /app
 # Copy only files needed for install — maximizes cache hits
 COPY package.json package-lock.json ./
 
-# Use npmmirror.com (free global mirror, accessible from Iran) + BuildKit cache mount
-RUN --mount=type=cache,id=npm,target=/root/.npm \
-    npm ci --registry https://registry.npmmirror.com --loglevel=error --no-fund --legacy-peer-deps
+# Use npmmirror.com mirror; cap Node memory to avoid OOM kills in constrained build env
+ENV NODE_OPTIONS="--max-old-space-size=3072"
+RUN npm ci --registry https://registry.npmmirror.com \
+    --loglevel=error --no-fund --legacy-peer-deps --maxsockets 4
 
 # ---------- Stage 2: migrator ------------------------------------------------
 # Lightweight image that runs `drizzle-kit migrate` against the real DB.
