@@ -1,25 +1,29 @@
-# ---------- Shared base (mirrors + libc6-compat) -----------------------------
-FROM node:22-alpine AS base
-RUN echo "https://mirror.arvancloud.ir/alpine/v3.23/main" > /etc/apk/repositories \
- && echo "https://mirror.arvancloud.ir/alpine/v3.23/community" >> /etc/apk/repositories \
+# ---------- Shared base -----------------------------------------------------
+FROM hub.hamdocker.ir/library/node:22-alpine AS base
+RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://repo.hmirror.ir/apk|g' /etc/apk/repositories \
  && apk add --no-cache libc6-compat
 
 # ---------- Stage 1: dependencies --------------------------------------------
 FROM base AS deps
 WORKDIR /app
 
-# Copy only files needed for install — maximizes cache hits
+# NPM_USER / NPM_PASS are Hamravesh JFrog credentials — set them as build args
+# in the Hamravesh Darkube dashboard (Build → Environment Variables).
+# Verify the exact repo path in JFrog UI: Set Me Up → npm → copy registry URL.
+ARG NPM_USER
+ARG NPM_PASS
+
 COPY package.json package-lock.json ./
 
-# Use npmmirror.com mirror; cap Node memory to avoid OOM kills in constrained build env
-ENV NODE_OPTIONS="--max-old-space-size=3072"
-RUN npm ci --registry https://registry.npmmirror.com \
-    --loglevel=error --no-fund --legacy-peer-deps --maxsockets 4
+RUN printf 'registry=https://npm.hamdocker.ir/artifactory/api/npm/npm/\n\
+//npm.hamdocker.ir/artifactory/api/npm/npm/:_auth=%s\n\
+//npm.hamdocker.ir/artifactory/api/npm/npm/:always-auth=true\n' \
+    "$(printf '%s:%s' "${NPM_USER}" "${NPM_PASS}" | base64 | tr -d '\n')" \
+    > /root/.npmrc \
+  && npm ci --loglevel=error --no-fund --legacy-peer-deps \
+  && rm -f /root/.npmrc
 
 # ---------- Stage 2: migrator ------------------------------------------------
-# Lightweight image that runs `drizzle-kit migrate` against the real DB.
-# Built from deps (full node_modules including drizzle-kit) — no Next.js build
-# needed.  Called via `docker compose run --rm migrator` in deploy.
 FROM deps AS migrator
 WORKDIR /app
 
@@ -39,7 +43,6 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
-# Cache mount for Next.js build cache — speeds up incremental builds
 RUN --mount=type=cache,id=nextjs,target=/app/.next/cache \
     npm run build
 

@@ -1,9 +1,21 @@
+# ============================================================================
+# LEGACY — ArvanCloud VPS self-hosted stack. NOT USED IN PRODUCTION ANYMORE.
+# ============================================================================
+# Kioar production now runs on Hamravesh (Darkube PaaS) with managed
+# Postgres, managed Redis, managed Object Storage, and TLS terminated at the
+# Hamravesh ingress. The Caddy + in-cluster postgres/redis topology below is
+# kept for reference and for spinning up a one-box deploy if ever needed.
+#
+# Do not delete: it documents the historical topology and is still useful for
+# disaster-recovery / air-gapped environments.
+# ============================================================================
+#
 # Production self-host stack:
 #   app (Next.js standalone) + postgres + redis + caddy (TLS) +
 #   optional pgbouncer (profile: pgbouncer)
 #
-# Usage:
-#   docker compose -f docker-compose.prod.yml --env-file .env.production up -d
+# Usage (legacy):
+#   docker compose -f docker-compose.legacy.yml --env-file .env.production up -d
 #
 #   # Enable pgbouncer when you scale beyond a single app instance:
 #   docker compose -f docker-compose.prod.yml \

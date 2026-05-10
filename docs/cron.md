@@ -21,11 +21,51 @@ All cron routes share the same shape:
 
 ## Endpoints
 
-| Endpoint            | Cadence       | Purpose                                                                                                 |
-| ------------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
-| `/api/cron/cleanup` | every ~15 min | Garbage-collect expired OTPs, sessions, rate-limit buckets.                                             |
-| `/api/cron/billing` | once a day    | Subscription state machine: trial reminders, period-end → grace, grace → expired, plan-change rollover. |
-| `/api/cron/sms`     | every minute  | Drain `sms_queue`: dispatch transactional SMS via Kavenegar, retry with backoff, give up after 3 tries. |
+| Endpoint                     | Cron expression | Cadence      | Method | Auth header                          | Purpose                                                                                                 |
+| ---------------------------- | --------------- | ------------ | ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `/api/cron/cleanup`          | `*/15 * * * *`  | every 15 min | POST   | `Authorization: Bearer $CRON_SECRET` | Garbage-collect expired OTPs, sessions, rate-limit buckets.                                             |
+| `/api/cron/billing`          | `0 3 * * *`     | daily 03:00  | POST   | `Authorization: Bearer $CRON_SECRET` | Subscription state machine: trial reminders, period-end → grace, grace → expired, plan-change rollover. |
+| `/api/cron/sms`              | `* * * * *`     | every minute | POST   | `Authorization: Bearer $CRON_SECRET` | Drain `sms_queue`: dispatch transactional SMS via Kavenegar, retry with backoff, give up after 3 tries. |
+| `/api/cron/affiliate-unlock` | `0 4 * * *`     | daily 04:00  | POST   | `Authorization: Bearer $CRON_SECRET` | Unlock matured affiliate commissions past their hold window.                                            |
+
+> Cron expressions assume the scheduler runs in UTC. Day-keys inside the routes
+> already anchor to Asia/Tehran via `tehranIsoDate(now)`, so the trigger TZ
+> doesn't matter for correctness — pick whatever the scheduler defaults to.
+
+## Production scheduling on Hamravesh (Darkube)
+
+The legacy systemd-timer setup (documented below) is no longer used. On
+Hamravesh, use one of these approaches in priority order:
+
+1. **Hamravesh "Cron Job" / scheduled task** (preferred). For each row in the
+   table above, create a job that runs an `alpine/curl` (or `curlimages/curl`)
+   container with:
+
+   ```sh
+   curl --fail --silent --show-error --max-time 60 \
+     --request POST \
+     --header "Authorization: Bearer $CRON_SECRET" \
+     "$BASE_URL/api/cron/<name>"
+   ```
+
+   `BASE_URL` should point at the **internal** service address
+   (`http://kioar.onmeut-production.svc:3000`) so cron traffic stays on the
+   cluster network and doesn't burn ArvanCloud CDN bandwidth. `CRON_SECRET` is
+   the same value the app reads — set it as an encrypted env on the cron job.
+
+2. **External uptime monitor** (UptimeRobot, Cronitor, Better Stack, etc.)
+   pointed at the public domain with the bearer header set as a custom HTTP
+   header. Works without any cluster-side scheduler. Downside: cron traffic
+   crosses the public edge and shows up in CDN analytics.
+
+3. **A long-lived cron sidecar app** on Hamravesh running `cron` + `curl` from
+   a tiny image. Same effect as option 1, packaged as a single deployable.
+
+Whichever you pick, the route's `pg_try_advisory_lock` will collapse any
+accidental overlap to `{ ok: true, skipped: true }`, so duplicate triggers are
+safe.
+
+## Legacy: systemd timers (ArvanCloud VPS)
 
 ## systemd timer/service example
 

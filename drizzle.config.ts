@@ -1,10 +1,10 @@
-import "dotenv/config"
-import { defineConfig } from "drizzle-kit"
+import "dotenv/config";
+import { defineConfig } from "drizzle-kit";
 
 if (!process.env.DATABASE_URL) {
   console.warn(
-    "DATABASE_URL is not set. Commands that need a database connection will fail."
-  )
+    "DATABASE_URL is not set. Commands that need a database connection will fail.",
+  );
 }
 
 export default defineConfig({
@@ -14,8 +14,8 @@ export default defineConfig({
   dbCredentials: {
     url:
       process.env.DATABASE_URL ??
-      "postgres://postgres:postgres@127.0.0.1:5432/kioar",
+      "postgres://postgres:oFvFQTyHKTXXDRJpsY1I@kioar-db.onmeut-production.svc:5432/postgres",
   },
   verbose: true,
   strict: true,
-})
+});
