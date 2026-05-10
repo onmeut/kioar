@@ -1,6 +1,8 @@
 # ---------- Shared base -----------------------------------------------------
 FROM hub.hamdocker.ir/library/node:22-alpine AS base
-RUN sed -i 's|https://dl-cdn.alpinelinux.org|https://repo.hmirror.ir/apk|g' /etc/apk/repositories \
+RUN ALPINE_VER=$(cat /etc/alpine-release | cut -d. -f1,2) \
+ && printf 'https://repo.hmirror.ir/apk/v%s/main\nhttps://repo.hmirror.ir/apk/v%s/community\n' \
+    "$ALPINE_VER" "$ALPINE_VER" > /etc/apk/repositories \
  && apk add --no-cache libc6-compat
 
 # ---------- Stage 1: dependencies --------------------------------------------
