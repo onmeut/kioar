@@ -58,7 +58,8 @@ function bumpMetric(name: "hit" | "miss" | "not_found_hit" | "error"): void {
   redis.incr(METRICS_PREFIX + name).catch(() => undefined);
 }
 
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+const ISO_DATE_RE =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 
 function dateReviver(_key: string, value: unknown): unknown {
   if (typeof value === "string" && ISO_DATE_RE.test(value)) {

@@ -102,10 +102,7 @@ export async function adminUpdateUserProfileAction(
     : null;
 
   if (pageId && (!existing || existing.userId !== userId)) {
-    return {
-      status: "error",
-      message: "صفحه انتخابی متعلق به این کاربر نیست.",
-    };
+    return { status: "error", message: "صفحه انتخابی متعلق به این کاربر نیست." };
   }
 
   const values = {

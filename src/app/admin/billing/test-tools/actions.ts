@@ -309,7 +309,7 @@ export async function mockZarinpalVerifyAction(
     paymentId: string | null;
   }>;
 
-  const inv = rows[0] as ((typeof rows)[0] & { planKey: string }) | undefined;
+  const inv = rows[0] as (typeof rows)[0] & { planKey: string } | undefined;
   if (!inv) {
     return { status: "error", message: "فاکتور یافت نشد." };
   }

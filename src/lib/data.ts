@@ -83,19 +83,19 @@ async function loadPublicProfileBySlug(slug: string) {
   // calling pageHasFeature three times — this is correct even in route-
   // handler contexts where React cache() is a no-op (no shared render scope).
   const [links, entitlements, owner] = await Promise.all([
-    db
-      .select()
-      .from(profileLinks)
-      .where(
-        and(
-          eq(profileLinks.profileId, profile.id),
-          eq(profileLinks.isActive, true),
-        ),
-      )
-      .orderBy(asc(profileLinks.sortOrder)),
-    getPageEntitlements(profile.id),
-    db.query.users.findFirst({ where: eq(users.id, profile.userId) }),
-  ]);
+      db
+        .select()
+        .from(profileLinks)
+        .where(
+          and(
+            eq(profileLinks.profileId, profile.id),
+            eq(profileLinks.isActive, true),
+          ),
+        )
+        .orderBy(asc(profileLinks.sortOrder)),
+      getPageEntitlements(profile.id),
+      db.query.users.findFirst({ where: eq(users.id, profile.userId) }),
+    ]);
 
   // A null feature key means "no gate" — block is always visible.
   const bookingsGranted = bookingKey === null || entitlements.has(bookingKey);

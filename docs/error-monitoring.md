@@ -38,7 +38,7 @@ captures the reasoning so the decision is reviewable before we wire up an SDK.
 - **Data leaves the country** — adds compliance surface area for no clear
   upside.
 
-The one real argument _for_ Sentry Cloud is "zero ops". That's a real
+The one real argument *for* Sentry Cloud is "zero ops". That's a real
 benefit, but it's negated by point 1 above.
 
 ## Why not Sentry self-hosted
