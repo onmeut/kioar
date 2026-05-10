@@ -9,21 +9,10 @@ RUN ALPINE_VER=$(cat /etc/alpine-release | cut -d. -f1,2) \
 FROM base AS deps
 WORKDIR /app
 
-# NPM_USER / NPM_PASS are Hamravesh JFrog credentials — set them as build args
-# in the Hamravesh Darkube dashboard (Build → Environment Variables).
-# Verify the exact repo path in JFrog UI: Set Me Up → npm → copy registry URL.
-ARG NPM_USER
-ARG NPM_PASS
-
 COPY package.json package-lock.json ./
 
-RUN printf 'registry=https://npm.hamdocker.ir/artifactory/api/npm/npm/\n\
-//npm.hamdocker.ir/artifactory/api/npm/npm/:_auth=%s\n\
-//npm.hamdocker.ir/artifactory/api/npm/npm/:always-auth=true\n' \
-    "$(printf '%s:%s' "${NPM_USER}" "${NPM_PASS}" | base64 | tr -d '\n')" \
-    > /root/.npmrc \
-  && npm ci --loglevel=error --no-fund --legacy-peer-deps \
-  && rm -f /root/.npmrc
+RUN npm ci --loglevel=error --no-fund --legacy-peer-deps \
+      --registry=https://repo.hmirror.ir/npm
 
 # ---------- Stage 2: migrator ------------------------------------------------
 FROM deps AS migrator
