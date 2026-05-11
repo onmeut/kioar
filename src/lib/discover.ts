@@ -1,20 +1,61 @@
 /**
- * Discover (kioar.com/discover) — DB-backed taxonomy.
+ * Discover (kioar.com/discover) — two-level taxonomy (industries → categories).
  *
- * Categories are managed by admins at /admin/categories. Slugs are the
- * stable identifiers persisted in `profiles.discover_category`; slug
- * renames are handled transactionally in the admin action so all
- * referencing profile rows are updated atomically.
+ * `profiles.discover_category` continues to store a category slug. The slug
+ * is the stable identifier; renames are handled transactionally in the admin
+ * action so all referencing profile rows are updated atomically.
  *
- * Cities are a free-text-with-suggestions list — `profiles.city` is a
- * plain text column, and these are just the dropdown defaults.
+ * The legacy `DiscoverCategory` shape ({ id, slug, label, iconKey, sortOrder,
+ * isActive }) is preserved as a flat view onto the new tables so the
+ * onboarding picker and page-settings dropdown keep working unchanged. The
+ * `label` field is sourced from `categories.title_fa`.
+ *
+ * Industry-aware helpers (`getIndustries`, `getCategoriesByAccountType`, …)
+ * power the new admin UI and the upcoming onboarding revamp.
  */
 
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { discoverCategories } from "@/db/schema";
+import { categories, industries } from "@/db/schema";
 
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export type AccountType = "personal" | "business";
+
+export type Industry = {
+  id: string;
+  slug: string;
+  titleFa: string;
+  titleEn: string;
+  iconKey: string;
+  accountTypes: AccountType[];
+  sortOrder: number;
+  isActive: boolean;
+  categoryCount?: number;
+};
+
+export type Category = {
+  id: string;
+  industryId: string;
+  industrySlug: string;
+  slug: string;
+  titleFa: string;
+  titleEn: string;
+  iconKey: string;
+  accountType: AccountType;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+/**
+ * Legacy flat shape used by onboarding-form and page-settings-sheet. `label`
+ * maps to `title_fa` from the new schema; `sortOrder` is the per-industry
+ * order plus an offset derived from the parent industry's `sort_order` so
+ * the overall ordering is stable.
+ */
 export type DiscoverCategory = {
   id: string;
   slug: string;
@@ -24,68 +65,235 @@ export type DiscoverCategory = {
   isActive: boolean;
 };
 
-/**
- * Fetch all active categories ordered by sort_order. This is the primary
- * read path: call it once in each server component that renders pickers
- * or the directory, then pass the result as a prop to client components.
- */
-export async function getDiscoverCategories(): Promise<DiscoverCategory[]> {
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function toAccountTypes(arr: string[]): AccountType[] {
+  return arr.filter(
+    (a): a is AccountType => a === "personal" || a === "business",
+  );
+}
+
+function toAccountType(s: string): AccountType {
+  return s === "business" ? "business" : "personal";
+}
+
+// ---------------------------------------------------------------------------
+// New API — industries
+// ---------------------------------------------------------------------------
+
+export async function getIndustries(opts?: {
+  includeInactive?: boolean;
+}): Promise<Industry[]> {
   const db = getDb();
-  const rows = await db
-    .select()
-    .from(discoverCategories)
-    .where(eq(discoverCategories.isActive, true))
-    .orderBy(asc(discoverCategories.sortOrder));
+  const rows = opts?.includeInactive
+    ? await db.select().from(industries).orderBy(asc(industries.sortOrder))
+    : await db
+        .select()
+        .from(industries)
+        .where(eq(industries.isActive, true))
+        .orderBy(asc(industries.sortOrder));
   return rows.map((r) => ({
     id: r.id,
     slug: r.slug,
-    label: r.label,
+    titleFa: r.titleFa,
+    titleEn: r.titleEn,
     iconKey: r.iconKey,
+    accountTypes: toAccountTypes(r.accountTypes),
     sortOrder: r.sortOrder,
     isActive: r.isActive,
   }));
 }
 
-/**
- * Fetch all categories (including inactive). Used by /admin/categories.
- */
-export async function getAllDiscoverCategories(): Promise<DiscoverCategory[]> {
+/** Industries with a `categoryCount` joined in. Used by the admin list. */
+export async function getIndustriesWithCounts(): Promise<Industry[]> {
   const db = getDb();
   const rows = await db
-    .select()
-    .from(discoverCategories)
-    .orderBy(asc(discoverCategories.sortOrder));
+    .select({
+      id: industries.id,
+      slug: industries.slug,
+      titleFa: industries.titleFa,
+      titleEn: industries.titleEn,
+      iconKey: industries.iconKey,
+      accountTypes: industries.accountTypes,
+      sortOrder: industries.sortOrder,
+      isActive: industries.isActive,
+      categoryCount: sql<number>`(
+        SELECT COUNT(*) FROM ${categories}
+        WHERE ${categories.industryId} = ${industries.id}
+          AND ${categories.isActive} = true
+      )`.mapWith(Number),
+    })
+    .from(industries)
+    .orderBy(asc(industries.sortOrder));
   return rows.map((r) => ({
-    id: r.id,
-    slug: r.slug,
-    label: r.label,
-    iconKey: r.iconKey,
-    sortOrder: r.sortOrder,
-    isActive: r.isActive,
+    ...r,
+    accountTypes: toAccountTypes(r.accountTypes),
   }));
 }
 
-/**
- * Fetch a single category by slug. Returns null when not found or inactive.
- */
-export async function getDiscoverCategoryBySlug(
-  slug: string | null | undefined,
-): Promise<DiscoverCategory | null> {
-  if (!slug) return null;
+export async function getIndustryBySlug(
+  slug: string,
+): Promise<Industry | null> {
   const db = getDb();
   const [row] = await db
     .select()
-    .from(discoverCategories)
-    .where(eq(discoverCategories.slug, slug))
+    .from(industries)
+    .where(eq(industries.slug, slug))
     .limit(1);
   if (!row) return null;
   return {
     id: row.id,
     slug: row.slug,
-    label: row.label,
+    titleFa: row.titleFa,
+    titleEn: row.titleEn,
     iconKey: row.iconKey,
+    accountTypes: toAccountTypes(row.accountTypes),
     sortOrder: row.sortOrder,
     isActive: row.isActive,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// New API — categories
+// ---------------------------------------------------------------------------
+
+function rowToCategory(
+  r: typeof categories.$inferSelect,
+  industrySlug: string,
+): Category {
+  return {
+    id: r.id,
+    industryId: r.industryId,
+    industrySlug,
+    slug: r.slug,
+    titleFa: r.titleFa,
+    titleEn: r.titleEn,
+    iconKey: r.iconKey,
+    accountType: toAccountType(r.accountType),
+    sortOrder: r.sortOrder,
+    isActive: r.isActive,
+  };
+}
+
+export async function getCategoriesByIndustryId(
+  industryId: string,
+  opts?: { includeInactive?: boolean },
+): Promise<Category[]> {
+  const db = getDb();
+  const where = opts?.includeInactive
+    ? eq(categories.industryId, industryId)
+    : and(eq(categories.industryId, industryId), eq(categories.isActive, true));
+  const rows = await db
+    .select({ cat: categories, industrySlug: industries.slug })
+    .from(categories)
+    .innerJoin(industries, eq(categories.industryId, industries.id))
+    .where(where)
+    .orderBy(asc(categories.sortOrder));
+  return rows.map((r) => rowToCategory(r.cat, r.industrySlug));
+}
+
+/** Active categories filtered by the user's account type. */
+export async function getCategoriesByAccountType(
+  accountType: AccountType,
+): Promise<Category[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ cat: categories, industrySlug: industries.slug })
+    .from(categories)
+    .innerJoin(industries, eq(categories.industryId, industries.id))
+    .where(
+      and(
+        eq(categories.accountType, accountType),
+        eq(categories.isActive, true),
+        eq(industries.isActive, true),
+      ),
+    )
+    .orderBy(asc(industries.sortOrder), asc(categories.sortOrder));
+  return rows.map((r) => rowToCategory(r.cat, r.industrySlug));
+}
+
+/** Active categories across all industries — used when the consumer needs
+ * to filter client-side (e.g. onboarding form decides accountType mid-flow). */
+export async function getAllActiveCategories(): Promise<Category[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ cat: categories, industrySlug: industries.slug })
+    .from(categories)
+    .innerJoin(industries, eq(categories.industryId, industries.id))
+    .where(and(eq(categories.isActive, true), eq(industries.isActive, true)))
+    .orderBy(asc(industries.sortOrder), asc(categories.sortOrder));
+  return rows.map((r) => rowToCategory(r.cat, r.industrySlug));
+}
+
+export async function getCategoryBySlug(
+  slug: string | null | undefined,
+): Promise<Category | null> {
+  if (!slug) return null;
+  const db = getDb();
+  const [row] = await db
+    .select({ cat: categories, industrySlug: industries.slug })
+    .from(categories)
+    .innerJoin(industries, eq(categories.industryId, industries.id))
+    .where(eq(categories.slug, slug))
+    .limit(1);
+  if (!row) return null;
+  return rowToCategory(row.cat, row.industrySlug);
+}
+
+// ---------------------------------------------------------------------------
+// Legacy compatibility — flat DiscoverCategory[] for callers we haven't
+// migrated yet (onboarding-form, page-settings-sheet, profile pages).
+// ---------------------------------------------------------------------------
+
+function toDiscoverCategory(
+  c: typeof categories.$inferSelect,
+  globalIndex: number,
+): DiscoverCategory {
+  return {
+    id: c.id,
+    slug: c.slug,
+    label: c.titleFa,
+    iconKey: c.iconKey,
+    sortOrder: globalIndex,
+    isActive: c.isActive,
+  };
+}
+
+export async function getDiscoverCategories(): Promise<DiscoverCategory[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ cat: categories })
+    .from(categories)
+    .innerJoin(industries, eq(categories.industryId, industries.id))
+    .where(and(eq(categories.isActive, true), eq(industries.isActive, true)))
+    .orderBy(asc(industries.sortOrder), asc(categories.sortOrder));
+  return rows.map((r, idx) => toDiscoverCategory(r.cat, idx));
+}
+
+export async function getAllDiscoverCategories(): Promise<DiscoverCategory[]> {
+  const db = getDb();
+  const rows = await db
+    .select({ cat: categories })
+    .from(categories)
+    .innerJoin(industries, eq(categories.industryId, industries.id))
+    .orderBy(asc(industries.sortOrder), asc(categories.sortOrder));
+  return rows.map((r, idx) => toDiscoverCategory(r.cat, idx));
+}
+
+export async function getDiscoverCategoryBySlug(
+  slug: string | null | undefined,
+): Promise<DiscoverCategory | null> {
+  const cat = await getCategoryBySlug(slug);
+  if (!cat) return null;
+  return {
+    id: cat.id,
+    slug: cat.slug,
+    label: cat.titleFa,
+    iconKey: cat.iconKey,
+    sortOrder: cat.sortOrder,
+    isActive: cat.isActive,
   };
 }
 

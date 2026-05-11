@@ -1,0 +1,2593 @@
+{
+  "🇮🇷 Iran-Specific Additions": [
+    {
+      "#": 1,
+      "Category (EN)": "Confectionery",
+      "Category (FA)": "شیرینی‌فروشی",
+      "Account Type": "Business",
+      "Industry (EN)": "Food & Beverage",
+      "Industry (FA)": "غذا و نوشیدنی",
+      "Usage Level": "High"
+    },
+    {
+      "#": 2,
+      "Category (EN)": "Gold & Jewelry Store",
+      "Category (FA)": "طلا و جواهرفروشی",
+      "Account Type": "Business",
+      "Industry (EN)": "Retail",
+      "Industry (FA)": "فروشگاه",
+      "Usage Level": "High"
+    },
+    {
+      "#": 3,
+      "Category (EN)": "Printing & Advertising",
+      "Category (FA)": "چاپ و تبلیغات",
+      "Account Type": "Business",
+      "Industry (EN)": "Agencies & Marketing",
+      "Industry (FA)": "آژانس و تبلیغات",
+      "Usage Level": "High"
+    },
+    {
+      "#": 4,
+      "Category (EN)": "Wedding Hall",
+      "Category (FA)": "تالار عروسی",
+      "Account Type": "Business",
+      "Industry (EN)": "Events",
+      "Industry (FA)": "رویدادها",
+      "Usage Level": "High"
+    },
+    {
+      "#": 5,
+      "Category (EN)": "Photo Studio",
+      "Category (FA)": "آتلیه عکاسی",
+      "Account Type": "Business",
+      "Industry (EN)": "Beauty",
+      "Industry (FA)": "زیبایی",
+      "Usage Level": "High"
+    },
+    {
+      "#": 6,
+      "Category (EN)": "Online Tutor",
+      "Category (FA)": "تدریس خصوصی",
+      "Account Type": "Individual",
+      "Industry (EN)": "Education",
+      "Industry (FA)": "آموزش",
+      "Usage Level": "High"
+    },
+    {
+      "#": 7,
+      "Category (EN)": "Homemade Food",
+      "Category (FA)": "غذای خانگی",
+      "Account Type": "Business",
+      "Industry (EN)": "Food & Beverage",
+      "Industry (FA)": "غذا و نوشیدنی",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 8,
+      "Category (EN)": "Car Wash & Detailing",
+      "Category (FA)": "کارواش",
+      "Account Type": "Business",
+      "Industry (EN)": "Automotive",
+      "Industry (FA)": "خودرو",
+      "Usage Level": "High"
+    },
+    {
+      "#": 9,
+      "Category (EN)": "Tailor",
+      "Category (FA)": "خیاطی",
+      "Account Type": "Business",
+      "Industry (EN)": "Fashion",
+      "Industry (FA)": "مد و پوشاک",
+      "Usage Level": "High"
+    }
+  ],
+  "All Categories": [
+    {
+      "#": 1,
+      "Category": "Actor",
+      "Account Type": "Individual",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 2,
+      "Category": "Artist",
+      "Account Type": "Individual",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 3,
+      "Category": "Blogger",
+      "Account Type": "Individual",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 4,
+      "Category": "Comedian",
+      "Account Type": "Individual",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 5,
+      "Category": "Digital Creator",
+      "Account Type": "Individual",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 6,
+      "Category": "Entrepreneur",
+      "Account Type": "Individual",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 7,
+      "Category": "Musician / Band",
+      "Account Type": "Individual",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 8,
+      "Category": "Personal Blog",
+      "Account Type": "Individual",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 9,
+      "Category": "Photographer",
+      "Account Type": "Individual",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 10,
+      "Category": "Public Figure",
+      "Account Type": "Individual",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 11,
+      "Category": "Astrologist & Psychic",
+      "Account Type": "Individual",
+      "Industry Group": "Lifestyle",
+      "Usage Level": "High"
+    },
+    {
+      "#": 12,
+      "Category": "Athlete",
+      "Account Type": "Individual",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 13,
+      "Category": "Author / Writer",
+      "Account Type": "Individual",
+      "Industry Group": "Creator",
+      "Usage Level": "High"
+    },
+    {
+      "#": 14,
+      "Category": "Band",
+      "Account Type": "Individual",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "High"
+    },
+    {
+      "#": 15,
+      "Category": "Chef",
+      "Account Type": "Individual",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 16,
+      "Category": "Fashion Designer",
+      "Account Type": "Individual",
+      "Industry Group": "Fashion",
+      "Usage Level": "High"
+    },
+    {
+      "#": 17,
+      "Category": "Fitness Trainer",
+      "Account Type": "Individual",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 18,
+      "Category": "Gamer",
+      "Account Type": "Individual",
+      "Industry Group": "Gaming & Tech",
+      "Usage Level": "High"
+    },
+    {
+      "#": 19,
+      "Category": "Graphic Designer",
+      "Account Type": "Individual",
+      "Industry Group": "Design & Creative",
+      "Usage Level": "High"
+    },
+    {
+      "#": 20,
+      "Category": "Health & Wellness Coach",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Wellness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 21,
+      "Category": "Makeup Artist",
+      "Account Type": "Individual",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 22,
+      "Category": "Painter",
+      "Account Type": "Individual",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "High"
+    },
+    {
+      "#": 23,
+      "Category": "Acupuncturist",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Wellness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 24,
+      "Category": "Allergist",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 25,
+      "Category": "Alternative & Holistic Health",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Wellness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 26,
+      "Category": "Architect / Architectural Designer",
+      "Account Type": "Individual",
+      "Industry Group": "Design & Creative",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 27,
+      "Category": "Aromatherapy Service",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Wellness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 28,
+      "Category": "Audiologist",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 29,
+      "Category": "Boat / Sailing Instructor",
+      "Account Type": "Individual",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 30,
+      "Category": "Chiropractor",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 31,
+      "Category": "Consultant",
+      "Account Type": "Individual",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 32,
+      "Category": "Doctor",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 33,
+      "Category": "Environmental Consultant",
+      "Account Type": "Individual",
+      "Industry Group": "Professional Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 34,
+      "Category": "Event Videographer",
+      "Account Type": "Individual",
+      "Industry Group": "Design & Creative",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 35,
+      "Category": "Family Doctor",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 36,
+      "Category": "Financial Consultant",
+      "Account Type": "Individual",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 37,
+      "Category": "Lawyer",
+      "Account Type": "Individual",
+      "Industry Group": "Professional Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 38,
+      "Category": "Life Coach",
+      "Account Type": "Individual",
+      "Industry Group": "Lifestyle",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 39,
+      "Category": "Occupational Therapist",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 40,
+      "Category": "Optometrist",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 41,
+      "Category": "Physical Therapist",
+      "Account Type": "Individual",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 42,
+      "Category": "Teacher / Educator",
+      "Account Type": "Individual",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 43,
+      "Category": "Bakery",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 44,
+      "Category": "Beauty Salon",
+      "Account Type": "Business",
+      "Industry Group": "Beauty",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 45,
+      "Category": "Clothing (Brand)",
+      "Account Type": "Business",
+      "Industry Group": "Fashion",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 46,
+      "Category": "Coffee Shop",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 47,
+      "Category": "E-Commerce Website",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 48,
+      "Category": "Hair Salon",
+      "Account Type": "Business",
+      "Industry Group": "Beauty",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 49,
+      "Category": "Marketing Agency",
+      "Account Type": "Business",
+      "Industry Group": "Agencies & Marketing",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 50,
+      "Category": "Real Estate Company",
+      "Account Type": "Business",
+      "Industry Group": "Real Estate",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 51,
+      "Category": "Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 52,
+      "Category": "Software Company",
+      "Account Type": "Business",
+      "Industry Group": "Technology",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 53,
+      "Category": "Advertising Agency",
+      "Account Type": "Business",
+      "Industry Group": "Agencies & Marketing",
+      "Usage Level": "High"
+    },
+    {
+      "#": 54,
+      "Category": "Apparel Distributor",
+      "Account Type": "Business",
+      "Industry Group": "Fashion",
+      "Usage Level": "High"
+    },
+    {
+      "#": 55,
+      "Category": "Baby & Children's Clothing Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 56,
+      "Category": "Bags & Luggage Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 57,
+      "Category": "Barbecue Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 58,
+      "Category": "Barber Shop",
+      "Account Type": "Business",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 59,
+      "Category": "Brand Agency",
+      "Account Type": "Business",
+      "Industry Group": "Agencies & Marketing",
+      "Usage Level": "High"
+    },
+    {
+      "#": 60,
+      "Category": "Cafe",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 61,
+      "Category": "Candy Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 62,
+      "Category": "Car Dealership",
+      "Account Type": "Business",
+      "Industry Group": "Automotive",
+      "Usage Level": "High"
+    },
+    {
+      "#": 63,
+      "Category": "Chicken Joint",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 64,
+      "Category": "Chocolate Shop",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 65,
+      "Category": "Cleaning Service",
+      "Account Type": "Business",
+      "Industry Group": "Home Services",
+      "Usage Level": "High"
+    },
+    {
+      "#": 66,
+      "Category": "Clothing Store",
+      "Account Type": "Business",
+      "Industry Group": "Fashion",
+      "Usage Level": "High"
+    },
+    {
+      "#": 67,
+      "Category": "Comedy Club",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "High"
+    },
+    {
+      "#": 68,
+      "Category": "Consulting Agency",
+      "Account Type": "Business",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "High"
+    },
+    {
+      "#": 69,
+      "Category": "Cosmetic Dentist",
+      "Account Type": "Business",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "High"
+    },
+    {
+      "#": 70,
+      "Category": "Dance School",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "High"
+    },
+    {
+      "#": 71,
+      "Category": "Dentist",
+      "Account Type": "Business",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "High"
+    },
+    {
+      "#": 72,
+      "Category": "Dessert Shop",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 73,
+      "Category": "Event Planner",
+      "Account Type": "Business",
+      "Industry Group": "Events",
+      "Usage Level": "High"
+    },
+    {
+      "#": 74,
+      "Category": "Fast Food Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 75,
+      "Category": "Florist",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 76,
+      "Category": "Food & Beverage",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 77,
+      "Category": "Footwear Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 78,
+      "Category": "Gift Shop",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 79,
+      "Category": "Grocery Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 80,
+      "Category": "Gym / Physical Fitness Center",
+      "Account Type": "Business",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 81,
+      "Category": "Hotel & Lodging",
+      "Account Type": "Business",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "High"
+    },
+    {
+      "#": 82,
+      "Category": "Ice Cream Shop",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 83,
+      "Category": "Indian Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 84,
+      "Category": "Internet Marketing Service",
+      "Account Type": "Business",
+      "Industry Group": "Agencies & Marketing",
+      "Usage Level": "High"
+    },
+    {
+      "#": 85,
+      "Category": "Japanese Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 86,
+      "Category": "Jewelry / Watches",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 87,
+      "Category": "Landscape Company",
+      "Account Type": "Business",
+      "Industry Group": "Home Services",
+      "Usage Level": "High"
+    },
+    {
+      "#": 88,
+      "Category": "Magazine",
+      "Account Type": "Business",
+      "Industry Group": "Media",
+      "Usage Level": "High"
+    },
+    {
+      "#": 89,
+      "Category": "Media Company",
+      "Account Type": "Business",
+      "Industry Group": "Media",
+      "Usage Level": "High"
+    },
+    {
+      "#": 90,
+      "Category": "Medical Center",
+      "Account Type": "Business",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "High"
+    },
+    {
+      "#": 91,
+      "Category": "Mediterranean Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 92,
+      "Category": "Nail Salon",
+      "Account Type": "Business",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 93,
+      "Category": "Nonprofit Organization",
+      "Account Type": "Business",
+      "Industry Group": "Community & Nonprofit",
+      "Usage Level": "High"
+    },
+    {
+      "#": 94,
+      "Category": "Pet Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 95,
+      "Category": "Pizza Place",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 96,
+      "Category": "Shopping & Retail",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 97,
+      "Category": "Spa",
+      "Account Type": "Business",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 98,
+      "Category": "Supermarket",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 99,
+      "Category": "Tattoo & Piercing Shop",
+      "Account Type": "Business",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 100,
+      "Category": "Tech Company",
+      "Account Type": "Business",
+      "Industry Group": "Technology",
+      "Usage Level": "High"
+    },
+    {
+      "#": 101,
+      "Category": "Travel Company / Agency",
+      "Account Type": "Business",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "High"
+    },
+    {
+      "#": 102,
+      "Category": "Veterinarian",
+      "Account Type": "Business",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "High"
+    },
+    {
+      "#": 103,
+      "Category": "Wedding Planning Service",
+      "Account Type": "Business",
+      "Industry Group": "Events",
+      "Usage Level": "High"
+    },
+    {
+      "#": 104,
+      "Category": "Women's Clothing Store",
+      "Account Type": "Business",
+      "Industry Group": "Fashion",
+      "Usage Level": "High"
+    },
+    {
+      "#": 105,
+      "Category": "Yoga Studio",
+      "Account Type": "Business",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 106,
+      "Category": "Accessories",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 107,
+      "Category": "African Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 108,
+      "Category": "Antique Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 109,
+      "Category": "Apartment & Condo Building",
+      "Account Type": "Business",
+      "Industry Group": "Real Estate",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 110,
+      "Category": "App Page",
+      "Account Type": "Business",
+      "Industry Group": "Technology",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 111,
+      "Category": "Appliance Repair Service",
+      "Account Type": "Business",
+      "Industry Group": "Home Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 112,
+      "Category": "Aquarium",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 113,
+      "Category": "Argentinian Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 114,
+      "Category": "Asian Fusion Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 115,
+      "Category": "Australian Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 116,
+      "Category": "Automotive Repair Shop",
+      "Account Type": "Business",
+      "Industry Group": "Automotive",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 117,
+      "Category": "Baby Goods / Kids Goods",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 118,
+      "Category": "Bank",
+      "Account Type": "Business",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 119,
+      "Category": "Beach Resort",
+      "Account Type": "Business",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 120,
+      "Category": "Biotechnology Company",
+      "Account Type": "Business",
+      "Industry Group": "Technology",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 121,
+      "Category": "Board Game",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 122,
+      "Category": "Bookstore",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 123,
+      "Category": "Botanical Garden",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 124,
+      "Category": "Buffet Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 125,
+      "Category": "Business Center",
+      "Account Type": "Business",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 126,
+      "Category": "Business Service",
+      "Account Type": "Business",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 127,
+      "Category": "Butcher Shop",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 128,
+      "Category": "Cabin Rental",
+      "Account Type": "Business",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 129,
+      "Category": "Camera Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 130,
+      "Category": "Canadian Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 131,
+      "Category": "Child Care Service",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 132,
+      "Category": "Chinese Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 133,
+      "Category": "Christian Church",
+      "Account Type": "Business",
+      "Industry Group": "Community & Nonprofit",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 134,
+      "Category": "College & University",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 135,
+      "Category": "Colombian Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 136,
+      "Category": "Community Organization",
+      "Account Type": "Business",
+      "Industry Group": "Community & Nonprofit",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 137,
+      "Category": "Concert Tour",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 138,
+      "Category": "Construction Company",
+      "Account Type": "Business",
+      "Industry Group": "Home Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 139,
+      "Category": "Credit Union",
+      "Account Type": "Business",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 140,
+      "Category": "Day Care",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 141,
+      "Category": "Discount Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 142,
+      "Category": "Driving School",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 143,
+      "Category": "Dry Cleaner",
+      "Account Type": "Business",
+      "Industry Group": "Home Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 144,
+      "Category": "Education",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 145,
+      "Category": "Engineering Service",
+      "Account Type": "Business",
+      "Industry Group": "Professional Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 146,
+      "Category": "Entertainment Website",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 147,
+      "Category": "Escape Game Room",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 148,
+      "Category": "Exotic Car Rental",
+      "Account Type": "Business",
+      "Industry Group": "Automotive",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 149,
+      "Category": "Fabric Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 150,
+      "Category": "Family Medicine Practice",
+      "Account Type": "Business",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 151,
+      "Category": "Finance Company",
+      "Account Type": "Business",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 152,
+      "Category": "Garden Center",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 153,
+      "Category": "Gas Station",
+      "Account Type": "Business",
+      "Industry Group": "Automotive",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 154,
+      "Category": "Hardware Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 155,
+      "Category": "Health Food Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 156,
+      "Category": "Industrial Company",
+      "Account Type": "Business",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 157,
+      "Category": "Investment Bank",
+      "Account Type": "Business",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 158,
+      "Category": "Kitchen & Bath Contractor",
+      "Account Type": "Business",
+      "Industry Group": "Home Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 159,
+      "Category": "Korean Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 160,
+      "Category": "Language School",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 161,
+      "Category": "Lawyer & Law Firm",
+      "Account Type": "Business",
+      "Industry Group": "Professional Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 162,
+      "Category": "Library",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 163,
+      "Category": "Local Business",
+      "Account Type": "Business",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 164,
+      "Category": "National Park",
+      "Account Type": "Business",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 165,
+      "Category": "Newspaper",
+      "Account Type": "Business",
+      "Industry Group": "Media",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 166,
+      "Category": "Organic Grocery Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 167,
+      "Category": "Publishing Company",
+      "Account Type": "Business",
+      "Industry Group": "Media",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 168,
+      "Category": "Race Track",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 169,
+      "Category": "Recycling Center",
+      "Account Type": "Business",
+      "Industry Group": "Community & Nonprofit",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 170,
+      "Category": "Retail Bank",
+      "Account Type": "Business",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 171,
+      "Category": "School",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 172,
+      "Category": "Sightseeing Tour Agency",
+      "Account Type": "Business",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 173,
+      "Category": "Sports League",
+      "Account Type": "Business",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 174,
+      "Category": "Talent Agency",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 175,
+      "Category": "Thai Restaurant",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 176,
+      "Category": "Theme Park",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 177,
+      "Category": "University",
+      "Account Type": "Business",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 178,
+      "Category": "Urban Farm",
+      "Account Type": "Business",
+      "Industry Group": "Agriculture",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 179,
+      "Category": "Vacation Home Rental",
+      "Account Type": "Business",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 180,
+      "Category": "Vintage Store",
+      "Account Type": "Business",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 181,
+      "Category": "Zoo",
+      "Account Type": "Business",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 182,
+      "Category": "Confectionery / شیرینی‌فروشی",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage / غذا و نوشیدنی",
+      "Usage Level": "High"
+    },
+    {
+      "#": 183,
+      "Category": "Gold & Jewelry Store / طلا و جواهرفروشی",
+      "Account Type": "Business",
+      "Industry Group": "Retail / فروشگاه",
+      "Usage Level": "High"
+    },
+    {
+      "#": 184,
+      "Category": "Printing & Advertising / چاپ و تبلیغات",
+      "Account Type": "Business",
+      "Industry Group": "Agencies & Marketing / آژانس و تبلیغات",
+      "Usage Level": "High"
+    },
+    {
+      "#": 185,
+      "Category": "Wedding Hall / تالار عروسی",
+      "Account Type": "Business",
+      "Industry Group": "Events / رویدادها",
+      "Usage Level": "High"
+    },
+    {
+      "#": 186,
+      "Category": "Photo Studio / آتلیه عکاسی",
+      "Account Type": "Business",
+      "Industry Group": "Beauty / زیبایی",
+      "Usage Level": "High"
+    },
+    {
+      "#": 187,
+      "Category": "Online Tutor / تدریس خصوصی",
+      "Account Type": "Individual",
+      "Industry Group": "Education / آموزش",
+      "Usage Level": "High"
+    },
+    {
+      "#": 188,
+      "Category": "Homemade Food / غذای خانگی",
+      "Account Type": "Business",
+      "Industry Group": "Food & Beverage / غذا و نوشیدنی",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 189,
+      "Category": "Car Wash & Detailing / کارواش",
+      "Account Type": "Business",
+      "Industry Group": "Automotive / خودرو",
+      "Usage Level": "High"
+    },
+    {
+      "#": 190,
+      "Category": "Tailor / خیاطی",
+      "Account Type": "Business",
+      "Industry Group": "Fashion / مد و پوشاک",
+      "Usage Level": "High"
+    }
+  ],
+  "Individual (Creator)": [
+    {
+      "#": 1,
+      "Category": "Actor",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 2,
+      "Category": "Artist",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 3,
+      "Category": "Blogger",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 4,
+      "Category": "Comedian",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 5,
+      "Category": "Digital Creator",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 6,
+      "Category": "Entrepreneur",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 7,
+      "Category": "Musician / Band",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 8,
+      "Category": "Personal Blog",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 9,
+      "Category": "Photographer",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 10,
+      "Category": "Public Figure",
+      "Industry Group": "Creator",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 11,
+      "Category": "Astrologist & Psychic",
+      "Industry Group": "Lifestyle",
+      "Usage Level": "High"
+    },
+    {
+      "#": 12,
+      "Category": "Athlete",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 13,
+      "Category": "Author / Writer",
+      "Industry Group": "Creator",
+      "Usage Level": "High"
+    },
+    {
+      "#": 14,
+      "Category": "Band",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "High"
+    },
+    {
+      "#": 15,
+      "Category": "Chef",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 16,
+      "Category": "Fashion Designer",
+      "Industry Group": "Fashion",
+      "Usage Level": "High"
+    },
+    {
+      "#": 17,
+      "Category": "Fitness Trainer",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 18,
+      "Category": "Gamer",
+      "Industry Group": "Gaming & Tech",
+      "Usage Level": "High"
+    },
+    {
+      "#": 19,
+      "Category": "Graphic Designer",
+      "Industry Group": "Design & Creative",
+      "Usage Level": "High"
+    },
+    {
+      "#": 20,
+      "Category": "Health & Wellness Coach",
+      "Industry Group": "Health & Wellness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 21,
+      "Category": "Makeup Artist",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 22,
+      "Category": "Painter",
+      "Industry Group": "Arts & Entertainment",
+      "Usage Level": "High"
+    },
+    {
+      "#": 23,
+      "Category": "Acupuncturist",
+      "Industry Group": "Health & Wellness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 24,
+      "Category": "Allergist",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 25,
+      "Category": "Alternative & Holistic Health",
+      "Industry Group": "Health & Wellness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 26,
+      "Category": "Architect / Architectural Designer",
+      "Industry Group": "Design & Creative",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 27,
+      "Category": "Aromatherapy Service",
+      "Industry Group": "Health & Wellness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 28,
+      "Category": "Audiologist",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 29,
+      "Category": "Boat / Sailing Instructor",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 30,
+      "Category": "Chiropractor",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 31,
+      "Category": "Consultant",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 32,
+      "Category": "Doctor",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 33,
+      "Category": "Environmental Consultant",
+      "Industry Group": "Professional Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 34,
+      "Category": "Event Videographer",
+      "Industry Group": "Design & Creative",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 35,
+      "Category": "Family Doctor",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 36,
+      "Category": "Financial Consultant",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 37,
+      "Category": "Lawyer",
+      "Industry Group": "Professional Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 38,
+      "Category": "Life Coach",
+      "Industry Group": "Lifestyle",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 39,
+      "Category": "Occupational Therapist",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 40,
+      "Category": "Optometrist",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 41,
+      "Category": "Physical Therapist",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 42,
+      "Category": "Teacher / Educator",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 43,
+      "Category": "Online Tutor / تدریس خصوصی",
+      "Industry Group": "Education / آموزش",
+      "Usage Level": "High"
+    }
+  ],
+  "Business": [
+    {
+      "#": 1,
+      "Category": "Bakery",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 2,
+      "Category": "Beauty Salon",
+      "Industry Group": "Beauty",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 3,
+      "Category": "Clothing (Brand)",
+      "Industry Group": "Fashion",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 4,
+      "Category": "Coffee Shop",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 5,
+      "Category": "E-Commerce Website",
+      "Industry Group": "Retail",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 6,
+      "Category": "Hair Salon",
+      "Industry Group": "Beauty",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 7,
+      "Category": "Marketing Agency",
+      "Industry Group": "Agencies & Marketing",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 8,
+      "Category": "Real Estate Company",
+      "Industry Group": "Real Estate",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 9,
+      "Category": "Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 10,
+      "Category": "Software Company",
+      "Industry Group": "Technology",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 11,
+      "Category": "Advertising Agency",
+      "Industry Group": "Agencies & Marketing",
+      "Usage Level": "High"
+    },
+    {
+      "#": 12,
+      "Category": "Apparel Distributor",
+      "Industry Group": "Fashion",
+      "Usage Level": "High"
+    },
+    {
+      "#": 13,
+      "Category": "Baby & Children's Clothing Store",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 14,
+      "Category": "Bags & Luggage Store",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 15,
+      "Category": "Barbecue Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 16,
+      "Category": "Barber Shop",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 17,
+      "Category": "Brand Agency",
+      "Industry Group": "Agencies & Marketing",
+      "Usage Level": "High"
+    },
+    {
+      "#": 18,
+      "Category": "Cafe",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 19,
+      "Category": "Candy Store",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 20,
+      "Category": "Car Dealership",
+      "Industry Group": "Automotive",
+      "Usage Level": "High"
+    },
+    {
+      "#": 21,
+      "Category": "Chicken Joint",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 22,
+      "Category": "Chocolate Shop",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 23,
+      "Category": "Cleaning Service",
+      "Industry Group": "Home Services",
+      "Usage Level": "High"
+    },
+    {
+      "#": 24,
+      "Category": "Clothing Store",
+      "Industry Group": "Fashion",
+      "Usage Level": "High"
+    },
+    {
+      "#": 25,
+      "Category": "Comedy Club",
+      "Industry Group": "Entertainment",
+      "Usage Level": "High"
+    },
+    {
+      "#": 26,
+      "Category": "Consulting Agency",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "High"
+    },
+    {
+      "#": 27,
+      "Category": "Cosmetic Dentist",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "High"
+    },
+    {
+      "#": 28,
+      "Category": "Dance School",
+      "Industry Group": "Education",
+      "Usage Level": "High"
+    },
+    {
+      "#": 29,
+      "Category": "Dentist",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "High"
+    },
+    {
+      "#": 30,
+      "Category": "Dessert Shop",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 31,
+      "Category": "Event Planner",
+      "Industry Group": "Events",
+      "Usage Level": "High"
+    },
+    {
+      "#": 32,
+      "Category": "Fast Food Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 33,
+      "Category": "Florist",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 34,
+      "Category": "Food & Beverage",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 35,
+      "Category": "Footwear Store",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 36,
+      "Category": "Gift Shop",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 37,
+      "Category": "Grocery Store",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 38,
+      "Category": "Gym / Physical Fitness Center",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 39,
+      "Category": "Hotel & Lodging",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "High"
+    },
+    {
+      "#": 40,
+      "Category": "Ice Cream Shop",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 41,
+      "Category": "Indian Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 42,
+      "Category": "Internet Marketing Service",
+      "Industry Group": "Agencies & Marketing",
+      "Usage Level": "High"
+    },
+    {
+      "#": 43,
+      "Category": "Japanese Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 44,
+      "Category": "Jewelry / Watches",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 45,
+      "Category": "Landscape Company",
+      "Industry Group": "Home Services",
+      "Usage Level": "High"
+    },
+    {
+      "#": 46,
+      "Category": "Magazine",
+      "Industry Group": "Media",
+      "Usage Level": "High"
+    },
+    {
+      "#": 47,
+      "Category": "Media Company",
+      "Industry Group": "Media",
+      "Usage Level": "High"
+    },
+    {
+      "#": 48,
+      "Category": "Medical Center",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "High"
+    },
+    {
+      "#": 49,
+      "Category": "Mediterranean Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 50,
+      "Category": "Nail Salon",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 51,
+      "Category": "Nonprofit Organization",
+      "Industry Group": "Community & Nonprofit",
+      "Usage Level": "High"
+    },
+    {
+      "#": 52,
+      "Category": "Pet Store",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 53,
+      "Category": "Pizza Place",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "High"
+    },
+    {
+      "#": 54,
+      "Category": "Shopping & Retail",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 55,
+      "Category": "Spa",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 56,
+      "Category": "Supermarket",
+      "Industry Group": "Retail",
+      "Usage Level": "High"
+    },
+    {
+      "#": 57,
+      "Category": "Tattoo & Piercing Shop",
+      "Industry Group": "Beauty",
+      "Usage Level": "High"
+    },
+    {
+      "#": 58,
+      "Category": "Tech Company",
+      "Industry Group": "Technology",
+      "Usage Level": "High"
+    },
+    {
+      "#": 59,
+      "Category": "Travel Company / Agency",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "High"
+    },
+    {
+      "#": 60,
+      "Category": "Veterinarian",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "High"
+    },
+    {
+      "#": 61,
+      "Category": "Wedding Planning Service",
+      "Industry Group": "Events",
+      "Usage Level": "High"
+    },
+    {
+      "#": 62,
+      "Category": "Women's Clothing Store",
+      "Industry Group": "Fashion",
+      "Usage Level": "High"
+    },
+    {
+      "#": 63,
+      "Category": "Yoga Studio",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "High"
+    },
+    {
+      "#": 64,
+      "Category": "Accessories",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 65,
+      "Category": "African Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 66,
+      "Category": "Antique Store",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 67,
+      "Category": "Apartment & Condo Building",
+      "Industry Group": "Real Estate",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 68,
+      "Category": "App Page",
+      "Industry Group": "Technology",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 69,
+      "Category": "Appliance Repair Service",
+      "Industry Group": "Home Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 70,
+      "Category": "Aquarium",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 71,
+      "Category": "Argentinian Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 72,
+      "Category": "Asian Fusion Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 73,
+      "Category": "Australian Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 74,
+      "Category": "Automotive Repair Shop",
+      "Industry Group": "Automotive",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 75,
+      "Category": "Baby Goods / Kids Goods",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 76,
+      "Category": "Bank",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 77,
+      "Category": "Beach Resort",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 78,
+      "Category": "Biotechnology Company",
+      "Industry Group": "Technology",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 79,
+      "Category": "Board Game",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 80,
+      "Category": "Bookstore",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 81,
+      "Category": "Botanical Garden",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 82,
+      "Category": "Buffet Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 83,
+      "Category": "Business Center",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 84,
+      "Category": "Business Service",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 85,
+      "Category": "Butcher Shop",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 86,
+      "Category": "Cabin Rental",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 87,
+      "Category": "Camera Store",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 88,
+      "Category": "Canadian Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 89,
+      "Category": "Child Care Service",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 90,
+      "Category": "Chinese Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 91,
+      "Category": "Christian Church",
+      "Industry Group": "Community & Nonprofit",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 92,
+      "Category": "College & University",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 93,
+      "Category": "Colombian Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 94,
+      "Category": "Community Organization",
+      "Industry Group": "Community & Nonprofit",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 95,
+      "Category": "Concert Tour",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 96,
+      "Category": "Construction Company",
+      "Industry Group": "Home Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 97,
+      "Category": "Credit Union",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 98,
+      "Category": "Day Care",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 99,
+      "Category": "Discount Store",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 100,
+      "Category": "Driving School",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 101,
+      "Category": "Dry Cleaner",
+      "Industry Group": "Home Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 102,
+      "Category": "Education",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 103,
+      "Category": "Engineering Service",
+      "Industry Group": "Professional Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 104,
+      "Category": "Entertainment Website",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 105,
+      "Category": "Escape Game Room",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 106,
+      "Category": "Exotic Car Rental",
+      "Industry Group": "Automotive",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 107,
+      "Category": "Fabric Store",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 108,
+      "Category": "Family Medicine Practice",
+      "Industry Group": "Health & Medical",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 109,
+      "Category": "Finance Company",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 110,
+      "Category": "Garden Center",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 111,
+      "Category": "Gas Station",
+      "Industry Group": "Automotive",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 112,
+      "Category": "Hardware Store",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 113,
+      "Category": "Health Food Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 114,
+      "Category": "Industrial Company",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 115,
+      "Category": "Investment Bank",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 116,
+      "Category": "Kitchen & Bath Contractor",
+      "Industry Group": "Home Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 117,
+      "Category": "Korean Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 118,
+      "Category": "Language School",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 119,
+      "Category": "Lawyer & Law Firm",
+      "Industry Group": "Professional Services",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 120,
+      "Category": "Library",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 121,
+      "Category": "Local Business",
+      "Industry Group": "Business & Professional",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 122,
+      "Category": "National Park",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 123,
+      "Category": "Newspaper",
+      "Industry Group": "Media",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 124,
+      "Category": "Organic Grocery Store",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 125,
+      "Category": "Publishing Company",
+      "Industry Group": "Media",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 126,
+      "Category": "Race Track",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 127,
+      "Category": "Recycling Center",
+      "Industry Group": "Community & Nonprofit",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 128,
+      "Category": "Retail Bank",
+      "Industry Group": "Finance",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 129,
+      "Category": "School",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 130,
+      "Category": "Sightseeing Tour Agency",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 131,
+      "Category": "Sports League",
+      "Industry Group": "Sports & Fitness",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 132,
+      "Category": "Talent Agency",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 133,
+      "Category": "Thai Restaurant",
+      "Industry Group": "Food & Beverage",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 134,
+      "Category": "Theme Park",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 135,
+      "Category": "University",
+      "Industry Group": "Education",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 136,
+      "Category": "Urban Farm",
+      "Industry Group": "Agriculture",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 137,
+      "Category": "Vacation Home Rental",
+      "Industry Group": "Travel & Tourism",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 138,
+      "Category": "Vintage Store",
+      "Industry Group": "Retail",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 139,
+      "Category": "Zoo",
+      "Industry Group": "Entertainment",
+      "Usage Level": "Medium"
+    },
+    {
+      "#": 140,
+      "Category": "Confectionery / شیرینی‌فروشی",
+      "Industry Group": "Food & Beverage / غذا و نوشیدنی",
+      "Usage Level": "High"
+    },
+    {
+      "#": 141,
+      "Category": "Gold & Jewelry Store / طلا و جواهرفروشی",
+      "Industry Group": "Retail / فروشگاه",
+      "Usage Level": "High"
+    },
+    {
+      "#": 142,
+      "Category": "Printing & Advertising / چاپ و تبلیغات",
+      "Industry Group": "Agencies & Marketing / آژانس و تبلیغات",
+      "Usage Level": "High"
+    },
+    {
+      "#": 143,
+      "Category": "Wedding Hall / تالار عروسی",
+      "Industry Group": "Events / رویدادها",
+      "Usage Level": "High"
+    },
+    {
+      "#": 144,
+      "Category": "Photo Studio / آتلیه عکاسی",
+      "Industry Group": "Beauty / زیبایی",
+      "Usage Level": "High"
+    },
+    {
+      "#": 145,
+      "Category": "Homemade Food / غذای خانگی",
+      "Industry Group": "Food & Beverage / غذا و نوشیدنی",
+      "Usage Level": "Very High"
+    },
+    {
+      "#": 146,
+      "Category": "Car Wash & Detailing / کارواش",
+      "Industry Group": "Automotive / خودرو",
+      "Usage Level": "High"
+    },
+    {
+      "#": 147,
+      "Category": "Tailor / خیاطی",
+      "Industry Group": "Fashion / مد و پوشاک",
+      "Usage Level": "High"
+    }
+  ],
+  "Legend": [
+    {
+      "Tier": "1",
+      "Label": "Very High",
+      "Who sees it in Kioar onboarding": "Default grid — shown immediately",
+      "Removed items": "—"
+    },
+    {
+      "Tier": "2",
+      "Label": "High",
+      "Who sees it in Kioar onboarding": "Visible after scroll / industry filter chip",
+      "Removed items": "—"
+    },
+    {
+      "Tier": "3",
+      "Label": "Medium",
+      "Who sees it in Kioar onboarding": "Search only or 'show more' button",
+      "Removed items": "—"
+    },
+    {
+      "Tier": "—",
+      "Label": "BANNED",
+      "Who sees it in Kioar onboarding": "Never shown (Iranian law)",
+      "Removed items": "Bar, Beer Bar, Bar & Grill, Casino, Dance & Night Club, Winery/Vineyard, Bartending Service, Karaoke (alcohol venue)"
+    },
+    {
+      "Tier": "—",
+      "Label": "REMOVED",
+      "Who sees it in Kioar onboarding": "Not relevant for Iran market",
+      "Removed items": "All Low usage items (Quay, Aerospace Co., Awning Supplier, etc.)"
+    }
+  ]
+}

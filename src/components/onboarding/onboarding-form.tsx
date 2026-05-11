@@ -14,7 +14,7 @@ import {
 import { useFormStatus } from "react-dom";
 
 import { idleState, type ActionState } from "@/lib/action-state";
-import { type DiscoverCategory } from "@/lib/discover";
+import { type AccountType, type Category, type Industry } from "@/lib/discover";
 import { resolveIconEntry } from "@/lib/link-icons";
 import { PAGE_TYPES, type PageTypeSlug } from "@/lib/page-type";
 import { normalizeSlug } from "@/lib/slug";
@@ -40,8 +40,10 @@ type OnboardingFormProps = {
    * `"first"` for backwards compat.
    */
   mode?: "first" | "additional";
-  /** DB-backed discover categories for the picker step. */
-  categories: DiscoverCategory[];
+  /** DB-backed industries for the picker step. */
+  industries: Industry[];
+  /** DB-backed categories (active) for the picker step. */
+  categories: Category[];
 };
 
 function ContinueButton({
@@ -80,6 +82,7 @@ export function OnboardingForm({
   action,
   initialSlug,
   mode = "first",
+  industries,
   categories,
 }: OnboardingFormProps) {
   const [state, formAction] = useActionState(action, idleState);
@@ -91,6 +94,9 @@ export function OnboardingForm({
   const [, setSlugEdited] = useState(Boolean(initialSlug));
   const [pageName, setPageName] = useState("");
   const [pageType, setPageType] = useState<PageTypeSlug | null>(null);
+  const [selectedIndustryId, setSelectedIndustryId] = useState<string | null>(
+    null,
+  );
   const [discoverCategory, setDiscoverCategory] = useState<string | null>(null);
   const [categoryQuery, setCategoryQuery] = useState("");
 
@@ -391,11 +397,30 @@ export function OnboardingForm({
     );
   }
 
-  // Step 4 — discover category (skippable) + final submit
-  const filteredCategories =
-    categoryQuery.trim().length === 0
-      ? categories
-      : categories.filter((c) => c.label.includes(categoryQuery.trim()));
+  // Step 4 — discover industry + category (skippable) + final submit
+  const accountType: AccountType =
+    pageType === "business" ? "business" : "personal";
+  const visibleIndustries = industries.filter((i) =>
+    i.accountTypes.includes(accountType),
+  );
+  const activeIndustryId =
+    selectedIndustryId &&
+    visibleIndustries.some((i) => i.id === selectedIndustryId)
+      ? selectedIndustryId
+      : (visibleIndustries[0]?.id ?? null);
+  const query = categoryQuery.trim();
+  const filteredCategories = categories.filter((c) => {
+    if (c.accountType !== accountType) return false;
+    // When searching, ignore the active industry tab and search all industries
+    if (
+      query.length === 0 &&
+      activeIndustryId &&
+      c.industryId !== activeIndustryId
+    )
+      return false;
+    if (query.length > 0 && !c.titleFa.includes(query)) return false;
+    return true;
+  });
 
   return (
     <div className="flex flex-col items-center gap-7">
@@ -421,6 +446,54 @@ export function OnboardingForm({
           value={discoverCategory ?? ""}
         />
 
+        {visibleIndustries.length > 0 ? (
+          <div
+            role="tablist"
+            aria-label="صنف"
+            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
+          >
+            {visibleIndustries.map((ind) => {
+              const selected = activeIndustryId === ind.id;
+              const entry = resolveIconEntry(ind.iconKey, null);
+              const Icon = entry.Icon;
+              return (
+                <button
+                  key={ind.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => {
+                    setSelectedIndustryId(ind.id);
+                    // Clear category if it no longer belongs to this industry.
+                    if (
+                      discoverCategory &&
+                      !categories.some(
+                        (c) =>
+                          c.slug === discoverCategory &&
+                          c.industryId === ind.id,
+                      )
+                    ) {
+                      setDiscoverCategory(null);
+                    }
+                  }}
+                  className={cn(
+                    "tap-target inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                    selected
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-foreground hover:bg-muted/70",
+                  )}
+                >
+                  <Icon
+                    className="size-4"
+                    style={selected ? undefined : { color: entry.color }}
+                  />
+                  <span className="truncate">{ind.titleFa}</span>
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
         <div className="relative">
           <SearchIcon
             aria-hidden
@@ -430,7 +503,6 @@ export function OnboardingForm({
             type="text"
             inputMode="search"
             enterKeyHint="search"
-            autoFocus
             value={categoryQuery}
             onChange={(e) => setCategoryQuery(e.target.value)}
             placeholder="جستجوی دسته‌بندی…"
@@ -480,7 +552,7 @@ export function OnboardingForm({
                       );
                     })()}
                   </span>
-                  <span className="truncate">{c.label}</span>
+                  <span className="truncate">{c.titleFa}</span>
                 </button>
               );
             })

@@ -59,7 +59,13 @@ export type AdminAuditAction =
   | "affiliate.settings.update"
   | "discover_category.create"
   | "discover_category.update"
-  | "discover_category.deactivate";
+  | "discover_category.deactivate"
+  | "industry.create"
+  | "industry.update"
+  | "industry.deactivate"
+  | "category.create"
+  | "category.update"
+  | "category.deactivate";
 
 type Executor = {
   insert: ReturnType<typeof getDb>["insert"];
@@ -203,4 +209,10 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   "discover_category.create": "ایجاد دسته‌بندی دیسکاور",
   "discover_category.update": "ویرایش دسته‌بندی دیسکاور",
   "discover_category.deactivate": "غیرفعال‌سازی دسته‌بندی دیسکاور",
+  "industry.create": "ایجاد صنف",
+  "industry.update": "ویرایش صنف",
+  "industry.deactivate": "غیرفعال‌سازی صنف",
+  "category.create": "ایجاد دسته‌بندی",
+  "category.update": "ویرایش دسته‌بندی",
+  "category.deactivate": "غیرفعال‌سازی دسته‌بندی",
 };

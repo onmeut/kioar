@@ -5,7 +5,7 @@ import { getLinkClickCounts, getProfileWithLinksByUserId } from "@/lib/data";
 import { isIconKey } from "@/lib/link-icons";
 import { getProviderConnections } from "@/lib/oauth/connections";
 import { absoluteUrl } from "@/lib/site";
-import { getDiscoverCategories } from "@/lib/discover";
+import { getAllActiveCategories, getIndustries } from "@/lib/discover";
 
 import { fetchLinkMetadataAction } from "./actions";
 import {
@@ -343,7 +343,10 @@ export default async function DashboardLinksPage() {
     ? await pageHasFeature(pageId, "qr_code_customization").catch(() => false)
     : false;
 
-  const discoverCategories = await getDiscoverCategories();
+  const [industries, allCategories] = await Promise.all([
+    getIndustries(),
+    getAllActiveCategories(),
+  ]);
 
   return (
     <LinksPageClient
@@ -419,7 +422,8 @@ export default async function DashboardLinksPage() {
         (profile?.qrStyle as import("@/lib/qr/types").QrStyle | null) ?? null
       }
       saveQrStyleAction={saveQrStyleAction}
-      categories={discoverCategories}
+      industries={industries}
+      categories={allCategories}
       setBlockSpotlightAction={setBlockSpotlightAction}
     />
   );

@@ -2303,22 +2303,30 @@ export const subscriptionPriceChangeEventsRelations = relations(
 );
 
 // ---------------------------------------------------------------------------
-// Discover Categories (admin-managed taxonomy for the Discover directory).
+// Industries → Categories (admin-managed two-level taxonomy).
 //
-// Replaces the hardcoded DISCOVER_CATEGORIES constant in lib/discover.ts.
-// Slug is the stable identifier persisted in profiles.discover_category.
-// Slug renames are handled transactionally: both this row and all
-// referencing profiles rows are updated atomically in the admin action.
+// Replaces the flat `discover_categories` table. The slug on `categories`
+// is the stable identifier persisted in `profiles.discover_category`.
+// Slug renames are handled transactionally in the admin action: both this
+// row and all referencing profiles rows are updated atomically.
+//
+// `account_types` on industries is an array because an industry can apply
+// to personal pages, business pages, or both. On `categories.account_type`
+// it's a single value — each category row is either personal or business.
+//
 // icon_key matches the link-icon system (e.g. "t:music", "t:star").
 // ---------------------------------------------------------------------------
 
-export const discoverCategories = pgTable(
-  "discover_categories",
+export const industries = pgTable(
+  "industries",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     slug: text("slug").notNull(),
-    label: text("label").notNull(),
+    titleFa: text("title_fa").notNull(),
+    titleEn: text("title_en").notNull(),
     iconKey: text("icon_key").notNull().default("t:star"),
+    /** Either ['personal'], ['business'], or both. */
+    accountTypes: text("account_types").array().notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -2330,9 +2338,51 @@ export const discoverCategories = pgTable(
       .notNull(),
   },
   (table) => [
-    uniqueIndex("discover_categories_slug_idx").on(table.slug),
-    index("discover_categories_sort_idx")
+    uniqueIndex("industries_slug_idx").on(table.slug),
+    index("industries_sort_idx")
       .on(table.sortOrder)
       .where(sql`${table.isActive} = true`),
   ],
 );
+
+export const categories = pgTable(
+  "categories",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    industryId: uuid("industry_id")
+      .notNull()
+      .references(() => industries.id, { onDelete: "restrict" }),
+    slug: text("slug").notNull(),
+    titleFa: text("title_fa").notNull(),
+    titleEn: text("title_en").notNull(),
+    iconKey: text("icon_key").notNull().default("t:star"),
+    /** 'personal' | 'business' — enforced by a CHECK constraint in SQL. */
+    accountType: text("account_type").notNull(),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("categories_slug_idx").on(table.slug),
+    index("categories_industry_account_sort_idx")
+      .on(table.industryId, table.accountType, table.sortOrder)
+      .where(sql`${table.isActive} = true`),
+  ],
+);
+
+export const industriesRelations = relations(industries, ({ many }) => ({
+  categories: many(categories),
+}));
+
+export const categoriesRelations = relations(categories, ({ one }) => ({
+  industry: one(industries, {
+    fields: [categories.industryId],
+    references: [industries.id],
+  }),
+}));

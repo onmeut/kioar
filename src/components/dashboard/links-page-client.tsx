@@ -76,7 +76,7 @@ import { PublicShareBar } from "@/components/dashboard/public-share-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { DiscoverCategory } from "@/lib/discover";
+import type { Category, Industry } from "@/lib/discover";
 import {
   Sheet,
   SheetContent,
@@ -233,8 +233,10 @@ type LinksPageClientProps = {
   saveQrStyleAction?: (
     style: import("@/lib/qr/types").QrStyle,
   ) => Promise<{ status: string; message?: string }>;
-  /** DB-backed discover categories for the page-settings picker. */
-  categories: DiscoverCategory[];
+  /** DB-backed industries for the page-settings picker. */
+  industries: Industry[];
+  /** DB-backed categories for the page-settings picker. */
+  categories: Category[];
   setBlockSpotlightAction: (
     state: ActionState,
     formData: FormData,
@@ -287,6 +289,7 @@ export function LinksPageClient({
   canCustomizeQr = false,
   savedQrStyle,
   saveQrStyleAction,
+  industries,
   categories,
   setBlockSpotlightAction,
 }: LinksPageClientProps) {
@@ -1472,6 +1475,7 @@ export function LinksPageClient({
           avatarSeed: profile.avatarSeed,
         }}
         onSave={handleSettingsSave}
+        industries={industries}
         categories={categories}
         onAvatarUpload={handleAvatarSave}
         onAvatarDelete={handleAvatarDelete}

@@ -9,11 +9,15 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import {
+  Building2Icon,
   CameraIcon,
+  CheckIcon,
   GlobeIcon,
   Loader2Icon,
   PencilIcon,
+  SearchIcon,
   Trash2Icon,
+  UserRoundIcon,
   XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -47,11 +51,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { IRANIAN_CITIES } from "@/lib/cities";
-import type { DiscoverCategory } from "@/lib/discover";
+import type { Category, Industry } from "@/lib/discover";
 import { PAGE_TYPES } from "@/lib/page-type";
 import { type ProfileDomain } from "@/lib/profile-domains";
-import { type IconKey } from "@/lib/link-icons";
+import { type IconKey, resolveIconEntry } from "@/lib/link-icons";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
+import { cn } from "@/lib/utils";
 
 export type PageSettingsValues = {
   fullName: string;
@@ -99,8 +104,10 @@ type Props = {
   onAvatarUpload: (file: File) => Promise<{ ok: true } | { ok: false }>;
   onAvatarDelete?: () => Promise<{ ok: true } | { ok: false }>;
   onAvatarPickSeed: (seed: string) => Promise<{ ok: true } | { ok: false }>;
-  /** DB-backed discover categories from the server. */
-  categories: DiscoverCategory[];
+  /** DB-backed industries from the server (active only). */
+  industries: Industry[];
+  /** DB-backed categories from the server (active only). */
+  categories: Category[];
 };
 
 /** Default brand OG fallback shown in previews when no upload is set. */
@@ -111,6 +118,7 @@ export function PageSettingsSheet({
   onOpenChange,
   pageId,
   initial,
+  industries,
   categories,
   preview,
   onSave,
@@ -120,6 +128,13 @@ export function PageSettingsSheet({
 }: Props) {
   const router = useRouter();
   const [values, setValues] = useState<PageSettingsValues>(initial);
+  // Industry picker is purely UI-side; on read it's derived from the chosen
+  // category's industryId. This transient holder lets users switch industries
+  // before picking a category so the second dropdown can narrow correctly.
+  const [pendingIndustryId, setPendingIndustryId] = useState<string | null>(
+    null,
+  );
+  const [settingsCategoryQuery, setSettingsCategoryQuery] = useState("");
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>(
     {},
   );
@@ -143,6 +158,8 @@ export function PageSettingsSheet({
       setOgFile(null);
       setOgPreview(null);
       setOgRemove(false);
+      setPendingIndustryId(null);
+      setSettingsCategoryQuery("");
     }
   }, [open, initial]);
 
@@ -538,60 +555,211 @@ export function PageSettingsSheet({
             />
           </div>
 
-          <Field id="page-category" label="دسته‌بندی">
-            <Select
-              value={values.discoverCategory ?? "__none"}
-              onValueChange={(v) =>
-                patch("discoverCategory", v === "__none" ? null : v)
-              }
-              disabled={!values.discoverEnabled}
-            >
-              <SelectTrigger id="page-category" className="h-11 w-full">
-                <SelectValue>
-                  {(v: string) => {
-                    if (!v || v === "__none") return "بدون دسته‌بندی";
-                    const cat = categories.find((c) => c.slug === v);
-                    return cat ? cat.label : v;
-                  }}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">بدون دسته‌بندی</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.slug} value={c.slug}>
-                    {c.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          {/* ---- Page type ---- */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">نوع صفحه</Label>
+            <div className="flex flex-col gap-2">
+              {PAGE_TYPES.map((t) => {
+                const selected = values.pageType === t.slug;
+                const Icon =
+                  t.slug === "personal" ? UserRoundIcon : Building2Icon;
+                return (
+                  <button
+                    key={t.slug}
+                    type="button"
+                    onClick={() => patch("pageType", t.slug)}
+                    aria-pressed={selected}
+                    className={cn(
+                      "group flex items-center gap-3 rounded-2xl border-2 px-4 py-3 text-start transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring/30",
+                      selected
+                        ? "border-foreground bg-foreground/3"
+                        : "border-transparent bg-muted hover:bg-muted/70",
+                    )}
+                  >
+                    <span
+                      aria-hidden
+                      className="grid size-9 shrink-0 place-items-center rounded-xl bg-background text-foreground"
+                    >
+                      <Icon className="size-5" strokeWidth={1.75} />
+                    </span>
+                    <span className="flex flex-1 flex-col">
+                      <span className="text-sm font-semibold leading-tight">
+                        {t.label}
+                      </span>
+                      <span className="mt-0.5 text-xs text-muted-foreground">
+                        {t.description}
+                      </span>
+                    </span>
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "grid size-5 shrink-0 place-items-center rounded-full border-2 transition-colors",
+                        selected
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-muted-foreground/30",
+                      )}
+                    >
+                      {selected ? <CheckIcon className="size-3" /> : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
 
-          <Field id="page-type" label="نوع صفحه">
-            <Select
-              value={values.pageType ?? "__none"}
-              onValueChange={(v) =>
-                patch("pageType", v === "__none" ? null : v)
-              }
-            >
-              <SelectTrigger id="page-type" className="h-11 w-full">
-                <SelectValue>
-                  {(v: string) => {
-                    if (!v || v === "__none") return "انتخاب نشده";
-                    const t = PAGE_TYPES.find((pt) => pt.slug === v);
-                    return t ? t.label : v;
-                  }}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none">انتخاب نشده</SelectItem>
-                {PAGE_TYPES.map((t) => (
-                  <SelectItem key={t.slug} value={t.slug}>
-                    {t.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
+          {/* ---- Industry tabs + category grid ---- */}
+          {(() => {
+            const accountType: "personal" | "business" | null =
+              values.pageType === "business" ? "business" : "personal";
+            const visibleIndustries = industries.filter((i) =>
+              i.accountTypes.includes(accountType),
+            );
+            const currentCategory = values.discoverCategory
+              ? (categories.find((c) => c.slug === values.discoverCategory) ??
+                null)
+              : null;
+            const selectedIndustryId = currentCategory?.industryId ?? null;
+            const activeIndustryId =
+              pendingIndustryId ??
+              selectedIndustryId ??
+              visibleIndustries[0]?.id ??
+              null;
+            const catQuery = settingsCategoryQuery.trim();
+            const filteredCategories = categories.filter((c) => {
+              if (c.accountType !== accountType) return false;
+              if (
+                catQuery.length === 0 &&
+                activeIndustryId &&
+                c.industryId !== activeIndustryId
+              )
+                return false;
+              if (catQuery.length > 0 && !c.titleFa.includes(catQuery))
+                return false;
+              return true;
+            });
+            return (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">دسته‌بندی</Label>
+                {visibleIndustries.length > 0 && (
+                  <div
+                    role="tablist"
+                    aria-label="صنف"
+                    className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
+                  >
+                    {visibleIndustries.map((ind) => {
+                      const selected = activeIndustryId === ind.id;
+                      const entry = resolveIconEntry(ind.iconKey, null);
+                      const Icon = entry.Icon;
+                      return (
+                        <button
+                          key={ind.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={selected}
+                          onClick={() => {
+                            setPendingIndustryId(ind.id);
+                            if (
+                              values.discoverCategory &&
+                              !categories.some(
+                                (c) =>
+                                  c.slug === values.discoverCategory &&
+                                  c.industryId === ind.id,
+                              )
+                            ) {
+                              patch("discoverCategory", null);
+                            }
+                          }}
+                          className={cn(
+                            "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                            selected
+                              ? "bg-foreground text-background"
+                              : "bg-muted text-foreground hover:bg-muted/70",
+                          )}
+                        >
+                          <Icon
+                            className="size-3.5"
+                            style={
+                              selected ? undefined : { color: entry.color }
+                            }
+                          />
+                          <span className="truncate">{ind.titleFa}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="relative">
+                  <SearchIcon
+                    aria-hidden
+                    className="absolute inset-e-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+                  />
+                  <input
+                    type="text"
+                    inputMode="search"
+                    enterKeyHint="search"
+                    value={settingsCategoryQuery}
+                    onChange={(e) => setSettingsCategoryQuery(e.target.value)}
+                    placeholder="جستجوی دسته‌بندی…"
+                    aria-label="جستجوی دسته‌بندی"
+                    className="h-11 w-full rounded-full bg-muted ps-4 pe-10 text-sm font-medium text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/20"
+                  />
+                </div>
+                <div
+                  role="listbox"
+                  aria-label="دسته‌بندی‌ها"
+                  className="grid max-h-52 grid-cols-2 gap-1.5 overflow-y-auto rounded-2xl bg-muted/40 p-1.5"
+                >
+                  {filteredCategories.length === 0 ? (
+                    <p className="col-span-2 px-3 py-6 text-center text-sm text-muted-foreground">
+                      دسته‌بندی‌ای پیدا نشد.
+                    </p>
+                  ) : (
+                    filteredCategories.map((c) => {
+                      const selected = values.discoverCategory === c.slug;
+                      return (
+                        <button
+                          key={c.slug}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          onClick={() =>
+                            patch("discoverCategory", selected ? null : c.slug)
+                          }
+                          className={cn(
+                            "flex items-center gap-2 rounded-xl px-2.5 py-2 text-start text-xs font-medium transition-colors",
+                            selected
+                              ? "bg-foreground text-background"
+                              : "bg-background text-foreground hover:bg-background/70",
+                          )}
+                        >
+                          <span
+                            aria-hidden
+                            className="inline-flex items-center"
+                          >
+                            {(() => {
+                              const entry = resolveIconEntry(c.iconKey, null);
+                              const CatIcon = entry.Icon;
+                              return (
+                                <CatIcon
+                                  className="size-3.5"
+                                  style={
+                                    selected
+                                      ? undefined
+                                      : { color: entry.color }
+                                  }
+                                />
+                              );
+                            })()}
+                          </span>
+                          <span className="truncate">{c.titleFa}</span>
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           <Field id="page-city" label="شهر">
             <Select

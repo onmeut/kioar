@@ -316,6 +316,13 @@
       "when": 1778509386000,
       "tag": "0045_backfill_missing_data",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1778535600000,
+      "tag": "0046_industries_categories",
+      "breakpoints": true
     }
   ]
 }

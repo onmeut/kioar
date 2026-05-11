@@ -1,7 +1,16 @@
 "use client";
 
+import Link from "next/link";
+import type { Route } from "next";
 import { useActionState, useState } from "react";
-import { ChevronDown, ChevronUp, Edit2, Plus, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronUp,
+  Edit2,
+  Plus,
+  Trash2,
+} from "lucide-react";
 
 import { LinkIconPicker } from "@/components/dashboard/link-icon-picker";
 import { Badge } from "@/components/ui/badge";
@@ -14,55 +23,45 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import type { AccountType, Category, Industry } from "@/lib/discover";
+import type { Industry } from "@/lib/discover";
 import { resolveIconEntry } from "@/lib/link-icons";
 import type {
-  adminCreateCategoryAction,
-  adminUpdateCategoryAction,
+  adminCreateIndustryAction,
+  adminUpdateIndustryAction,
 } from "@/app/admin/categories/actions";
 
-type CreateAction = typeof adminCreateCategoryAction;
-type UpdateAction = typeof adminUpdateCategoryAction;
+type CreateAction = typeof adminCreateIndustryAction;
+type UpdateAction = typeof adminUpdateIndustryAction;
 
 type ActionResult = { ok: boolean; error?: string };
 
-interface CategoryManagerProps {
-  industry: Industry;
+interface IndustryManagerProps {
   industries: Industry[];
-  categories: Category[];
   createAction: CreateAction;
   updateAction: UpdateAction;
   deleteAction: (formData: FormData) => Promise<ActionResult>;
   moveAction: (formData: FormData) => Promise<ActionResult>;
 }
 
-function CategoryIcon({ iconKey }: { iconKey: string }) {
+function IndustryIcon({ iconKey }: { iconKey: string }) {
   const entry = resolveIconEntry(iconKey, null);
   const Icon = entry.Icon;
   return <Icon className="size-4 shrink-0" style={{ color: entry.color }} />;
 }
 
-function CategoryRow({
-  category,
+function IndustryRow({
+  industry,
   isFirst,
   isLast,
   onEdit,
   moveAction,
   deleteAction,
 }: {
-  category: Category;
+  industry: Industry;
   isFirst: boolean;
   isLast: boolean;
-  onEdit: (c: Category) => void;
+  onEdit: (i: Industry) => void;
   moveAction: (formData: FormData) => Promise<ActionResult>;
   deleteAction: (formData: FormData) => Promise<ActionResult>;
 }) {
@@ -77,7 +76,7 @@ function CategoryRow({
             void moveAction(fd);
           }}
         >
-          <input type="hidden" name="id" value={category.id} />
+          <input type="hidden" name="id" value={industry.id} />
           <Button
             type="submit"
             variant="ghost"
@@ -96,7 +95,7 @@ function CategoryRow({
             void moveAction(fd);
           }}
         >
-          <input type="hidden" name="id" value={category.id} />
+          <input type="hidden" name="id" value={industry.id} />
           <Button
             type="submit"
             variant="ghost"
@@ -109,20 +108,30 @@ function CategoryRow({
         </form>
       </div>
 
-      <CategoryIcon iconKey={category.iconKey} />
+      <IndustryIcon iconKey={industry.iconKey} />
 
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">{category.titleFa}</p>
+      <Link
+        href={`/admin/categories/${industry.slug}` as Route}
+        className="min-w-0 flex-1 hover:opacity-80"
+      >
+        <p className="text-sm font-medium">{industry.titleFa}</p>
         <p className="text-xs text-muted-foreground" dir="ltr">
-          {category.titleEn} • {category.slug}
+          {industry.titleEn} • {industry.slug}
         </p>
+      </Link>
+
+      <Badge variant="secondary" className="text-xs">
+        {industry.categoryCount ?? 0} دسته‌بندی
+      </Badge>
+      <div className="flex gap-1">
+        {industry.accountTypes.map((t) => (
+          <Badge key={t} variant="outline" className="text-xs" dir="ltr">
+            {t}
+          </Badge>
+        ))}
       </div>
 
-      <Badge variant="outline" className="text-xs" dir="ltr">
-        {category.accountType}
-      </Badge>
-
-      {!category.isActive && (
+      {!industry.isActive && (
         <Badge variant="destructive" className="text-xs">
           غیرفعال
         </Badge>
@@ -134,20 +143,24 @@ function CategoryRow({
           variant="ghost"
           size="icon"
           className="size-8"
-          onClick={() => onEdit(category)}
+          onClick={() => onEdit(industry)}
         >
           <Edit2 className="size-4" />
         </Button>
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!confirm(`دسته‌بندی «${category.titleFa}» غیرفعال شود؟`))
+            if (
+              !confirm(
+                `صنف «${industry.titleFa}» و تمام دسته‌بندی‌های آن غیرفعال شود؟`,
+              )
+            )
               return;
             const fd = new FormData(e.currentTarget);
             void deleteAction(fd);
           }}
         >
-          <input type="hidden" name="id" value={category.id} />
+          <input type="hidden" name="id" value={industry.id} />
           <Button
             type="submit"
             variant="ghost"
@@ -157,47 +170,42 @@ function CategoryRow({
             <Trash2 className="size-4" />
           </Button>
         </form>
+        <Link
+          href={`/admin/categories/${industry.slug}` as Route}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="size-5" />
+        </Link>
       </div>
     </div>
   );
 }
 
-function CategoryFormDialog({
+function IndustryFormDialog({
   open,
   onClose,
-  category,
-  defaultIndustry,
-  industries,
+  industry,
   createAction,
   updateAction,
 }: {
   open: boolean;
   onClose: () => void;
-  category: Category | null;
-  defaultIndustry: Industry;
-  industries: Industry[];
+  industry: Industry | null;
   createAction: CreateAction;
   updateAction: UpdateAction;
 }) {
-  const isEdit = category !== null;
-  const [industryId, setIndustryId] = useState(
-    category?.industryId ?? defaultIndustry.id,
+  const isEdit = industry !== null;
+  const [iconKey, setIconKey] = useState(industry?.iconKey ?? "t:star");
+  const [isActive, setIsActive] = useState(industry?.isActive ?? true);
+  const [personal, setPersonal] = useState(
+    industry?.accountTypes.includes("personal") ?? true,
   );
-  const [iconKey, setIconKey] = useState(category?.iconKey ?? "t:star");
-  const [accountType, setAccountType] = useState<AccountType>(
-    category?.accountType ??
-      (defaultIndustry.accountTypes.includes("personal")
-        ? "personal"
-        : "business"),
+  const [business, setBusiness] = useState(
+    industry?.accountTypes.includes("business") ?? true,
   );
-  const [isActive, setIsActive] = useState(category?.isActive ?? true);
 
   const action = isEdit ? updateAction : createAction;
   const [state, formAction, pending] = useActionState(action, null);
-
-  const selectedIndustry =
-    industries.find((i) => i.id === industryId) ?? defaultIndustry;
-  const allowedAccountTypes = selectedIndustry.accountTypes;
 
   return (
     <Dialog
@@ -206,56 +214,32 @@ function CategoryFormDialog({
         if (!o) onClose();
       }}
     >
-      <DialogContent key={category?.id ?? "new"} className="max-w-md" dir="rtl">
+      <DialogContent key={industry?.id ?? "new"} className="max-w-md" dir="rtl">
         <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "ویرایش دسته‌بندی" : "دسته‌بندی جدید"}
-          </DialogTitle>
+          <DialogTitle>{isEdit ? "ویرایش صنف" : "صنف جدید"}</DialogTitle>
         </DialogHeader>
         <form action={formAction} className="space-y-4">
-          {isEdit && <input type="hidden" name="id" value={category.id} />}
-          <input type="hidden" name="industryId" value={industryId} />
+          {isEdit && <input type="hidden" name="id" value={industry.id} />}
           <input type="hidden" name="iconKey" value={iconKey} />
-          <input type="hidden" name="accountType" value={accountType} />
           <input
             type="hidden"
             name="isActive"
             value={isActive ? "on" : "off"}
           />
+          {personal && (
+            <input type="hidden" name="accountTypes" value="personal" />
+          )}
+          {business && (
+            <input type="hidden" name="accountTypes" value="business" />
+          )}
 
           <div className="space-y-1.5">
-            <Label>صنف</Label>
-            <Select
-              value={industryId}
-              onValueChange={(v) => {
-                if (!v) return;
-                setIndustryId(v);
-                const ind = industries.find((i) => i.id === v);
-                if (ind && !ind.accountTypes.includes(accountType)) {
-                  setAccountType(ind.accountTypes[0] ?? "personal");
-                }
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {industries.map((ind) => (
-                  <SelectItem key={ind.id} value={ind.id}>
-                    {ind.titleFa}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="cat-fa">نام فارسی</Label>
+            <Label htmlFor="ind-fa">نام فارسی</Label>
             <Input
-              id="cat-fa"
+              id="ind-fa"
               name="titleFa"
-              defaultValue={category?.titleFa}
-              placeholder="مثلاً: رستوران"
+              defaultValue={industry?.titleFa}
+              placeholder="مثلاً: غذا و نوشیدنی"
               required
               maxLength={80}
               autoFocus
@@ -263,12 +247,12 @@ function CategoryFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cat-en">نام انگلیسی</Label>
+            <Label htmlFor="ind-en">نام انگلیسی</Label>
             <Input
-              id="cat-en"
+              id="ind-en"
               name="titleEn"
-              defaultValue={category?.titleEn}
-              placeholder="e.g. Restaurant"
+              defaultValue={industry?.titleEn}
+              placeholder="e.g. Food & Beverage"
               required
               dir="ltr"
               maxLength={80}
@@ -276,12 +260,12 @@ function CategoryFormDialog({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="cat-slug">شناسه (slug)</Label>
+            <Label htmlFor="ind-slug">شناسه (slug)</Label>
             <Input
-              id="cat-slug"
+              id="ind-slug"
               name="slug"
-              defaultValue={category?.slug}
-              placeholder="e.g. restaurant"
+              defaultValue={industry?.slug}
+              placeholder="e.g. food-beverage"
               required
               dir="ltr"
               autoCapitalize="none"
@@ -289,37 +273,30 @@ function CategoryFormDialog({
               spellCheck={false}
               maxLength={64}
             />
-            {isEdit && (
-              <p className="text-xs text-muted-foreground">
-                تغییر شناسه، پروفایل‌های وابسته را به‌روزرسانی می‌کند.
-              </p>
-            )}
           </div>
 
           <div className="space-y-2">
             <Label>نوع حساب</Label>
-            <RadioGroup
-              value={accountType}
-              onValueChange={(v) => setAccountType(v as AccountType)}
-              className="flex gap-4"
-            >
-              {(["personal", "business"] as const).map((t) => (
-                <label
-                  key={t}
-                  className={`flex items-center gap-2 text-sm ${
-                    allowedAccountTypes.includes(t)
-                      ? ""
-                      : "opacity-40 pointer-events-none"
-                  }`}
-                >
-                  <RadioGroupItem
-                    value={t}
-                    disabled={!allowedAccountTypes.includes(t)}
-                  />
-                  {t === "personal" ? "شخصی" : "کسب‌وکار"}
-                </label>
-              ))}
-            </RadioGroup>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={personal}
+                  onChange={(e) => setPersonal(e.target.checked)}
+                />
+                شخصی (Personal)
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="size-4"
+                  checked={business}
+                  onChange={(e) => setBusiness(e.target.checked)}
+                />
+                کسب‌وکار (Business)
+              </label>
+            </div>
           </div>
 
           <div className="space-y-1.5">
@@ -335,11 +312,11 @@ function CategoryFormDialog({
 
           <div className="flex items-center gap-3">
             <Switch
-              id="cat-active"
+              id="ind-active"
               checked={isActive}
               onCheckedChange={setIsActive}
             />
-            <Label htmlFor="cat-active">فعال</Label>
+            <Label htmlFor="ind-active">فعال</Label>
           </div>
 
           {state && !state.ok && (
@@ -350,7 +327,10 @@ function CategoryFormDialog({
             <Button type="button" variant="outline" onClick={onClose}>
               لغو
             </Button>
-            <Button type="submit" disabled={pending}>
+            <Button
+              type="submit"
+              disabled={pending || (!personal && !business)}
+            >
               {isEdit ? "ذخیره" : "ایجاد"}
             </Button>
           </div>
@@ -360,64 +340,51 @@ function CategoryFormDialog({
   );
 }
 
-export function CategoryManager({
-  industry,
+export function IndustryManager({
   industries,
-  categories,
   createAction,
   updateAction,
   deleteAction,
   moveAction,
-}: CategoryManagerProps) {
-  const [editTarget, setEditTarget] = useState<Category | null>(null);
+}: IndustryManagerProps) {
+  const [editTarget, setEditTarget] = useState<Industry | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {categories.length} دسته‌بندی
-        </p>
+        <p className="text-sm text-muted-foreground">{industries.length} صنف</p>
         <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="me-1.5 size-4" />
-          دسته‌بندی جدید
+          صنف جدید
         </Button>
       </div>
 
       <div className="space-y-2">
-        {categories.map((cat, idx) => (
-          <CategoryRow
-            key={cat.id}
-            category={cat}
+        {industries.map((ind, idx) => (
+          <IndustryRow
+            key={ind.id}
+            industry={ind}
             isFirst={idx === 0}
-            isLast={idx === categories.length - 1}
+            isLast={idx === industries.length - 1}
             onEdit={setEditTarget}
             moveAction={moveAction}
             deleteAction={deleteAction}
           />
         ))}
-        {categories.length === 0 && (
-          <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-            دسته‌بندی‌ای برای این صنف ثبت نشده است.
-          </p>
-        )}
       </div>
 
-      <CategoryFormDialog
+      <IndustryFormDialog
         open={editTarget !== null}
         onClose={() => setEditTarget(null)}
-        category={editTarget}
-        defaultIndustry={industry}
-        industries={industries}
+        industry={editTarget}
         createAction={createAction}
         updateAction={updateAction}
       />
-      <CategoryFormDialog
+      <IndustryFormDialog
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        category={null}
-        defaultIndustry={industry}
-        industries={industries}
+        industry={null}
         createAction={createAction}
         updateAction={updateAction}
       />

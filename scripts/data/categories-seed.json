@@ -1,0 +1,2243 @@
+{
+  "industries": [
+    {
+      "slug": "creator",
+      "titleFa": "سازندگان محتوا",
+      "titleEn": "Creator",
+      "iconKey": "t:video",
+      "accountTypes": [
+        "personal"
+      ],
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "slug": "arts-entertainment",
+      "titleFa": "هنر و سرگرمی",
+      "titleEn": "Arts & Entertainment",
+      "iconKey": "t:palette",
+      "accountTypes": [
+        "personal"
+      ],
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "slug": "food-beverage",
+      "titleFa": "غذا و نوشیدنی",
+      "titleEn": "Food & Beverage",
+      "iconKey": "t:chef-hat",
+      "accountTypes": [
+        "business",
+        "personal"
+      ],
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "slug": "beauty",
+      "titleFa": "زیبایی",
+      "titleEn": "Beauty",
+      "iconKey": "t:sparkles",
+      "accountTypes": [
+        "business",
+        "personal"
+      ],
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "slug": "agencies-marketing",
+      "titleFa": "آژانس و بازاریابی",
+      "titleEn": "Agencies & Marketing",
+      "iconKey": "t:speakerphone",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "slug": "real-estate",
+      "titleFa": "املاک",
+      "titleEn": "Real Estate",
+      "iconKey": "t:building",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "slug": "retail",
+      "titleFa": "فروشگاه",
+      "titleEn": "Retail",
+      "iconKey": "t:shopping-bag",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "slug": "technology",
+      "titleFa": "فناوری اطلاعات",
+      "titleEn": "Technology",
+      "iconKey": "t:code",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 70,
+      "isActive": true
+    },
+    {
+      "slug": "fashion",
+      "titleFa": "مد و پوشاک",
+      "titleEn": "Fashion",
+      "iconKey": "t:shirt",
+      "accountTypes": [
+        "business",
+        "personal"
+      ],
+      "sortOrder": 80,
+      "isActive": true
+    },
+    {
+      "slug": "education",
+      "titleFa": "آموزش",
+      "titleEn": "Education",
+      "iconKey": "t:book",
+      "accountTypes": [
+        "business",
+        "personal"
+      ],
+      "sortOrder": 90,
+      "isActive": true
+    },
+    {
+      "slug": "finance",
+      "titleFa": "امور مالی",
+      "titleEn": "Finance",
+      "iconKey": "t:coin",
+      "accountTypes": [
+        "business",
+        "personal"
+      ],
+      "sortOrder": 100,
+      "isActive": true
+    },
+    {
+      "slug": "gaming-tech",
+      "titleFa": "بازی و فناوری",
+      "titleEn": "Gaming & Tech",
+      "iconKey": "t:dice",
+      "accountTypes": [
+        "personal"
+      ],
+      "sortOrder": 110,
+      "isActive": true
+    },
+    {
+      "slug": "health-medical",
+      "titleFa": "پزشکی و سلامت",
+      "titleEn": "Health & Medical",
+      "iconKey": "t:stethoscope",
+      "accountTypes": [
+        "business",
+        "personal"
+      ],
+      "sortOrder": 120,
+      "isActive": true
+    },
+    {
+      "slug": "professional-services",
+      "titleFa": "خدمات تخصصی",
+      "titleEn": "Professional Services",
+      "iconKey": "t:briefcase",
+      "accountTypes": [
+        "business",
+        "personal"
+      ],
+      "sortOrder": 130,
+      "isActive": true
+    },
+    {
+      "slug": "home-services",
+      "titleFa": "خدمات منزل",
+      "titleEn": "Home Services",
+      "iconKey": "t:home",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 140,
+      "isActive": true
+    },
+    {
+      "slug": "automotive",
+      "titleFa": "خودرو",
+      "titleEn": "Automotive",
+      "iconKey": "t:car",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 150,
+      "isActive": true
+    },
+    {
+      "slug": "community-nonprofit",
+      "titleFa": "خیریه و انجمن",
+      "titleEn": "Community & Nonprofit",
+      "iconKey": "t:heart",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 160,
+      "isActive": true
+    },
+    {
+      "slug": "media",
+      "titleFa": "رسانه",
+      "titleEn": "Media",
+      "iconKey": "t:news",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 170,
+      "isActive": true
+    },
+    {
+      "slug": "events",
+      "titleFa": "رویدادها",
+      "titleEn": "Events",
+      "iconKey": "t:confetti",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 180,
+      "isActive": true
+    },
+    {
+      "slug": "lifestyle",
+      "titleFa": "سبک زندگی",
+      "titleEn": "Lifestyle",
+      "iconKey": "t:heart",
+      "accountTypes": [
+        "personal"
+      ],
+      "sortOrder": 190,
+      "isActive": true
+    },
+    {
+      "slug": "entertainment",
+      "titleFa": "سرگرمی",
+      "titleEn": "Entertainment",
+      "iconKey": "t:confetti",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 200,
+      "isActive": true
+    },
+    {
+      "slug": "travel-tourism",
+      "titleFa": "سفر و گردشگری",
+      "titleEn": "Travel & Tourism",
+      "iconKey": "t:plane",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 210,
+      "isActive": true
+    },
+    {
+      "slug": "health-wellness",
+      "titleFa": "سلامت و تندرستی",
+      "titleEn": "Health & Wellness",
+      "iconKey": "t:yoga",
+      "accountTypes": [
+        "personal"
+      ],
+      "sortOrder": 220,
+      "isActive": true
+    },
+    {
+      "slug": "design-creative",
+      "titleFa": "طراحی و خلاقیت",
+      "titleEn": "Design & Creative",
+      "iconKey": "t:palette",
+      "accountTypes": [
+        "personal"
+      ],
+      "sortOrder": 230,
+      "isActive": true
+    },
+    {
+      "slug": "business-professional",
+      "titleFa": "کسب‌وکار و حرفه‌ای",
+      "titleEn": "Business & Professional",
+      "iconKey": "t:briefcase",
+      "accountTypes": [
+        "business",
+        "personal"
+      ],
+      "sortOrder": 240,
+      "isActive": true
+    },
+    {
+      "slug": "agriculture",
+      "titleFa": "کشاورزی",
+      "titleEn": "Agriculture",
+      "iconKey": "t:plant",
+      "accountTypes": [
+        "business"
+      ],
+      "sortOrder": 250,
+      "isActive": true
+    },
+    {
+      "slug": "sports-fitness",
+      "titleFa": "ورزش و تناسب اندام",
+      "titleEn": "Sports & Fitness",
+      "iconKey": "t:basketball",
+      "accountTypes": [
+        "business",
+        "personal"
+      ],
+      "sortOrder": 260,
+      "isActive": true
+    }
+  ],
+  "categories": [
+    {
+      "industrySlug": "creator",
+      "slug": "blogger",
+      "titleFa": "بلاگر",
+      "titleEn": "Blogger",
+      "iconKey": "t:pencil",
+      "accountType": "personal",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "creator",
+      "slug": "public-figure",
+      "titleFa": "چهره عمومی",
+      "titleEn": "Public Figure",
+      "iconKey": "t:user",
+      "accountType": "personal",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "creator",
+      "slug": "digital-creator",
+      "titleFa": "سازنده محتوای دیجیتال",
+      "titleEn": "Digital Creator",
+      "iconKey": "t:video",
+      "accountType": "personal",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "creator",
+      "slug": "entrepreneur",
+      "titleFa": "کارآفرین",
+      "titleEn": "Entrepreneur",
+      "iconKey": "t:rocket",
+      "accountType": "personal",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "creator",
+      "slug": "personal-blog",
+      "titleFa": "وبلاگ شخصی",
+      "titleEn": "Personal Blog",
+      "iconKey": "t:pencil",
+      "accountType": "personal",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "creator",
+      "slug": "author-writer",
+      "titleFa": "نویسنده کتاب",
+      "titleEn": "Author / Writer",
+      "iconKey": "t:book",
+      "accountType": "personal",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "arts-entertainment",
+      "slug": "actor",
+      "titleFa": "بازیگر",
+      "titleEn": "Actor",
+      "iconKey": "t:user",
+      "accountType": "personal",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "arts-entertainment",
+      "slug": "photographer",
+      "titleFa": "عکاس",
+      "titleEn": "Photographer",
+      "iconKey": "t:camera",
+      "accountType": "personal",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "arts-entertainment",
+      "slug": "comedian",
+      "titleFa": "کمدین",
+      "titleEn": "Comedian",
+      "iconKey": "t:smile",
+      "accountType": "personal",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "arts-entertainment",
+      "slug": "musician-band",
+      "titleFa": "نوازنده / گروه موسیقی",
+      "titleEn": "Musician / Band",
+      "iconKey": "t:music",
+      "accountType": "personal",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "arts-entertainment",
+      "slug": "artist",
+      "titleFa": "هنرمند",
+      "titleEn": "Artist",
+      "iconKey": "t:palette",
+      "accountType": "personal",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "arts-entertainment",
+      "slug": "band",
+      "titleFa": "گروه موسیقی",
+      "titleEn": "Band",
+      "iconKey": "t:music",
+      "accountType": "personal",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "arts-entertainment",
+      "slug": "painter",
+      "titleFa": "نقاش",
+      "titleEn": "Painter",
+      "iconKey": "t:palette",
+      "accountType": "personal",
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "restaurant",
+      "titleFa": "رستوران",
+      "titleEn": "Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "homemade-food",
+      "titleFa": "غذای خانگی",
+      "titleEn": "Homemade Food",
+      "iconKey": "t:chef-hat",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "coffee-shop",
+      "titleFa": "کافی‌شاپ",
+      "titleEn": "Coffee Shop",
+      "iconKey": "t:coffee",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "bakery",
+      "titleFa": "نانوایی و شیرینی‌پزی",
+      "titleEn": "Bakery",
+      "iconKey": "t:cake",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "ice-cream-shop",
+      "titleFa": "بستنی‌فروشی",
+      "titleEn": "Ice Cream Shop",
+      "iconKey": "t:ice-cream",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "pizza-place",
+      "titleFa": "پیتزافروشی",
+      "titleEn": "Pizza Place",
+      "iconKey": "t:pizza",
+      "accountType": "business",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "dessert-shop",
+      "titleFa": "دسرفروشی",
+      "titleEn": "Dessert Shop",
+      "iconKey": "t:cake",
+      "accountType": "business",
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "japanese-restaurant",
+      "titleFa": "رستوران ژاپنی",
+      "titleEn": "Japanese Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 70,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "barbecue-restaurant",
+      "titleFa": "رستوران کبابی",
+      "titleEn": "Barbecue Restaurant",
+      "iconKey": "t:meat",
+      "accountType": "business",
+      "sortOrder": 80,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "mediterranean-restaurant",
+      "titleFa": "رستوران مدیترانه‌ای",
+      "titleEn": "Mediterranean Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 90,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "indian-restaurant",
+      "titleFa": "رستوران هندی",
+      "titleEn": "Indian Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 100,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "chef",
+      "titleFa": "سرآشپز",
+      "titleEn": "Chef",
+      "iconKey": "t:chef-hat",
+      "accountType": "personal",
+      "sortOrder": 110,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "chocolate-shop",
+      "titleFa": "شکلات‌فروشی",
+      "titleEn": "Chocolate Shop",
+      "iconKey": "t:candy",
+      "accountType": "business",
+      "sortOrder": 120,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "confectionery",
+      "titleFa": "شیرینی‌فروشی",
+      "titleEn": "Confectionery",
+      "iconKey": "t:cake",
+      "accountType": "business",
+      "sortOrder": 130,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "food-and-beverage",
+      "titleFa": "غذا و نوشیدنی",
+      "titleEn": "Food & Beverage",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 140,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "fast-food-restaurant",
+      "titleFa": "فست‌فود",
+      "titleEn": "Fast Food Restaurant",
+      "iconKey": "t:burger",
+      "accountType": "business",
+      "sortOrder": 150,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "cafe",
+      "titleFa": "کافه",
+      "titleEn": "Cafe",
+      "iconKey": "t:coffee",
+      "accountType": "business",
+      "sortOrder": 160,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "chicken-joint",
+      "titleFa": "مرغ‌سرا",
+      "titleEn": "Chicken Joint",
+      "iconKey": "t:meat",
+      "accountType": "business",
+      "sortOrder": 170,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "argentinian-restaurant",
+      "titleFa": "رستوران آرژانتینی",
+      "titleEn": "Argentinian Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 180,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "asian-fusion-restaurant",
+      "titleFa": "رستوران آسیایی فیوژن",
+      "titleEn": "Asian Fusion Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 190,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "african-restaurant",
+      "titleFa": "رستوران آفریقایی",
+      "titleEn": "African Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 200,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "australian-restaurant",
+      "titleFa": "رستوران استرالیایی",
+      "titleEn": "Australian Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 210,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "buffet-restaurant",
+      "titleFa": "رستوران بوفه",
+      "titleEn": "Buffet Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 220,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "thai-restaurant",
+      "titleFa": "رستوران تایلندی",
+      "titleEn": "Thai Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 230,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "chinese-restaurant",
+      "titleFa": "رستوران چینی",
+      "titleEn": "Chinese Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 240,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "health-food-restaurant",
+      "titleFa": "رستوران غذای سالم",
+      "titleEn": "Health Food Restaurant",
+      "iconKey": "t:salad",
+      "accountType": "business",
+      "sortOrder": 250,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "canadian-restaurant",
+      "titleFa": "رستوران کانادایی",
+      "titleEn": "Canadian Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 260,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "korean-restaurant",
+      "titleFa": "رستوران کره‌ای",
+      "titleEn": "Korean Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 270,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "colombian-restaurant",
+      "titleFa": "رستوران کلمبیایی",
+      "titleEn": "Colombian Restaurant",
+      "iconKey": "t:soup",
+      "accountType": "business",
+      "sortOrder": 280,
+      "isActive": true
+    },
+    {
+      "industrySlug": "food-beverage",
+      "slug": "butcher-shop",
+      "titleFa": "قصابی",
+      "titleEn": "Butcher Shop",
+      "iconKey": "t:meat",
+      "accountType": "business",
+      "sortOrder": 290,
+      "isActive": true
+    },
+    {
+      "industrySlug": "beauty",
+      "slug": "hair-salon",
+      "titleFa": "آرایشگاه",
+      "titleEn": "Hair Salon",
+      "iconKey": "t:scissors",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "beauty",
+      "slug": "beauty-salon",
+      "titleFa": "سالن زیبایی",
+      "titleEn": "Beauty Salon",
+      "iconKey": "t:sparkles",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "beauty",
+      "slug": "photo-studio",
+      "titleFa": "آتلیه عکاسی",
+      "titleEn": "Photo Studio",
+      "iconKey": "t:camera",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "beauty",
+      "slug": "makeup-artist",
+      "titleFa": "آرایشگر",
+      "titleEn": "Makeup Artist",
+      "iconKey": "t:sparkles",
+      "accountType": "personal",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "beauty",
+      "slug": "spa",
+      "titleFa": "اسپا",
+      "titleEn": "Spa",
+      "iconKey": "t:yoga",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "beauty",
+      "slug": "tattoo-and-piercing-shop",
+      "titleFa": "تتو و پیرسینگ",
+      "titleEn": "Tattoo & Piercing Shop",
+      "iconKey": "t:sparkles",
+      "accountType": "business",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "beauty",
+      "slug": "barber-shop",
+      "titleFa": "سلمانی",
+      "titleEn": "Barber Shop",
+      "iconKey": "t:scissors",
+      "accountType": "business",
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "industrySlug": "beauty",
+      "slug": "nail-salon",
+      "titleFa": "ناخن‌کاری",
+      "titleEn": "Nail Salon",
+      "iconKey": "t:sparkles",
+      "accountType": "business",
+      "sortOrder": 70,
+      "isActive": true
+    },
+    {
+      "industrySlug": "agencies-marketing",
+      "slug": "marketing-agency",
+      "titleFa": "آژانس بازاریابی",
+      "titleEn": "Marketing Agency",
+      "iconKey": "t:speakerphone",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "agencies-marketing",
+      "slug": "brand-agency",
+      "titleFa": "آژانس برندینگ",
+      "titleEn": "Brand Agency",
+      "iconKey": "t:sparkles",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "agencies-marketing",
+      "slug": "advertising-agency",
+      "titleFa": "آژانس تبلیغاتی",
+      "titleEn": "Advertising Agency",
+      "iconKey": "t:speakerphone",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "agencies-marketing",
+      "slug": "printing-and-advertising",
+      "titleFa": "چاپ و تبلیغات",
+      "titleEn": "Printing & Advertising",
+      "iconKey": "t:printer",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "agencies-marketing",
+      "slug": "internet-marketing-service",
+      "titleFa": "خدمات بازاریابی آنلاین",
+      "titleEn": "Internet Marketing Service",
+      "iconKey": "t:world",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "real-estate",
+      "slug": "real-estate-company",
+      "titleFa": "املاک",
+      "titleEn": "Real Estate Company",
+      "iconKey": "t:building",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "real-estate",
+      "slug": "apartment-and-condo-building",
+      "titleFa": "ساختمان مسکونی",
+      "titleEn": "Apartment & Condo Building",
+      "iconKey": "t:building",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "e-commerce-website",
+      "titleFa": "فروشگاه اینترنتی",
+      "titleEn": "E-Commerce Website",
+      "iconKey": "t:shopping-cart",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "candy-store",
+      "titleFa": "آبنبات‌فروشی",
+      "titleEn": "Candy Store",
+      "iconKey": "t:candy",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "baby-and-childrens-clothing-store",
+      "titleFa": "پوشاک نوزاد و کودک",
+      "titleEn": "Baby & Children's Clothing Store",
+      "iconKey": "t:baby",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "jewelry-watches",
+      "titleFa": "جواهرات و ساعت",
+      "titleEn": "Jewelry / Watches",
+      "iconKey": "t:diamond",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "shopping-and-retail",
+      "titleFa": "خرید و خرده‌فروشی",
+      "titleEn": "Shopping & Retail",
+      "iconKey": "t:shopping-bag",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "grocery-store",
+      "titleFa": "خواربارفروشی",
+      "titleEn": "Grocery Store",
+      "iconKey": "t:shopping-cart",
+      "accountType": "business",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "supermarket",
+      "titleFa": "سوپرمارکت",
+      "titleEn": "Supermarket",
+      "iconKey": "t:shopping-cart",
+      "accountType": "business",
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "gold-and-jewelry-store",
+      "titleFa": "طلا و جواهرفروشی",
+      "titleEn": "Gold & Jewelry Store",
+      "iconKey": "t:diamond",
+      "accountType": "business",
+      "sortOrder": 70,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "pet-store",
+      "titleFa": "فروشگاه حیوانات خانگی",
+      "titleEn": "Pet Store",
+      "iconKey": "t:paw",
+      "accountType": "business",
+      "sortOrder": 80,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "gift-shop",
+      "titleFa": "فروشگاه هدایا",
+      "titleEn": "Gift Shop",
+      "iconKey": "t:gift",
+      "accountType": "business",
+      "sortOrder": 90,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "footwear-store",
+      "titleFa": "کفش‌فروشی",
+      "titleEn": "Footwear Store",
+      "iconKey": "t:shopping-bag",
+      "accountType": "business",
+      "sortOrder": 100,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "bags-and-luggage-store",
+      "titleFa": "کیف و چمدان",
+      "titleEn": "Bags & Luggage Store",
+      "iconKey": "t:backpack",
+      "accountType": "business",
+      "sortOrder": 110,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "florist",
+      "titleFa": "گل‌فروشی",
+      "titleEn": "Florist",
+      "iconKey": "t:flower",
+      "accountType": "business",
+      "sortOrder": 120,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "hardware-store",
+      "titleFa": "ابزارفروشی",
+      "titleEn": "Hardware Store",
+      "iconKey": "t:tools",
+      "accountType": "business",
+      "sortOrder": 130,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "accessories",
+      "titleFa": "اکسسوری",
+      "titleEn": "Accessories",
+      "iconKey": "t:diamond",
+      "accountType": "business",
+      "sortOrder": 140,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "fabric-store",
+      "titleFa": "پارچه‌فروشی",
+      "titleEn": "Fabric Store",
+      "iconKey": "t:shopping-bag",
+      "accountType": "business",
+      "sortOrder": 150,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "garden-center",
+      "titleFa": "تجهیزات باغبانی",
+      "titleEn": "Garden Center",
+      "iconKey": "t:plant",
+      "accountType": "business",
+      "sortOrder": 160,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "antique-store",
+      "titleFa": "عتیقه‌فروشی",
+      "titleEn": "Antique Store",
+      "iconKey": "t:archive",
+      "accountType": "business",
+      "sortOrder": 170,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "discount-store",
+      "titleFa": "فروشگاه تخفیف",
+      "titleEn": "Discount Store",
+      "iconKey": "t:tag",
+      "accountType": "business",
+      "sortOrder": 180,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "camera-store",
+      "titleFa": "فروشگاه دوربین",
+      "titleEn": "Camera Store",
+      "iconKey": "t:camera",
+      "accountType": "business",
+      "sortOrder": 190,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "organic-grocery-store",
+      "titleFa": "فروشگاه مواد ارگانیک",
+      "titleEn": "Organic Grocery Store",
+      "iconKey": "t:salad",
+      "accountType": "business",
+      "sortOrder": 200,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "vintage-store",
+      "titleFa": "فروشگاه وینتیج",
+      "titleEn": "Vintage Store",
+      "iconKey": "t:archive",
+      "accountType": "business",
+      "sortOrder": 210,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "bookstore",
+      "titleFa": "کتاب‌فروشی",
+      "titleEn": "Bookstore",
+      "iconKey": "t:book",
+      "accountType": "business",
+      "sortOrder": 220,
+      "isActive": true
+    },
+    {
+      "industrySlug": "retail",
+      "slug": "baby-goods-kids-goods",
+      "titleFa": "لوازم کودک و نوزاد",
+      "titleEn": "Baby Goods / Kids Goods",
+      "iconKey": "t:baby",
+      "accountType": "business",
+      "sortOrder": 230,
+      "isActive": true
+    },
+    {
+      "industrySlug": "technology",
+      "slug": "software-company",
+      "titleFa": "شرکت نرم‌افزاری",
+      "titleEn": "Software Company",
+      "iconKey": "t:code",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "technology",
+      "slug": "tech-company",
+      "titleFa": "شرکت فناوری",
+      "titleEn": "Tech Company",
+      "iconKey": "t:devices",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "technology",
+      "slug": "app-page",
+      "titleFa": "اپلیکیشن",
+      "titleEn": "App Page",
+      "iconKey": "t:mobile",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "technology",
+      "slug": "biotechnology-company",
+      "titleFa": "شرکت بیوتکنولوژی",
+      "titleEn": "Biotechnology Company",
+      "iconKey": "t:dna",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "fashion",
+      "slug": "clothing-brand",
+      "titleFa": "برند پوشاک",
+      "titleEn": "Clothing (Brand)",
+      "iconKey": "t:shirt",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "fashion",
+      "slug": "apparel-distributor",
+      "titleFa": "پخش پوشاک",
+      "titleEn": "Apparel Distributor",
+      "iconKey": "t:package",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "fashion",
+      "slug": "womens-clothing-store",
+      "titleFa": "پوشاک زنانه",
+      "titleEn": "Women's Clothing Store",
+      "iconKey": "t:shirt",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "fashion",
+      "slug": "tailor",
+      "titleFa": "خیاطی",
+      "titleEn": "Tailor",
+      "iconKey": "t:scissors",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "fashion",
+      "slug": "fashion-designer",
+      "titleFa": "طراح مد",
+      "titleEn": "Fashion Designer",
+      "iconKey": "t:shirt",
+      "accountType": "personal",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "fashion",
+      "slug": "clothing-store",
+      "titleFa": "فروشگاه پوشاک",
+      "titleEn": "Clothing Store",
+      "iconKey": "t:shirt",
+      "accountType": "business",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "dance-school",
+      "titleFa": "آموزشگاه رقص",
+      "titleEn": "Dance School",
+      "iconKey": "t:music",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "online-tutor",
+      "titleFa": "تدریس خصوصی",
+      "titleEn": "Online Tutor",
+      "iconKey": "t:book",
+      "accountType": "personal",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "education",
+      "titleFa": "آموزش عمومی",
+      "titleEn": "Education",
+      "iconKey": "t:school",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "driving-school",
+      "titleFa": "آموزشگاه رانندگی",
+      "titleEn": "Driving School",
+      "iconKey": "t:car",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "language-school",
+      "titleFa": "آموزشگاه زبان",
+      "titleEn": "Language School",
+      "iconKey": "t:book",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "child-care-service",
+      "titleFa": "خدمات نگهداری کودک",
+      "titleEn": "Child Care Service",
+      "iconKey": "t:baby",
+      "accountType": "business",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "university",
+      "titleFa": "دانشگاه",
+      "titleEn": "University",
+      "iconKey": "t:school",
+      "accountType": "business",
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "college-and-university",
+      "titleFa": "کالج و دانشگاه",
+      "titleEn": "College & University",
+      "iconKey": "t:school",
+      "accountType": "business",
+      "sortOrder": 70,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "library",
+      "titleFa": "کتابخانه",
+      "titleEn": "Library",
+      "iconKey": "t:book",
+      "accountType": "business",
+      "sortOrder": 80,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "school",
+      "titleFa": "مدرسه",
+      "titleEn": "School",
+      "iconKey": "t:school",
+      "accountType": "business",
+      "sortOrder": 90,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "teacher-educator",
+      "titleFa": "معلم",
+      "titleEn": "Teacher / Educator",
+      "iconKey": "t:school",
+      "accountType": "personal",
+      "sortOrder": 100,
+      "isActive": true
+    },
+    {
+      "industrySlug": "education",
+      "slug": "day-care",
+      "titleFa": "مهدکودک",
+      "titleEn": "Day Care",
+      "iconKey": "t:baby",
+      "accountType": "business",
+      "sortOrder": 110,
+      "isActive": true
+    },
+    {
+      "industrySlug": "finance",
+      "slug": "bank",
+      "titleFa": "بانک",
+      "titleEn": "Bank",
+      "iconKey": "t:cash",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "finance",
+      "slug": "retail-bank",
+      "titleFa": "بانک خرد",
+      "titleEn": "Retail Bank",
+      "iconKey": "t:cash",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "finance",
+      "slug": "investment-bank",
+      "titleFa": "بانک سرمایه‌گذاری",
+      "titleEn": "Investment Bank",
+      "iconKey": "t:chart-line",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "finance",
+      "slug": "finance-company",
+      "titleFa": "شرکت مالی",
+      "titleEn": "Finance Company",
+      "iconKey": "t:chart-line",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "finance",
+      "slug": "credit-union",
+      "titleFa": "صندوق اعتباری",
+      "titleEn": "Credit Union",
+      "iconKey": "t:cash",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "finance",
+      "slug": "financial-consultant",
+      "titleFa": "مشاور مالی",
+      "titleEn": "Financial Consultant",
+      "iconKey": "t:coin",
+      "accountType": "personal",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "gaming-tech",
+      "slug": "gamer",
+      "titleFa": "گیمر",
+      "titleEn": "Gamer",
+      "iconKey": "t:dice",
+      "accountType": "personal",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "veterinarian",
+      "titleFa": "دامپزشک",
+      "titleEn": "Veterinarian",
+      "iconKey": "t:dog",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "dentist",
+      "titleFa": "دندان‌پزشک",
+      "titleEn": "Dentist",
+      "iconKey": "t:stethoscope",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "cosmetic-dentist",
+      "titleFa": "دندان‌پزشک زیبایی",
+      "titleEn": "Cosmetic Dentist",
+      "iconKey": "t:stethoscope",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "medical-center",
+      "titleFa": "مرکز درمانی",
+      "titleEn": "Medical Center",
+      "iconKey": "t:stethoscope",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "optometrist",
+      "titleFa": "بینایی‌سنج",
+      "titleEn": "Optometrist",
+      "iconKey": "t:eye",
+      "accountType": "personal",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "doctor",
+      "titleFa": "پزشک",
+      "titleEn": "Doctor",
+      "iconKey": "t:stethoscope",
+      "accountType": "personal",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "family-doctor",
+      "titleFa": "پزشک خانواده",
+      "titleEn": "Family Doctor",
+      "iconKey": "t:stethoscope",
+      "accountType": "personal",
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "audiologist",
+      "titleFa": "شنوایی‌سنج",
+      "titleEn": "Audiologist",
+      "iconKey": "t:stethoscope",
+      "accountType": "personal",
+      "sortOrder": 70,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "physical-therapist",
+      "titleFa": "فیزیوتراپ",
+      "titleEn": "Physical Therapist",
+      "iconKey": "t:stethoscope",
+      "accountType": "personal",
+      "sortOrder": 80,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "occupational-therapist",
+      "titleFa": "کاردرمانگر",
+      "titleEn": "Occupational Therapist",
+      "iconKey": "t:stethoscope",
+      "accountType": "personal",
+      "sortOrder": 90,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "chiropractor",
+      "titleFa": "کایروپراکتیک",
+      "titleEn": "Chiropractor",
+      "iconKey": "t:stethoscope",
+      "accountType": "personal",
+      "sortOrder": 100,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "allergist",
+      "titleFa": "متخصص آلرژی",
+      "titleEn": "Allergist",
+      "iconKey": "t:stethoscope",
+      "accountType": "personal",
+      "sortOrder": 110,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-medical",
+      "slug": "family-medicine-practice",
+      "titleFa": "مطب پزشک خانواده",
+      "titleEn": "Family Medicine Practice",
+      "iconKey": "t:stethoscope",
+      "accountType": "business",
+      "sortOrder": 120,
+      "isActive": true
+    },
+    {
+      "industrySlug": "professional-services",
+      "slug": "engineering-service",
+      "titleFa": "خدمات مهندسی",
+      "titleEn": "Engineering Service",
+      "iconKey": "t:tools",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "professional-services",
+      "slug": "environmental-consultant",
+      "titleFa": "مشاور محیط‌زیست",
+      "titleEn": "Environmental Consultant",
+      "iconKey": "t:leaf",
+      "accountType": "personal",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "professional-services",
+      "slug": "lawyer",
+      "titleFa": "وکیل",
+      "titleEn": "Lawyer",
+      "iconKey": "t:briefcase",
+      "accountType": "personal",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "professional-services",
+      "slug": "lawyer-and-law-firm",
+      "titleFa": "وکیل و دفتر حقوقی",
+      "titleEn": "Lawyer & Law Firm",
+      "iconKey": "t:briefcase",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "home-services",
+      "slug": "cleaning-service",
+      "titleFa": "خدمات نظافت",
+      "titleEn": "Cleaning Service",
+      "iconKey": "t:droplet",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "home-services",
+      "slug": "landscape-company",
+      "titleFa": "محوطه‌سازی",
+      "titleEn": "Landscape Company",
+      "iconKey": "t:plant",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "home-services",
+      "slug": "kitchen-and-bath-contractor",
+      "titleFa": "پیمانکار آشپزخانه و حمام",
+      "titleEn": "Kitchen & Bath Contractor",
+      "iconKey": "t:tools",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "home-services",
+      "slug": "appliance-repair-service",
+      "titleFa": "تعمیر لوازم خانگی",
+      "titleEn": "Appliance Repair Service",
+      "iconKey": "t:tools",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "home-services",
+      "slug": "dry-cleaner",
+      "titleFa": "خشک‌شویی",
+      "titleEn": "Dry Cleaner",
+      "iconKey": "t:droplet",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "home-services",
+      "slug": "construction-company",
+      "titleFa": "شرکت ساختمانی",
+      "titleEn": "Construction Company",
+      "iconKey": "t:hammer",
+      "accountType": "business",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "automotive",
+      "slug": "car-wash-and-detailing",
+      "titleFa": "کارواش",
+      "titleEn": "Car Wash & Detailing",
+      "iconKey": "t:droplet",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "automotive",
+      "slug": "car-dealership",
+      "titleFa": "نمایشگاه خودرو",
+      "titleEn": "Car Dealership",
+      "iconKey": "t:car",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "automotive",
+      "slug": "exotic-car-rental",
+      "titleFa": "اجاره خودروی لوکس",
+      "titleEn": "Exotic Car Rental",
+      "iconKey": "t:car",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "automotive",
+      "slug": "gas-station",
+      "titleFa": "پمپ‌بنزین",
+      "titleEn": "Gas Station",
+      "iconKey": "t:fire-extinguisher",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "automotive",
+      "slug": "automotive-repair-shop",
+      "titleFa": "تعمیرگاه خودرو",
+      "titleEn": "Automotive Repair Shop",
+      "iconKey": "t:tools",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "community-nonprofit",
+      "slug": "nonprofit-organization",
+      "titleFa": "سازمان مردم‌نهاد",
+      "titleEn": "Nonprofit Organization",
+      "iconKey": "t:heart",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "community-nonprofit",
+      "slug": "community-organization",
+      "titleFa": "سازمان مردمی",
+      "titleEn": "Community Organization",
+      "iconKey": "t:users",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "community-nonprofit",
+      "slug": "christian-church",
+      "titleFa": "کلیسا",
+      "titleEn": "Christian Church",
+      "iconKey": "t:heart",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "community-nonprofit",
+      "slug": "recycling-center",
+      "titleFa": "مرکز بازیافت",
+      "titleEn": "Recycling Center",
+      "iconKey": "t:refresh",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "media",
+      "slug": "media-company",
+      "titleFa": "شرکت رسانه‌ای",
+      "titleEn": "Media Company",
+      "iconKey": "t:news",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "media",
+      "slug": "magazine",
+      "titleFa": "مجله",
+      "titleEn": "Magazine",
+      "iconKey": "t:news",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "media",
+      "slug": "publishing-company",
+      "titleFa": "انتشارات",
+      "titleEn": "Publishing Company",
+      "iconKey": "t:book",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "media",
+      "slug": "newspaper",
+      "titleFa": "روزنامه",
+      "titleEn": "Newspaper",
+      "iconKey": "t:news",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "events",
+      "slug": "event-planner",
+      "titleFa": "برگزارکننده رویداد",
+      "titleEn": "Event Planner",
+      "iconKey": "t:confetti",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "events",
+      "slug": "wedding-hall",
+      "titleFa": "تالار عروسی",
+      "titleEn": "Wedding Hall",
+      "iconKey": "t:confetti",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "events",
+      "slug": "wedding-planning-service",
+      "titleFa": "خدمات برگزاری عروسی",
+      "titleEn": "Wedding Planning Service",
+      "iconKey": "t:confetti",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "lifestyle",
+      "slug": "astrologist-and-psychic",
+      "titleFa": "فال‌گیر و طالع‌بین",
+      "titleEn": "Astrologist & Psychic",
+      "iconKey": "t:moon",
+      "accountType": "personal",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "lifestyle",
+      "slug": "life-coach",
+      "titleFa": "کوچ زندگی",
+      "titleEn": "Life Coach",
+      "iconKey": "t:target",
+      "accountType": "personal",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "comedy-club",
+      "titleFa": "کلوب کمدی",
+      "titleEn": "Comedy Club",
+      "iconKey": "t:smile",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "talent-agency",
+      "titleFa": "آژانس استعدادیابی",
+      "titleEn": "Talent Agency",
+      "iconKey": "t:sparkles",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "aquarium",
+      "titleFa": "آکواریوم",
+      "titleEn": "Aquarium",
+      "iconKey": "t:fish",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "escape-game-room",
+      "titleFa": "اتاق فرار",
+      "titleEn": "Escape Game Room",
+      "iconKey": "t:puzzle",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "board-game",
+      "titleFa": "بازی رومیزی",
+      "titleEn": "Board Game",
+      "iconKey": "t:dice",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "botanical-garden",
+      "titleFa": "باغ گیاه‌شناسی",
+      "titleEn": "Botanical Garden",
+      "iconKey": "t:plant",
+      "accountType": "business",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "zoo",
+      "titleFa": "باغ وحش",
+      "titleEn": "Zoo",
+      "iconKey": "t:paw",
+      "accountType": "business",
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "theme-park",
+      "titleFa": "پارک موضوعی",
+      "titleEn": "Theme Park",
+      "iconKey": "t:confetti",
+      "accountType": "business",
+      "sortOrder": 70,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "race-track",
+      "titleFa": "پیست مسابقه",
+      "titleEn": "Race Track",
+      "iconKey": "t:flag",
+      "accountType": "business",
+      "sortOrder": 80,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "concert-tour",
+      "titleFa": "تور کنسرت",
+      "titleEn": "Concert Tour",
+      "iconKey": "t:music",
+      "accountType": "business",
+      "sortOrder": 90,
+      "isActive": true
+    },
+    {
+      "industrySlug": "entertainment",
+      "slug": "entertainment-website",
+      "titleFa": "وب‌سایت سرگرمی",
+      "titleEn": "Entertainment Website",
+      "iconKey": "t:world",
+      "accountType": "business",
+      "sortOrder": 100,
+      "isActive": true
+    },
+    {
+      "industrySlug": "travel-tourism",
+      "slug": "travel-company-agency",
+      "titleFa": "آژانس مسافرتی",
+      "titleEn": "Travel Company / Agency",
+      "iconKey": "t:plane",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "travel-tourism",
+      "slug": "hotel-and-lodging",
+      "titleFa": "هتل و اقامتگاه",
+      "titleEn": "Hotel & Lodging",
+      "iconKey": "t:bed",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "travel-tourism",
+      "slug": "sightseeing-tour-agency",
+      "titleFa": "آژانس تور گردشگری",
+      "titleEn": "Sightseeing Tour Agency",
+      "iconKey": "t:map",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "travel-tourism",
+      "slug": "vacation-home-rental",
+      "titleFa": "اجاره خانه ویلایی",
+      "titleEn": "Vacation Home Rental",
+      "iconKey": "t:home",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "travel-tourism",
+      "slug": "cabin-rental",
+      "titleFa": "اجاره کلبه جنگلی",
+      "titleEn": "Cabin Rental",
+      "iconKey": "t:home",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "travel-tourism",
+      "slug": "beach-resort",
+      "titleFa": "اقامتگاه ساحلی",
+      "titleEn": "Beach Resort",
+      "iconKey": "t:umbrella",
+      "accountType": "business",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "travel-tourism",
+      "slug": "national-park",
+      "titleFa": "پارک ملی",
+      "titleEn": "National Park",
+      "iconKey": "t:tree",
+      "accountType": "business",
+      "sortOrder": 60,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-wellness",
+      "slug": "health-and-wellness-coach",
+      "titleFa": "کوچ سلامتی",
+      "titleEn": "Health & Wellness Coach",
+      "iconKey": "t:target",
+      "accountType": "personal",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-wellness",
+      "slug": "aromatherapy-service",
+      "titleFa": "آروماتراپی",
+      "titleEn": "Aromatherapy Service",
+      "iconKey": "t:flower",
+      "accountType": "personal",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-wellness",
+      "slug": "acupuncturist",
+      "titleFa": "طب سوزنی",
+      "titleEn": "Acupuncturist",
+      "iconKey": "t:dna",
+      "accountType": "personal",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "health-wellness",
+      "slug": "alternative-and-holistic-health",
+      "titleFa": "طب مکمل",
+      "titleEn": "Alternative & Holistic Health",
+      "iconKey": "t:yoga",
+      "accountType": "personal",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "design-creative",
+      "slug": "graphic-designer",
+      "titleFa": "طراح گرافیک",
+      "titleEn": "Graphic Designer",
+      "iconKey": "t:palette",
+      "accountType": "personal",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "design-creative",
+      "slug": "event-videographer",
+      "titleFa": "فیلم‌بردار رویداد",
+      "titleEn": "Event Videographer",
+      "iconKey": "t:video",
+      "accountType": "personal",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "design-creative",
+      "slug": "architect-architectural-designer",
+      "titleFa": "معمار",
+      "titleEn": "Architect / Architectural Designer",
+      "iconKey": "t:building",
+      "accountType": "personal",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "business-professional",
+      "slug": "consulting-agency",
+      "titleFa": "آژانس مشاوره",
+      "titleEn": "Consulting Agency",
+      "iconKey": "t:briefcase",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "business-professional",
+      "slug": "business-service",
+      "titleFa": "خدمات کسب‌وکار",
+      "titleEn": "Business Service",
+      "iconKey": "t:briefcase",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "business-professional",
+      "slug": "industrial-company",
+      "titleFa": "شرکت صنعتی",
+      "titleEn": "Industrial Company",
+      "iconKey": "t:building",
+      "accountType": "business",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "business-professional",
+      "slug": "local-business",
+      "titleFa": "کسب‌وکار محلی",
+      "titleEn": "Local Business",
+      "iconKey": "t:briefcase",
+      "accountType": "business",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "business-professional",
+      "slug": "business-center",
+      "titleFa": "مرکز تجاری",
+      "titleEn": "Business Center",
+      "iconKey": "t:building",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "business-professional",
+      "slug": "consultant",
+      "titleFa": "مشاور",
+      "titleEn": "Consultant",
+      "iconKey": "t:briefcase",
+      "accountType": "personal",
+      "sortOrder": 50,
+      "isActive": true
+    },
+    {
+      "industrySlug": "agriculture",
+      "slug": "urban-farm",
+      "titleFa": "کشاورزی شهری",
+      "titleEn": "Urban Farm",
+      "iconKey": "t:plant",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "sports-fitness",
+      "slug": "yoga-studio",
+      "titleFa": "استودیو یوگا",
+      "titleEn": "Yoga Studio",
+      "iconKey": "t:yoga",
+      "accountType": "business",
+      "sortOrder": 0,
+      "isActive": true
+    },
+    {
+      "industrySlug": "sports-fitness",
+      "slug": "gym-physical-fitness-center",
+      "titleFa": "باشگاه ورزشی",
+      "titleEn": "Gym / Physical Fitness Center",
+      "iconKey": "t:basketball",
+      "accountType": "business",
+      "sortOrder": 10,
+      "isActive": true
+    },
+    {
+      "industrySlug": "sports-fitness",
+      "slug": "fitness-trainer",
+      "titleFa": "مربی بدنسازی",
+      "titleEn": "Fitness Trainer",
+      "iconKey": "t:basketball",
+      "accountType": "personal",
+      "sortOrder": 20,
+      "isActive": true
+    },
+    {
+      "industrySlug": "sports-fitness",
+      "slug": "athlete",
+      "titleFa": "ورزشکار",
+      "titleEn": "Athlete",
+      "iconKey": "t:trophy",
+      "accountType": "personal",
+      "sortOrder": 30,
+      "isActive": true
+    },
+    {
+      "industrySlug": "sports-fitness",
+      "slug": "sports-league",
+      "titleFa": "لیگ ورزشی",
+      "titleEn": "Sports League",
+      "iconKey": "t:trophy",
+      "accountType": "business",
+      "sortOrder": 40,
+      "isActive": true
+    },
+    {
+      "industrySlug": "sports-fitness",
+      "slug": "boat-sailing-instructor",
+      "titleFa": "مربی قایقرانی",
+      "titleEn": "Boat / Sailing Instructor",
+      "iconKey": "t:sailboat",
+      "accountType": "personal",
+      "sortOrder": 50,
+      "isActive": true
+    }
+  ],
+  "legacyMap": {
+    "music": "musician-band",
+    "design": "graphic-designer",
+    "education": "online-tutor",
+    "coaching": "life-coach",
+    "shop": "shopping-retail",
+    "restaurant": "restaurant",
+    "doctor": "doctor",
+    "lawyer": "lawyer",
+    "consultant": "consultant",
+    "blogger": "blogger",
+    "athlete": "athlete",
+    "photographer": "photographer",
+    "developer": "software-company",
+    "salon": "hair-salon",
+    "content_creator": "digital-creator",
+    "fitness": "gym-physical-fitness-center",
+    "beauty": "beauty-salon",
+    "travel": "travel-company-agency",
+    "food": "chef",
+    "psychology": "therapist",
+    "artist": "artist",
+    "writer": "writer",
+    "financial": "financial-consultant",
+    "real_estate": "real-estate-company",
+    "cafe": "cafe",
+    "architect": "architect-architectural-designer",
+    "event": "event-planner",
+    "nonprofit": "nonprofit-organization",
+    "other": null
+  }
+}

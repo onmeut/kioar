@@ -10,7 +10,10 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
         className="pointer-events-none absolute -bottom-40 -end-40 size-96 rounded-full bg-primary/5 blur-3xl"
       />
 
-      <div dir="rtl" className="relative mx-auto w-full max-w-[392px]">
+      <div
+        dir="rtl"
+        className="relative mx-auto w-full max-w-[392px] sm:max-w-[520px]"
+      >
         {children}
       </div>
     </div>

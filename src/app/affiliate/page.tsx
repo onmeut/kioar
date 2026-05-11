@@ -121,15 +121,14 @@ export default async function AffiliateLandingPage() {
           </div>
 
           <h1 className="max-w-3xl text-3xl font-bold leading-tight sm:text-4xl md:text-5xl">
-            مخاطبت رو به{" "}
-            <span className="text-primary">درآمد ماهانه</span> تبدیل کن
+            مخاطبت رو به <span className="text-primary">درآمد ماهانه</span>{" "}
+            تبدیل کن
           </h1>
 
           <p className="max-w-xl text-[15px] leading-9 text-muted-foreground sm:text-[17px]">
             روی هر فروش سالانه‌ی پلن پرو که از معرفی تو بیاد،{" "}
-            {toPersianDigits(commissionPct)}٪ پورسانت نقدی می‌گیری. به شبای خودت
-            واریز می‌شه. مخاطبت هم ۳ ماه پرو رایگان مهمون توئه. بدون سقف، بدون
-            قرارداد طولانی.
+            {toPersianDigits(commissionPct)}٪ پورسانت نقدی می‌گیری. مخاطبت هم ۳
+            ماه پرو رایگان مهمون توئه.
           </p>
 
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -151,22 +150,7 @@ export default async function AffiliateLandingPage() {
             </Button>
           </div>
 
-          {/* Stat row */}
-          <div className="mt-4 grid w-full grid-cols-2 gap-3 sm:grid-cols-4">
-            <Stat
-              label="پورسانت روی فروش سالانه"
-              value={`${toPersianDigits(commissionPct)}٪`}
-            />
-            <Stat label="هدیه به مخاطب" value={`${toPersianDigits(3)} ماه پرو`} />
-            <Stat
-              label="حداقل تسویه"
-              value={`${formatPersianNumber(Math.round(minWithdrawalToman / 1000))} هزار تومان`}
-            />
-            <Stat
-              label="دوره‌ی نگه‌داری"
-              value={`${toPersianDigits(holdingDays)} روز`}
-            />
-          </div>
+          {/* Stat row removed — stats already visible in the page */}
         </div>
       </section>
 
@@ -300,7 +284,7 @@ export default async function AffiliateLandingPage() {
                 شرایط شفاف
               </div>
               <h2 className="mt-4 text-[clamp(26px,4.5vw,40px)] font-bold leading-[1.1]">
-                هیچ ستاره‌ای زیر متن نیست
+                همه‌ی شرایط همین‌جاست
               </h2>
               <p className="mt-4 text-[14px] leading-8 text-muted-foreground sm:text-[15px]">
                 هر چیزی که قراره بهت بگیم رو همین‌جا گفتیم. شرایط روزِ ثبت‌نامت
@@ -340,32 +324,6 @@ export default async function AffiliateLandingPage() {
                 body="کیت برند، متن‌های نمونه فارسی و انگلیسی، OG-image اختصاصی توی پنل خودت در دسترسه."
               />
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Rules */}
-      <section className="py-16 sm:py-20">
-        <div className="mx-auto w-full max-w-6xl px-5">
-          <div className="mx-auto max-w-3xl">
-            <h2 className="text-[clamp(22px,3.5vw,32px)] font-bold leading-[1.15]">
-              قواعد بازی
-            </h2>
-            <p className="mt-3 text-[14px] leading-8 text-muted-foreground sm:text-[15px]">
-              برای حفظ کیفیت برند و انصاف بین همکاران، چند خط قرمز داریم. اگه
-              توی این محدوده‌ها حرکت کنی، هیچ مشکلی پیش نمیاد.
-            </p>
-          </div>
-
-          <div className="mx-auto mt-8 grid max-w-3xl gap-3 sm:grid-cols-2">
-            <RuleRow ok>محتوای صادقانه و مرتبط با مخاطب واقعی خودت</RuleRow>
-            <RuleRow ok>ریویو، آموزش، استفاده‌ی شخصی، لیست ابزار</RuleRow>
-            <RuleRow ok>پست استوری، کپشن، توضیحات یوتیوب، بیو</RuleRow>
-            <RuleRow ok>بلاگ، نیوزلتر، پادکست</RuleRow>
-            <RuleRow>تبلیغ روی برند کی‌یو‌آر در گوگل ادز</RuleRow>
-            <RuleRow>خرید با کد خودت برای دور زدن سیستم</RuleRow>
-            <RuleRow>ثبت‌نام جعلی یا تشویق به خرید بدون نیاز واقعی</RuleRow>
-            <RuleRow>کپی محتوای رسمی کی‌یو‌آر بدون کریدیت یا اعتبار</RuleRow>
           </div>
         </div>
       </section>
@@ -466,17 +424,6 @@ export default async function AffiliateLandingPage() {
 // Subcomponents
 // ---------------------------------------------------------------------------
 
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-card px-4 py-3 text-center">
-      <p className="text-[11px] font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-[18px] font-bold leading-tight text-foreground sm:text-[20px]">
-        {value}
-      </p>
-    </div>
-  );
-}
-
 function Bullet({ children }: { children: React.ReactNode }) {
   return (
     <li className="flex items-start gap-2.5 text-muted-foreground">
@@ -557,31 +504,6 @@ function Term({
       </div>
       <h3 className="mt-4 text-[15px] font-bold leading-tight">{title}</h3>
       <p className="mt-2 text-[13px] leading-7 text-muted-foreground">{body}</p>
-    </div>
-  );
-}
-
-function RuleRow({
-  ok,
-  children,
-}: {
-  ok?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      className={`flex items-start gap-3 rounded-2xl px-4 py-3 ${
-        ok ? "bg-emerald-50" : "bg-rose-50"
-      }`}
-    >
-      <span
-        className={`mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${
-          ok ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
-        }`}
-      >
-        {ok ? "✓" : "×"}
-      </span>
-      <span className="text-[13px] leading-6 text-foreground">{children}</span>
     </div>
   );
 }
