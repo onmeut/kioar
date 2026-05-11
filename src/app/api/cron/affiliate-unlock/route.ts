@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { getDb } from "@/db";
 import { unlockMaturedCommissions } from "@/lib/affiliate";
+import { safeCompareStrings } from "@/lib/cron-auth";
 import { log } from "@/lib/log";
 import { withRequestContext } from "@/lib/log-context";
 
@@ -37,7 +38,7 @@ async function runAffiliateUnlock(request: Request) {
     return NextResponse.json({ error: "cron_disabled" }, { status: 503 });
   }
   const header = request.headers.get("authorization") ?? "";
-  if (!timingSafeEqual(header, `Bearer ${secret}`)) {
+  if (!safeCompareStrings(header, `Bearer ${secret}`)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -75,19 +76,6 @@ async function runAffiliateUnlock(request: Request) {
       sql`select pg_advisory_unlock(${AFFILIATE_UNLOCK_LOCK_KEY})`,
     );
   }
-}
-
-/**
- * Constant-time string comparison so a brute-force attacker can't time
- * their way to the secret.
- */
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < a.length; i += 1) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return mismatch === 0;
 }
 
 export async function POST(request: Request) {

@@ -49,7 +49,7 @@ Hamravesh, use one of these approaches in priority order:
    ```
 
    `BASE_URL` should point at the **internal** service address
-   (`http://kioar.onmeut-production.svc:3000`) so cron traffic stays on the
+   (`http://<app-service>.<namespace>.svc:3000`) so cron traffic stays on the
    cluster network and doesn't burn ArvanCloud CDN bandwidth. `CRON_SECRET` is
    the same value the app reads — set it as an encrypted env on the cron job.
 

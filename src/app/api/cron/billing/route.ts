@@ -30,6 +30,7 @@ import { NextResponse } from "next/server";
 
 import { getDb } from "@/db";
 import { transitionForToday } from "@/lib/billing-state";
+import { safeCompareStrings } from "@/lib/cron-auth";
 import { log } from "@/lib/log";
 import { withRequestContext } from "@/lib/log-context";
 
@@ -59,7 +60,7 @@ async function runBilling(request: Request) {
 
   const header = request.headers.get("authorization") ?? "";
   const expected = `Bearer ${secret}`;
-  if (!timingSafeEqual(header, expected)) {
+  if (!safeCompareStrings(header, expected)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
@@ -115,13 +116,4 @@ export async function POST(request: Request) {
 
 export async function GET(request: Request) {
   return handle(request);
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return result === 0;
 }
