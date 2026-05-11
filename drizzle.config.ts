@@ -12,9 +12,7 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url:
-      process.env.DATABASE_URL ??
-      "postgres://postgres:oFvFQTyHKTXXDRJpsY1I@kioar-db.onmeut-production.svc:5432/postgres",
+    url: process.env.DATABASE_URL!,
   },
   verbose: true,
   strict: true,

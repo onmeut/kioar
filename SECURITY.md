@@ -43,17 +43,17 @@ chmod 600 .env .env.production
 
 If any secret is exposed (e.g. accidentally committed, logged, or copied into a shared document):
 
-| Secret | Where to rotate |
-|--------|----------------|
-| `AUTH_SECRET` | Generate new value → deploy → all existing sessions are invalidated (users must re-login) |
-| `CRON_SECRET` | Generate new value → update env and any external cron scheduler configs simultaneously |
-| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Rotate in your S3-compatible provider console |
-| `KAVENEGAR_API_KEY` | Rotate in the Kavenegar dashboard |
-| `GOOGLE_OAUTH_CLIENT_SECRET` | Rotate in Google Cloud Console → OAuth credentials |
-| `ZOOM_OAUTH_CLIENT_SECRET` | Rotate in Zoom Marketplace app settings |
-| `ZARINPAL_MERCHANT_ID` | Contact Zarinpal support |
-| `DATABASE_URL` password | Change in Postgres, update env, redeploy |
-| `REDIS_URL` password | Change in Redis config, update env, redeploy |
+| Secret                                      | Where to rotate                                                                           |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `AUTH_SECRET`                               | Generate new value → deploy → all existing sessions are invalidated (users must re-login) |
+| `CRON_SECRET`                               | Generate new value → update env and any external cron scheduler configs simultaneously    |
+| `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Rotate in your S3-compatible provider console                                             |
+| `KAVENEGAR_API_KEY`                         | Rotate in the Kavenegar dashboard                                                         |
+| `GOOGLE_OAUTH_CLIENT_SECRET`                | Rotate in Google Cloud Console → OAuth credentials                                        |
+| `ZOOM_OAUTH_CLIENT_SECRET`                  | Rotate in Zoom Marketplace app settings                                                   |
+| `ZARINPAL_MERCHANT_ID`                      | Contact Zarinpal support                                                                  |
+| `DATABASE_URL` password                     | Change in Postgres, update env, redeploy                                                  |
+| `REDIS_URL` password                        | Change in Redis config, update env, redeploy                                              |
 
 ## Reporting a vulnerability
 

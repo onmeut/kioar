@@ -16,10 +16,7 @@ export default async function AdminCategoriesPage() {
 
   return (
     <div className="p-6 max-w-2xl">
-      <h1 className="text-xl font-semibold mb-1">
-        \u062f\u0633\u062a\u0647\u200c\u0628\u0646\u062f\u06cc\u200c\u0647\u0627\u06cc
-        \u062f\u06cc\u0633\u06a9\u0627\u0648\u0631
-      </h1>
+      <h1 className="text-xl font-semibold mb-1">دسته‌بندی‌های دیسکاور</h1>
       <p className="text-sm text-muted-foreground mb-6">
         دسته‌بندی‌هایی که کاربران هنگام ثبت‌نام و در تنظیمات صفحه انتخاب
         می‌کنند. تغییر شناسه یک دسته‌بندی تمام پروفایل‌های وابسته را به‌طور

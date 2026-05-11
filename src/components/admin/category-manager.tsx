@@ -236,11 +236,13 @@ function CategoryFormDialog({
 
           <div className="space-y-1.5">
             <Label>آیکون</Label>
-            <LinkIconPicker
-              url=""
-              value={{ iconKey, iconUrl: null, imageUrl: null }}
-              onChange={(v) => setIconKey(v.iconKey ?? "t:star")}
-            />
+            <div className="flex h-64 flex-col overflow-hidden rounded-lg border">
+              <LinkIconPicker
+                url=""
+                value={{ iconKey, iconUrl: null, imageUrl: null }}
+                onChange={(v) => setIconKey(v.iconKey ?? "t:star")}
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
