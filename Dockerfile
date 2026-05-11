@@ -64,5 +64,5 @@ RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads
 
 USER nextjs
 EXPOSE 3000
-# Use ENTRYPOINT with -c so any CMD override from the platform is ignored
-ENTRYPOINT ["/bin/sh", "-c", "exec node /app/server.js"]
+# Run pending migrations then start the app
+ENTRYPOINT ["/bin/sh", "-c", "npm run db:migrate && exec node /app/server.js"]
