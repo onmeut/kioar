@@ -31,6 +31,10 @@ const remotePatterns: NonNullable<
 > = [
   // Vercel Blob fallback (only active if you actually use it).
   { protocol: "https", hostname: "**.public.blob.vercel-storage.com" },
+  // Production CDN — hardcoded because S3_PUBLIC_URL_BASE is not available
+  // at Docker build time (env file is gitignored), so the dynamic derivation
+  // below never fires in CI/prod builds.
+  { protocol: "https", hostname: "cdn.kioar.com" },
 ];
 
 if (s3PublicBase) {
@@ -79,12 +83,22 @@ const scriptSrc = isDev
 // which the browser counts against connect-src — not img-src.
 // The service worker (Workbox) caches images via the Fetch API, which is also
 // governed by connect-src (not img-src), so we must allow the S3/CDN origin.
+// NOTE: S3_PUBLIC_URL_BASE is not available at Docker build time (gitignored
+// env file), so we also hardcode the production CDN host as a reliable fallback.
 const s3ConnectOrigin = s3PublicBase
   ? `${s3PublicBase.protocol}://${s3PublicBase.hostname}${s3PublicBase.port ? `:${s3PublicBase.port}` : ""}`
   : null;
+// Always include the production CDN; deduplicate if s3ConnectOrigin matches.
+const cdnOrigin = "https://cdn.kioar.com";
+const extraConnectOrigins = [
+  cdnOrigin,
+  ...(s3ConnectOrigin && s3ConnectOrigin !== cdnOrigin
+    ? [s3ConnectOrigin]
+    : []),
+].join(" ");
 const connectSrc = isDev
   ? "connect-src 'self' blob: ws: wss:"
-  : `connect-src 'self' blob:${s3ConnectOrigin ? ` ${s3ConnectOrigin}` : ""}`;
+  : `connect-src 'self' blob: ${extraConnectOrigins}`;
 
 const securityHeaders: { key: string; value: string }[] = [
   { key: "X-Content-Type-Options", value: "nosniff" },
