@@ -278,28 +278,28 @@
     {
       "idx": 40,
       "version": "7",
-      "when": 1747008000000,
+      "when": 1778300002000,
       "tag": "0040_migrate_arvan_urls_to_cdn",
       "breakpoints": true
     },
     {
       "idx": 41,
       "version": "7",
-      "when": 1747094400000,
+      "when": 1778300003000,
       "tag": "0041_admin_override_subscription",
       "breakpoints": true
     },
     {
       "idx": 42,
       "version": "7",
-      "when": 1747180800000,
+      "when": 1778300004000,
       "tag": "0042_backfill_qr_customization",
       "breakpoints": true
     },
     {
       "idx": 43,
       "version": "7",
-      "when": 1747267200000,
+      "when": 1778300005000,
       "tag": "0043_discover_categories",
       "breakpoints": true
     },

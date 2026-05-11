@@ -48,7 +48,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { IRANIAN_CITIES } from "@/lib/cities";
 import type { DiscoverCategory } from "@/lib/discover";
-import { resolveIconEntry } from "@/lib/link-icons";
 import { PAGE_TYPES } from "@/lib/page-type";
 import { type ProfileDomain } from "@/lib/profile-domains";
 import { type IconKey } from "@/lib/link-icons";
@@ -91,8 +90,6 @@ type Props = {
   initial: PageSettingsValues;
   /** Read-only profile data used by the preview cards. */
   preview: PreviewProfile;
-  /** DB-backed discover categories for the picker. */
-  categories: DiscoverCategory[];
   onSave: (
     next: PageSettingsValues & {
       ogImageFile?: File | null;
@@ -102,6 +99,8 @@ type Props = {
   onAvatarUpload: (file: File) => Promise<{ ok: true } | { ok: false }>;
   onAvatarDelete?: () => Promise<{ ok: true } | { ok: false }>;
   onAvatarPickSeed: (seed: string) => Promise<{ ok: true } | { ok: false }>;
+  /** DB-backed discover categories from the server. */
+  categories: DiscoverCategory[];
 };
 
 /** Default brand OG fallback shown in previews when no upload is set. */
@@ -112,8 +111,8 @@ export function PageSettingsSheet({
   onOpenChange,
   pageId,
   initial,
-  preview,
   categories,
+  preview,
   onSave,
   onAvatarUpload,
   onAvatarDelete,
@@ -548,25 +547,21 @@ export function PageSettingsSheet({
               disabled={!values.discoverEnabled}
             >
               <SelectTrigger id="page-category" className="h-11 w-full">
-                <SelectValue placeholder="یک دسته انتخاب کن" />
+                <SelectValue>
+                  {(v: string) => {
+                    if (!v || v === "__none") return "بدون دسته‌بندی";
+                    const cat = categories.find((c) => c.slug === v);
+                    return cat ? cat.label : v;
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">بدون دسته‌بندی</SelectItem>
-                {categories.map((c) => {
-                  const entry = resolveIconEntry(c.iconKey, null);
-                  const Icon = entry.Icon;
-                  return (
-                    <SelectItem key={c.slug} value={c.slug}>
-                      <span className="me-1.5 inline-flex">
-                        <Icon
-                          className="size-4"
-                          style={{ color: entry.color }}
-                        />
-                      </span>
-                      {c.label}
-                    </SelectItem>
-                  );
-                })}
+                {categories.map((c) => (
+                  <SelectItem key={c.slug} value={c.slug}>
+                    {c.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </Field>
@@ -579,7 +574,13 @@ export function PageSettingsSheet({
               }
             >
               <SelectTrigger id="page-type" className="h-11 w-full">
-                <SelectValue placeholder="نوع صفحه را انتخاب کن" />
+                <SelectValue>
+                  {(v: string) => {
+                    if (!v || v === "__none") return "انتخاب نشده";
+                    const t = PAGE_TYPES.find((pt) => pt.slug === v);
+                    return t ? t.label : v;
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">انتخاب نشده</SelectItem>
@@ -594,12 +595,19 @@ export function PageSettingsSheet({
 
           <Field id="page-city" label="شهر">
             <Select
-              value={values.city ?? "__none"}
+              value={
+                values.city && values.city !== "none__" ? values.city : "__none"
+              }
               onValueChange={(v) => patch("city", v === "__none" ? null : v)}
               disabled={!values.discoverEnabled}
             >
               <SelectTrigger id="page-city" className="h-11 w-full">
-                <SelectValue placeholder="شهرت را انتخاب کن" />
+                <SelectValue>
+                  {(v: string) => {
+                    if (!v || v === "__none") return "انتخاب نشده";
+                    return v;
+                  }}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">انتخاب نشده</SelectItem>
@@ -695,7 +703,7 @@ export function PageSettingsSheet({
         <Sheet open={open} onOpenChange={onOpenChange}>
           <SheetContent
             side="bottom"
-            className="flex max-h-[92dvh] overflow-hidden flex-col gap-0 rounded-t-3xl p-0"
+            className="flex h-[90dvh] overflow-hidden flex-col gap-0 rounded-t-3xl p-0"
           >
             <SheetHeader className="flex flex-col gap-0.5 border-b p-4 text-start">
               <SheetTitle className="text-base font-bold">
