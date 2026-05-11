@@ -68,8 +68,8 @@ export function SubscriptionActions({
             <DialogHeader>
               <DialogTitle>تمدید دستی دوره</DialogTitle>
               <DialogDescription>
-                دوره جاری به تعداد روز انتخاب‌شده افزایش می‌یابد. اگر اشتراک
-                در حالت مهلت پرداخت یا منقضی است، به وضعیت فعال بازمی‌گردد.
+                دوره جاری به تعداد روز انتخاب‌شده افزایش می‌یابد. اگر اشتراک در
+                حالت مهلت پرداخت یا منقضی است، به وضعیت فعال بازمی‌گردد.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-4">
@@ -97,7 +97,9 @@ export function SubscriptionActions({
                 />
               </div>
               {extendState.status === "error" && extendState.message ? (
-                <p className="text-xs text-destructive">{extendState.message}</p>
+                <p className="text-xs text-destructive">
+                  {extendState.message}
+                </p>
               ) : null}
             </div>
             <DialogFooter>
@@ -158,11 +160,15 @@ export function SubscriptionActions({
                 </select>
               </div>
               <div>
-                <Label htmlFor="plan-reason">دلیل</Label>
+                <Label htmlFor="plan-reason">
+                  دلیل{" "}
+                  <span className="text-muted-foreground text-xs">
+                    (اختیاری)
+                  </span>
+                </Label>
                 <Textarea
                   name="reason"
                   id="plan-reason"
-                  required
                   rows={3}
                   placeholder="مثلاً: انتقال دستی از پلن قدیمی"
                 />

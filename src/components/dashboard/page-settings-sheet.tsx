@@ -558,7 +558,10 @@ export function PageSettingsSheet({
                   return (
                     <SelectItem key={c.slug} value={c.slug}>
                       <span className="me-1.5 inline-flex">
-                        <Icon className="size-4" style={{ color: entry.color }} />
+                        <Icon
+                          className="size-4"
+                          style={{ color: entry.color }}
+                        />
                       </span>
                       {c.label}
                     </SelectItem>

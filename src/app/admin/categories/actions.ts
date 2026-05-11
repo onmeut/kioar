@@ -57,11 +57,15 @@ export async function adminCreateCategoryAction(
 
   // Append at the end by finding the max sort_order
   const [maxRow] = await db
-    .select({ max: sql<number>`COALESCE(MAX(${discoverCategories.sortOrder}), -1)` })
+    .select({
+      max: sql<number>`COALESCE(MAX(${discoverCategories.sortOrder}), -1)`,
+    })
     .from(discoverCategories);
   const sortOrder = (maxRow?.max ?? -1) + 1;
 
-  await db.insert(discoverCategories).values({ slug, label, iconKey, isActive, sortOrder });
+  await db
+    .insert(discoverCategories)
+    .values({ slug, label, iconKey, isActive, sortOrder });
   await recordAdminAudit({
     actorUserId: viewer.user.id,
     action: "discover_category.create",
@@ -106,7 +110,12 @@ export async function adminUpdateCategoryAction(
     const conflict = await db
       .select({ id: discoverCategories.id })
       .from(discoverCategories)
-      .where(and(eq(discoverCategories.slug, slug), sql`${discoverCategories.id} <> ${id}`))
+      .where(
+        and(
+          eq(discoverCategories.slug, slug),
+          sql`${discoverCategories.id} <> ${id}`,
+        ),
+      )
       .limit(1);
     if (conflict.length > 0) {
       return { ok: false, error: "این شناسه قبلاً ثبت شده است." };

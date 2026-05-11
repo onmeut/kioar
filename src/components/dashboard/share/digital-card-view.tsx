@@ -36,7 +36,9 @@ const SWATCHES = [
 type Swatch = (typeof SWATCHES)[number];
 
 function resolveCssVar(varName: string): string {
-  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+  return getComputedStyle(document.documentElement)
+    .getPropertyValue(varName)
+    .trim();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,10 +46,16 @@ function resolveCssVar(varName: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const RATIOS = [
-  { id: "square",    label: "۱:۱",  desc: "پست",    outputW: 1080, outputH: 1080 },
-  { id: "portrait",  label: "۴:۵",  desc: "عمودی",  outputW: 1080, outputH: 1350 },
-  { id: "story",     label: "۹:۱۶", desc: "استوری", outputW: 1080, outputH: 1920 },
-  { id: "landscape", label: "۱۶:۹", desc: "افقی",   outputW: 1920, outputH: 1080 },
+  { id: "square", label: "۱:۱", desc: "پست", outputW: 1080, outputH: 1080 },
+  { id: "portrait", label: "۴:۵", desc: "عمودی", outputW: 1080, outputH: 1350 },
+  { id: "story", label: "۹:۱۶", desc: "استوری", outputW: 1080, outputH: 1920 },
+  {
+    id: "landscape",
+    label: "۱۶:۹",
+    desc: "افقی",
+    outputW: 1920,
+    outputH: 1080,
+  },
 ] as const;
 
 type RatioId = (typeof RATIOS)[number]["id"];
@@ -74,15 +82,25 @@ async function loadSvgImage(svg: string): Promise<HTMLImageElement> {
   const url = URL.createObjectURL(blob);
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("svg-load-failed")); };
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("svg-load-failed"));
+    };
     img.src = url;
   });
 }
 
 function fillRoundRect(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number, w: number, h: number, r: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  r: number,
 ) {
   ctx.beginPath();
   if (typeof ctx.roundRect === "function") {
@@ -102,17 +120,25 @@ function fillRoundRect(
   ctx.fill();
 }
 
-function fitText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+function fitText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string {
   if (ctx.measureText(text).width <= maxWidth) return text;
   let t = text;
-  while (t.length > 1 && ctx.measureText(t + "…").width > maxWidth) t = t.slice(0, -1);
+  while (t.length > 1 && ctx.measureText(t + "…").width > maxWidth)
+    t = t.slice(0, -1);
   return t + "…";
 }
 
 /** Draw the Kioar logo mark at (x, y) scaled to `size` px wide. */
 function drawLogo(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number, size: number, color: string,
+  x: number,
+  y: number,
+  size: number,
+  color: string,
 ) {
   const scale = size / 200;
   ctx.save();
@@ -132,7 +158,15 @@ async function renderCardToPng(opts: {
   outputW: number;
   outputH: number;
 }): Promise<void> {
-  const { name, publicUrl, qrSvg, bg, textColor: tc, outputW: W, outputH: H } = opts;
+  const {
+    name,
+    publicUrl,
+    qrSvg,
+    bg,
+    textColor: tc,
+    outputW: W,
+    outputH: H,
+  } = opts;
 
   await ensureFont();
   const qrImg = await loadSvgImage(qrSvg);
@@ -168,29 +202,49 @@ async function renderCardToPng(opts: {
     const nameLabelSz = Math.round(S * 0.023);
     const nameSz = Math.round(S * (name.length > 12 ? 0.072 : 0.088));
     const urlLabelSz = Math.round(S * 0.023);
-    const urlSz = Math.round(S * 0.040);
+    const urlSz = Math.round(S * 0.04);
 
-    const startY = Math.round(H * 0.30);
+    const startY = Math.round(H * 0.3);
     const nameLabelY = startY;
     const nameY = nameLabelY + nameSz + Math.round(S * 0.018);
     const urlLabelY = nameY + Math.round(S * 0.075);
     const urlY = urlLabelY + urlSz + Math.round(S * 0.012);
 
-    ctx.save(); ctx.direction = "rtl"; ctx.textAlign = "right";
-    ctx.font = `600 ${nameLabelSz}px ${F}`; ctx.fillStyle = tc; ctx.globalAlpha = 0.55;
-    ctx.fillText("نام", textRight, nameLabelY); ctx.globalAlpha = 1; ctx.restore();
+    ctx.save();
+    ctx.direction = "rtl";
+    ctx.textAlign = "right";
+    ctx.font = `600 ${nameLabelSz}px ${F}`;
+    ctx.fillStyle = tc;
+    ctx.globalAlpha = 0.55;
+    ctx.fillText("نام", textRight, nameLabelY);
+    ctx.globalAlpha = 1;
+    ctx.restore();
 
-    ctx.save(); ctx.direction = "rtl"; ctx.textAlign = "right";
-    ctx.font = `800 ${nameSz}px ${F}`; ctx.fillStyle = tc;
-    ctx.fillText(fitText(ctx, name || "—", colMaxW), textRight, nameY); ctx.restore();
+    ctx.save();
+    ctx.direction = "rtl";
+    ctx.textAlign = "right";
+    ctx.font = `800 ${nameSz}px ${F}`;
+    ctx.fillStyle = tc;
+    ctx.fillText(fitText(ctx, name || "—", colMaxW), textRight, nameY);
+    ctx.restore();
 
-    ctx.save(); ctx.direction = "ltr"; ctx.textAlign = "left";
-    ctx.font = `600 ${urlLabelSz}px ${F}`; ctx.fillStyle = tc; ctx.globalAlpha = 0.55;
-    ctx.fillText("URL", halfW + PAD, urlLabelY); ctx.globalAlpha = 1; ctx.restore();
+    ctx.save();
+    ctx.direction = "ltr";
+    ctx.textAlign = "left";
+    ctx.font = `600 ${urlLabelSz}px ${F}`;
+    ctx.fillStyle = tc;
+    ctx.globalAlpha = 0.55;
+    ctx.fillText("URL", halfW + PAD, urlLabelY);
+    ctx.globalAlpha = 1;
+    ctx.restore();
 
-    ctx.save(); ctx.direction = "ltr"; ctx.textAlign = "left";
-    ctx.font = `600 ${urlSz}px ${F}`; ctx.fillStyle = tc;
-    ctx.fillText(fitText(ctx, urlDisplay, colMaxW), halfW + PAD, urlY); ctx.restore();
+    ctx.save();
+    ctx.direction = "ltr";
+    ctx.textAlign = "left";
+    ctx.font = `600 ${urlSz}px ${F}`;
+    ctx.fillStyle = tc;
+    ctx.fillText(fitText(ctx, urlDisplay, colMaxW), halfW + PAD, urlY);
+    ctx.restore();
 
     // QR — left half, centered
     const qrSize = Math.round(Math.min(halfW - 2 * PAD, H - 2 * PAD) * 0.82);
@@ -198,11 +252,18 @@ async function renderCardToPng(opts: {
     const qrY = Math.round((H - qrSize) / 2);
     const qrPad = Math.round(qrSize * 0.06);
     const qrR = Math.round(qrSize * 0.08);
-    ctx.save(); ctx.fillStyle = "#ffffff";
-    fillRoundRect(ctx, qrX - qrPad, qrY - qrPad, qrSize + 2 * qrPad, qrSize + 2 * qrPad, qrR + qrPad);
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    fillRoundRect(
+      ctx,
+      qrX - qrPad,
+      qrY - qrPad,
+      qrSize + 2 * qrPad,
+      qrSize + 2 * qrPad,
+      qrR + qrPad,
+    );
     ctx.restore();
     ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-
   } else {
     // ── Portrait / Square / Story ─────────────────────────────────────────────
     const logoW = Math.round(S * 0.11);
@@ -214,7 +275,7 @@ async function renderCardToPng(opts: {
     const colMaxW = W - 2 * PAD;
 
     const nameLabelSz = Math.round(S * 0.026);
-    const nameSz = Math.round(S * (name.length > 14 ? 0.072 : 0.090));
+    const nameSz = Math.round(S * (name.length > 14 ? 0.072 : 0.09));
     const urlLabelSz = Math.round(S * 0.026);
     const urlSz = Math.round(S * 0.044);
 
@@ -225,24 +286,44 @@ async function renderCardToPng(opts: {
     const urlY = urlLabelY + urlSz + Math.round(S * 0.014);
 
     // NAME label — right-aligned
-    ctx.save(); ctx.direction = "rtl"; ctx.textAlign = "right";
-    ctx.font = `600 ${nameLabelSz}px ${F}`; ctx.fillStyle = tc; ctx.globalAlpha = 0.55;
-    ctx.fillText("نام", textRight, nameLabelY); ctx.globalAlpha = 1; ctx.restore();
+    ctx.save();
+    ctx.direction = "rtl";
+    ctx.textAlign = "right";
+    ctx.font = `600 ${nameLabelSz}px ${F}`;
+    ctx.fillStyle = tc;
+    ctx.globalAlpha = 0.55;
+    ctx.fillText("نام", textRight, nameLabelY);
+    ctx.globalAlpha = 1;
+    ctx.restore();
 
     // Name — right-aligned, heavy
-    ctx.save(); ctx.direction = "rtl"; ctx.textAlign = "right";
-    ctx.font = `800 ${nameSz}px ${F}`; ctx.fillStyle = tc;
-    ctx.fillText(fitText(ctx, name || "—", colMaxW), textRight, nameY); ctx.restore();
+    ctx.save();
+    ctx.direction = "rtl";
+    ctx.textAlign = "right";
+    ctx.font = `800 ${nameSz}px ${F}`;
+    ctx.fillStyle = tc;
+    ctx.fillText(fitText(ctx, name || "—", colMaxW), textRight, nameY);
+    ctx.restore();
 
     // URL label — left-aligned
-    ctx.save(); ctx.direction = "ltr"; ctx.textAlign = "left";
-    ctx.font = `600 ${urlLabelSz}px ${F}`; ctx.fillStyle = tc; ctx.globalAlpha = 0.55;
-    ctx.fillText("URL", textLeft, urlLabelY); ctx.globalAlpha = 1; ctx.restore();
+    ctx.save();
+    ctx.direction = "ltr";
+    ctx.textAlign = "left";
+    ctx.font = `600 ${urlLabelSz}px ${F}`;
+    ctx.fillStyle = tc;
+    ctx.globalAlpha = 0.55;
+    ctx.fillText("URL", textLeft, urlLabelY);
+    ctx.globalAlpha = 1;
+    ctx.restore();
 
     // URL — left-aligned, LTR
-    ctx.save(); ctx.direction = "ltr"; ctx.textAlign = "left";
-    ctx.font = `600 ${urlSz}px ${F}`; ctx.fillStyle = tc;
-    ctx.fillText(fitText(ctx, urlDisplay, colMaxW), textLeft, urlY); ctx.restore();
+    ctx.save();
+    ctx.direction = "ltr";
+    ctx.textAlign = "left";
+    ctx.font = `600 ${urlSz}px ${F}`;
+    ctx.fillStyle = tc;
+    ctx.fillText(fitText(ctx, urlDisplay, colMaxW), textLeft, urlY);
+    ctx.restore();
 
     // QR — centered, fills remaining vertical space
     const qrAreaTop = urlY + Math.round(S * 0.06);
@@ -252,15 +333,26 @@ async function renderCardToPng(opts: {
     const qrY = qrAreaTop + Math.round((qrAreaH - qrSize) / 2);
     const qrPad = Math.round(qrSize * 0.06);
     const qrR = Math.round(qrSize * 0.08);
-    ctx.save(); ctx.fillStyle = "#ffffff";
-    fillRoundRect(ctx, qrX - qrPad, qrY - qrPad, qrSize + 2 * qrPad, qrSize + 2 * qrPad, qrR + qrPad);
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    fillRoundRect(
+      ctx,
+      qrX - qrPad,
+      qrY - qrPad,
+      qrSize + 2 * qrPad,
+      qrSize + 2 * qrPad,
+      qrR + qrPad,
+    );
     ctx.restore();
     ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
   }
 
   await new Promise<void>((resolve, reject) => {
     canvas.toBlob((blob) => {
-      if (!blob) { reject(new Error("toBlob-failed")); return; }
+      if (!blob) {
+        reject(new Error("toBlob-failed"));
+        return;
+      }
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -283,12 +375,20 @@ type Props = {
   qrStyle: QrStyle;
 };
 
-export function DigitalCardView({ publicUrl, slug, displayName, qrStyle }: Props) {
+export function DigitalCardView({
+  publicUrl,
+  slug,
+  displayName,
+  qrStyle,
+}: Props) {
   const [swatch, setSwatch] = useState<Swatch>(SWATCHES[0]);
   const [ratioId, setRatioId] = useState<RatioId>("square");
   const [downloading, setDownloading] = useState(false);
 
-  const cardQrStyle: QrStyle = { ...DEFAULT_QR_STYLE, showLogo: qrStyle.showLogo };
+  const cardQrStyle: QrStyle = {
+    ...DEFAULT_QR_STYLE,
+    showLogo: qrStyle.showLogo,
+  };
   const qrSvg = useQrSvg(publicUrl, cardQrStyle);
 
   const ratio = RATIOS.find((r) => r.id === ratioId)!;
@@ -296,10 +396,13 @@ export function DigitalCardView({ publicUrl, slug, displayName, qrStyle }: Props
   const isStory = ratio.outputH / ratio.outputW > 1.4;
 
   const previewMaxW =
-    ratioId === "story"      ? "max-w-[148px]"
-    : ratioId === "portrait" ? "max-w-[200px]"
-    : ratioId === "landscape" ? "w-full"
-    : "max-w-[240px]";
+    ratioId === "story"
+      ? "max-w-[148px]"
+      : ratioId === "portrait"
+        ? "max-w-[200px]"
+        : ratioId === "landscape"
+          ? "w-full"
+          : "max-w-[240px]";
 
   const displayUrl = publicUrl.replace(/^https?:\/\//, "");
 
@@ -353,7 +456,10 @@ export function DigitalCardView({ publicUrl, slug, displayName, qrStyle }: Props
 
           {/* Main layout */}
           <div
-            className={cn("absolute inset-0 flex", isLandscape ? "flex-row" : "flex-col")}
+            className={cn(
+              "absolute inset-0 flex",
+              isLandscape ? "flex-row" : "flex-col",
+            )}
             style={{ padding: isLandscape ? "0" : "6cqw" }}
           >
             {isLandscape ? (
@@ -373,7 +479,10 @@ export function DigitalCardView({ publicUrl, slug, displayName, qrStyle }: Props
                     <div
                       className="font-black leading-tight truncate text-right"
                       lang="fa"
-                      style={{ fontSize: "min(9cqw, 8cqh)", marginTop: "0.8cqw" }}
+                      style={{
+                        fontSize: "min(9cqw, 8cqh)",
+                        marginTop: "0.8cqw",
+                      }}
                     >
                       {displayName || "—"}
                     </div>
@@ -389,7 +498,10 @@ export function DigitalCardView({ publicUrl, slug, displayName, qrStyle }: Props
                     <div
                       dir="ltr"
                       className="font-semibold truncate opacity-80 text-left"
-                      style={{ fontSize: "min(5cqw, 4.5cqh)", marginTop: "0.8cqw" }}
+                      style={{
+                        fontSize: "min(5cqw, 4.5cqh)",
+                        marginTop: "0.8cqw",
+                      }}
                     >
                       {displayUrl}
                     </div>
@@ -438,7 +550,10 @@ export function DigitalCardView({ publicUrl, slug, displayName, qrStyle }: Props
                     <div
                       dir="ltr"
                       className="font-semibold truncate opacity-80 text-left"
-                      style={{ fontSize: "min(5.5cqw, 5cqh)", marginTop: "1cqw" }}
+                      style={{
+                        fontSize: "min(5.5cqw, 5cqh)",
+                        marginTop: "1cqw",
+                      }}
                     >
                       {displayUrl}
                     </div>
@@ -467,7 +582,11 @@ export function DigitalCardView({ publicUrl, slug, displayName, qrStyle }: Props
       </div>
 
       {/* ── Ratio picker ──────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-4 gap-2" role="radiogroup" aria-label="نسبت تصویر">
+      <div
+        className="grid grid-cols-4 gap-2"
+        role="radiogroup"
+        aria-label="نسبت تصویر"
+      >
         {RATIOS.map((r) => (
           <button
             key={r.id}
@@ -482,8 +601,12 @@ export function DigitalCardView({ publicUrl, slug, displayName, qrStyle }: Props
                 : "bg-muted text-foreground hover:bg-muted/60",
             )}
           >
-            <div className="text-sm font-black" dir="ltr">{r.label}</div>
-            <div className="mt-0.5 text-[11px] font-medium opacity-60">{r.desc}</div>
+            <div className="text-sm font-black" dir="ltr">
+              {r.label}
+            </div>
+            <div className="mt-0.5 text-[11px] font-medium opacity-60">
+              {r.desc}
+            </div>
           </button>
         ))}
       </div>
@@ -527,7 +650,11 @@ export function DigitalCardView({ publicUrl, slug, displayName, qrStyle }: Props
 
       {/* ── Actions ───────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 gap-2">
-        <Button className="h-11" onClick={handleDownload} disabled={downloading}>
+        <Button
+          className="h-11"
+          onClick={handleDownload}
+          disabled={downloading}
+        >
           <ImageDownIcon className="size-4" />
           {downloading ? "در حال آماده‌سازی…" : "دانلود PNG"}
         </Button>

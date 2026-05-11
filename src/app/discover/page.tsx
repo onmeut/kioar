@@ -7,10 +7,7 @@ import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { getDb } from "@/db";
 import { profiles, profileStatsByDay } from "@/db/schema";
 import { tehranIsoDate } from "@/lib/date/persian";
-import {
-  getDiscoverCategories,
-  type DiscoverCategory,
-} from "@/lib/discover";
+import { getDiscoverCategories, type DiscoverCategory } from "@/lib/discover";
 import { resolveIconEntry } from "@/lib/link-icons";
 import { absoluteUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -93,7 +90,8 @@ export default async function DiscoverPage({
   // Fetch categories from DB; build a slug set for URL param validation
   const dbCategories = await getDiscoverCategories();
   const validSlugs = new Set(dbCategories.map((c) => c.slug));
-  const category = categoryRaw && validSlugs.has(categoryRaw) ? categoryRaw : null;
+  const category =
+    categoryRaw && validSlugs.has(categoryRaw) ? categoryRaw : null;
 
   const db = getDb();
 
@@ -254,7 +252,10 @@ export default async function DiscoverPage({
                     href={buildHref({ category: c.slug, sort, page: 1 })}
                     active={category === c.slug}
                   >
-                    <DiscoverCategoryIcon iconKey={c.iconKey} className="me-1.5 size-4" />
+                    <DiscoverCategoryIcon
+                      iconKey={c.iconKey}
+                      className="me-1.5 size-4"
+                    />
                     {c.label}
                   </CategoryPill>
                 </li>
@@ -276,7 +277,10 @@ export default async function DiscoverPage({
                     href={buildHref({ category: c.slug, sort, page: 1 })}
                     active={category === c.slug}
                   >
-                    <DiscoverCategoryIcon iconKey={c.iconKey} className="me-1.5 size-4" />
+                    <DiscoverCategoryIcon
+                      iconKey={c.iconKey}
+                      className="me-1.5 size-4"
+                    />
                     {c.label}
                   </CategoryPill>
                 </li>
@@ -321,7 +325,10 @@ export default async function DiscoverPage({
                     title={item.title}
                     avatarUrl={item.avatarUrl}
                     avatarSeed={item.avatarSeed}
-                    categoryLabel={dbCategories.find((c) => c.slug === item.discoverCategory)?.label ?? null}
+                    categoryLabel={
+                      dbCategories.find((c) => c.slug === item.discoverCategory)
+                        ?.label ?? null
+                    }
                   />
                 </li>
               ))}

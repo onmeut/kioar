@@ -31,7 +31,9 @@ interface CategoryManagerProps {
   categories: DiscoverCategory[];
   createAction: CreateAction;
   updateAction: UpdateAction;
-  deleteAction: (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
+  deleteAction: (
+    formData: FormData,
+  ) => Promise<{ ok: boolean; error?: string }>;
   moveAction: (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
 }
 
@@ -56,7 +58,9 @@ function CategoryRow({
   isLast: boolean;
   onEdit: (c: DiscoverCategory) => void;
   moveAction: (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
-  deleteAction: (formData: FormData) => Promise<{ ok: boolean; error?: string }>;
+  deleteAction: (
+    formData: FormData,
+  ) => Promise<{ ok: boolean; error?: string }>;
 }) {
   return (
     <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
@@ -189,7 +193,11 @@ function CategoryFormDialog({
         <form action={formAction} className="space-y-4">
           {isEdit && <input type="hidden" name="id" value={category.id} />}
           <input type="hidden" name="iconKey" value={iconKey} />
-          <input type="hidden" name="isActive" value={isActive ? "on" : "off"} />
+          <input
+            type="hidden"
+            name="isActive"
+            value={isActive ? "on" : "off"}
+          />
 
           <div className="space-y-1.5">
             <Label htmlFor="cat-label">نام نمایشی (فارسی)</Label>
@@ -220,7 +228,8 @@ function CategoryFormDialog({
             />
             {isEdit && (
               <p className="text-xs text-muted-foreground">
-                تغییر شناسه تمام پروفایل‌های دارای این دسته‌بندی را به‌روزرسانی می‌کند.
+                تغییر شناسه تمام پروفایل‌های دارای این دسته‌بندی را به‌روزرسانی
+                می‌کند.
               </p>
             )}
           </div>
@@ -279,11 +288,7 @@ export function CategoryManager({
         <p className="text-sm text-muted-foreground">
           {categories.length} دسته‌بندی ثبت شده
         </p>
-        <Button
-          type="button"
-          size="sm"
-          onClick={() => setCreateOpen(true)}
-        >
+        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="me-1.5 size-4" />
           دسته‌بندی جدید
         </Button>

@@ -262,7 +262,7 @@ const planChangeSchema = z.object({
   pageId: z.string().uuid(),
   planKey: z.enum(["free", "pro", "business"]),
   billingCycle: z.enum(["monthly", "annual"]).optional(),
-  reason: reasonSchema,
+  reason: z.string().trim().max(REASON_MAX).optional(),
 });
 
 export async function adminManualPlanChangeAction(
