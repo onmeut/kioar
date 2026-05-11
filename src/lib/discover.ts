@@ -14,10 +14,10 @@
  * power the new admin UI and the upcoming onboarding revamp.
  */
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { categories, industries } from "@/db/schema";
+import { categories, industries, profiles } from "@/db/schema";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -295,6 +295,60 @@ export async function getDiscoverCategoryBySlug(
     sortOrder: cat.sortOrder,
     isActive: cat.isActive,
   };
+}
+
+/**
+ * Returns active categories that have at least one discover-listed profile.
+ *
+ * A profile counts when: `discover_enabled = true AND is_complete = true
+ * AND is_published = true`.
+ *
+ * @param accountType  When provided, also filters by `profiles.page_type`.
+ *                     Pass `null` for the "All" tab.
+ */
+export async function getPopulatedDiscoverCategories(
+  accountType: AccountType | null,
+): Promise<DiscoverCategory[]> {
+  const db = getDb();
+
+  // Aggregate: category slug → count of eligible profiles.
+  const profileFilters = and(
+    eq(profiles.discoverEnabled, true),
+    eq(profiles.isComplete, true),
+    eq(profiles.isPublished, true),
+    accountType ? eq(profiles.pageType, accountType) : undefined,
+  );
+
+  const counts = await db
+    .select({
+      slug: profiles.discoverCategory,
+      count: sql<number>`count(*)::int`.as("profile_count"),
+    })
+    .from(profiles)
+    .where(profileFilters)
+    .groupBy(profiles.discoverCategory)
+    .having(gt(sql<number>`count(*)`, 0));
+
+  const populatedSlugs = new Set(
+    counts.map((r) => r.slug).filter((s): s is string => s !== null),
+  );
+
+  if (populatedSlugs.size === 0) return [];
+
+  const rows = await db
+    .select({ cat: categories })
+    .from(categories)
+    .innerJoin(industries, eq(categories.industryId, industries.id))
+    .where(
+      and(
+        eq(categories.isActive, true),
+        eq(industries.isActive, true),
+        inArray(categories.slug, [...populatedSlugs]),
+      ),
+    )
+    .orderBy(asc(industries.sortOrder), asc(categories.sortOrder));
+
+  return rows.map((r, idx) => toDiscoverCategory(r.cat, idx));
 }
 
 export { IRANIAN_CITIES } from "@/lib/cities";
