@@ -15,7 +15,6 @@ import {
   PlugIcon,
   PlusIcon,
   SearchIcon,
-  SparklesIcon,
   Trash2Icon,
   VideoIcon,
   WalletIcon,
@@ -39,7 +38,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { useFeatureIntroSeen } from "@/hooks/use-feature-intro";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { toPersianDigits } from "@/lib/persian";
@@ -61,7 +59,6 @@ import {
 } from "./booking.types";
 
 type Stage =
-  | { kind: "intro"; slide: 0 | 1 | 2 }
   | { kind: "wizard"; step: 1 | 2 | 3 }
   | { kind: "type-editor"; index: number | "new" };
 
@@ -72,6 +69,8 @@ export type BookingFlowDialogProps = {
   onSubmit: (block: EditableBookingBlock) => Promise<void> | void;
   submitting?: boolean;
   title?: string;
+  /** Called when the user presses back on the first wizard step (e.g. to reopen the add-links modal). */
+  onBack?: () => void;
   /** OAuth status for Google / Zoom — used to render real connect buttons. */
   providerConnections?: ProviderConnection[];
 };
@@ -83,44 +82,24 @@ export function BookingFlowDialog({
   onSubmit,
   submitting,
   title = "هماهنگ",
+  onBack,
   providerConnections = [],
 }: BookingFlowDialogProps) {
   const isMobile = useIsMobile();
-  const { seen: introSeen, markSeen } = useFeatureIntroSeen("bookings.intro");
 
-  // Until we know whether the user has seen the intro, default to the wizard
-  // (returning users) and switch to the carousel on first paint if needed.
-  const initialStage = (): Stage => {
-    if (initial) return { kind: "wizard", step: 1 };
-    return introSeen === false
-      ? { kind: "intro", slide: 0 }
-      : { kind: "wizard", step: 1 };
-  };
-
-  const [stage, setStage] = useState<Stage>(initialStage);
+  const [stage, setStage] = useState<Stage>({ kind: "wizard", step: 1 });
   const [draft, setDraft] = useState<EditableBookingBlock>(() =>
     initial ? cloneDraft(initial) : cloneDraft(DEFAULT_BOOKING_BLOCK),
   );
   // Reset stage + draft only when the dialog opens or switches create↔edit.
-  // intentionally excludes introSeen — it loading from localStorage must not
-  // wipe a draft the user is actively editing.
   useEffect(() => {
     if (open) {
-      setStage(initialStage());
+      setStage({ kind: "wizard", step: 1 });
       setDraft(
         initial ? cloneDraft(initial) : cloneDraft(DEFAULT_BOOKING_BLOCK),
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initial]);
-
-  // Once introSeen loads from localStorage (null → false) while the dialog is
-  // already open, switch to the intro carousel without clearing the draft.
-  useEffect(() => {
-    if (open && !initial && introSeen === false) {
-      setStage({ kind: "intro", slide: 0 });
-    }
-  }, [open, initial, introSeen]);
 
   const patch = useCallback((p: Partial<EditableBookingBlock>) => {
     setDraft((d) => ({ ...d, ...p }));
@@ -132,7 +111,8 @@ export function BookingFlowDialog({
     ? {
         side: "bottom" as const,
         className:
-          "h-[92dvh] rounded-t-3xl p-0 flex flex-col bg-background gap-0",
+          "h-[90dvh] rounded-t-3xl p-0 flex flex-col bg-background gap-0",
+        showCloseButton: false,
       }
     : {
         className:
@@ -144,9 +124,9 @@ export function BookingFlowDialog({
   return (
     <Container open={open} onOpenChange={onOpenChange}>
       <ContentC {...contentProps}>
-        <div className="border-b">
+        <div className="shrink-0 border-b">
           <div className="flex items-center justify-between gap-2 px-3 py-2.5">
-            <BackButton stage={stage} setStage={setStage} />
+            <BackButton stage={stage} setStage={setStage} onBack={onBack} />
             <DialogTitle className="text-base font-semibold">
               {title}
             </DialogTitle>
@@ -165,10 +145,8 @@ export function BookingFlowDialog({
           ) : null}
         </div>
 
-        <div className="flex-1 overflow-y-auto">
-          {stage.kind === "intro" ? (
-            <IntroCarousel slide={stage.slide} />
-          ) : stage.kind === "wizard" && stage.step === 1 ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {stage.kind === "wizard" && stage.step === 1 ? (
             <LocationStep
               draft={draft}
               patch={patch}
@@ -210,11 +188,10 @@ export function BookingFlowDialog({
           ) : null}
         </div>
 
-        <div className="border-t bg-background p-4 safe-pb">
+        <div className="shrink-0 border-t bg-background p-4 safe-pb">
           <FooterActions
             stage={stage}
             setStage={setStage}
-            onIntroDone={markSeen}
             draft={draft}
             submitting={submitting}
             onFinalize={async () => {
@@ -263,26 +240,20 @@ function IconButton({
 function BackButton({
   stage,
   setStage,
+  onBack,
 }: {
   stage: Stage;
   setStage: (s: Stage) => void;
+  onBack?: () => void;
 }) {
-  if (stage.kind === "intro" && stage.slide === 0) {
-    return <span className="size-11 shrink-0" aria-hidden />;
-  }
-  if (stage.kind === "intro") {
-    return (
-      <IconButton
-        ariaLabel="قبلی"
-        onClick={() =>
-          setStage({ kind: "intro", slide: (stage.slide - 1) as 0 | 1 })
-        }
-      >
-        <ArrowRightIcon className="size-5" />
-      </IconButton>
-    );
-  }
   if (stage.kind === "wizard" && stage.step === 1) {
+    if (onBack) {
+      return (
+        <IconButton ariaLabel="بازگشت" onClick={onBack}>
+          <ArrowRightIcon className="size-5" />
+        </IconButton>
+      );
+    }
     return <span className="size-11 shrink-0" aria-hidden />;
   }
   if (stage.kind === "wizard") {
@@ -311,55 +282,6 @@ function BackButton({
     );
   }
   return <span className="size-11 shrink-0" aria-hidden />;
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Intro slides
-// ────────────────────────────────────────────────────────────────────────
-
-function IntroCarousel({ slide }: { slide: 0 | 1 | 2 }) {
-  const slides = [
-    {
-      title: "هماهنگی‌ها بدون دردسر",
-      body: "بدون ابزار جانبی، یک صفحه‌ی شخصی برای رزرو هماهنگ بسازید. مهمان‌ها زمان‌های خالی شما را می‌بینند و انتخاب می‌کنند.",
-      emoji: "📅",
-    },
-    {
-      title: "وقت = پول",
-      body: "برای هر نوع هماهنگ مدت و قیمت تعیین کنید. مشاوره‌ی رایگان، جلسه‌ی پولی، تماس فالوآپ — همه در یک صفحه.",
-      emoji: "💸",
-    },
-    {
-      title: "روی برنامه‌ی خودتان",
-      body: "ساعت‌های در دسترس را برای هر روز هفته تعریف کنید؛ ما خودکار اسلات‌های خالی را به مهمان‌ها نشان می‌دهیم.",
-      emoji: "✨",
-    },
-  ] as const;
-  const s = slides[slide];
-  return (
-    <div className="flex h-full flex-col">
-      <div className="m-4 flex aspect-5/4 items-center justify-center rounded-3xl bg-amber-400/60 text-7xl">
-        {s.emoji}
-      </div>
-      <div className="px-6 pb-6">
-        <h2 className="text-2xl font-bold">{s.title}</h2>
-        <p className="mt-3 text-[15px] leading-7 text-muted-foreground">
-          {s.body}
-        </p>
-      </div>
-      <div className="mt-auto flex items-center justify-center gap-1.5 pb-4">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className={cn(
-              "size-2 rounded-full transition-colors",
-              i === slide ? "bg-primary" : "bg-foreground/15",
-            )}
-          />
-        ))}
-      </div>
-    </div>
-  );
 }
 
 // ────────────────────────────────────────────────────────────────────────
@@ -1727,40 +1649,16 @@ function BookingTypeEditor({
 function FooterActions({
   stage,
   setStage,
-  onIntroDone,
   draft,
   submitting,
   onFinalize,
 }: {
   stage: Stage;
   setStage: (s: Stage) => void;
-  onIntroDone: () => void;
   draft: EditableBookingBlock;
   submitting?: boolean;
   onFinalize: () => Promise<void> | void;
 }) {
-  if (stage.kind === "intro") {
-    const isLast = stage.slide === 2;
-    return (
-      <Button
-        className="h-12 w-full rounded-full text-base"
-        onClick={() => {
-          if (isLast) {
-            onIntroDone();
-            setStage({ kind: "wizard", step: 1 });
-          } else {
-            setStage({
-              kind: "intro",
-              slide: (stage.slide + 1) as 1 | 2,
-            });
-          }
-        }}
-      >
-        {isLast ? "بزن بریم" : "ادامه"}
-      </Button>
-    );
-  }
-
   if (stage.kind === "type-editor") {
     return (
       <Button

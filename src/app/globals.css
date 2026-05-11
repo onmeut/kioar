@@ -126,6 +126,17 @@
   --butter: oklch(0.92 0.082 92);
   --blush: oklch(0.88 0.058 32);
   --clay: oklch(0.78 0.078 50);
+
+  /* ── Digital business card background palette ── */
+  --card-color-1: #d5ee5c;
+  --card-color-2: #0f1f19;
+  --card-color-3: #f1b5c7;
+  --card-color-4: #1b2480;
+  --card-color-5: #f47b27;
+  --card-color-6: #2bc461;
+  --card-color-7: #0e1217;
+  --card-color-8: #c03a2b;
+  --card-color-9: #7b0e14;
 }
 
 @layer base {

@@ -4,12 +4,19 @@ import { EyeIcon, SettingsIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 
 import { PublicShareBar } from "@/components/dashboard/public-share-bar";
+import type { QrStyle } from "@/lib/qr/types";
 
 interface MeHeaderActionsProps {
   publicUrl: string;
   slug: string;
   displayName: string;
   host: string;
+  pageId: string;
+  canCustomizeQr: boolean;
+  savedQrStyle?: QrStyle | null;
+  saveQrStyleAction?: (
+    style: QrStyle,
+  ) => Promise<{ status: string; message?: string }>;
 }
 
 /**
@@ -30,6 +37,10 @@ export function MeHeaderActions({
   slug,
   displayName,
   host,
+  pageId,
+  canCustomizeQr,
+  savedQrStyle,
+  saveQrStyleAction,
 }: MeHeaderActionsProps) {
   const pathname = usePathname() || "";
   if (!/^\/me(\/|$)/.test(pathname)) return null;
@@ -51,6 +62,10 @@ export function MeHeaderActions({
         slug={slug}
         displayName={displayName}
         host={host}
+        pageId={pageId}
+        canCustomizeQr={canCustomizeQr}
+        savedQrStyle={savedQrStyle}
+        saveQrStyleAction={saveQrStyleAction}
         variant="icon"
       />
     </div>

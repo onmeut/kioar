@@ -14,7 +14,8 @@ import {
 import { useFormStatus } from "react-dom";
 
 import { idleState, type ActionState } from "@/lib/action-state";
-import { DISCOVER_CATEGORIES } from "@/lib/discover";
+import { type DiscoverCategory } from "@/lib/discover";
+import { resolveIconEntry } from "@/lib/link-icons";
 import { PAGE_TYPES, type PageTypeSlug } from "@/lib/page-type";
 import { normalizeSlug } from "@/lib/slug";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,8 @@ type OnboardingFormProps = {
    * `"first"` for backwards compat.
    */
   mode?: "first" | "additional";
+  /** DB-backed discover categories for the picker step. */
+  categories: DiscoverCategory[];
 };
 
 function ContinueButton({
@@ -77,6 +80,7 @@ export function OnboardingForm({
   action,
   initialSlug,
   mode = "first",
+  categories,
 }: OnboardingFormProps) {
   const [state, formAction] = useActionState(action, idleState);
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
@@ -271,7 +275,7 @@ export function OnboardingForm({
             autoComplete="name"
             autoFocus
             enterKeyHint="next"
-            placeholder="ایلان ماسک یا مدرسه هایپرلنس"
+            placeholder="اسم خودت یا کسب‌وکارت"
             aria-label="نام صفحه"
             className={cn(
               "h-14 w-full rounded-full bg-muted px-5 text-base font-medium text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors",
@@ -390,10 +394,8 @@ export function OnboardingForm({
   // Step 4 — discover category (skippable) + final submit
   const filteredCategories =
     categoryQuery.trim().length === 0
-      ? DISCOVER_CATEGORIES
-      : DISCOVER_CATEGORIES.filter((c) =>
-          c.label.includes(categoryQuery.trim()),
-        );
+      ? categories
+      : categories.filter((c) => c.label.includes(categoryQuery.trim()));
 
   return (
     <div className="flex flex-col items-center gap-7">
@@ -463,8 +465,20 @@ export function OnboardingForm({
                       : "bg-background text-foreground hover:bg-background/70",
                   )}
                 >
-                  <span aria-hidden className="text-base">
-                    {c.emoji}
+                  <span
+                    aria-hidden
+                    className="inline-flex items-center text-base"
+                  >
+                    {(() => {
+                      const entry = resolveIconEntry(c.iconKey, null);
+                      const Icon = entry.Icon;
+                      return (
+                        <Icon
+                          className="size-4"
+                          style={selected ? undefined : { color: entry.color }}
+                        />
+                      );
+                    })()}
                   </span>
                   <span className="truncate">{c.label}</span>
                 </button>

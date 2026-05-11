@@ -9,6 +9,7 @@ import {
   MeHeaderActions,
   MeSettingsButton,
 } from "@/components/dashboard/me-header-actions";
+import type { QrStyle } from "@/lib/qr/types";
 import { PageSwitcher, type PageSwitcherItem } from "./page-switcher";
 import { cn } from "@/lib/utils";
 
@@ -16,12 +17,17 @@ interface MobileHeaderContentProps {
   // Page switcher data (shared across all layouts)
   pages: PageSwitcherItem[];
   currentPageId: string;
-  signOut: () => Promise<void>;
   // MeHeaderActions data (only shown on /me)
   publicUrl: string;
   slug: string;
   displayName: string;
   host: string;
+  /** Forwarded to <PublicShareBar/> for QR style persistence + plan gating. */
+  canCustomizeQr: boolean;
+  savedQrStyle?: QrStyle | null;
+  saveQrStyleAction?: (
+    style: QrStyle,
+  ) => Promise<{ status: string; message?: string }>;
   // Plan data (used in /more header)
   planKey: "free" | "pro" | "business";
   isOnTrial: boolean;
@@ -38,11 +44,13 @@ interface MobileHeaderContentProps {
 export function MobileHeaderContent({
   pages,
   currentPageId,
-  signOut,
   publicUrl,
   slug,
   displayName,
   host,
+  canCustomizeQr,
+  savedQrStyle,
+  saveQrStyleAction,
   planKey,
   isOnTrial,
   trialEndsAt,
@@ -66,7 +74,6 @@ export function MobileHeaderContent({
         <PageSwitcher
           pages={pages}
           currentPageId={currentPageId}
-          signOut={signOut}
           variant="compact"
         />
       </div>
@@ -81,7 +88,6 @@ export function MobileHeaderContent({
           <PageSwitcher
             pages={pages}
             currentPageId={currentPageId}
-            signOut={signOut}
             variant="compact"
           />
         </div>
@@ -92,6 +98,10 @@ export function MobileHeaderContent({
           slug={slug}
           displayName={displayName}
           host={host}
+          pageId={currentPageId}
+          canCustomizeQr={canCustomizeQr}
+          savedQrStyle={savedQrStyle}
+          saveQrStyleAction={saveQrStyleAction}
         />
       </div>
     </div>

@@ -76,6 +76,7 @@ import { PublicShareBar } from "@/components/dashboard/public-share-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import type { DiscoverCategory } from "@/lib/discover";
 import {
   Sheet,
   SheetContent,
@@ -224,6 +225,16 @@ type LinksPageClientProps = {
   /** Phase 6 — Spotlight gating. */
   pinAllowed?: boolean;
   animateAllowed?: boolean;
+  /** When true, the share modal lets the user save QR colour/style. */
+  canCustomizeQr?: boolean;
+  /** DB-persisted QR style — single source of truth. */
+  savedQrStyle?: import("@/lib/qr/types").QrStyle | null;
+  /** Persists QR style to DB. */
+  saveQrStyleAction?: (
+    style: import("@/lib/qr/types").QrStyle,
+  ) => Promise<{ status: string; message?: string }>;
+  /** DB-backed discover categories for the page-settings picker. */
+  categories: DiscoverCategory[];
   setBlockSpotlightAction: (
     state: ActionState,
     formData: FormData,
@@ -273,6 +284,10 @@ export function LinksPageClient({
   productItemsCap,
   pinAllowed = false,
   animateAllowed = false,
+  canCustomizeQr = false,
+  savedQrStyle,
+  saveQrStyleAction,
+  categories,
   setBlockSpotlightAction,
 }: LinksPageClientProps) {
   const router = useRouter();
@@ -306,6 +321,7 @@ export function LinksPageClient({
     useState<EditableFormBlockWithId | null>(null);
   const [savingForm, setSavingForm] = useState(false);
   const [productBuilderOpen, setProductBuilderOpen] = useState(false);
+  const [productBuilderFromAdd, setProductBuilderFromAdd] = useState(false);
   const [editingProductBlock, setEditingProductBlock] =
     useState<EditableProductBlockWithId | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1296,6 +1312,10 @@ export function LinksPageClient({
             slug={profile.slug}
             displayName={profile.fullName || "کارت"}
             host={`${profile.domain}/${profile.slug}`}
+            pageId={profile.id}
+            canCustomizeQr={canCustomizeQr}
+            savedQrStyle={savedQrStyle}
+            saveQrStyleAction={saveQrStyleAction}
           />
         </div>
       </aside>
@@ -1309,12 +1329,12 @@ export function LinksPageClient({
       <Sheet open={previewOpen} onOpenChange={setPreviewOpen}>
         <SheetContent
           side="bottom"
-          className="max-h-[92dvh] rounded-t-[2rem] bg-background p-0"
+          className="h-[90dvh] rounded-t-[2rem] bg-background p-0"
         >
-          <SheetHeader className="border-b px-4 pt-4 pb-4 text-center">
+          <SheetHeader className="shrink-0 border-b px-4 pt-4 pb-4 text-center">
             <SheetTitle className="text-center">پیش‌نمایش زنده</SheetTitle>
           </SheetHeader>
-          <div className="overflow-y-auto px-3 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
             <div className="mx-auto w-full max-w-md">
               <ProfilePreviewMock
                 profile={previewProfile}
@@ -1342,6 +1362,7 @@ export function LinksPageClient({
         onAddProduct={() => {
           setAddOpen(false);
           setEditingProductBlock(null);
+          setProductBuilderFromAdd(true);
           setProductBuilderOpen(true);
         }}
         bookingsLocked={bookingsLocked}
@@ -1384,6 +1405,7 @@ export function LinksPageClient({
         onOpenChange={(o) => {
           setProductBuilderOpen(o);
           if (!o) {
+            setProductBuilderFromAdd(false);
             setEditingProductBlock(null);
             // Refresh once on close to pick up canonical server state
             // (item ids, sort order). We deliberately do NOT refresh
@@ -1394,6 +1416,15 @@ export function LinksPageClient({
         }}
         initial={editingProductBlock}
         itemsCap={productItemsCap}
+        onBack={
+          productBuilderFromAdd
+            ? () => {
+                setProductBuilderOpen(false);
+                setProductBuilderFromAdd(false);
+                setAddOpen(true);
+              }
+            : undefined
+        }
         onAutoSave={handleAutoSaveProduct}
         onUploadItemImage={handleUploadProductImage}
       />
@@ -1405,6 +1436,10 @@ export function LinksPageClient({
         submitting={creatingBooking}
         providerConnections={providerConnections}
         onSubmit={handleCreateBooking}
+        onBack={() => {
+          setBookingFlowOpen(false);
+          setAddOpen(true);
+        }}
       />
 
       <PageSettingsSheet
@@ -1437,6 +1472,7 @@ export function LinksPageClient({
           avatarSeed: profile.avatarSeed,
         }}
         onSave={handleSettingsSave}
+        categories={categories}
         onAvatarUpload={handleAvatarSave}
         onAvatarDelete={handleAvatarDelete}
         onAvatarPickSeed={handleAvatarPickSeed}

@@ -52,7 +52,7 @@ export function ProPromoBar({
       <span className="text-white">
         {isActiveTrial && trialEndsAt
           ? `${toPersianDigits(daysRemaining(trialEndsAt))} روز تا پایان نسخه آزمایشی`
-          : "برای ادامه‌ی دسترسی کامل، اشتراک بگیرید"}
+          : "دسترسی به تمام امکاناتِ ویژه"}
       </span>
       <Link
         href={"/pro" as const}

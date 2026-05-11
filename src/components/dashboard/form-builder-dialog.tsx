@@ -219,7 +219,7 @@ export function FormBuilderDialog({
     ? {
         side: "bottom" as const,
         className:
-          "h-[92dvh] rounded-t-3xl p-0 flex flex-col gap-0 bg-background",
+          "h-[90dvh] rounded-t-3xl p-0 flex flex-col gap-0 bg-background",
         showCloseButton: false,
       }
     : {

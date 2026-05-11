@@ -1,93 +1,92 @@
 /**
- * Discover (kioar.com/discover) — hardcoded taxonomy.
+ * Discover (kioar.com/discover) — DB-backed taxonomy.
  *
- * The directory uses a small, curated category list rather than free-form
- * tags so the home pills stay tidy and creators land in coherent buckets.
- * Slugs are stable identifiers persisted in `profiles.discover_category`;
- * never rename a slug — only add new ones at the bottom.
+ * Categories are managed by admins at /admin/categories. Slugs are the
+ * stable identifiers persisted in `profiles.discover_category`; slug
+ * renames are handled transactionally in the admin action so all
+ * referencing profile rows are updated atomically.
  *
  * Cities are a free-text-with-suggestions list — `profiles.city` is a
  * plain text column, and these are just the dropdown defaults.
  */
 
-export type DiscoverCategorySlug =
-  | "music"
-  | "design"
-  | "education"
-  | "coaching"
-  | "shop"
-  | "restaurant"
-  | "doctor"
-  | "lawyer"
-  | "consultant"
-  | "blogger"
-  | "athlete"
-  | "photographer"
-  | "developer"
-  | "salon";
+import { asc, eq } from "drizzle-orm";
+
+import { getDb } from "@/db";
+import { discoverCategories } from "@/db/schema";
 
 export type DiscoverCategory = {
-  slug: DiscoverCategorySlug;
-  label: string; // Persian display label
-  emoji: string;
+  id: string;
+  slug: string;
+  label: string;
+  iconKey: string;
+  sortOrder: number;
+  isActive: boolean;
 };
 
-export const DISCOVER_CATEGORIES: readonly DiscoverCategory[] = [
-  { slug: "music", label: "موسیقی", emoji: "🎵" },
-  { slug: "design", label: "طراحی", emoji: "🎨" },
-  { slug: "education", label: "آموزش", emoji: "📚" },
-  { slug: "coaching", label: "کوچینگ", emoji: "🎯" },
-  { slug: "shop", label: "فروشگاه", emoji: "🛍️" },
-  { slug: "restaurant", label: "رستوران", emoji: "🍕" },
-  { slug: "doctor", label: "پزشک", emoji: "⚕️" },
-  { slug: "lawyer", label: "وکیل", emoji: "⚖️" },
-  { slug: "consultant", label: "مشاور", emoji: "💼" },
-  { slug: "blogger", label: "بلاگر", emoji: "✍️" },
-  { slug: "athlete", label: "ورزشکار", emoji: "⚽" },
-  { slug: "photographer", label: "عکاس", emoji: "📸" },
-  { slug: "developer", label: "برنامه‌نویس", emoji: "💻" },
-  { slug: "salon", label: "آرایشگاه", emoji: "💇" },
-] as const;
-
-const SLUG_SET = new Set<string>(DISCOVER_CATEGORIES.map((c) => c.slug));
-
-export function isDiscoverCategorySlug(
-  value: unknown,
-): value is DiscoverCategorySlug {
-  return typeof value === "string" && SLUG_SET.has(value);
-}
-
-export function getDiscoverCategory(
-  slug: string | null | undefined,
-): DiscoverCategory | null {
-  if (!slug) return null;
-  return DISCOVER_CATEGORIES.find((c) => c.slug === slug) ?? null;
+/**
+ * Fetch all active categories ordered by sort_order. This is the primary
+ * read path: call it once in each server component that renders pickers
+ * or the directory, then pass the result as a prop to client components.
+ */
+export async function getDiscoverCategories(): Promise<DiscoverCategory[]> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(discoverCategories)
+    .where(eq(discoverCategories.isActive, true))
+    .orderBy(asc(discoverCategories.sortOrder));
+  return rows.map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    label: r.label,
+    iconKey: r.iconKey,
+    sortOrder: r.sortOrder,
+    isActive: r.isActive,
+  }));
 }
 
 /**
- * Major Iranian cities (Persian). Used as the dropdown options on the
- * creator's "City" picker. The DB column is plain text, so any value
- * is acceptable — these are just the curated suggestions.
+ * Fetch all categories (including inactive). Used by /admin/categories.
  */
-export const IRANIAN_CITIES: readonly string[] = [
-  "تهران",
-  "مشهد",
-  "اصفهان",
-  "شیراز",
-  "تبریز",
-  "اهواز",
-  "کرج",
-  "قم",
-  "کرمانشاه",
-  "ارومیه",
-  "رشت",
-  "زاهدان",
-  "کرمان",
-  "همدان",
-  "یزد",
-  "اردبیل",
-  "بندرعباس",
-  "اراک",
-  "ساری",
-  "قزوین",
-] as const;
+export async function getAllDiscoverCategories(): Promise<DiscoverCategory[]> {
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(discoverCategories)
+    .orderBy(asc(discoverCategories.sortOrder));
+  return rows.map((r) => ({
+    id: r.id,
+    slug: r.slug,
+    label: r.label,
+    iconKey: r.iconKey,
+    sortOrder: r.sortOrder,
+    isActive: r.isActive,
+  }));
+}
+
+/**
+ * Fetch a single category by slug. Returns null when not found or inactive.
+ */
+export async function getDiscoverCategoryBySlug(
+  slug: string | null | undefined,
+): Promise<DiscoverCategory | null> {
+  if (!slug) return null;
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(discoverCategories)
+    .where(eq(discoverCategories.slug, slug))
+    .limit(1);
+  if (!row) return null;
+  return {
+    id: row.id,
+    slug: row.slug,
+    label: row.label,
+    iconKey: row.iconKey,
+    sortOrder: row.sortOrder,
+    isActive: row.isActive,
+  };
+}
+
+export { IRANIAN_CITIES } from "@/lib/cities";

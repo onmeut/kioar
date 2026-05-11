@@ -197,7 +197,7 @@ export default async function MorePage() {
   ];
 
   return (
-    <div className="md:hidden">
+    <div>
       <div className="section-shell space-y-5 py-6">
         <MoreSection title="ابزارها" rows={toolsRows} />
         <MoreSection title="حساب و اشتراک" rows={accountRows} />

@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
-import { ChevronDownIcon, LogOutIcon, PlusIcon } from "lucide-react";
+import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import { switchPageAction } from "@/app/(app)/dashboard/pages/actions";
@@ -37,13 +37,6 @@ export type PageSwitcherItem = {
 interface PageSwitcherProps {
   pages: PageSwitcherItem[];
   currentPageId: string;
-  /**
-   * Server action that signs the current user out. Threaded through here
-   * because the sidebar-footer user dropdown was removed in favor of a
-   * dedicated upgrade card; the page-switcher inherits its sign-out
-   * affordance.
-   */
-  signOut: () => Promise<void>;
   /**
    * `sidebar` (default) renders the full-width sidebar trigger row.
    * `compact` renders a small avatar + chevron pill — used in the
@@ -126,7 +119,6 @@ function PageAvatar({
 export function PageSwitcher({
   pages,
   currentPageId,
-  signOut,
   variant = "sidebar",
 }: PageSwitcherProps) {
   const router = useRouter();
@@ -187,19 +179,6 @@ export function PageSwitcher({
         </span>
         <span className="text-sm font-medium">صفحه‌ی جدید</span>
       </DropdownMenuItem>
-
-      <DropdownMenuSeparator />
-
-      <DropdownMenuItem
-        onClick={() => startTransition(() => void signOut())}
-        disabled={isPending}
-        className="cursor-pointer items-center gap-3 py-2 text-destructive focus:bg-destructive/10 focus:text-destructive"
-      >
-        <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-          <LogOutIcon className="size-4" aria-hidden />
-        </span>
-        <span className="text-sm font-medium">خروج از حساب</span>
-      </DropdownMenuItem>
     </DropdownMenuContent>
   );
 
@@ -238,16 +217,16 @@ export function PageSwitcher({
             <PageAvatar page={current} size={32} />
             <span className="min-w-0 flex-1 truncate text-sm font-semibold">
               {current.title}
-              </span>
-              <PlanBadge
-                planKey={current.planKey}
-                isOnTrial={current.isOnTrial}
-              />
-              <ChevronDownIcon
-                className="size-4 shrink-0 text-muted-foreground"
-                aria-hidden
-              />
-            </SidebarMenuButton>
+            </span>
+            <PlanBadge
+              planKey={current.planKey}
+              isOnTrial={current.isOnTrial}
+            />
+            <ChevronDownIcon
+              className="size-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+          </SidebarMenuButton>
 
           {dropdownContent}
         </DropdownMenu>

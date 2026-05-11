@@ -56,7 +56,10 @@ export type AdminAuditAction =
   | "affiliate.banking.update"
   | "affiliate.commission.suppressed_paused"
   | "affiliate.commission.adjust"
-  | "affiliate.settings.update";
+  | "affiliate.settings.update"
+  | "discover_category.create"
+  | "discover_category.update"
+  | "discover_category.deactivate";
 
 type Executor = {
   insert: ReturnType<typeof getDb>["insert"];
@@ -197,4 +200,7 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   "affiliate.commission.suppressed_paused": "تعلیق کمیسیون به‌علت توقف شریک",
   "affiliate.commission.adjust": "تنظیم دستی کمیسیون",
   "affiliate.settings.update": "بروزرسانی تنظیمات همکاری در فروش",
+  "discover_category.create": "ایجاد دسته‌بندی دیسکاور",
+  "discover_category.update": "ویرایش دسته‌بندی دیسکاور",
+  "discover_category.deactivate": "غیرفعال‌سازی دسته‌بندی دیسکاور",
 };

@@ -393,9 +393,9 @@ function BookingDetailSheet({
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
       <SheetContent
         side="bottom"
-        className="flex max-h-[92dvh] flex-col gap-0 sm:max-w-lg sm:mx-auto"
+        className="flex h-[90dvh] flex-col gap-0 sm:max-w-lg sm:mx-auto"
       >
-        <SheetHeader className="border-b">
+        <SheetHeader className="shrink-0 border-b">
           <SheetTitle className="text-base">
             {item.type?.title ?? item.block.name}
           </SheetTitle>
@@ -404,7 +404,7 @@ function BookingDetailSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 safe-pb">
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-4 px-4 py-4 safe-pb">
           {/* When */}
           <section className="space-y-1 rounded-2xl border bg-muted/30 p-3">
             <div className="flex items-center gap-2 text-sm font-semibold">

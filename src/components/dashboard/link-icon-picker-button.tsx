@@ -103,7 +103,7 @@ export function LinkIconPickerButton({
             side="bottom"
             className="flex h-[80dvh] flex-col gap-0 rounded-t-3xl p-0"
           >
-            <div className="grid grid-cols-[40px_1fr_40px] items-center border-b px-4 py-3">
+            <div className="grid shrink-0 grid-cols-[40px_1fr_40px] items-center border-b px-4 py-3">
               <div />
               <SheetTitle className="text-center text-base font-bold">
                 انتخاب آیکون

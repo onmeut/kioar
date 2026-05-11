@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
-import Image from "next/image";
 import {
   CheckIcon,
   Loader2Icon,
@@ -346,13 +345,10 @@ export function ProfileAvatarModal({
             <DialogHeader className="px-5 pt-6 pb-4 text-center sm:text-center">
               <div className="relative mx-auto my-3 size-28 overflow-hidden rounded-full">
                 {shown ? (
-                  <Image
+                  <img
                     src={shown}
                     alt=""
-                    fill
-                    sizes="112px"
-                    className="object-cover"
-                    unoptimized={Boolean(preview)}
+                    className="absolute inset-0 size-full object-cover"
                   />
                 ) : (
                   <KioarAvatar seed={currentSeed} size={112} />

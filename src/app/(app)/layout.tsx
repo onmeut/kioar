@@ -1,5 +1,4 @@
 import type { Route } from "next";
-import { signOutAction } from "@/app/(app)/dashboard/actions";
 import { ImpersonationBar } from "@/components/admin/impersonation-bar";
 import { MeHeaderActions } from "@/components/dashboard/me-header-actions";
 import { CommandPaletteTrigger } from "@/components/navigation/command-palette-trigger";
@@ -32,8 +31,10 @@ import { requireCompletedProfile } from "@/lib/auth/session";
 import { pageHasFeature } from "@/lib/entitlements";
 import { listOwnedPagesWithPlan } from "@/lib/pages";
 import { profileShareUrl } from "@/lib/profile-domains";
+import { DEFAULT_QR_STYLE } from "@/lib/qr/types";
 import { getReferralAvailableMonths } from "@/lib/referrals";
 import { getSidebarBadgeCounts } from "@/lib/sidebar-counts";
+import { saveQrStyleAction } from "./me/autosave-actions";
 
 export default async function DashboardLayout({
   children,
@@ -88,12 +89,17 @@ export default async function DashboardLayout({
   // `pageHasFeature` once per render. Any failure degrades to "locked",
   // which surfaces the upgrade route — the same outcome a Free user
   // would see, so it's safe.
-  const [contactFormFeature, bookingsFeature, csvExportFeature] =
-    await Promise.all([
-      pageHasFeature(currentPageId, "business_contact_form").catch(() => false),
-      pageHasFeature(currentPageId, "business_bookings").catch(() => false),
-      pageHasFeature(currentPageId, "analytics_csv_export").catch(() => false),
-    ]);
+  const [
+    contactFormFeature,
+    bookingsFeature,
+    csvExportFeature,
+    qrCustomizationFeature,
+  ] = await Promise.all([
+    pageHasFeature(currentPageId, "business_contact_form").catch(() => false),
+    pageHasFeature(currentPageId, "business_bookings").catch(() => false),
+    pageHasFeature(currentPageId, "analytics_csv_export").catch(() => false),
+    pageHasFeature(currentPageId, "qr_code_customization").catch(() => false),
+  ]);
 
   // Public URL of the current page — used by "view public", "copy link"
   // commands. Domain comes from the profile row (each page can pick its
@@ -204,7 +210,6 @@ export default async function DashboardLayout({
                   <PageSwitcher
                     pages={switcherItems}
                     currentPageId={viewer.profile.id}
-                    signOut={signOutAction}
                   />
                 </SidebarGroupContent>
               </SidebarGroup>
@@ -245,13 +250,19 @@ export default async function DashboardLayout({
                 <MobileHeaderContent
                   pages={switcherItems}
                   currentPageId={viewer.profile.id}
-                  signOut={signOutAction}
                   publicUrl={publicUrl}
                   slug={viewer.profile.slug}
                   displayName={
                     viewer.profile.fullName || viewer.profile.title || "کارت"
                   }
                   host={`${viewer.profile.domain}/${viewer.profile.slug}`}
+                  canCustomizeQr={qrCustomizationFeature}
+                  savedQrStyle={
+                    (viewer.profile.qrStyle as
+                      | import("@/lib/qr/types").QrStyle
+                      | null) ?? null
+                  }
+                  saveQrStyleAction={saveQrStyleAction}
                   planKey={currentPage?.planKey ?? "free"}
                   isOnTrial={currentPage?.isOnTrial ?? false}
                   trialEndsAt={currentPage?.trialEndsAt ?? null}
@@ -289,6 +300,14 @@ export default async function DashboardLayout({
                       viewer.profile.fullName || viewer.profile.title || "کارت"
                     }
                     host={`${viewer.profile.domain}/${viewer.profile.slug}`}
+                    pageId={currentPageId}
+                    canCustomizeQr={qrCustomizationFeature}
+                    savedQrStyle={
+                      (viewer.profile.qrStyle as
+                        | import("@/lib/qr/types").QrStyle
+                        | null) ?? null
+                    }
+                    saveQrStyleAction={saveQrStyleAction}
                   />
                 </div>
               </div>

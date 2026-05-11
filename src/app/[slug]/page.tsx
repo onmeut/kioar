@@ -252,6 +252,14 @@ export default async function PublicProfilePage({
               <PublicProfileShareButton
                 url={publicUrl}
                 title={displayName}
+                slug={slug}
+                avatarUrl={profile.avatarUrl}
+                avatarSeed={profile.avatarSeed}
+                qrStyle={
+                  (profile.qrStyle as
+                    | import("@/lib/qr/types").QrStyle
+                    | null) ?? null
+                }
                 className="bg-foreground/[0.07] shadow-none hover:bg-foreground/12"
               />
             </div>
@@ -367,7 +375,12 @@ export default async function PublicProfilePage({
       </div>
 
       {/* Desktop only: scan-on-mobile QR */}
-      <DesktopMobileQr url={publicUrl} />
+      <DesktopMobileQr
+        url={publicUrl}
+        qrStyle={
+          (profile.qrStyle as import("@/lib/qr/types").QrStyle | null) ?? null
+        }
+      />
       <PublicLinkClickTracker />
       <script
         type="application/ld+json"

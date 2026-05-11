@@ -57,9 +57,9 @@ export function SpotlightModal(props: SpotlightModalProps) {
       <Sheet open={props.open} onOpenChange={props.onOpenChange}>
         <SheetContent
           side="bottom"
-          className="flex max-h-[92dvh] flex-col gap-0 rounded-t-3xl p-0"
+          className="flex h-[90dvh] flex-col gap-0 rounded-t-3xl p-0"
         >
-          <SheetTitle className="border-b px-4 py-3 text-center text-base font-bold">
+          <SheetTitle className="shrink-0 border-b px-4 py-3 text-center text-base font-bold">
             تمرکز
           </SheetTitle>
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-4">

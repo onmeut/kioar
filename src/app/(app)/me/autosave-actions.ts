@@ -13,6 +13,7 @@ import {
   saveProfileDetailsForUser,
   saveProfileLinksForUser,
 } from "@/lib/profile-service";
+import { DEFAULT_QR_STYLE, type QrStyle } from "@/lib/qr/types";
 import { deletePublicImage, uploadPublicImage } from "@/lib/storage";
 import { profileLinksArraySchema } from "@/lib/validations";
 import type { z } from "zod";
@@ -338,4 +339,60 @@ export async function reorderBlocksAction(
   revalidatePath("/me");
   revalidatePath(`/${viewer.profile.slug}`);
   return { status: "success", message: "ذخیره شد" };
+}
+
+/**
+ * Persist the user's custom QR style to the `profiles.qr_style` column
+ * so it becomes the single source of truth — shared between the share
+ * modal preview, digital card, and the desktop scan-on-mobile QR widget
+ * on the public page.
+ *
+ * Only whitelisted fields are stored; arbitrary jsonb blobs are rejected.
+ */
+export async function saveQrStyleAction(style: QrStyle): Promise<ActionState> {
+  const viewer = await requireCompletedProfile();
+
+  // Validate by merging with defaults — unknown fields are dropped, missing
+  // fields fall back to the safe default values.
+  const safe: QrStyle = {
+    dotStyle:
+      style.dotStyle === "square" ||
+      style.dotStyle === "dots" ||
+      style.dotStyle === "rounded"
+        ? style.dotStyle
+        : DEFAULT_QR_STYLE.dotStyle,
+    markerCenter:
+      style.markerCenter === "square" || style.markerCenter === "dot"
+        ? style.markerCenter
+        : DEFAULT_QR_STYLE.markerCenter,
+    markerBorder:
+      style.markerBorder === "square" ||
+      style.markerBorder === "rounded" ||
+      style.markerBorder === "circle"
+        ? style.markerBorder
+        : DEFAULT_QR_STYLE.markerBorder,
+    dotColor: /^#[0-9a-fA-F]{6}$/.test(style.dotColor ?? "")
+      ? style.dotColor
+      : DEFAULT_QR_STYLE.dotColor,
+    markerColor: /^#[0-9a-fA-F]{6}$/.test(style.markerColor ?? "")
+      ? style.markerColor
+      : DEFAULT_QR_STYLE.markerColor,
+    showLogo:
+      typeof style.showLogo === "boolean"
+        ? style.showLogo
+        : DEFAULT_QR_STYLE.showLogo,
+  };
+
+  const db = getDb();
+  await db
+    .update(profiles)
+    .set({ qrStyle: safe, updatedAt: new Date() })
+    .where(eq(profiles.id, viewer.profile.id));
+
+  await invalidateProfileCacheBySlug(viewer.profile.slug);
+
+  revalidatePath("/me");
+  revalidatePath(`/${viewer.profile.slug}`);
+
+  return { status: "success", message: "شخصی‌سازی کیو‌آر‌کد ذخیره شد." };
 }

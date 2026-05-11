@@ -8,10 +8,10 @@ import { getDb } from "@/db";
 import { profiles, profileStatsByDay } from "@/db/schema";
 import { tehranIsoDate } from "@/lib/date/persian";
 import {
-  DISCOVER_CATEGORIES,
-  getDiscoverCategory,
-  isDiscoverCategorySlug,
+  getDiscoverCategories,
+  type DiscoverCategory,
 } from "@/lib/discover";
+import { resolveIconEntry } from "@/lib/link-icons";
 import { absoluteUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
@@ -84,12 +84,16 @@ export default async function DiscoverPage({
 }) {
   const sp = await searchParams;
   const categoryRaw = readParam(sp.category);
-  const category = isDiscoverCategorySlug(categoryRaw) ? categoryRaw : null;
   const sortRaw = readParam(sp.sort);
   const sort: SortKey = sortRaw === "popular" ? "popular" : "newest";
   const pageRaw = readParam(sp.page);
   const pageNum = Math.max(1, Number.parseInt(pageRaw ?? "1", 10) || 1);
   const offset = (pageNum - 1) * PAGE_SIZE;
+
+  // Fetch categories from DB; build a slug set for URL param validation
+  const dbCategories = await getDiscoverCategories();
+  const validSlugs = new Set(dbCategories.map((c) => c.slug));
+  const category = categoryRaw && validSlugs.has(categoryRaw) ? categoryRaw : null;
 
   const db = getDb();
 
@@ -244,13 +248,13 @@ export default async function DiscoverPage({
                   همه
                 </CategoryPill>
               </li>
-              {DISCOVER_CATEGORIES.map((c) => (
+              {dbCategories.map((c) => (
                 <li key={c.slug} className="shrink-0">
                   <CategoryPill
                     href={buildHref({ category: c.slug, sort, page: 1 })}
                     active={category === c.slug}
                   >
-                    <span className="me-1.5">{c.emoji}</span>
+                    <DiscoverCategoryIcon iconKey={c.iconKey} className="me-1.5 size-4" />
                     {c.label}
                   </CategoryPill>
                 </li>
@@ -266,13 +270,13 @@ export default async function DiscoverPage({
                   همه
                 </CategoryPill>
               </li>
-              {DISCOVER_CATEGORIES.map((c) => (
+              {dbCategories.map((c) => (
                 <li key={c.slug}>
                   <CategoryPill
                     href={buildHref({ category: c.slug, sort, page: 1 })}
                     active={category === c.slug}
                   >
-                    <span className="me-1.5">{c.emoji}</span>
+                    <DiscoverCategoryIcon iconKey={c.iconKey} className="me-1.5 size-4" />
                     {c.label}
                   </CategoryPill>
                 </li>
@@ -317,7 +321,7 @@ export default async function DiscoverPage({
                     title={item.title}
                     avatarUrl={item.avatarUrl}
                     avatarSeed={item.avatarSeed}
-                    discoverCategory={item.discoverCategory}
+                    categoryLabel={dbCategories.find((c) => c.slug === item.discoverCategory)?.label ?? null}
                   />
                 </li>
               ))}
@@ -362,6 +366,18 @@ export default async function DiscoverPage({
   );
 }
 
+function DiscoverCategoryIcon({
+  iconKey,
+  className,
+}: {
+  iconKey: string;
+  className?: string;
+}) {
+  const entry = resolveIconEntry(iconKey, null);
+  const Icon = entry.Icon;
+  return <Icon className={className} />;
+}
+
 function CategoryPill({
   href,
   active,
@@ -392,17 +408,16 @@ function DiscoverCard({
   title,
   avatarUrl,
   avatarSeed,
-  discoverCategory,
+  categoryLabel,
 }: {
   slug: string;
   fullName: string | null;
   title: string | null;
   avatarUrl: string | null;
   avatarSeed: string | null;
-  discoverCategory: string | null;
+  categoryLabel: string | null;
 }) {
   const displayName = fullName?.trim() || title?.trim() || slug;
-  const category = getDiscoverCategory(discoverCategory);
 
   return (
     <Link
@@ -431,9 +446,9 @@ function DiscoverCard({
           <h2 className="line-clamp-2 text-3xl font-bold leading-[1.1] text-foreground">
             {displayName}
           </h2>
-          {category && (
+          {categoryLabel && (
             <p className="mt-1.5 text-sm font-medium text-muted-foreground/80">
-              {category.label}
+              {categoryLabel}
             </p>
           )}
         </div>

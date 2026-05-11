@@ -68,6 +68,9 @@ export type LinkPreset = {
   category: "suggested" | "social" | "media" | "contact" | "commerce";
   prefix?: string;
   defaultLabel?: string;
+  /** When true, show a username (@) input instead of a full URL field.
+   *  The full URL is built as `prefix + username` before saving. */
+  usernameOnly?: boolean;
 };
 
 export const LINK_PRESETS: LinkPreset[] = [
@@ -82,38 +85,42 @@ export const LINK_PRESETS: LinkPreset[] = [
   {
     key: "instagram",
     label: "اینستاگرام",
-    description: "پست‌ها و ریلزهای شما",
+    description: "پست\u200cها و ریلزهای خود را نمایش دهید",
     icon: UsersIcon,
     category: "social",
     prefix: "https://instagram.com/",
     defaultLabel: "اینستاگرام",
+    usernameOnly: true,
   },
   {
     key: "tiktok",
     label: "تیک‌تاک",
-    description: "ویدیوهای کوتاه",
+    description: "ویدیوهای تیک\u200cتاکتان را به اشتراک بگذارید",
     icon: PlayIcon,
     category: "social",
     prefix: "https://www.tiktok.com/@",
-    defaultLabel: "تیک‌تاک",
+    defaultLabel: "تیک\u200cتاک",
+    usernameOnly: true,
   },
   {
     key: "youtube",
     label: "یوتیوب",
-    description: "کانال یوتیوب",
+    description: "ویدیوهای یوتیوب را به اشتراک بگذارید",
     icon: PlayIcon,
     category: "media",
     prefix: "https://youtube.com/@",
     defaultLabel: "یوتیوب",
+    usernameOnly: true,
   },
   {
     key: "twitter",
     label: "ایکس / توییتر",
-    description: "پروفایل X",
+    description: "پروفایل X خود را به اشتراک بگذارید",
     icon: UsersIcon,
     category: "social",
     prefix: "https://x.com/",
     defaultLabel: "ایکس",
+    usernameOnly: true,
   },
   {
     key: "telegram",
@@ -262,7 +269,7 @@ export function AddLinkDialog({
           className="max-h-[92dvh] overflow-hidden rounded-t-3xl p-0"
           showCloseButton={false}
         >
-          <SheetTitle className="sr-only">افزودن بلاک</SheetTitle>
+          <SheetTitle className="sr-only">افزودن لینک</SheetTitle>
           <AddLinkDialogBody
             onClose={() => onOpenChange(false)}
             onSubmit={onSubmit}
@@ -288,7 +295,7 @@ export function AddLinkDialog({
         className="w-full max-w-xl p-0 sm:max-w-2xl"
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">افزودن بلاک</DialogTitle>
+        <DialogTitle className="sr-only">افزودن لینک</DialogTitle>
         <AddLinkDialogBody
           onClose={() => onOpenChange(false)}
           onSubmit={onSubmit}
@@ -360,7 +367,7 @@ function AddLinkDialogBody({
       LINK_PRESETS.filter((item) =>
         activeCategory === "suggested"
           ? item.category === "suggested" ||
-            ["instagram", "youtube", "tiktok"].includes(item.key)
+            ["instagram", "youtube", "tiktok", "twitter"].includes(item.key)
           : item.category === activeCategory,
       ),
     [activeCategory],
@@ -422,10 +429,13 @@ function AddLinkDialogBody({
   function pick(preset: LinkPreset) {
     setPreset(preset);
     setStep("compose");
-    const seedUrl = preset.prefix ?? "";
+    // For username-only presets, start with an empty string.
+    // For regular presets, seed the URL with the prefix.
+    const seedUrl = preset.usernameOnly ? "" : (preset.prefix ?? "");
     setUrl(seedUrl);
     if (preset.defaultLabel) setLabel(preset.defaultLabel);
-    setIconKey(detectIconKey(seedUrl) ?? "auto");
+    // Detect icon using the prefix URL so the correct brand icon is shown.
+    setIconKey(detectIconKey(preset.prefix ?? seedUrl) ?? "auto");
     setIconUrl(null);
   }
 
@@ -439,7 +449,14 @@ function AddLinkDialogBody({
 
   function handleSubmit() {
     const trimmedLabel = label.trim();
-    const normalizedUrl = normalizeLinkUrl(url);
+    let normalizedUrl: string;
+    if (preset?.usernameOnly && preset.prefix) {
+      normalizedUrl = normalizeLinkUrl(
+        preset.prefix + url.trim().replace(/^@/, ""),
+      );
+    } else {
+      normalizedUrl = normalizeLinkUrl(url);
+    }
     if (!trimmedLabel || !isSafeLinkUrl(normalizedUrl)) return;
     onSubmit({
       label: trimmedLabel,
@@ -475,7 +492,7 @@ function AddLinkDialogBody({
             </button>
           ) : null}
         </div>
-        <h2 className="text-center text-lg font-bold">افزودن بلاک</h2>
+        <h2 className="text-center text-lg font-bold">افزودن لینک</h2>
         <div className="flex justify-end">
           <Button
             type="button"
@@ -730,41 +747,54 @@ function ComposeStep({
   onCancel: () => void;
   onSubmit: () => void;
 }) {
-  const normalizedUrl = normalizeLinkUrl(url);
+  const isUsernameOnly = Boolean(preset?.usernameOnly);
+  const urlPrefix = preset?.prefix ?? "";
+  // For username-only presets, the effective URL is built from prefix + typed username.
+  const effectiveUrl = isUsernameOnly
+    ? urlPrefix + url.trim().replace(/^@/, "")
+    : url;
+  const normalizedUrl = normalizeLinkUrl(effectiveUrl);
   const urlValid = isSafeLinkUrl(normalizedUrl);
-  const canSubmit = urlValid && Boolean(label.trim());
+  const canSubmit =
+    (isUsernameOnly ? Boolean(url.trim()) : urlValid) && Boolean(label.trim());
 
-  // The preview / title / description fields appear as soon as the URL
-  // is syntactically valid. Metadata fetching is manual ("دریافت خودکار”
-  // button) so we never block on it; the user can always fill in fields
-  // themselves if a host hides its OG tags from us.
-  const showFields = urlValid;
-  const showSkeleton = showFields && isFetching;
-  void preset;
+  // Fields appear once URL is valid (or username is typed for username-only).
+  const showFields = isUsernameOnly ? Boolean(url.trim()) : urlValid;
+  const showSkeleton = showFields && isFetching && !isUsernameOnly;
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-5">
         <div className="space-y-2">
-          <Label htmlFor="new-link-url">نشانی</Label>
+          <Label htmlFor="new-link-url">
+            {isUsernameOnly ? "نام کاربری" : "نشانی"}
+          </Label>
           <div
             dir="ltr"
             className="flex h-14 items-center gap-2 rounded-2xl border border-border bg-transparent px-4 transition-colors duration-200 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/20"
           >
-            <GlobeIcon
-              className="size-5 shrink-0 text-muted-foreground"
-              aria-hidden
-            />
+            {isUsernameOnly ? (
+              <span className="shrink-0 text-base font-medium text-muted-foreground">
+                @
+              </span>
+            ) : (
+              <GlobeIcon
+                className="size-5 shrink-0 text-muted-foreground"
+                aria-hidden
+              />
+            )}
             <input
               id="new-link-url"
               value={url}
-              onChange={(event) => onChangeUrl(event.target.value)}
-              type="url"
-              inputMode="url"
+              onChange={(event) =>
+                onChangeUrl(event.target.value.replace(/^@/, ""))
+              }
+              type={isUsernameOnly ? "text" : "url"}
+              inputMode={isUsernameOnly ? "text" : "url"}
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
               dir="ltr"
-              placeholder="example.com"
+              placeholder={isUsernameOnly ? "username" : "example.com"}
               autoFocus
               className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted-foreground"
             />
@@ -773,7 +803,7 @@ function ComposeStep({
                 className="size-4 shrink-0 animate-spin text-muted-foreground"
                 aria-hidden
               />
-            ) : urlValid ? (
+            ) : urlValid && !isUsernameOnly ? (
               <Button
                 type="button"
                 variant="outline"
@@ -892,7 +922,7 @@ function ComposeStep({
           disabled={!canSubmit}
           onClick={onSubmit}
         >
-          افزودن بلاک
+          افزودن لینک
         </Button>
       </div>
     </div>

@@ -17,7 +17,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ChevronDownIcon,
-  ChevronRightIcon,
+  ArrowLeftIcon,
   GripVerticalIcon,
   ImageIcon,
   ImageOffIcon,
@@ -314,6 +314,10 @@ export type ProductBuilderDialogProps = {
   onOpenChange: (open: boolean) => void;
   initial?: ProductBlockDraft | null;
   itemsCap?: number;
+  /** Called when the user presses the back arrow on the main (non-editing) view.
+   * If provided, the arrow navigates back (e.g. re-opens the add-links modal).
+   * If omitted, the arrow closes the dialog. */
+  onBack?: () => void;
   /** Auto-save handler: persists the draft (creates the block on first
    * call when payload.id is null) and returns the resulting block id so
    * the dialog can keep editing the same row. Returns null on failure.
@@ -329,6 +333,7 @@ export function ProductBuilderDialog({
   onOpenChange,
   initial,
   itemsCap = PRODUCT_ITEMS_HARD_CAP,
+  onBack,
   onAutoSave,
   onUploadItemImage,
 }: ProductBuilderDialogProps) {
@@ -412,7 +417,7 @@ export function ProductBuilderDialog({
     ? {
         side: "bottom" as const,
         className:
-          "h-[92dvh] rounded-t-3xl p-0 flex flex-col gap-0 bg-background",
+          "h-[90dvh] rounded-t-3xl p-0 flex flex-col gap-0 bg-background",
         showCloseButton: false,
       }
     : {
@@ -434,25 +439,28 @@ export function ProductBuilderDialog({
       <Content {...contentProps}>
         <Title className="sr-only">{headerTitle}</Title>
 
-        <header className="flex items-center justify-between border-b px-4 py-3">
-          <button
+        <header className="flex shrink-0 items-center justify-between border-b px-3 py-2.5">
+          <Button
             type="button"
+            size="icon-sm"
+            variant="ghost"
+            className="rounded-full"
             onClick={() => {
               if (pendingItem !== null) setPendingItem(null);
               else if (editingIndex !== null) setEditingIndex(null);
+              else if (onBack) onBack();
               else onOpenChange(false);
             }}
-            className="grid size-9 place-items-center rounded-full hover:bg-muted"
             aria-label={
-              pendingItem !== null || editingIndex !== null ? "بازگشت" : "بستن"
+              pendingItem !== null || editingIndex !== null
+                ? "بازگشت"
+                : onBack
+                  ? "بازگشت"
+                  : "بستن"
             }
           >
-            {pendingItem !== null || editingIndex !== null ? (
-              <ChevronRightIcon className="size-5" />
-            ) : (
-              <XIcon className="size-5" />
-            )}
-          </button>
+            <ArrowLeftIcon className="size-5 rtl:scale-x-[-1]" />
+          </Button>
           <div className="flex flex-col items-center">
             <h2 className="text-sm font-bold">{headerTitle}</h2>
             {pendingItem === null && editingIndex === null ? (
@@ -465,7 +473,16 @@ export function ProductBuilderDialog({
               </span>
             ) : null}
           </div>
-          <div className="size-9" aria-hidden />
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            className="rounded-full"
+            onClick={() => onOpenChange(false)}
+            aria-label="بستن"
+          >
+            <XIcon className="size-5" />
+          </Button>
         </header>
 
         {/* -------------------------------------------------- ITEM EDITOR */}
@@ -937,7 +954,7 @@ function ItemEditor({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 pb-24">
+      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <div className="grid gap-1.5">
           <Label htmlFor="item-title">عنوان</Label>
           <Input
@@ -1148,8 +1165,8 @@ function ItemEditor({
         </div>
       </div>
 
-      {/* Sticky submit bar */}
-      <div className="sticky bottom-0 border-t bg-background px-4 py-3 safe-pb">
+      {/* Submit bar — flex sibling sits naturally at the bottom of the flex column */}
+      <div className="shrink-0 border-t bg-background px-4 py-3 safe-area-bottom">
         <Button
           type="button"
           onClick={handleSubmit}

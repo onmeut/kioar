@@ -20,22 +20,10 @@ const CHANNEL_KINDS = [
   "other",
 ] as const;
 
-const AUDIENCE_SIZES = [
-  "lt_1k",
-  "1k_10k",
-  "10k_50k",
-  "50k_200k",
-  "200k_plus",
-] as const;
-
 type ChannelKind = (typeof CHANNEL_KINDS)[number];
-type AudienceSize = (typeof AUDIENCE_SIZES)[number];
 
 function isChannelKind(v: string): v is ChannelKind {
   return (CHANNEL_KINDS as readonly string[]).includes(v);
-}
-function isAudienceSize(v: string): v is AudienceSize {
-  return (AUDIENCE_SIZES as readonly string[]).includes(v);
 }
 
 /**
@@ -56,11 +44,8 @@ export async function submitAffiliateApplicationAction(
   }
 
   const fullName = String(formData.get("fullName") ?? "").trim();
-  const email = String(formData.get("email") ?? "").trim();
   const channelKind = String(formData.get("channelKind") ?? "").trim();
   const channelUrl = String(formData.get("channelUrl") ?? "").trim();
-  const audienceSize = String(formData.get("audienceSize") ?? "").trim();
-  const promotionPlan = String(formData.get("promotionPlan") ?? "").trim();
 
   const fieldErrors: Record<string, string[]> = {};
   if (fullName.length < 2)
@@ -69,26 +54,13 @@ export async function submitAffiliateApplicationAction(
     fieldErrors.channelKind = ["یکی از گزینه‌ها رو انتخاب کن."];
   if (channelUrl.length < 4)
     fieldErrors.channelUrl = ["لینک یا آدرس کانالت رو وارد کن."];
-  if (!isAudienceSize(audienceSize))
-    fieldErrors.audienceSize = ["محدوده‌ی مخاطبت رو انتخاب کن."];
-  if (promotionPlan.length < 20)
-    fieldErrors.promotionPlan = [
-      "یه توضیح کوتاه (حداقل ۲۰ حرف) درباره‌ی نحوه‌ی معرفی بنویس.",
-    ];
 
   if (Object.keys(fieldErrors).length > 0) {
     return {
       status: "error",
       message: "چند مورد رو درست کن و دوباره ارسال کن.",
       fieldErrors,
-      values: {
-        fullName,
-        email,
-        channelKind,
-        channelUrl,
-        audienceSize,
-        promotionPlan,
-      },
+      values: { fullName, channelKind, channelUrl },
     };
   }
 
@@ -96,11 +68,11 @@ export async function submitAffiliateApplicationAction(
     userId: viewer.user.id,
     applicantName: fullName,
     contactPhone: viewer.user.phone,
-    contactEmail: email || null,
+    contactEmail: null,
     channelKind: channelKind as ChannelKind,
     channelUrl,
-    audienceSize: audienceSize as AudienceSize,
-    promotionPlan,
+    audienceSize: "lt_1k",
+    promotionPlan: "",
   });
 
   if (!result.ok) {

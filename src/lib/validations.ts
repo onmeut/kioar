@@ -2,7 +2,6 @@ import { z } from "zod";
 
 import { normalizeIranianPhone } from "@/lib/phone";
 import { toEnglishDigits } from "@/lib/persian";
-import { isDiscoverCategorySlug } from "@/lib/discover";
 import { isIconKey } from "@/lib/link-icons";
 import { isPageTypeSlug } from "@/lib/page-type";
 import { DEFAULT_PROFILE_DOMAIN, isProfileDomain } from "@/lib/profile-domains";
@@ -383,10 +382,7 @@ export const pageSettingsFormSchema = z.object({
     .trim()
     .optional()
     .nullable()
-    .transform((v) => (v && v.length ? v : null))
-    .refine((v) => v === null || isDiscoverCategorySlug(v), {
-      message: "دسته‌بندی نامعتبر است.",
-    }),
+    .transform((v) => (v && v.length ? v : null)),
   city: z
     .string()
     .trim()
@@ -439,10 +435,7 @@ export const onboardingProfileSchema = z.object({
     .trim()
     .optional()
     .nullable()
-    .transform((v) => (v && v.length ? v : null))
-    .refine((v) => v === null || isDiscoverCategorySlug(v), {
-      message: "دسته‌بندی نامعتبر است.",
-    }),
+    .transform((v) => (v && v.length ? v : null)),
 });
 
 function isValidDateInput(value: string) {

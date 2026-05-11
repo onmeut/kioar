@@ -1,9 +1,11 @@
-import { UserIcon } from "lucide-react";
+import { LogOutIcon, UserIcon } from "lucide-react";
 
+import { signOutAction } from "@/app/(app)/dashboard/actions";
 import { requireUser } from "@/lib/auth/session";
 import { formatPhoneDisplay } from "@/lib/phone";
 import { toPersianDigits } from "@/lib/persian";
 import { AccountForm } from "@/components/app/account-form";
+import { Button } from "@/components/ui/button";
 
 export const metadata = {
   title: "حساب کاربری",
@@ -50,6 +52,17 @@ export default async function AccountPage() {
           />
         </div>
       </div>
+
+      <form action={signOutAction} className="mt-4">
+        <Button
+          type="submit"
+          variant="outline"
+          className="h-12 w-full rounded-full text-sm font-bold"
+        >
+          <LogOutIcon className="size-4" aria-hidden />
+          خروج از حساب
+        </Button>
+      </form>
     </div>
   );
 }

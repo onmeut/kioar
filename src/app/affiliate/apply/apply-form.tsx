@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { Loader2Icon, SendIcon } from "lucide-react";
 
@@ -21,14 +21,6 @@ const CHANNEL_OPTIONS: { value: string; label: string }[] = [
   { value: "other", label: "بقیه" },
 ];
 
-const AUDIENCE_OPTIONS: { value: string; label: string }[] = [
-  { value: "lt_1k", label: "زیر ۱٬۰۰۰ نفر" },
-  { value: "1k_10k", label: "۱٬۰۰۰ تا ۱۰٬۰۰۰" },
-  { value: "10k_50k", label: "۱۰٬۰۰۰ تا ۵۰٬۰۰۰" },
-  { value: "50k_200k", label: "۵۰٬۰۰۰ تا ۲۰۰٬۰۰۰" },
-  { value: "200k_plus", label: "بیشتر از ۲۰۰٬۰۰۰" },
-];
-
 export function ApplyForm({
   defaultFullName,
   userPhone,
@@ -42,12 +34,20 @@ export function ApplyForm({
   );
   const fe = state.fieldErrors ?? {};
 
+  // Controlled state — persists across server action re-renders so users
+  // don't lose their input when a validation error is returned.
+  const [fullName, setFullName] = useState(defaultFullName);
+  const [channelKind, setChannelKind] = useState("");
+  const [channelUrl, setChannelUrl] = useState("");
+
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} className="space-y-4">
       {/* Phone (read-only display) */}
-      <div className="rounded-2xl border border-hairline bg-paper-soft px-4 py-3">
-        <p className="text-[11px] font-medium text-ink-soft">شماره ثبت‌شده</p>
-        <p className="mt-1 font-mono text-[15px] font-bold text-ink" dir="ltr">
+      <div className="rounded-2xl bg-muted px-4 py-3">
+        <p className="text-[11px] font-medium text-muted-foreground">
+          شماره ثبت‌شده
+        </p>
+        <p className="mt-1 font-mono text-[15px] font-bold" dir="ltr">
           {toPersianDigits(formatPhoneDisplay(userPhone))}
         </p>
       </div>
@@ -55,32 +55,19 @@ export function ApplyForm({
       <Field
         label="نام و نام خانوادگی"
         name="fullName"
-        defaultValue={defaultFullName}
+        value={fullName}
+        onChange={(e) => setFullName(e.target.value)}
         autoComplete="name"
         enterKeyHint="next"
         errors={fe.fullName}
         required
       />
 
-      <Field
-        label="ایمیل (اختیاری)"
-        name="email"
-        type="email"
-        inputMode="email"
-        defaultValue=""
-        autoComplete="email"
-        autoCapitalize="none"
-        autoCorrect="off"
-        spellCheck={false}
-        dir="ltr"
-        enterKeyHint="next"
-        errors={fe.email}
-      />
-
       <SelectField
         label="کانال اصلی شما"
         name="channelKind"
-        defaultValue=""
+        value={channelKind}
+        onChange={(e) => setChannelKind(e.target.value)}
         options={CHANNEL_OPTIONS}
         errors={fe.channelKind}
         required
@@ -89,55 +76,20 @@ export function ApplyForm({
       <Field
         label="لینک یا آدرس کانال"
         name="channelUrl"
-        defaultValue=""
+        value={channelUrl}
+        onChange={(e) => setChannelUrl(e.target.value)}
         placeholder="@username یا https://..."
         autoCapitalize="none"
         autoCorrect="off"
         spellCheck={false}
         dir="ltr"
-        enterKeyHint="next"
+        enterKeyHint="send"
         errors={fe.channelUrl}
         required
       />
 
-      <SelectField
-        label="تخمین تعداد مخاطب"
-        name="audienceSize"
-        defaultValue=""
-        options={AUDIENCE_OPTIONS}
-        errors={fe.audienceSize}
-        required
-      />
-
-      <div className="space-y-1.5">
-        <label
-          htmlFor="promotionPlan"
-          className="text-[13px] font-bold text-ink"
-        >
-          چطور قصد داری کی‌یو‌آر رو معرفی کنی؟{" "}
-          <span className="text-rose-600">*</span>
-        </label>
-        <textarea
-          id="promotionPlan"
-          name="promotionPlan"
-          defaultValue=""
-          rows={4}
-          maxLength={1000}
-          enterKeyHint="send"
-          placeholder="مثلاً: توی استوری اینستاگرام و کپشن یوتیوب درباره‌ی ابزارهای کاربردی برای فریلنسرها معرفی می‌کنم."
-          className="w-full rounded-xl border border-hairline bg-paper px-3.5 py-3 text-[15px] leading-7 outline-hidden transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200 sm:text-[14px]"
-        />
-        {fe.promotionPlan ? (
-          <p className="text-[12px] text-rose-600">{fe.promotionPlan[0]}</p>
-        ) : (
-          <p className="text-[11px] text-ink-soft">
-            چند خط کافیه — نمی‌خوایم سرت رو درد بیاریم.
-          </p>
-        )}
-      </div>
-
       {state.status === "error" && state.message ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] text-rose-900">
+        <div className="rounded-2xl bg-destructive/10 px-4 py-3 text-[13px] text-destructive">
           {state.message}
         </div>
       ) : null}
@@ -146,7 +98,7 @@ export function ApplyForm({
         type="submit"
         size="lg"
         disabled={pending}
-        className="h-12 w-full rounded-full text-[15px] font-bold sm:w-auto sm:min-w-56"
+        className="h-12 w-full rounded-full text-[15px] font-bold"
       >
         {pending ? (
           <Loader2Icon className="size-4 animate-spin" />
@@ -156,7 +108,7 @@ export function ApplyForm({
         {pending ? "در حال ارسال…" : "ارسال درخواست"}
       </Button>
 
-      <p className="text-[11px] leading-6 text-ink-soft">
+      <p className="text-center text-[11px] leading-6 text-muted-foreground">
         با ارسال، با قواعد برنامه و سیاست‌های کی‌یو‌آر موافقت می‌کنی.
       </p>
     </form>
@@ -177,12 +129,12 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={name} className="text-[13px] font-bold text-ink">
-        {label} {required ? <span className="text-rose-600">*</span> : null}
+      <label htmlFor={name} className="text-[13px] font-bold">
+        {label} {required ? <span className="text-destructive">*</span> : null}
       </label>
       <Input id={name} name={name} type={type} {...rest} />
       {errors?.[0] ? (
-        <p className="text-[12px] text-rose-600">{errors[0]}</p>
+        <p className="text-[12px] text-destructive">{errors[0]}</p>
       ) : null}
     </div>
   );
@@ -191,29 +143,32 @@ function Field({
 function SelectField({
   label,
   name,
-  defaultValue,
+  value,
+  onChange,
   options,
   errors,
   required,
 }: {
   label: string;
   name: string;
-  defaultValue?: string;
+  value: string;
+  onChange: React.ChangeEventHandler<HTMLSelectElement>;
   options: { value: string; label: string }[];
   errors?: string[];
   required?: boolean;
 }) {
   return (
     <div className="space-y-1.5">
-      <label htmlFor={name} className="text-[13px] font-bold text-ink">
-        {label} {required ? <span className="text-rose-600">*</span> : null}
+      <label htmlFor={name} className="text-[13px] font-bold">
+        {label} {required ? <span className="text-destructive">*</span> : null}
       </label>
       <select
         id={name}
         name={name}
-        defaultValue={defaultValue}
+        value={value}
+        onChange={onChange}
         required={required}
-        className="h-11 w-full rounded-xl border border-hairline bg-paper px-3.5 text-[15px] outline-hidden transition focus:border-violet-500 focus:ring-2 focus:ring-violet-200 md:h-9 md:text-[14px]"
+        className="h-11 w-full rounded-xl border border-input bg-background px-3.5 text-[15px] text-foreground outline-hidden transition focus:border-ring focus:ring-2 focus:ring-ring/20 md:h-9 md:text-[14px]"
       >
         <option value="" disabled>
           انتخاب کن…
@@ -225,7 +180,7 @@ function SelectField({
         ))}
       </select>
       {errors?.[0] ? (
-        <p className="text-[12px] text-rose-600">{errors[0]}</p>
+        <p className="text-[12px] text-destructive">{errors[0]}</p>
       ) : null}
     </div>
   );

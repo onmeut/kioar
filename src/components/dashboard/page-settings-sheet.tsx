@@ -8,7 +8,6 @@ import {
   type ChangeEvent,
 } from "react";
 import { createPortal } from "react-dom";
-import Image from "next/image";
 import {
   CameraIcon,
   GlobeIcon,
@@ -28,12 +27,7 @@ import "react-mobile-cropper/dist/style.css";
 
 import { ProfileAvatarModal } from "@/components/dashboard/profile-avatar-modal";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -52,13 +46,13 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { DISCOVER_CATEGORIES, IRANIAN_CITIES } from "@/lib/discover";
+import { IRANIAN_CITIES } from "@/lib/cities";
+import type { DiscoverCategory } from "@/lib/discover";
+import { resolveIconEntry } from "@/lib/link-icons";
 import { PAGE_TYPES } from "@/lib/page-type";
 import { type ProfileDomain } from "@/lib/profile-domains";
 import { type IconKey } from "@/lib/link-icons";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
-import { deletePageAction } from "@/app/(app)/dashboard/pages/actions";
-import type { Route } from "next";
 
 export type PageSettingsValues = {
   fullName: string;
@@ -97,6 +91,8 @@ type Props = {
   initial: PageSettingsValues;
   /** Read-only profile data used by the preview cards. */
   preview: PreviewProfile;
+  /** DB-backed discover categories for the picker. */
+  categories: DiscoverCategory[];
   onSave: (
     next: PageSettingsValues & {
       ogImageFile?: File | null;
@@ -117,6 +113,7 @@ export function PageSettingsSheet({
   pageId,
   initial,
   preview,
+  categories,
   onSave,
   onAvatarUpload,
   onAvatarDelete,
@@ -136,9 +133,6 @@ export function PageSettingsSheet({
   const [isPending, startTransition] = useTransition();
   const [isOgSaving, startOgSaveTransition] = useTransition();
   const [isOgRemoving, startOgRemoveTransition] = useTransition();
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [isDeleting, startDeleteTransition] = useTransition();
   const [avatarOpen, setAvatarOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
@@ -295,12 +289,10 @@ export function PageSettingsSheet({
             className="group relative size-24 shrink-0 overflow-hidden rounded-full border border-foreground/10 bg-card"
           >
             {preview.avatarUrl ? (
-              <Image
+              <img
                 src={preview.avatarUrl}
                 alt=""
-                fill
-                className="object-cover"
-                sizes="96px"
+                className="absolute inset-0 size-full object-cover"
               />
             ) : (
               <KioarAvatar seed={preview.avatarSeed} size={96} />
@@ -560,12 +552,18 @@ export function PageSettingsSheet({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none">بدون دسته‌بندی</SelectItem>
-                {DISCOVER_CATEGORIES.map((c) => (
-                  <SelectItem key={c.slug} value={c.slug}>
-                    <span className="me-1">{c.emoji}</span>
-                    {c.label}
-                  </SelectItem>
-                ))}
+                {categories.map((c) => {
+                  const entry = resolveIconEntry(c.iconKey, null);
+                  const Icon = entry.Icon;
+                  return (
+                    <SelectItem key={c.slug} value={c.slug}>
+                      <span className="me-1.5 inline-flex">
+                        <Icon className="size-4" style={{ color: entry.color }} />
+                      </span>
+                      {c.label}
+                    </SelectItem>
+                  );
+                })}
               </SelectContent>
             </Select>
           </Field>
@@ -611,34 +609,6 @@ export function PageSettingsSheet({
             </Select>
           </Field>
         </section>
-
-        {/* ---- Destructive: delete page ---- */}
-        <section className="space-y-2 pt-2">
-          <SectionTitle title="منطقه‌ی خطرناک" />
-          <div className="flex flex-col gap-3 rounded-2xl border border-destructive/30 bg-destructive/5 p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-destructive">
-                حذف کامل این صفحه
-              </p>
-              <p className="text-[11px] leading-relaxed text-destructive/80">
-                صفحه و همه‌ی داده‌هایش (لینک‌ها، آمار، فرم‌ها، تنظیمات) برای
-                همیشه پاک می‌شود. این عمل بازگشت‌پذیر نیست.
-              </p>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              className="h-10 shrink-0 self-start border-destructive/40 text-destructive hover:bg-destructive hover:text-white sm:self-auto"
-              onClick={() => {
-                setDeleteConfirm("");
-                setDeleteOpen(true);
-              }}
-            >
-              <Trash2Icon className="size-4" />
-              حذف صفحه
-            </Button>
-          </div>
-        </section>
       </div>
 
       <div className="safe-pb shrink-0 border-t bg-background/95 px-4 py-3 backdrop-blur md:px-6">
@@ -663,83 +633,6 @@ export function PageSettingsSheet({
           </Button>
         </div>
       </div>
-
-      <Dialog
-        open={deleteOpen}
-        onOpenChange={(o) => {
-          if (!isDeleting) setDeleteOpen(o);
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogTitle className="text-destructive">حذف صفحه</DialogTitle>
-          <DialogDescription>
-            با حذف این صفحه، تمام لینک‌ها، آمار، فرم‌ها و تنظیمات آن برای همیشه
-            از بین می‌رود. این عمل بازگشت‌پذیر نیست.
-          </DialogDescription>
-          <div className="space-y-2 pt-2">
-            <Label htmlFor="delete-confirm" className="text-xs">
-              برای تأیید، نام کاربری صفحه{" "}
-              <span dir="ltr" className="font-mono font-bold">
-                {initial.slug}
-              </span>{" "}
-              را وارد کن:
-            </Label>
-            <Input
-              id="delete-confirm"
-              dir="ltr"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              value={deleteConfirm}
-              onChange={(e) => setDeleteConfirm(e.target.value)}
-              placeholder={initial.slug}
-              disabled={isDeleting}
-            />
-          </div>
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setDeleteOpen(false)}
-              disabled={isDeleting}
-              className="h-11"
-            >
-              انصراف
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              disabled={
-                isDeleting ||
-                deleteConfirm.trim().toLowerCase() !==
-                  initial.slug.toLowerCase()
-              }
-              className="h-11"
-              onClick={() => {
-                startDeleteTransition(async () => {
-                  const result = await deletePageAction(pageId, deleteConfirm);
-                  if (!result.ok) {
-                    toast.error(result.message);
-                    return;
-                  }
-                  toast.success("صفحه حذف شد.");
-                  setDeleteOpen(false);
-                  onOpenChange(false);
-                  router.push(result.redirectTo as Route);
-                  router.refresh();
-                });
-              }}
-            >
-              {isDeleting ? (
-                <Loader2Icon className="size-4 animate-spin" />
-              ) : (
-                <Trash2Icon className="size-4" />
-              )}
-              حذف نهایی
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 

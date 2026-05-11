@@ -1,24 +1,26 @@
 "use client";
 
 import { useState } from "react";
-import { CheckIcon, CopyIcon, ShareIcon } from "lucide-react";
-import { toast } from "sonner";
+import { ShareIcon } from "lucide-react";
 
-import { QrCard } from "@/components/dashboard/qr-card";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ShareModal } from "@/components/dashboard/share/share-modal";
+import type { QrStyle } from "@/lib/qr/types";
 import { cn } from "@/lib/utils";
 
 type PublicShareBarProps = {
   publicUrl: string;
   slug: string;
   displayName: string;
+  /** Current page id — scopes the persisted QR style preference. */
+  pageId: string;
+  /** Whether the user's plan unlocks QR colour/style customisation. */
+  canCustomizeQr: boolean;
+  /** DB-backed QR style — single source of truth for all QR renderers. */
+  savedQrStyle?: QrStyle | null;
+  /** Persists QR style to DB. */
+  saveQrStyleAction?: (
+    style: QrStyle,
+  ) => Promise<{ status: string; message?: string }>;
   /** "{domain}/{slug}" — controls the host shown in the pill. */
   host?: string;
   /** When set, overrides the pill label text and switches to RTL layout. */
@@ -32,10 +34,22 @@ type PublicShareBarProps = {
   variant?: "pill" | "icon";
 };
 
+/**
+ * Trigger surface for the share modal.
+ *
+ * The actual modal lives in `ShareModal`; this component only owns
+ * the entry-point UI (pill or icon) and the open/close state. Keeps
+ * the trigger reusable from any callsite that already has a slug +
+ * URL handy.
+ */
 export function PublicShareBar({
   publicUrl,
   slug,
   displayName,
+  pageId,
+  canCustomizeQr,
+  savedQrStyle,
+  saveQrStyleAction,
   host,
   label,
   className,
@@ -43,6 +57,21 @@ export function PublicShareBar({
 }: PublicShareBarProps) {
   const [open, setOpen] = useState(false);
   const displayHost = host ?? `kioar.com/${slug}`;
+
+  const modal = (
+    <ShareModal
+      open={open}
+      onOpenChange={setOpen}
+      publicUrl={publicUrl}
+      slug={slug}
+      displayHost={displayHost}
+      displayName={displayName}
+      pageId={pageId}
+      canCustomizeQr={canCustomizeQr}
+      savedQrStyle={savedQrStyle}
+      saveQrStyleAction={saveQrStyleAction}
+    />
+  );
 
   if (variant === "icon") {
     return (
@@ -58,13 +87,7 @@ export function PublicShareBar({
         >
           <ShareIcon className="size-5" aria-hidden />
         </button>
-        <ShareDialog
-          open={open}
-          onOpenChange={setOpen}
-          publicUrl={publicUrl}
-          displayHost={displayHost}
-          displayName={displayName}
-        />
+        {modal}
       </>
     );
   }
@@ -92,97 +115,7 @@ export function PublicShareBar({
           {label ?? displayHost}
         </span>
       </div>
-
-      <ShareDialog
-        open={open}
-        onOpenChange={setOpen}
-        publicUrl={publicUrl}
-        displayHost={displayHost}
-        displayName={displayName}
-      />
+      {modal}
     </>
-  );
-}
-
-function ShareDialog({
-  open,
-  onOpenChange,
-  publicUrl,
-  displayHost,
-  displayName,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  publicUrl: string;
-  displayHost: string;
-  displayName: string;
-}) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(publicUrl);
-      setCopied(true);
-      toast.success("لینک کپی شد.");
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      toast.error("کپی ممکن نشد.");
-    }
-  }
-
-  async function nativeShare() {
-    if (typeof navigator !== "undefined" && navigator.share) {
-      try {
-        await navigator.share({ title: displayName, url: publicUrl });
-      } catch {
-        /* user cancelled */
-      }
-    } else {
-      copy();
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>اشتراک‌گذاری</DialogTitle>
-          <DialogDescription className="sr-only">
-            لینک عمومی و کد QR شما برای اشتراک‌گذاری
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div
-            dir="ltr"
-            className="flex items-center gap-2 rounded-3xl border bg-muted/40 px-3 py-2"
-          >
-            <span className="flex-1 truncate text-sm font-semibold">
-              {displayHost}
-            </span>
-            <Button type="button" size="sm" onClick={copy} className="h-8 px-3">
-              {copied ? (
-                <CheckIcon className="size-3.5" />
-              ) : (
-                <CopyIcon className="size-3.5" />
-              )}
-              {copied ? "کپی شد" : "کپی"}
-            </Button>
-          </div>
-
-          <QrCard url={publicUrl} title={displayName} />
-
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 w-full"
-            onClick={nativeShare}
-          >
-            <ShareIcon className="size-4" />
-            اشتراک‌گذاری سیستمی
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }

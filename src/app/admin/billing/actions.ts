@@ -316,6 +316,7 @@ export async function adminManualPlanChangeAction(
         billingCycle: nextCycle,
         // Manual override always lands as `active` (no trial, no grace).
         status: planKey === "free" ? "expired" : "active",
+        isAdminOverride: planKey !== "free",
         currentPeriodStart: samePlan ? sub.currentPeriodStart : now,
         currentPeriodEnd:
           planKey === "free"

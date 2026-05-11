@@ -281,6 +281,34 @@
       "when": 1747008000000,
       "tag": "0040_migrate_arvan_urls_to_cdn",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1747094400000,
+      "tag": "0041_admin_override_subscription",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1747180800000,
+      "tag": "0042_backfill_qr_customization",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1747267200000,
+      "tag": "0043_discover_categories",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1778509385220,
+      "tag": "0044_steep_dark_phoenix",
+      "breakpoints": true
     }
   ]
 }

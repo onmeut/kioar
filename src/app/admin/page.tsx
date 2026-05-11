@@ -100,8 +100,10 @@ export default async function AdminPage() {
         COALESCE(SUM(
           CASE
             WHEN s."status" IN ('active','pending_renewal') AND s."billing_cycle" = 'monthly'
+              AND (s."is_admin_override" IS NULL OR s."is_admin_override" = false)
               THEN p."price_monthly_toman"
             WHEN s."status" IN ('active','pending_renewal') AND s."billing_cycle" = 'annual'
+              AND (s."is_admin_override" IS NULL OR s."is_admin_override" = false)
               THEN p."price_annual_toman" / 12
             ELSE 0
           END

@@ -4,58 +4,53 @@ import { CheckIcon, CopyIcon, Share2Icon } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { PublicProfileShareModal } from "@/components/public/public-profile-share-modal";
+import type { QrStyle } from "@/lib/qr/types";
 import { cn } from "@/lib/utils";
 
 export function PublicProfileShareButton({
   url,
   title,
+  slug,
+  avatarUrl,
+  avatarSeed,
+  qrStyle,
   className,
 }: {
   url: string;
   title: string;
+  slug: string;
+  avatarUrl?: string | null;
+  avatarSeed?: string | null;
+  qrStyle?: QrStyle | null;
   className?: string;
 }) {
-  const [copied, setCopied] = useState(false);
-
-  async function share() {
-    if (
-      typeof navigator !== "undefined" &&
-      typeof navigator.share === "function"
-    ) {
-      try {
-        await navigator.share({ title, url });
-        return;
-      } catch {
-        // user dismissed — fall through to copy
-      }
-    }
-
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      toast.success("لینک کارت کپی شد.");
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error("کپی لینک ممکن نشد.");
-    }
-  }
+  const [open, setOpen] = useState(false);
 
   return (
-    <button
-      type="button"
-      onClick={share}
-      aria-label="اشتراک کارت"
-      className={cn(
-        "tap-target inline-flex size-10 items-center justify-center rounded-full bg-foreground/[0.07] text-foreground transition-colors hover:bg-foreground/[0.12] focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
-        className,
-      )}
-    >
-      {copied ? (
-        <CheckIcon className="size-4.5" />
-      ) : (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        aria-label="اشتراک کارت"
+        className={cn(
+          "tap-target inline-flex size-10 items-center justify-center rounded-full bg-foreground/[0.07] text-foreground transition-colors hover:bg-foreground/12 focus-visible:ring-2 focus-visible:ring-primary focus-visible:outline-none",
+          className,
+        )}
+      >
         <Share2Icon className="size-4.5" />
-      )}
-    </button>
+      </button>
+      <PublicProfileShareModal
+        open={open}
+        onClose={() => setOpen(false)}
+        url={url}
+        title={title}
+        slug={slug}
+        avatarUrl={avatarUrl}
+        avatarSeed={avatarSeed}
+        qrStyle={qrStyle}
+      />
+    </>
   );
 }
 

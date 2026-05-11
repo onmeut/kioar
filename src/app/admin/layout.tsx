@@ -80,6 +80,12 @@ const adminNavItems: SidebarNavItem[] = [
     match: "prefix",
   },
   {
+    href: "/admin/categories" as Route,
+    label: "دسته‌بندی‌ها",
+    icon: "page",
+    match: "prefix",
+  },
+  {
     href: "/admin/audit" as Route,
     label: "گزارش فعالیت",
     icon: "notifications",

@@ -153,7 +153,7 @@ export function ProfileTitleBioModal({
               onChange={(e) => setBio(e.target.value)}
               maxLength={280}
               rows={4}
-              className=""
+              className="min-h-28"
             />
             {errors.bio?.[0] ? (
               <p className="text-xs text-destructive">{errors.bio[0]}</p>

@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { OnboardingForm } from "@/components/onboarding/onboarding-form";
 import { AuthShell } from "@/components/marketing/auth-shell";
 import { requireUser } from "@/lib/auth/session";
+import { getDiscoverCategories } from "@/lib/discover";
 
 import { createAdditionalPageOnboardingAction } from "./actions";
 
@@ -26,12 +27,14 @@ export default async function NewPageOnboardingPage() {
   // Auth-only; we don't gate on `isComplete` because users with multiple
   // existing pages absolutely belong here.
   await requireUser();
+  const categories = await getDiscoverCategories();
 
   return (
     <AuthShell>
       <OnboardingForm
         action={createAdditionalPageOnboardingAction}
         mode="additional"
+        categories={categories}
       />
     </AuthShell>
   );

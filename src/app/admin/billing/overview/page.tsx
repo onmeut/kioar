@@ -70,6 +70,7 @@ export default async function AdminBillingOverviewPage() {
         ON l."page_id" = s."page_id" AND l."plan_id" = s."plan_id"
       WHERE s."status" IN ('active','pending_renewal')
         AND p."key" <> 'free'
+        AND (s."is_admin_override" IS NULL OR s."is_admin_override" = false)
     `) as unknown as Promise<Array<{ mrr_toman: string | number }>>,
     db.execute(sql`
       SELECT

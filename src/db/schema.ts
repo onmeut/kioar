@@ -294,6 +294,12 @@ export const profiles = pgTable(
      * badge under the name on the public page. Not indexed/searched.
      */
     city: text("city"),
+    /**
+     * Persisted QR code style chosen by the user in the share modal
+     * QR customise view. Stored as jsonb so we can add/remove fields
+     * without schema migrations. Null = use DEFAULT_QR_STYLE.
+     */
+    qrStyle: jsonb("qr_style"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -1211,6 +1217,12 @@ export const pageSubscriptions = pgTable(
      * `plan_id` remains the FK source of truth.
      */
     planKey: text("plan_key"),
+    /**
+     * Set to true when an admin manually assigns/changes a plan without
+     * a corresponding payment. Such subscriptions are excluded from MRR /
+     * revenue calculations since no money was collected.
+     */
+    isAdminOverride: boolean("is_admin_override").default(false).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -2288,4 +2300,39 @@ export const subscriptionPriceChangeEventsRelations = relations(
       references: [users.id],
     }),
   }),
+);
+
+// ---------------------------------------------------------------------------
+// Discover Categories (admin-managed taxonomy for the Discover directory).
+//
+// Replaces the hardcoded DISCOVER_CATEGORIES constant in lib/discover.ts.
+// Slug is the stable identifier persisted in profiles.discover_category.
+// Slug renames are handled transactionally: both this row and all
+// referencing profiles rows are updated atomically in the admin action.
+// icon_key matches the link-icon system (e.g. "t:music", "t:star").
+// ---------------------------------------------------------------------------
+
+export const discoverCategories = pgTable(
+  "discover_categories",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    slug: text("slug").notNull(),
+    label: text("label").notNull(),
+    iconKey: text("icon_key").notNull().default("t:star"),
+    sortOrder: integer("sort_order").notNull().default(0),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("discover_categories_slug_idx").on(table.slug),
+    index("discover_categories_sort_idx")
+      .on(table.sortOrder)
+      .where(sql`${table.isActive} = true`),
+  ],
 );

@@ -5,6 +5,7 @@ import { getLinkClickCounts, getProfileWithLinksByUserId } from "@/lib/data";
 import { isIconKey } from "@/lib/link-icons";
 import { getProviderConnections } from "@/lib/oauth/connections";
 import { absoluteUrl } from "@/lib/site";
+import { getDiscoverCategories } from "@/lib/discover";
 
 import { fetchLinkMetadataAction } from "./actions";
 import {
@@ -14,6 +15,7 @@ import {
   reorderBlocksAction,
   saveAvatarSeedAction,
   savePageSettingsAction,
+  saveQrStyleAction,
 } from "./autosave-actions";
 import { setBlockSpotlightAction } from "./spotlight-actions";
 import {
@@ -337,6 +339,11 @@ export default async function DashboardLinksPage() {
   const animateAllowed = pageId
     ? await pageHasFeature(pageId, "link_animations")
     : false;
+  const canCustomizeQr = pageId
+    ? await pageHasFeature(pageId, "qr_code_customization").catch(() => false)
+    : false;
+
+  const discoverCategories = await getDiscoverCategories();
 
   return (
     <LinksPageClient
@@ -407,6 +414,12 @@ export default async function DashboardLinksPage() {
       productItemsCap={productItemsCap}
       pinAllowed={pinAllowed}
       animateAllowed={animateAllowed}
+      canCustomizeQr={canCustomizeQr}
+      savedQrStyle={
+        (profile?.qrStyle as import("@/lib/qr/types").QrStyle | null) ?? null
+      }
+      saveQrStyleAction={saveQrStyleAction}
+      categories={discoverCategories}
       setBlockSpotlightAction={setBlockSpotlightAction}
     />
   );
