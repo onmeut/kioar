@@ -78,11 +78,18 @@ export function getRedis(): Redis | null {
     reconnectOnError: () => true,
   });
 
+  // Log only the first error in each disconnect cycle to avoid spam.
+  // ioredis fires "error" on every failed reconnect attempt.
+  let _errorLogged = false;
   client.on("error", (err) => {
-    // Don't spam logs on transient blips; ioredis already retries internally.
+    if (_errorLogged) return;
+    _errorLogged = true;
     log.warn("redis.error", {
       error: err instanceof Error ? err.message : String(err),
     });
+  });
+  client.on("ready", () => {
+    _errorLogged = false;
   });
 
   attachShutdownHooks(client);

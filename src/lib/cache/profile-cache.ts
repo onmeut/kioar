@@ -45,6 +45,21 @@ const METRICS_PREFIX = "kioar:metrics:profile_cache:";
 const TTL_HIT_SECONDS = 300;
 const TTL_MISS_SECONDS = 60;
 
+// Deduplicate Redis-connectivity error logs at the cache layer.
+// When the client is reconnecting, every GET/SET command is rejected with
+// "Stream isn't writeable and enableOfflineQueue options is false". Logging
+// that once per disconnect cycle is enough — the Redis client itself already
+// logs a `redis.error` warn on the first error event and resets on `ready`.
+let _cacheErrorSuppressed = false;
+function suppressCacheError(redis: ReturnType<typeof getRedis>) {
+  if (_cacheErrorSuppressed || !redis) return;
+  _cacheErrorSuppressed = true;
+  // Reset when the socket reconnects so the next error cycle is visible.
+  redis.once("ready", () => {
+    _cacheErrorSuppressed = false;
+  });
+}
+
 const NOT_FOUND_SENTINEL = '{"__kioarNotFound":true}';
 
 function cacheKeyFor(slug: string): string {
@@ -58,8 +73,7 @@ function bumpMetric(name: "hit" | "miss" | "not_found_hit" | "error"): void {
   redis.incr(METRICS_PREFIX + name).catch(() => undefined);
 }
 
-const ISO_DATE_RE =
-  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
+const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/;
 
 function dateReviver(_key: string, value: unknown): unknown {
   if (typeof value === "string" && ISO_DATE_RE.test(value)) {
@@ -107,11 +121,14 @@ export async function withProfileCache<T>(
         return parsed as T;
       }
     } catch (err) {
-      // Cache read failed — log once and fall through to the loader.
-      log.warn("profile_cache.read_error", {
-        slug,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      // Cache read failed — log once per disconnect cycle and fall through.
+      if (!_cacheErrorSuppressed) {
+        log.warn("profile_cache.read_error", {
+          slug,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        suppressCacheError(redis);
+      }
       bumpMetric("error");
     }
   }
@@ -128,12 +145,15 @@ export async function withProfileCache<T>(
         await redis.set(key, JSON.stringify(fresh), "EX", TTL_HIT_SECONDS);
       }
     } catch (err) {
-      // Cache write failed — log and continue. The fresh value is still
-      // returned to the caller, only the next request loses the cache.
-      log.warn("profile_cache.write_error", {
-        slug,
-        error: err instanceof Error ? err.message : String(err),
-      });
+      // Cache write failed — log once per disconnect cycle and continue.
+      // The fresh value is still returned; only the next request loses the cache.
+      if (!_cacheErrorSuppressed) {
+        log.warn("profile_cache.write_error", {
+          slug,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        suppressCacheError(redis);
+      }
       bumpMetric("error");
     }
   }

@@ -76,8 +76,9 @@ export default async function ProRoute() {
       orderBy: (p, { asc }) => [asc(p.displayOrder)],
     }),
   ]);
-  if (!sub) {
-    // Subscription should always exist for an owned page; if it doesn't,
+  if (!sub || !sub.plan) {
+    // Subscription (or its plan FK) should always exist for an owned page;
+    // if it doesn't (e.g. data integrity issue after a DB migration),
     // send the owner back to dashboard rather than crashing.
     redirect("/dashboard");
   }

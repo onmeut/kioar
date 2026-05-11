@@ -160,4 +160,10 @@ export default withPWA({
   fallbacks: {
     document: "/~offline",
   },
+  workboxOptions: {
+    // Purge stale precache entries from old builds on SW install so that
+    // chunks with old hashes (deleted after a new deployment) don't cause
+    // "bad-precaching-response" 404 errors in the browser console.
+    cleanupOutdatedCaches: true,
+  },
 })(nextConfig);
