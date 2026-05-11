@@ -92,8 +92,7 @@ const securityHeaders: { key: string; value: string }[] = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   {
     key: "Permissions-Policy",
-    value:
-      "camera=(), microphone=(), geolocation=(), browsing-topics=(), interest-cohort=()",
+    value: "camera=(), microphone=(), geolocation=()",
   },
   {
     key: "Strict-Transport-Security",
@@ -170,5 +169,11 @@ export default withPWA({
     // chunks with old hashes (deleted after a new deployment) don't cause
     // "bad-precaching-response" 404 errors in the browser console.
     cleanupOutdatedCaches: true,
+    // Exclude admin route chunks from the precache manifest. Admin routes are
+    // never visited by regular users, so there is no value in caching them in
+    // the PWA. More importantly, intercepting-route chunks (e.g. @modal/…)
+    // can produce 404s when hashes rotate between deployments because the old
+    // SW manifest still references the previous hash.
+    exclude: [/^app\/admin\//, /chunks\/app\/admin\//],
   },
 })(nextConfig);
