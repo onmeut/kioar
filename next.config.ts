@@ -77,9 +77,14 @@ const scriptSrc = isDev
 // `blob:` is required because some libraries (e.g. react-mobile-cropper) load
 // user-picked files by `fetch()`-ing the `URL.createObjectURL(file)` blob URL,
 // which the browser counts against connect-src — not img-src.
+// The service worker (Workbox) caches images via the Fetch API, which is also
+// governed by connect-src (not img-src), so we must allow the S3/CDN origin.
+const s3ConnectOrigin = s3PublicBase
+  ? `${s3PublicBase.protocol}://${s3PublicBase.hostname}${s3PublicBase.port ? `:${s3PublicBase.port}` : ""}`
+  : null;
 const connectSrc = isDev
   ? "connect-src 'self' blob: ws: wss:"
-  : "connect-src 'self' blob:";
+  : `connect-src 'self' blob:${s3ConnectOrigin ? ` ${s3ConnectOrigin}` : ""}`;
 
 const securityHeaders: { key: string; value: string }[] = [
   { key: "X-Content-Type-Options", value: "nosniff" },
