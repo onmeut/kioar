@@ -19,6 +19,16 @@ function logDevOtp(phone: string, code: string) {
   );
 }
 
+function isTestPhone(phone: string): boolean {
+  const raw = process.env.OTP_TEST_PHONES?.trim();
+  if (!raw) return false;
+  return raw
+    .split(",")
+    .map((p) => p.trim())
+    .filter(Boolean)
+    .includes(phone);
+}
+
 function shouldUseDevFallback(apiKey: string | undefined) {
   // CRITICAL: In production we NEVER fall back to console delivery. Doing so
   // would silently bypass SMS delivery and let anyone with log access sign in
@@ -60,6 +70,16 @@ export async function sendOtpCode({
   phone: string;
   code: string;
 }) {
+  // OTP_TEST_PHONES: comma-separated allowlist for test accounts.
+  // OTP is printed to server logs only — never sent via SMS, never exposed to client.
+  // Safe in production: the code still expires normally; only log-access can read it.
+  if (isTestPhone(phone)) {
+    console.info(
+      `[kioar:otp:test] test account ${formatPhoneDisplay(phone)} | code: ${code}`,
+    );
+    return { provider: "console" as const };
+  }
+
   const apiKey = process.env.KAVENEGAR_API_KEY?.trim();
 
   if (shouldUseDevFallback(apiKey)) {
