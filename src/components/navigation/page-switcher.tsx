@@ -6,7 +6,6 @@ import type { Route } from "next";
 import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { switchPageAction } from "@/app/(app)/dashboard/page-switcher-actions";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -131,15 +130,28 @@ export function PageSwitcher({
   const onSelect = (pageId: string) => {
     if (pageId === currentPageId) return;
     startTransition(async () => {
-      const result = await switchPageAction(pageId);
-      if (!result.ok) {
-        toast.error(result.message);
+      // Use a plain fetch API route instead of a Server Action so the
+      // endpoint URL is stable across deployments — Server Action IDs are
+      // hashed at build time and go stale when the browser has cached JS
+      // from an older build, causing UnrecognizedActionError crashes.
+      try {
+        const res = await fetch(`/api/pages/${pageId}/select`, {
+          method: "POST",
+        });
+        const data = (await res.json().catch(() => null)) as
+          | { ok: true; slug: string }
+          | { ok: false; message: string }
+          | null;
+        if (!res.ok || !data || !data.ok) {
+          toast.error((data && !data.ok && data.message) || "خطای ناشناخته");
+          return;
+        }
+      } catch {
+        toast.error("ارتباط با سرور برقرار نشد.");
         return;
       }
-      // Hard full-page navigation instead of router.push + router.refresh.
-      // The kioar_page_id cookie is already updated server-side by the
-      // action. A hard navigate guarantees every server component re-reads
-      // the new cookie — no competing RSC fetches, no stale layout state.
+      // Hard full-page navigation ensures every server component re-reads
+      // the updated kioar_page_id cookie from a fresh render.
       window.location.href = "/me";
     });
   };
