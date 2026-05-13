@@ -474,9 +474,9 @@ function AddLinkDialogBody({
   }
 
   return (
-    <div className="flex max-h-[92dvh] flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {/* Header */}
-      <div className="grid grid-cols-[40px_1fr_40px] items-center border-b px-4 py-3 sm:px-5 sm:py-4">
+      <div className="grid shrink-0 grid-cols-[40px_1fr_40px] items-center border-b px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex">
           {step === "compose" ? (
             <button

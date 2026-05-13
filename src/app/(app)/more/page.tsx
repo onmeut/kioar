@@ -71,7 +71,9 @@ export default async function MorePage() {
         notifications: 0,
       })),
       getReferralAvailableMonths(viewer.user.id).catch(() => 0),
-      getAffiliateStateForUser(viewer.user.id).catch(() => ({ kind: "none" as const })),
+      getAffiliateStateForUser(viewer.user.id).catch(() => ({
+        kind: "none" as const,
+      })),
     ]);
 
   // ── ابزارها ──────────────────────────────────────────────────────
@@ -107,7 +109,7 @@ export default async function MorePage() {
   // ── حساب و اشتراک ────────────────────────────────────────────────
   const accountRows: MoreRow[] = [
     {
-      href: "/dashboard/account" as Route,
+      href: "/account" as Route,
       label: "حساب کاربری",
       icon: UserIcon,
     },
@@ -131,24 +133,21 @@ export default async function MorePage() {
       icon: ReceiptIcon,
       description: "حذف برندینگ، آمار پیشرفته و بلاک‌های ویژه",
     });
-  } else if (
-    currentPage?.planKey === "free" &&
-    currentPage.isOnTrial
-  ) {
+  } else if (currentPage?.planKey === "free" && currentPage.isOnTrial) {
     accountRows.push({
-      href: `/dashboard/pages/${currentPageId}/billing` as Route,
+      href: `/account/billing/${currentPageId}` as Route,
       label: "مدیریت اشتراک آزمایشی",
       icon: ReceiptIcon,
     });
   } else if (currentPage?.planKey === "pro") {
     accountRows.push({
-      href: `/dashboard/pages/${currentPageId}/billing` as Route,
+      href: `/account/billing/${currentPageId}` as Route,
       label: "مدیریت اشتراک",
       icon: ReceiptIcon,
     });
     // فاکتورها is only meaningful once the user has an active subscription
     accountRows.push({
-      href: `/dashboard/pages/${currentPageId}/billing/invoices` as Route,
+      href: `/account/billing/${currentPageId}/invoices` as Route,
       label: "فاکتورها",
       icon: FileTextIcon,
     });

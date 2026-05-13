@@ -63,9 +63,11 @@ export type AdminAuditAction =
   | "industry.create"
   | "industry.update"
   | "industry.deactivate"
+  | "industry.delete"
   | "category.create"
   | "category.update"
-  | "category.deactivate";
+  | "category.deactivate"
+  | "category.delete";
 
 type Executor = {
   insert: ReturnType<typeof getDb>["insert"];
@@ -212,7 +214,9 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   "industry.create": "ایجاد صنف",
   "industry.update": "ویرایش صنف",
   "industry.deactivate": "غیرفعال‌سازی صنف",
+  "industry.delete": "حذف صنف",
   "category.create": "ایجاد دسته‌بندی",
   "category.update": "ویرایش دسته‌بندی",
   "category.deactivate": "غیرفعال‌سازی دسته‌بندی",
+  "category.delete": "حذف دسته‌بندی",
 };

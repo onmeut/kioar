@@ -6,7 +6,7 @@ import { useFormStatus } from "react-dom";
 
 import { idleState, type ActionState } from "@/lib/action-state";
 import { cn } from "@/lib/utils";
-import { saveAccountAction } from "@/app/(app)/dashboard/account/actions";
+import { saveAccountAction } from "@/app/(app)/account/actions";
 
 function SaveButton() {
   const { pending } = useFormStatus();

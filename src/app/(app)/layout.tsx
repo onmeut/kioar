@@ -163,7 +163,7 @@ export default async function DashboardLayout({
       showDot: badgeCounts.notifications > 0,
     },
     {
-      href: "/dashboard/account" as Route,
+      href: "/account" as Route,
       label: "حساب کاربری",
       icon: "user",
     },
@@ -268,7 +268,7 @@ export default async function DashboardLayout({
                   trialEndsAt={currentPage?.trialEndsAt ?? null}
                   billingHref={
                     currentPage?.planKey === "pro"
-                      ? (`/dashboard/pages/${currentPageId}/billing` as Route)
+                      ? (`/account/billing/${currentPageId}` as Route)
                       : "/pro"
                   }
                 />

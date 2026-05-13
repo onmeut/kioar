@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 
 const PENDING_SLUG_COOKIE = "kioar_pending_slug";
+const SESSION_COOKIE = "kioar_session";
 
 function normalizeSlug(input: string) {
   return input
@@ -36,9 +37,18 @@ export function proxy(request: NextRequest) {
     }
   }
 
+  // Root "/" — logged-in users go to /me, not the marketing landing page.
+  // We only check cookie presence here (full session validation stays in the
+  // server component); an invalid/expired cookie is caught at the page level.
+  if (pathname === "/" && request.cookies.has(SESSION_COOKIE)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/me";
+    return NextResponse.redirect(url);
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/auth"],
+  matcher: ["/", "/auth"],
 };

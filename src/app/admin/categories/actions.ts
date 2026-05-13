@@ -1,6 +1,6 @@
 "use server";
 
-import { and, asc, desc, eq, gt, lt, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, lt, ne, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
@@ -189,21 +189,28 @@ export async function adminDeleteIndustryAction(
     .limit(1);
   if (!row) return { ok: false, error: "صنف یافت نشد." };
 
-  // Soft-delete: deactivate industry and all its categories.
+  // Hard-delete: remove industry and all its categories; reset user prefs.
   await db.transaction(async (tx) => {
-    await tx
-      .update(industries)
-      .set({ isActive: false, updatedAt: new Date() })
-      .where(eq(industries.id, id));
-    await tx
-      .update(categories)
-      .set({ isActive: false, updatedAt: new Date() })
+    // Collect category slugs so we can null-out profile references.
+    const cats = await tx
+      .select({ slug: categories.slug })
+      .from(categories)
       .where(eq(categories.industryId, id));
+    const catSlugs = cats.map((c) => c.slug);
+
+    if (catSlugs.length > 0) {
+      await tx
+        .update(profiles)
+        .set({ discoverCategory: null })
+        .where(inArray(profiles.discoverCategory, catSlugs));
+      await tx.delete(categories).where(eq(categories.industryId, id));
+    }
+    await tx.delete(industries).where(eq(industries.id, id));
   });
 
   await recordAdminAudit({
     actorUserId: viewer.user.id,
-    action: "industry.deactivate",
+    action: "industry.delete",
     metadata: { id, slug: row.slug, titleFa: row.titleFa },
   });
   revalidatePath("/admin/categories");
@@ -457,14 +464,18 @@ export async function adminDeleteCategoryAction(
     .limit(1);
   if (!row) return { ok: false, error: "دسته‌بندی یافت نشد." };
 
-  await db
-    .update(categories)
-    .set({ isActive: false, updatedAt: new Date() })
-    .where(eq(categories.id, id));
+  // Hard-delete: remove category and reset profile prefs that pointed at it.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(profiles)
+      .set({ discoverCategory: null })
+      .where(eq(profiles.discoverCategory, row.slug));
+    await tx.delete(categories).where(eq(categories.id, id));
+  });
 
   await recordAdminAudit({
     actorUserId: viewer.user.id,
-    action: "category.deactivate",
+    action: "category.delete",
     metadata: { id, slug: row.slug, titleFa: row.titleFa },
   });
   revalidatePath("/admin/categories");
@@ -519,6 +530,59 @@ export async function adminMoveCategoryAction(
       .where(eq(categories.id, adjacent.id));
   });
 
+  revalidatePath("/admin/categories");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Batch reorder — used by drag-and-drop in the admin UI
+// ---------------------------------------------------------------------------
+
+/**
+ * Accepts an ordered array of industry IDs and assigns monotonically
+ * increasing sortOrder values (gaps of 10) so the list matches the desired
+ * sequence.
+ */
+export async function adminReorderIndustriesAction(
+  orderedIds: string[],
+): Promise<AdminActionResult> {
+  await requireAdmin();
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+    return { ok: false, error: "ورودی نامعتبر" };
+  }
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx
+        .update(industries)
+        .set({ sortOrder: i * 10, updatedAt: new Date() })
+        .where(eq(industries.id, orderedIds[i]!));
+    }
+  });
+  revalidatePath("/admin/categories");
+  return { ok: true };
+}
+
+/**
+ * Accepts an ordered array of category IDs (all must belong to the same
+ * industry) and assigns monotonically increasing sortOrder values.
+ */
+export async function adminReorderCategoriesAction(
+  orderedIds: string[],
+): Promise<AdminActionResult> {
+  await requireAdmin();
+  if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+    return { ok: false, error: "ورودی نامعتبر" };
+  }
+  const db = getDb();
+  await db.transaction(async (tx) => {
+    for (let i = 0; i < orderedIds.length; i++) {
+      await tx
+        .update(categories)
+        .set({ sortOrder: i * 10, updatedAt: new Date() })
+        .where(eq(categories.id, orderedIds[i]!));
+    }
+  });
   revalidatePath("/admin/categories");
   return { ok: true };
 }

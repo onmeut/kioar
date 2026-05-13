@@ -63,7 +63,20 @@ function SheetContent({
         data-slot="sheet-content"
         data-side={side}
         className={cn(
-          "fixed z-50 flex flex-col bg-popover bg-clip-padding text-sm text-popover-foreground shadow-xl transition duration-200 ease-in-out data-ending-style:opacity-0 data-starting-style:opacity-0 data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:h-auto data-[side=bottom]:overflow-hidden data-[side=bottom]:border-t data-[side=bottom]:data-ending-style:translate-y-10 data-[side=bottom]:data-starting-style:translate-y-10 data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:h-full data-[side=left]:w-3/4 data-[side=left]:border-e data-[side=left]:data-ending-style:-translate-x-10 rtl:data-[side=left]:data-ending-style:translate-x-10 data-[side=left]:data-starting-style:-translate-x-10 rtl:data-[side=left]:data-starting-style:translate-x-10 data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:h-full data-[side=right]:w-3/4 data-[side=right]:border-s data-[side=right]:data-ending-style:translate-x-10 rtl:data-[side=right]:data-ending-style:-translate-x-10 data-[side=right]:data-starting-style:translate-x-10 rtl:data-[side=right]:data-starting-style:-translate-x-10 data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:h-auto data-[side=top]:border-b data-[side=top]:data-ending-style:-translate-y-10 data-[side=top]:data-starting-style:-translate-y-10 data-[side=left]:sm:max-w-sm data-[side=right]:sm:max-w-sm",
+          // Shared base — all sides
+          "fixed z-50 flex flex-col bg-popover bg-clip-padding text-sm text-popover-foreground shadow-xl transition duration-200 ease-in-out data-ending-style:opacity-0 data-starting-style:opacity-0",
+          // Bottom sheet: anchored at bottom, capped at 90dvh so header always
+          // stays on-screen. Callers can override with h-[Xdvh] or max-h-none.
+          // NOTE: these are plain utility classes (not data-variants) so callers
+          // can reliably override them via tailwind-merge without specificity issues.
+          side === "bottom" &&
+            "inset-x-0 bottom-0 max-h-[90dvh] overflow-hidden border-t data-ending-style:translate-y-10 data-starting-style:translate-y-10",
+          side === "top" &&
+            "inset-x-0 top-0 h-auto border-b data-ending-style:-translate-y-10 data-starting-style:-translate-y-10",
+          side === "left" &&
+            "inset-y-0 left-0 h-full w-3/4 border-e sm:max-w-sm data-ending-style:-translate-x-10 rtl:data-ending-style:translate-x-10 data-starting-style:-translate-x-10 rtl:data-starting-style:translate-x-10",
+          side === "right" &&
+            "inset-y-0 right-0 h-full w-3/4 border-s sm:max-w-sm data-ending-style:translate-x-10 rtl:data-ending-style:-translate-x-10 data-starting-style:translate-x-10 rtl:data-starting-style:-translate-x-10",
           className,
         )}
         {...props}
@@ -93,7 +106,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-1.5 p-6", className)}
+      className={cn("flex shrink-0 flex-col gap-1.5 p-6", className)}
       {...props}
     />
   );

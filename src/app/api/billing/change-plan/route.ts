@@ -666,7 +666,7 @@ async function applyFreeTotalChange(input: {
     free: true,
     invoiceNumber: result.number,
     redirectUrl: absoluteUrl(
-      `/dashboard/pages/${input.page.id}/billing?paid=${result.number}`,
+      `/account/billing/${input.page.id}?paid=${result.number}`,
     ),
   });
 }

@@ -2,15 +2,30 @@
 
 import Link from "next/link";
 import type { Route } from "next";
-import { useActionState, useState } from "react";
 import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronUp,
-  Edit2,
-  Plus,
-  Trash2,
-} from "lucide-react";
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { ChevronLeft, Edit2, GripVertical, Plus, Trash2 } from "lucide-react";
 
 import { LinkIconPicker } from "@/components/dashboard/link-icon-picker";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +56,7 @@ interface IndustryManagerProps {
   createAction: CreateAction;
   updateAction: UpdateAction;
   deleteAction: (formData: FormData) => Promise<ActionResult>;
-  moveAction: (formData: FormData) => Promise<ActionResult>;
+  reorderAction: (orderedIds: string[]) => Promise<ActionResult>;
 }
 
 function IndustryIcon({ iconKey }: { iconKey: string }) {
@@ -50,63 +65,47 @@ function IndustryIcon({ iconKey }: { iconKey: string }) {
   return <Icon className="size-4 shrink-0" style={{ color: entry.color }} />;
 }
 
-function IndustryRow({
+function SortableIndustryRow({
   industry,
-  isFirst,
-  isLast,
   onEdit,
-  moveAction,
   deleteAction,
 }: {
   industry: Industry;
-  isFirst: boolean;
-  isLast: boolean;
   onEdit: (i: Industry) => void;
-  moveAction: (formData: FormData) => Promise<ActionResult>;
   deleteAction: (formData: FormData) => Promise<ActionResult>;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: industry.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
-      <div className="flex flex-col gap-0.5">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            fd.set("direction", "up");
-            void moveAction(fd);
-          }}
-        >
-          <input type="hidden" name="id" value={industry.id} />
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            disabled={isFirst}
-          >
-            <ChevronUp className="size-3.5" />
-          </Button>
-        </form>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            fd.set("direction", "down");
-            void moveAction(fd);
-          }}
-        >
-          <input type="hidden" name="id" value={industry.id} />
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            disabled={isLast}
-          >
-            <ChevronDown className="size-3.5" />
-          </Button>
-        </form>
-      </div>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3"
+    >
+      <button
+        type="button"
+        suppressHydrationWarning
+        className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+        aria-label="جابجایی"
+      >
+        <GripVertical className="size-4" />
+      </button>
 
       <IndustryIcon iconKey={industry.iconKey} />
 
@@ -152,7 +151,7 @@ function IndustryRow({
             e.preventDefault();
             if (
               !confirm(
-                `صنف «${industry.titleFa}» و تمام دسته‌بندی‌های آن غیرفعال شود؟`,
+                `صنف «${industry.titleFa}» و تمام دسته‌بندی‌های آن حذف شود؟ این عمل قابل بازگشت نیست.`,
               )
             )
               return;
@@ -195,6 +194,7 @@ function IndustryFormDialog({
   updateAction: UpdateAction;
 }) {
   const isEdit = industry !== null;
+
   const [iconKey, setIconKey] = useState(industry?.iconKey ?? "t:star");
   const [isActive, setIsActive] = useState(industry?.isActive ?? true);
   const [personal, setPersonal] = useState(
@@ -207,6 +207,15 @@ function IndustryFormDialog({
   const action = isEdit ? updateAction : createAction;
   const [state, formAction, pending] = useActionState(action, null);
 
+  // Auto-close on successful save.
+  const prevStateRef = useRef(state);
+  useEffect(() => {
+    if (state !== prevStateRef.current && state && "ok" in state && state.ok) {
+      onClose();
+    }
+    prevStateRef.current = state;
+  });
+
   return (
     <Dialog
       open={open}
@@ -214,7 +223,7 @@ function IndustryFormDialog({
         if (!o) onClose();
       }}
     >
-      <DialogContent key={industry?.id ?? "new"} className="max-w-md" dir="rtl">
+      <DialogContent className="max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle>{isEdit ? "ویرایش صنف" : "صنف جدید"}</DialogTitle>
         </DialogHeader>
@@ -345,43 +354,84 @@ export function IndustryManager({
   createAction,
   updateAction,
   deleteAction,
-  moveAction,
+  reorderAction,
 }: IndustryManagerProps) {
   const [editTarget, setEditTarget] = useState<Industry | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [items, setItems] = useState(industries);
+  const [, startTransition] = useTransition();
+
+  // Keep local list in sync when server-revalidated props arrive.
+  useEffect(() => {
+    setItems(industries);
+  }, [industries]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = items.findIndex((i) => i.id === active.id);
+    const newIndex = items.findIndex((i) => i.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    setItems(reordered);
+    startTransition(() => {
+      void reorderAction(reordered.map((i) => i.id));
+    });
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{industries.length} صنف</p>
+        <p className="text-sm text-muted-foreground">{items.length} صنف</p>
         <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="me-1.5 size-4" />
           صنف جدید
         </Button>
       </div>
 
-      <div className="space-y-2">
-        {industries.map((ind, idx) => (
-          <IndustryRow
-            key={ind.id}
-            industry={ind}
-            isFirst={idx === 0}
-            isLast={idx === industries.length - 1}
-            onEdit={setEditTarget}
-            moveAction={moveAction}
-            deleteAction={deleteAction}
-          />
-        ))}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={items.map((i) => i.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {items.map((ind) => (
+              <SortableIndustryRow
+                key={ind.id}
+                industry={ind}
+                onEdit={setEditTarget}
+                deleteAction={deleteAction}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
 
+      {/* Edit dialog — keyed by target id so it fully resets when switching items */}
       <IndustryFormDialog
+        key={editTarget?.id ?? "__none__"}
         open={editTarget !== null}
         onClose={() => setEditTarget(null)}
         industry={editTarget}
         createAction={createAction}
         updateAction={updateAction}
       />
+      {/* Create dialog */}
       <IndustryFormDialog
+        key="__create__"
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         industry={null}

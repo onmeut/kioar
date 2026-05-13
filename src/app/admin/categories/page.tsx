@@ -4,7 +4,7 @@ import { getIndustriesWithCounts } from "@/lib/discover";
 import {
   adminCreateIndustryAction,
   adminDeleteIndustryAction,
-  adminMoveIndustryAction,
+  adminReorderIndustriesAction,
   adminUpdateIndustryAction,
 } from "./actions";
 
@@ -28,7 +28,7 @@ export default async function AdminIndustriesPage() {
         createAction={adminCreateIndustryAction}
         updateAction={adminUpdateIndustryAction}
         deleteAction={adminDeleteIndustryAction}
-        moveAction={adminMoveIndustryAction}
+        reorderAction={adminReorderIndustriesAction}
       />
     </div>
   );

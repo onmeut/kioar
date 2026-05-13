@@ -246,17 +246,19 @@ export function PublicProfileShareModal({
   if (isMobile) {
     return (
       <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
-        <SheetContent side="bottom" className="rounded-t-2xl px-0 pb-safe-or-6">
-          <SheetTitle className="px-4 py-3 text-center text-base font-semibold">
+        <SheetContent side="bottom" className="flex flex-col rounded-t-2xl p-0">
+          <SheetTitle className="shrink-0 border-b px-4 py-3 text-center text-base font-semibold">
             اشتراک‌گذاری پروفایل
           </SheetTitle>
-          <ShareModalContent
-            url={url}
-            title={title}
-            avatarUrl={avatarUrl}
-            avatarSeed={avatarSeed}
-            qrStyle={qrStyle}
-          />
+          <div className="min-h-0 flex-1 overflow-y-auto px-0 pb-safe-or-6">
+            <ShareModalContent
+              url={url}
+              title={title}
+              avatarUrl={avatarUrl}
+              avatarSeed={avatarSeed}
+              qrStyle={qrStyle}
+            />
+          </div>
         </SheetContent>
       </Sheet>
     );

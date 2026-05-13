@@ -16,6 +16,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { DEFAULT_QR_STYLE, type QrStyle } from "@/lib/qr/types";
 
@@ -83,6 +85,7 @@ export function ShareModal({
   savedQrStyle,
   saveQrStyleAction,
 }: ShareModalProps) {
+  const isMobile = useIsMobile();
   const [view, setView] = useState<ShareView>("home");
   // DB value is the source of truth; fall back to localStorage, then DEFAULT.
   const [qrStyle, setQrStyle] = useState<QrStyle>(
@@ -117,10 +120,102 @@ export function ShareModal({
     toast.success("شخصی‌سازی کیو‌آر‌کد ذخیره شد.");
   }
 
+  // The animated body is shared between Sheet (mobile) and Dialog (desktop).
+  const body = (
+    <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-5">
+      <AnimatePresence mode="wait" initial={false}>
+        {view === "home" ? (
+          <motion.div
+            key="home"
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -12 }}
+            transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 1] }}
+          >
+            <HomeView
+              publicUrl={publicUrl}
+              displayHost={displayHost}
+              displayName={displayName}
+              qrStyle={qrStyle}
+              onOpenQr={() => setView("qr")}
+              onOpenCard={() => setView("card")}
+              onOpenIg={() => setView("ig")}
+            />
+          </motion.div>
+        ) : view === "qr" ? (
+          <motion.div
+            key="qr"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 16 }}
+            transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 1] }}
+          >
+            <QrCustomizeView
+              publicUrl={publicUrl}
+              displayName={displayName}
+              initialStyle={qrStyle}
+              canCustomize={canCustomizeQr}
+              onSave={async (s) => {
+                await handleSaveQrStyle(s);
+                setView("home");
+              }}
+              onCancel={() => setView("home")}
+            />
+          </motion.div>
+        ) : view === "card" ? (
+          <motion.div
+            key="card"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 16 }}
+            transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 1] }}
+          >
+            <DigitalCardView
+              publicUrl={publicUrl}
+              slug={slug}
+              displayName={displayName}
+              qrStyle={qrStyle}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="ig"
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 16 }}
+            transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 1] }}
+          >
+            <IgInstallView publicUrl={publicUrl} slug={slug} />
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={handleOpenChange}>
+        <SheetContent
+          side="bottom"
+          className="flex h-[90dvh] flex-col gap-0 rounded-t-3xl p-0"
+          showCloseButton={false}
+        >
+          <SheetTitle className="sr-only">{VIEW_TITLES[view]}</SheetTitle>
+          <ShareHeader
+            view={view}
+            onBack={() => setView("home")}
+            onClose={() => handleOpenChange(false)}
+          />
+          {body}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-md gap-0 p-0 overflow-hidden"
+        className="flex max-w-md flex-col gap-0 overflow-hidden p-0"
         showCloseButton={false}
       >
         {/* Visually-hidden title satisfies aria-labelledby for screen
@@ -133,74 +228,7 @@ export function ShareModal({
           onClose={() => handleOpenChange(false)}
         />
 
-        <div className="max-h-[78vh] overflow-y-auto px-5 pb-5">
-          <AnimatePresence mode="wait" initial={false}>
-            {view === "home" ? (
-              <motion.div
-                key="home"
-                initial={{ opacity: 0, x: 12 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -12 }}
-                transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 1] }}
-              >
-                <HomeView
-                  publicUrl={publicUrl}
-                  displayHost={displayHost}
-                  displayName={displayName}
-                  qrStyle={qrStyle}
-                  onOpenQr={() => setView("qr")}
-                  onOpenCard={() => setView("card")}
-                  onOpenIg={() => setView("ig")}
-                />
-              </motion.div>
-            ) : view === "qr" ? (
-              <motion.div
-                key="qr"
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 16 }}
-                transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 1] }}
-              >
-                <QrCustomizeView
-                  publicUrl={publicUrl}
-                  displayName={displayName}
-                  initialStyle={qrStyle}
-                  canCustomize={canCustomizeQr}
-                  onSave={async (s) => {
-                    await handleSaveQrStyle(s);
-                    setView("home");
-                  }}
-                  onCancel={() => setView("home")}
-                />
-              </motion.div>
-            ) : view === "card" ? (
-              <motion.div
-                key="card"
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 16 }}
-                transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 1] }}
-              >
-                <DigitalCardView
-                  publicUrl={publicUrl}
-                  slug={slug}
-                  displayName={displayName}
-                  qrStyle={qrStyle}
-                />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="ig"
-                initial={{ opacity: 0, x: 16 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 16 }}
-                transition={{ duration: 0.2, ease: [0.2, 0.65, 0.3, 1] }}
-              >
-                <IgInstallView publicUrl={publicUrl} slug={slug} />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+        {body}
       </DialogContent>
     </Dialog>
   );
@@ -221,7 +249,7 @@ function ShareHeader({
 }) {
   const showBack = view !== "home";
   return (
-    <div className="flex items-center justify-between gap-2 px-5 pt-5 pb-3">
+    <div className="flex shrink-0 items-center justify-between gap-2 border-b px-5 pt-5 pb-3">
       <div className="flex items-center gap-2">
         {showBack ? (
           <button

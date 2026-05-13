@@ -330,6 +330,6 @@ export async function startTrial(
     trialEndsAt,
     planKey,
     pageId,
-    redirectUrl: `/dashboard/pages/${pageId}/billing`,
+    redirectUrl: `/account/billing/${pageId}`,
   };
 }

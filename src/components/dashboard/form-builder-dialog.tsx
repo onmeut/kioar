@@ -317,7 +317,7 @@ function BuilderHeader({
         ? "افزودن فیلد"
         : "ویرایش فیلد";
   return (
-    <div className="flex items-center justify-between border-b px-3 py-2.5">
+    <div className="flex shrink-0 items-center justify-between border-b px-3 py-2.5">
       <Button
         type="button"
         size="icon-sm"

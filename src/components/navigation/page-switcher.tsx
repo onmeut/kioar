@@ -6,7 +6,7 @@ import type { Route } from "next";
 import { ChevronDownIcon, PlusIcon } from "lucide-react";
 import { toast } from "sonner";
 
-import { switchPageAction } from "@/app/(app)/dashboard/pages/actions";
+import { switchPageAction } from "@/app/(app)/dashboard/page-switcher-actions";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {

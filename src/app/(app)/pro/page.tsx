@@ -194,9 +194,7 @@ export default async function ProRoute() {
             variant="outline"
             size="sm"
             className="h-10 shrink-0 self-start rounded-full sm:self-auto"
-            render={
-              <Link href={`/dashboard/pages/${page.id}/billing` as Route} />
-            }
+            render={<Link href={`/account/billing/${page.id}` as Route} />}
           >
             صورت‌حساب صفحه
           </Button>

@@ -1,7 +1,29 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { ChevronDown, ChevronUp, Edit2, Plus, Trash2 } from "lucide-react";
+import {
+  useActionState,
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+import {
+  closestCenter,
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { Edit2, GripVertical, Plus, Trash2 } from "lucide-react";
 
 import { LinkIconPicker } from "@/components/dashboard/link-icon-picker";
 import { Badge } from "@/components/ui/badge";
@@ -42,7 +64,7 @@ interface CategoryManagerProps {
   createAction: CreateAction;
   updateAction: UpdateAction;
   deleteAction: (formData: FormData) => Promise<ActionResult>;
-  moveAction: (formData: FormData) => Promise<ActionResult>;
+  reorderAction: (orderedIds: string[]) => Promise<ActionResult>;
 }
 
 function CategoryIcon({ iconKey }: { iconKey: string }) {
@@ -51,63 +73,47 @@ function CategoryIcon({ iconKey }: { iconKey: string }) {
   return <Icon className="size-4 shrink-0" style={{ color: entry.color }} />;
 }
 
-function CategoryRow({
+function SortableCategoryRow({
   category,
-  isFirst,
-  isLast,
   onEdit,
-  moveAction,
   deleteAction,
 }: {
   category: Category;
-  isFirst: boolean;
-  isLast: boolean;
   onEdit: (c: Category) => void;
-  moveAction: (formData: FormData) => Promise<ActionResult>;
   deleteAction: (formData: FormData) => Promise<ActionResult>;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+  };
+
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3">
-      <div className="flex flex-col gap-0.5">
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            fd.set("direction", "up");
-            void moveAction(fd);
-          }}
-        >
-          <input type="hidden" name="id" value={category.id} />
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            disabled={isFirst}
-          >
-            <ChevronUp className="size-3.5" />
-          </Button>
-        </form>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const fd = new FormData(e.currentTarget);
-            fd.set("direction", "down");
-            void moveAction(fd);
-          }}
-        >
-          <input type="hidden" name="id" value={category.id} />
-          <Button
-            type="submit"
-            variant="ghost"
-            size="icon"
-            className="size-6"
-            disabled={isLast}
-          >
-            <ChevronDown className="size-3.5" />
-          </Button>
-        </form>
-      </div>
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-3 rounded-lg border bg-card px-4 py-3"
+    >
+      <button
+        type="button"
+        suppressHydrationWarning
+        className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+        aria-label="جابجایی"
+      >
+        <GripVertical className="size-4" />
+      </button>
 
       <CategoryIcon iconKey={category.iconKey} />
 
@@ -141,7 +147,11 @@ function CategoryRow({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            if (!confirm(`دسته‌بندی «${category.titleFa}» غیرفعال شود؟`))
+            if (
+              !confirm(
+                `دسته‌بندی «${category.titleFa}» حذف شود؟ این عمل قابل بازگشت نیست.`,
+              )
+            )
               return;
             const fd = new FormData(e.currentTarget);
             void deleteAction(fd);
@@ -180,6 +190,8 @@ function CategoryFormDialog({
   updateAction: UpdateAction;
 }) {
   const isEdit = category !== null;
+
+  // Initialise from the category prop (reset guaranteed by `key` on the parent).
   const [industryId, setIndustryId] = useState(
     category?.industryId ?? defaultIndustry.id,
   );
@@ -195,6 +207,15 @@ function CategoryFormDialog({
   const action = isEdit ? updateAction : createAction;
   const [state, formAction, pending] = useActionState(action, null);
 
+  // Auto-close on successful save.
+  const prevStateRef = useRef(state);
+  useEffect(() => {
+    if (state !== prevStateRef.current && state && "ok" in state && state.ok) {
+      onClose();
+    }
+    prevStateRef.current = state;
+  });
+
   const selectedIndustry =
     industries.find((i) => i.id === industryId) ?? defaultIndustry;
   const allowedAccountTypes = selectedIndustry.accountTypes;
@@ -206,7 +227,7 @@ function CategoryFormDialog({
         if (!o) onClose();
       }}
     >
-      <DialogContent key={category?.id ?? "new"} className="max-w-md" dir="rtl">
+      <DialogContent className="max-w-md" dir="rtl">
         <DialogHeader>
           <DialogTitle>
             {isEdit ? "ویرایش دسته‌بندی" : "دسته‌بندی جدید"}
@@ -237,7 +258,7 @@ function CategoryFormDialog({
               }}
             >
               <SelectTrigger>
-                <SelectValue />
+                <SelectValue placeholder="انتخاب صنف" />
               </SelectTrigger>
               <SelectContent>
                 {industries.map((ind) => (
@@ -309,7 +330,7 @@ function CategoryFormDialog({
                   className={`flex items-center gap-2 text-sm ${
                     allowedAccountTypes.includes(t)
                       ? ""
-                      : "opacity-40 pointer-events-none"
+                      : "pointer-events-none opacity-40"
                   }`}
                 >
                   <RadioGroupItem
@@ -367,16 +388,45 @@ export function CategoryManager({
   createAction,
   updateAction,
   deleteAction,
-  moveAction,
+  reorderAction,
 }: CategoryManagerProps) {
   const [editTarget, setEditTarget] = useState<Category | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [items, setItems] = useState(categories);
+  const [, startTransition] = useTransition();
+
+  // Keep local list in sync when server-revalidated props arrive.
+  useEffect(() => {
+    setItems(categories);
+  }, [categories]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 200, tolerance: 5 },
+    }),
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = items.findIndex((c) => c.id === active.id);
+    const newIndex = items.findIndex((c) => c.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    setItems(reordered);
+    startTransition(() => {
+      void reorderAction(reordered.map((c) => c.id));
+    });
+  }
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {categories.length} دسته‌بندی
+          {items.length} دسته‌بندی
         </p>
         <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="me-1.5 size-4" />
@@ -384,26 +434,36 @@ export function CategoryManager({
         </Button>
       </div>
 
-      <div className="space-y-2">
-        {categories.map((cat, idx) => (
-          <CategoryRow
-            key={cat.id}
-            category={cat}
-            isFirst={idx === 0}
-            isLast={idx === categories.length - 1}
-            onEdit={setEditTarget}
-            moveAction={moveAction}
-            deleteAction={deleteAction}
-          />
-        ))}
-        {categories.length === 0 && (
-          <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
-            دسته‌بندی‌ای برای این صنف ثبت نشده است.
-          </p>
-        )}
-      </div>
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={items.map((c) => c.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          <div className="space-y-2">
+            {items.map((cat) => (
+              <SortableCategoryRow
+                key={cat.id}
+                category={cat}
+                onEdit={setEditTarget}
+                deleteAction={deleteAction}
+              />
+            ))}
+            {items.length === 0 && (
+              <p className="rounded-lg border border-dashed py-8 text-center text-sm text-muted-foreground">
+                دسته‌بندی‌ای برای این صنف ثبت نشده است.
+              </p>
+            )}
+          </div>
+        </SortableContext>
+      </DndContext>
 
+      {/* Edit dialog — keyed by target id so it fully resets when switching items */}
       <CategoryFormDialog
+        key={editTarget?.id ?? "__none__"}
         open={editTarget !== null}
         onClose={() => setEditTarget(null)}
         category={editTarget}
@@ -412,7 +472,9 @@ export function CategoryManager({
         createAction={createAction}
         updateAction={updateAction}
       />
+      {/* Create dialog */}
       <CategoryFormDialog
+        key="__create__"
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         category={null}

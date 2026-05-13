@@ -45,9 +45,7 @@ export function SidebarUpgradeCard({
 
   if (planKey === "pro") {
     return (
-      <ManageSubscriptionCard
-        href={`/dashboard/pages/${pageId}/billing` as Route}
-      />
+      <ManageSubscriptionCard href={`/account/billing/${pageId}` as Route} />
     );
   }
 
@@ -137,9 +135,7 @@ function UpgradeCard({
       {/* Sparkle + eyebrow */}
       <div className="mb-2 flex items-center gap-2 text-primary">
         <SparkleMark />
-        <span className="text-[11px] font-bold uppercase">
-          {eyebrow}
-        </span>
+        <span className="text-[11px] font-bold uppercase">{eyebrow}</span>
       </div>
 
       <div className="space-y-1">

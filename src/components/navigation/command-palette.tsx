@@ -173,12 +173,12 @@ export function CommandPalette({
         ? {
             label: "ارتقا به Business",
             icon: SparklesIcon,
-            href: `/dashboard/pages/${currentPageId}/billing/plans` as const,
+            href: `/account/billing/${currentPageId}/plans` as const,
           }
         : {
             label: "مدیریت اشتراک",
             icon: CreditCardIcon,
-            href: `/dashboard/pages/${currentPageId}/billing` as const,
+            href: `/account/billing/${currentPageId}` as const,
           }
     : null;
 
@@ -268,9 +268,7 @@ export function CommandPalette({
                 "پلن",
                 "اشتراک",
               ]}
-              onSelect={() =>
-                goPage(`/dashboard/pages/${currentPageId}/billing`)
-              }
+              onSelect={() => goPage(`/account/billing/${currentPageId}`)}
             >
               <ReceiptIcon />
               <span>پلن و صورت‌حساب</span>
@@ -287,7 +285,7 @@ export function CommandPalette({
             <CommandItem
               value="nav-profile"
               keywords={["profile", "account", "پروفایل", "حساب"]}
-              onSelect={() => goPage("/dashboard/account")}
+              onSelect={() => goPage("/account")}
             >
               <UserIcon />
               <span>پروفایل کاربری</span>
@@ -335,7 +333,7 @@ export function CommandPalette({
               onSelect={() =>
                 features.bookings
                   ? triggerEditorAction("add-booking")
-                  : goPage(`/dashboard/pages/${currentPageId}/billing/plans`)
+                  : goPage(`/account/billing/${currentPageId}/plans`)
               }
             >
               <CalendarClockIcon />
@@ -348,7 +346,7 @@ export function CommandPalette({
               onSelect={() =>
                 features.contactForm
                   ? triggerEditorAction("add-form")
-                  : goPage(`/dashboard/pages/${currentPageId}/billing/plans`)
+                  : goPage(`/account/billing/${currentPageId}/plans`)
               }
             >
               <MailQuestionIcon />
@@ -409,7 +407,7 @@ export function CommandPalette({
                 value="tool-discount"
                 keywords={["discount", "promo", "code", "کد", "تخفیف"]}
                 onSelect={() =>
-                  goPage(`/dashboard/pages/${currentPageId}/billing#discount`)
+                  goPage(`/account/billing/${currentPageId}#discount`)
                 }
               >
                 <TagIcon />
@@ -420,7 +418,7 @@ export function CommandPalette({
               value="tool-invoices"
               keywords={["invoices", "billing", "صورت‌حساب", "فاکتور"]}
               onSelect={() =>
-                goPage(`/dashboard/pages/${currentPageId}/billing#invoices`)
+                goPage(`/account/billing/${currentPageId}/invoices`)
               }
             >
               <ReceiptIcon />
@@ -433,7 +431,7 @@ export function CommandPalette({
                 goPage(
                   features.csvExport
                     ? `/dashboard/pages/${currentPageId}/analytics?export=csv`
-                    : `/dashboard/pages/${currentPageId}/billing/plans`,
+                    : `/account/billing/${currentPageId}/plans`,
                 )
               }
             >

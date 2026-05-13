@@ -152,9 +152,9 @@ function ShareSheet({ href }: { href: string }) {
       />
       <SheetContent
         side="bottom"
-        className="max-h-[90vh] overflow-y-auto rounded-t-3xl"
+        className="flex flex-col max-h-[90dvh] rounded-t-3xl p-0"
       >
-        <SheetHeader className="text-start">
+        <SheetHeader className="shrink-0 border-b px-4 pt-4 pb-3 text-start">
           <SheetTitle className="flex items-center gap-2 text-[16px]">
             <SparklesIcon className="size-4 text-violet-600" />
             متن آماده برای پست
@@ -164,7 +164,7 @@ function ShareSheet({ href }: { href: string }) {
           </SheetDescription>
         </SheetHeader>
 
-        <div className="space-y-3 px-4 pb-6">
+        <div className="min-h-0 flex-1 overflow-y-auto space-y-3 px-4 py-4 pb-6">
           {variants.map((v) => (
             <VariantCard key={v.key} variant={v} />
           ))}

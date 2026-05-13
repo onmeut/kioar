@@ -12,7 +12,7 @@ import {
 import {
   adminCreateCategoryAction,
   adminDeleteCategoryAction,
-  adminMoveCategoryAction,
+  adminReorderCategoriesAction,
   adminUpdateCategoryAction,
 } from "../actions";
 
@@ -55,7 +55,7 @@ export default async function AdminCategoriesByIndustryPage({
         createAction={adminCreateCategoryAction}
         updateAction={adminUpdateCategoryAction}
         deleteAction={adminDeleteCategoryAction}
-        moveAction={adminMoveCategoryAction}
+        reorderAction={adminReorderCategoriesAction}
       />
     </div>
   );

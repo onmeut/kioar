@@ -262,7 +262,7 @@ export async function POST(request: Request) {
       free: true,
       invoiceNumber: result.number,
       redirectUrl: absoluteUrl(
-        `/dashboard/pages/${page.id}/billing?paid=${result.number}`,
+        `/account/billing/${page.id}?paid=${result.number}`,
       ),
     });
   }

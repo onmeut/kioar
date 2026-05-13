@@ -54,7 +54,7 @@ export async function GET(request: Request) {
   const gatewayStatus = url.searchParams.get("Status");
 
   if (!invoiceId || !authority) {
-    return redirect("/dashboard?billing=invalid");
+    return redirect("/account/billing?status=invalid");
   }
 
   const db = getDb();
@@ -64,11 +64,11 @@ export async function GET(request: Request) {
   });
   if (!payment) {
     log.warn("billing.callback.unknown_authority", { authority, invoiceId });
-    return redirect("/dashboard?billing=unknown");
+    return redirect(`/account/billing/invoices/${invoiceId}?status=unknown`);
   }
 
   // Already-applied: idempotent short-circuit. We still need the invoice
-  // to build the dashboard redirect target, but no DB writes happen.
+  // to build the redirect target, but no DB writes happen.
   if (payment.status === "verified") {
     const prior = await db.query.invoices.findFirst({
       where: eq(invoices.id, payment.invoiceId),
@@ -76,12 +76,12 @@ export async function GET(request: Request) {
     });
     return redirect(
       prior
-        ? `/dashboard/pages/${prior.pageId}/billing?paid=${prior.number}&already=1`
-        : "/dashboard?billing=already",
+        ? `/account/billing/${prior.pageId}?paid=${prior.number}&already=1`
+        : `/account/billing/invoices/${invoiceId}?status=already`,
     );
   }
   if (payment.status === "failed") {
-    return redirect("/dashboard?billing=failed");
+    return redirect(`/account/billing/invoices/${invoiceId}?status=failed`);
   }
 
   // User-cancel flag from Zarinpal. Mark failed and bail; do NOT call
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
         updatedAt: new Date(),
       })
       .where(eq(payments.id, payment.id));
-    return redirect("/dashboard?billing=cancelled");
+    return redirect(`/account/billing/invoices/${invoiceId}?status=cancelled`);
   }
 
   // Verify on Zarinpal. Network failure here = bail; do NOT mark failed
@@ -111,7 +111,7 @@ export async function GET(request: Request) {
       authority,
       error: (err as Error).message,
     });
-    return redirect("/dashboard?billing=retry");
+    return redirect(`/account/billing/invoices/${invoiceId}?status=retry`);
   }
 
   if (verifyResult.status === "failed") {
@@ -128,7 +128,7 @@ export async function GET(request: Request) {
       code: verifyResult.code,
       message: verifyResult.message,
     });
-    return redirect("/dashboard?billing=failed");
+    return redirect(`/account/billing/invoices/${invoiceId}?status=failed`);
   }
 
   // Verified — apply atomically.
@@ -140,7 +140,7 @@ export async function GET(request: Request) {
       paymentId: payment.id,
       invoiceId: payment.invoiceId,
     });
-    return redirect("/dashboard?billing=unknown");
+    return redirect(`/account/billing/invoices/${invoiceId}?status=unknown`);
   }
 
   const plan = await db.query.plans.findFirst({
@@ -151,7 +151,7 @@ export async function GET(request: Request) {
       invoiceId: invoice.id,
       planId: invoice.planId,
     });
-    return redirect("/dashboard?billing=unknown");
+    return redirect(`/account/billing/invoices/${invoice.id}?status=unknown`);
   }
 
   const now = new Date();
@@ -249,6 +249,6 @@ export async function GET(request: Request) {
   }
 
   return redirect(
-    `/dashboard/pages/${invoice.pageId}/billing?paid=${invoice.number}&ref=${refId}`,
+    `/account/billing/${invoice.pageId}?paid=${invoice.number}&ref=${refId}`,
   );
 }

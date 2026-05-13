@@ -3,7 +3,7 @@
 /**
  * Phase 9 — billing actions card (client island).
  *
- * Renders two things on `/dashboard/pages/{id}/billing`:
+ * Renders two things on `/account/billing/{id}`:
  *
  *   1. **Plan picker** — one card per active plan in the registry
  *      (Free + Pro + Business), laid out as 3 columns on desktop. Each
@@ -185,9 +185,14 @@ export function BillingActionsCard({ state }: Props) {
       ? `پلن «${option.nameFa}» در پایان دوره‌ی فعلی جایگزین می‌شود. ادامه می‌دهید؟`
       : option.key === "free"
         ? "پلن صفحه به رایگان تغییر کرده و در پایان دوره اعمال می‌شود. ادامه می‌دهید؟"
-        : `برای ارتقا به «${option.nameFa}» به درگاه پرداخت منتقل می‌شوید.`;
+        : null;
 
-    if (!window.confirm(confirmMsg)) return;
+    // Skip the confirm for upgrade-to-paid: the next thing the user
+    // sees is the Zarinpal gateway, which is its own confirmation
+    // surface. Confirm is kept for downgrades and switch-to-Free
+    // because those are scheduled changes the user can't easily
+    // reverse without contacting support.
+    if (confirmMsg && !window.confirm(confirmMsg)) return;
 
     // Forward the typed code on upgrade. Code is only honored on the
     // fresh-checkout branch in /api/billing/change-plan; downgrades and
