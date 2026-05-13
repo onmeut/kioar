@@ -1,4 +1,3 @@
-import withPWA from "@ducanh2912/next-pwa";
 import type { NextConfig } from "next";
 
 // Derive the S3 host we'll serve images from, so the <Image> optimizer only
@@ -166,44 +165,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-// PWA is DISABLED on purpose.
-// ----------------------------------------------------------------------------
-// The previous next-pwa configuration (NetworkFirst on every HTML/RSC,
-// `cacheOnFrontEndNav`, `cacheStartUrl`, precache of authed route chunks)
-// poisoned production. Symptoms users hit:
-//
-//  - Page-switcher → hard-fallback to `/` showing logged-out landing.
-//  - React minified error #418 from stale RSC payloads served by the SW.
-//  - `ChunkLoadError: Loading chunk … failed` after every deploy because
-//    the old SW precache pointed at chunk hashes the new server no longer
-//    serves.
-//  - "اتصال اینترنت برقرار نیست" on /me, /bookings, /dashboard/referral,
-//    etc. because the SW caught the failed fetch and served the offline
-//    fallback.
-//
-// Replacing the config alone is not enough: every existing browser is
-// already controlled by the broken SW and keeps serving stale chunks
-// until that SW is replaced. So we
-//
-//   1. Set `disable: true` here so next-pwa does NOT generate `sw.js`,
-//      does NOT inject `swe-worker`, and does NOT register any service
-//      worker for new visitors.
-//   2. Ship a hand-written kill-switch at `public/sw.js` that runs once
-//      in every old client, unregisters itself, deletes every Cache
-//      Storage bucket, and reloads the tab.
-//
-// Result: every user (new or existing) ends up with NO service worker
-// and a clean cache the next time they visit. Plain HTTP. The
-// page-switcher, RSC navigation, server actions, and chunk loading all
-// work the way Next.js intends.
-//
-// Once production is verified healthy, we can introduce a much smaller,
-// purpose-built SW (offline page only, no document/RSC caching) in a
-// later release. For now: no PWA.
-export default withPWA({
-  dest: "public",
-  // Disable everywhere — including production builds — until the SW
-  // story is rebuilt from scratch.
-  disable: true,
-  register: false,
-})(nextConfig);
+// @ducanh2912/next-pwa has been removed (npm uninstall).
+// A kill-switch SW lives at public/sw.js — it unregisters the old broken SW
+// and wipes all caches for any user who previously had it installed.
+// Do not reintroduce next-pwa or any other SW library. See CLAUDE.md.
+export default nextConfig;

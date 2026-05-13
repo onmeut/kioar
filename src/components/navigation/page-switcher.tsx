@@ -136,8 +136,11 @@ export function PageSwitcher({
         toast.error(result.message);
         return;
       }
-      router.push("/me");
-      router.refresh();
+      // Hard full-page navigation instead of router.push + router.refresh.
+      // The kioar_page_id cookie is already updated server-side by the
+      // action. A hard navigate guarantees every server component re-reads
+      // the new cookie — no competing RSC fetches, no stale layout state.
+      window.location.href = "/me";
     });
   };
 

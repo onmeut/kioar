@@ -13,7 +13,7 @@ Persian-only (RTL) link-in-bio + bookings/forms/events SaaS, **mobile-first**, i
 - **Redis** (`ioredis`) for rate limits, OTP cooldowns, SMS queue locks.
 - **Kavenegar** SMS lookup. **Zarinpal** payments. **S3-compatible** object storage (`@aws-sdk/client-s3`), with `@vercel/blob` as alt.
 - **Auth**: phone + OTP, custom session cookie `kioar_session`, hashed with `AUTH_SECRET`. Admin role from `ADMIN_PHONE_NUMBERS` env.
-- **PWA**: `@ducanh2912/next-pwa` generates `public/sw.js` — never hand-edit. Offline fallback `/~offline`.
+- **PWA**: Removed. `public/sw.js` is a hand-written kill-switch that unregisters any old service worker and nukes its caches; no SW is registered for new visitors. Do not reintroduce `next-pwa`.
 - **Fonts**: IRANYekanXVF (local in `src/fonts`) + Vazirmatn variable.
 - **npm** is the package manager.
 
