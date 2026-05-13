@@ -85,6 +85,15 @@ export async function getOwnedPageById(
 /**
  * Resolve the "current page" for a logged-in owner.
  *
+ * **Cookie is a "last-visited" hint, NOT the source of truth.** Any route
+ * that has `[pageId]` in its URL MUST derive the page from the URL param
+ * (via `getOwnedPageById(params.pageId, ownerId)`), not from
+ * `viewer.profile`. Otherwise a stale cookie can disagree with the URL
+ * — the sidebar / page-switcher / upgrade card would show a different
+ * page than the route content. The cookie remains useful only for
+ * routes that have no `[pageId]` segment (`/me`, `/dashboard`,
+ * `/bookings`, `/forms`, …).
+ *
  * Order of preference:
  *   1. The page named in the `kioar_page_id` cookie, if it's owned by them.
  *   2. The oldest page they own (their first one) \u2014 stable fallback.

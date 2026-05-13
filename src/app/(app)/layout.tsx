@@ -34,15 +34,48 @@ import { profileShareUrl } from "@/lib/profile-domains";
 import { DEFAULT_QR_STYLE } from "@/lib/qr/types";
 import { getReferralAvailableMonths } from "@/lib/referrals";
 import { getSidebarBadgeCounts } from "@/lib/sidebar-counts";
+import { log } from "@/lib/log";
 import { saveQrStyleAction } from "./me/autosave-actions";
+
+// Authenticated shell reads cookies (session, current-page) on every
+// request. Force the whole subtree dynamic so Next never tries to
+// statically render a page-segment under this layout.
+export const dynamic = "force-dynamic";
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  // requireCompletedProfile MUST run first — it gates the whole shell
+  // (auth redirect, onboarding redirect). Everything else is parallelized
+  // and individually resilient so a single failing query never blanks
+  // the authenticated area.
   const viewer = await requireCompletedProfile();
-  const ownedPages = await listOwnedPagesWithPlan(viewer.user.id);
+
+  const ownedPages = await listOwnedPagesWithPlan(viewer.user.id).catch(
+    (err: unknown) => {
+      log.error("app_layout.list_owned_pages_failed", {
+        userId: viewer.user.id,
+        error: (err as Error)?.message,
+      });
+      // Degrade to a single-row switcher built from `viewer.profile` so
+      // the sidebar still renders. Plan badge falls back to "free".
+      return [
+        {
+          id: viewer.profile.id,
+          slug: viewer.profile.slug,
+          fullName: viewer.profile.fullName,
+          title: viewer.profile.title,
+          avatarUrl: viewer.profile.avatarUrl,
+          avatarSeed: viewer.profile.avatarSeed,
+          planKey: "free" as const,
+          isOnTrial: false,
+          trialEndsAt: null,
+        },
+      ];
+    },
+  );
   const switcherItems = ownedPages.map((p) => ({
     id: p.id,
     slug: p.slug,
@@ -68,33 +101,33 @@ export default async function DashboardLayout({
     currentPage && (currentPage.planKey === "free" || currentPage.isOnTrial),
   );
 
-  // Single round-trip — see `lib/sidebar-counts.ts`. Failure here must
-  // not break navigation; we degrade to all-zero badges (rendered as
-  // "no badge") rather than crashing the layout.
-  const badgeCounts = await getSidebarBadgeCounts(
-    currentPageId,
-    viewer.user.id,
-  ).catch(() => ({ bookings: 0, forms: 0, notifications: 0 }));
-
-  // Unredeemed referral credit count surfaced in the sidebar CTA pill
-  // so users notice they have something to apply. Defaults to 0 on any
-  // failure — the CTA still renders with its standard teaser pill.
-  const referralAvailableMonths = await getReferralAvailableMonths(
-    viewer.user.id,
-  ).catch(() => 0);
-
-  // Pre-resolve the three feature flags the command palette needs for
-  // the current page. Doing this server-side keeps the palette purely
-  // client-rendered (no waterfall on open) and lets us call
-  // `pageHasFeature` once per render. Any failure degrades to "locked",
-  // which surfaces the upgrade route — the same outcome a Free user
-  // would see, so it's safe.
+  // Sidebar badges + referral pill + feature flags in parallel. Every
+  // branch has its own fallback — one slow/failing query must NOT block
+  // or break the entire authenticated shell.
   const [
+    badgeCounts,
+    referralAvailableMonths,
     contactFormFeature,
     bookingsFeature,
     csvExportFeature,
     qrCustomizationFeature,
   ] = await Promise.all([
+    getSidebarBadgeCounts(currentPageId, viewer.user.id).catch(
+      (err: unknown) => {
+        log.error("app_layout.sidebar_counts_failed", {
+          pageId: currentPageId,
+          error: (err as Error)?.message,
+        });
+        return { bookings: 0, forms: 0, notifications: 0 };
+      },
+    ),
+    getReferralAvailableMonths(viewer.user.id).catch((err: unknown) => {
+      log.warn("app_layout.referral_months_failed", {
+        userId: viewer.user.id,
+        error: (err as Error)?.message,
+      });
+      return 0;
+    }),
     pageHasFeature(currentPageId, "business_contact_form").catch(() => false),
     pageHasFeature(currentPageId, "business_bookings").catch(() => false),
     pageHasFeature(currentPageId, "analytics_csv_export").catch(() => false),

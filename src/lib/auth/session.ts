@@ -147,9 +147,14 @@ export const getCurrentViewer = cache(async () => {
   }
 
   // A user can own many pages now. `profile` here is the *current* page —
-  // the one selected via the `kioar_page_id` cookie, with the user's first
-  // page as a stable fallback. Most callers want this single "current"
-  // surface; multi-page-aware code reaches for `lib/pages.ts` directly.
+  // resolved from the `kioar_page_id` cookie with the user's first page
+  // as a stable fallback.
+  //
+  // ⚠️ Treat `viewer.profile` as a "last-visited hint" only. Routes that
+  // carry `[pageId]` in their URL (e.g. /account/billing/[pageId]/…,
+  // /admin/billing/pages/[pageId]/…) MUST resolve the page from the URL
+  // param via `getOwnedPageById`, never from `viewer.profile`, otherwise
+  // a stale cookie can disagree with the URL.
   const currentPage = await resolveCurrentPageForOwner(session.user.id);
 
   return {

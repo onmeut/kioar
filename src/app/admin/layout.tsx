@@ -21,6 +21,11 @@ import {
 } from "@/components/ui/sidebar";
 import { requireAdmin } from "@/lib/auth/session";
 
+// Admin shell reads session/impersonation cookies on every request and
+// renders per-admin data. Force the whole `/admin/*` subtree dynamic so
+// Next never attempts to statically render a child segment.
+export const dynamic = "force-dynamic";
+
 const adminNavItems: SidebarNavItem[] = [
   { href: "/admin", label: "نمای کلی", icon: "admin", match: "exact" },
   { href: "/admin/users", label: "کاربران", icon: "users" },

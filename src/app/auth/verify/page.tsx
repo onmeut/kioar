@@ -1,46 +1,49 @@
-import { redirect } from "next/navigation"
+import { redirect } from "next/navigation";
 
-import { OtpVerificationForm } from "@/components/auth/otp-verification-form"
-import { AuthShell } from "@/components/marketing/auth-shell"
-import { getCurrentViewer } from "@/lib/auth/session"
-import { normalizeIranianPhone } from "@/lib/phone"
+import { OtpVerificationForm } from "@/components/auth/otp-verification-form";
+import { AuthShell } from "@/components/marketing/auth-shell";
+import { getCurrentViewer } from "@/lib/auth/session";
+import { normalizeIranianPhone } from "@/lib/phone";
+
+// Reads session cookie + per-request searchParams — never static.
+export const dynamic = "force-dynamic";
 
 export default async function VerifyPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    phone?: string
-    cooldownUntil?: string
-  }>
+    phone?: string;
+    cooldownUntil?: string;
+  }>;
 }) {
-  const viewer = await getCurrentViewer()
+  const viewer = await getCurrentViewer();
 
   if (viewer?.profile?.isComplete) {
-    redirect("/dashboard")
+    redirect("/dashboard");
   }
 
   if (viewer?.user) {
-    redirect("/onboarding")
+    redirect("/onboarding");
   }
 
-  const params = await searchParams
+  const params = await searchParams;
 
   if (!params.phone) {
-    redirect("/auth")
+    redirect("/auth");
   }
 
-  let phone = params.phone
+  let phone = params.phone;
 
   try {
-    phone = normalizeIranianPhone(phone)
+    phone = normalizeIranianPhone(phone);
   } catch {
-    redirect("/auth")
+    redirect("/auth");
   }
 
-  const cooldownUntil = Number(params.cooldownUntil)
+  const cooldownUntil = Number(params.cooldownUntil);
   const initialCooldownUntil = Number.isFinite(cooldownUntil)
     ? cooldownUntil
-    : undefined
+    : undefined;
 
   return (
     <AuthShell>
@@ -49,5 +52,5 @@ export default async function VerifyPage({
         initialCooldownUntil={initialCooldownUntil}
       />
     </AuthShell>
-  )
+  );
 }
