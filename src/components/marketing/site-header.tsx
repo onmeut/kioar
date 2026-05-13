@@ -13,7 +13,7 @@ export async function SiteHeader() {
     viewer?.user?.phone?.slice(-4) ||
     "کاربر";
   const displayInitial = displayName.trim().charAt(0) || "ک";
-  const dashboardHref: Route = isComplete ? "/dashboard" : "/onboarding";
+  const dashboardHref: Route = isComplete ? "/me" : "/onboarding";
 
   return (
     <SiteHeaderClient

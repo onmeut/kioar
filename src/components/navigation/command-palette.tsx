@@ -203,7 +203,7 @@ export function CommandPalette({
             <CommandItem
               value="nav-dashboard"
               keywords={["dashboard", "home", "داشبورد", "خانه"]}
-              onSelect={() => goPage("/dashboard")}
+              onSelect={() => goPage("/insights")}
             >
               <HomeIcon />
               <span>داشبورد</span>
@@ -220,7 +220,7 @@ export function CommandPalette({
               value="nav-analytics"
               keywords={["stats", "analytics", "آمار", "بازدید"]}
               onSelect={() =>
-                goPage(`/dashboard/pages/${currentPageId}/analytics`)
+                goPage(`/insights/pages/${currentPageId}/analytics`)
               }
             >
               <BarChart3Icon />
@@ -277,7 +277,7 @@ export function CommandPalette({
             <CommandItem
               value="nav-notifications"
               keywords={["notifications", "اعلان"]}
-              onSelect={() => goPage("/dashboard/notifications")}
+              onSelect={() => goPage("/insights/notifications")}
             >
               <BellIcon />
               <span>اعلان‌ها</span>
@@ -301,7 +301,7 @@ export function CommandPalette({
             <CommandItem
               value="nav-referral"
               keywords={["referral", "invite", "دعوت", "دوست"]}
-              onSelect={() => goPage("/dashboard/referral")}
+              onSelect={() => goPage("/insights/referral")}
             >
               <GiftIcon />
               <span>دعوت دوستان</span>
@@ -430,7 +430,7 @@ export function CommandPalette({
               onSelect={() =>
                 goPage(
                   features.csvExport
-                    ? `/dashboard/pages/${currentPageId}/analytics?export=csv`
+                    ? `/insights/pages/${currentPageId}/analytics?export=csv`
                     : `/account/billing/${currentPageId}/plans`,
                 )
               }

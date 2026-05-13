@@ -161,7 +161,7 @@ export default async function DashboardLayout({
   };
 
   const statsNavItem: SidebarNavItem = {
-    href: "/dashboard",
+    href: "/insights" as Route,
     label: "آمار",
     icon: "analytics",
     match: "exact",
@@ -190,7 +190,7 @@ export default async function DashboardLayout({
   const iconRowItems: SidebarIconRowItem[] = [
     { href: "/" as Route, label: "صفحهٔ اصلی", icon: "home" },
     {
-      href: "/dashboard/notifications" as Route,
+      href: "/insights/notifications" as Route,
       label: "اعلان‌ها",
       icon: "notifications",
       showDot: badgeCounts.notifications > 0,
@@ -265,7 +265,7 @@ export default async function DashboardLayout({
                 />
               ) : null}
               <SidebarReferralCTA
-                href={"/dashboard/referral" as Route}
+                href={"/insights/referral" as Route}
                 availableMonths={referralAvailableMonths}
               />
               <SidebarIconRow items={iconRowItems} />

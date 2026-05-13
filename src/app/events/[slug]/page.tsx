@@ -252,7 +252,7 @@ export default async function EventPage({
 
                   {isRegistered ? (
                     <Link
-                      href="/dashboard"
+                      href="/me"
                       className={cn(
                         buttonVariants({ size: "lg" }),
                         "marketing-primary-button h-12 w-full text-base font-bold",

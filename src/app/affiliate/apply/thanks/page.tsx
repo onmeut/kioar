@@ -58,7 +58,7 @@ export default function AffiliateApplyThanksPage() {
               variant="outline"
               size="lg"
               className="h-11 rounded-full px-6 text-[14px] font-bold"
-              render={<Link href="/dashboard" />}
+              render={<Link href="/me" />}
             >
               بازگشت به داشبورد
             </Button>

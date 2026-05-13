@@ -11,7 +11,7 @@ const TITLE_MAP: Array<{ match: RegExp; title: string }> = [
   { match: /^\/premium(\/|$)/, title: "کارت هوشمند" },
   { match: /^\/my-events\/[^/]+/, title: "رویداد من" },
   { match: /^\/my-events\/?$/, title: "رویدادهای من" },
-  { match: /^\/dashboard\/?$/, title: "داشبورد" },
+  { match: /^\/insights\/?$/, title: "داشبورد" },
   // Admin
   { match: /^\/admin\/users\/[^/]+/, title: "جزئیات کاربر" },
   { match: /^\/admin\/users\/?$/, title: "کاربران" },

@@ -193,7 +193,7 @@ export async function requireAdmin() {
   const viewer = await requireCompletedProfile();
 
   if (viewer.user.role !== "admin") {
-    redirect("/dashboard");
+    redirect("/me");
   }
 
   return viewer;
@@ -440,7 +440,7 @@ export async function continuePendingEventRegistrationOrRedirect(
   const pendingEventSlug = await getPendingEventRegistration();
 
   if (!pendingEventSlug) {
-    redirect("/dashboard");
+    redirect("/me");
   }
 
   const event = await db.query.events.findFirst({
@@ -452,7 +452,7 @@ export async function continuePendingEventRegistrationOrRedirect(
 
   if (!event) {
     await clearPendingEventRegistration();
-    redirect("/dashboard");
+    redirect("/me");
   }
 
   const existingRegistration = await db.query.eventRegistrations.findFirst({

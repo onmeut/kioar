@@ -1,4 +1,4 @@
-import { signOutAction } from "@/app/(app)/dashboard/actions";
+import { signOutAction } from "@/app/(app)/insights/actions";
 import type { Route } from "next";
 import { ImpersonationBar } from "@/components/admin/impersonation-bar";
 import {

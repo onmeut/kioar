@@ -19,7 +19,7 @@ export default async function VerifyPage({
   const viewer = await getCurrentViewer();
 
   if (viewer?.profile?.isComplete) {
-    redirect("/dashboard");
+    redirect("/me");
   }
 
   if (viewer?.user) {

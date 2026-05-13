@@ -37,7 +37,7 @@ function getDashboardItems(isProUser: boolean): NavItem[] {
       icon: CalendarClockIcon,
     },
     {
-      href: "/dashboard" as Route,
+      href: "/insights" as Route,
       label: "آمار",
       icon: BarChart3Icon,
       match: "exact",

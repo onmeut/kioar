@@ -11,7 +11,7 @@ export default async function AuthPage() {
   const viewer = await getCurrentViewer();
 
   if (viewer?.profile?.isComplete) {
-    redirect("/dashboard");
+    redirect("/me");
   }
 
   if (viewer?.user) {

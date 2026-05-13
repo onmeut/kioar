@@ -14,7 +14,7 @@ export default async function OnboardingPage() {
   const profile = await getProfileWithLinksByUserId(viewer.user.id);
 
   if (profile?.isComplete) {
-    redirect("/dashboard");
+    redirect("/me");
   }
 
   const pendingSlug = await getPendingSlug();

@@ -12,8 +12,8 @@ export async function GET(request: Request) {
   }
   const viewer = await requireUser();
   const url = new URL(request.url);
-  const returnTo = url.searchParams.get("returnTo") ?? "/dashboard";
-  const safeReturnTo = returnTo.startsWith("/") ? returnTo : "/dashboard";
+  const returnTo = url.searchParams.get("returnTo") ?? "/me";
+  const safeReturnTo = returnTo.startsWith("/") ? returnTo : "/me";
   const state = createOAuthState({
     userId: viewer.user.id,
     provider: "zoom",

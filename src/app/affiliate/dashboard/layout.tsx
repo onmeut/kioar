@@ -13,7 +13,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { signOutAction } from "@/app/(app)/dashboard/actions";
+import { signOutAction } from "@/app/(app)/insights/actions";
 import { BrandMark } from "@/components/shared/brand-mark";
 import { AffiliateNavTabs } from "@/app/affiliate/dashboard/nav-tabs";
 import { AffiliateStatusBadge } from "@/app/affiliate/dashboard/status-badge";
@@ -75,7 +75,7 @@ export default async function AffiliateDashboardLayout({
                 variant="outline"
                 size="lg"
                 className="h-11 rounded-full px-6 text-[14px] font-bold"
-                render={<Link href="/dashboard" />}
+                render={<Link href="/me" />}
               >
                 داشبورد اصلی
               </Button>
@@ -101,7 +101,7 @@ export default async function AffiliateDashboardLayout({
           <div className="flex items-center gap-3">
             <AffiliateStatusBadge status={state.affiliateStatus} />
             <Link
-              href="/dashboard"
+              href="/me"
               className="text-[12px] font-medium text-ink-soft hover:text-ink"
             >
               داشبورد اصلی

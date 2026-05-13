@@ -55,7 +55,7 @@ export async function GET(request: Request) {
       `${base}/dashboard?zoom=error&reason=${reason}`,
     );
   }
-  const dest = state.returnTo ?? "/dashboard";
+  const dest = state.returnTo ?? "/me";
   const sep = dest.includes("?") ? "&" : "?";
   return NextResponse.redirect(`${base}${dest}${sep}zoom=connected`);
 }

@@ -51,7 +51,7 @@ export default async function PricingRoute() {
     }
   }
 
-  const ctaTargetForFree: Route = viewer ? ("/dashboard" as Route) : "/auth";
+  const ctaTargetForFree: Route = viewer ? ("/me" as Route) : "/auth";
 
   return (
     <div dir="rtl" className="min-h-dvh bg-muted text-foreground">
@@ -61,7 +61,7 @@ export default async function PricingRoute() {
           <Button
             variant="outline"
             size="sm"
-            render={<Link href={(viewer ? "/dashboard" : "/auth") as Route} />}
+            render={<Link href={(viewer ? "/me" : "/auth") as Route} />}
           >
             {viewer ? "داشبورد" : "ورود"}
           </Button>

@@ -27,12 +27,10 @@ import {
 
 import { BrandMark } from "@/components/shared/brand-mark";
 
-import { ShareSheet } from "@/app/(app)/dashboard/referral/share-sheet";
-import { RedeemGrid } from "@/app/(app)/dashboard/referral/redeem-grid";
-import { ReferralRewardToaster } from "@/app/(app)/dashboard/referral/reward-toaster";
-import {
-  CopyableInviteLink,
-} from "@/app/(app)/dashboard/referral/copy-link";
+import { ShareSheet } from "@/app/(app)/insights/referral/share-sheet";
+import { RedeemGrid } from "@/app/(app)/insights/referral/redeem-grid";
+import { ReferralRewardToaster } from "@/app/(app)/insights/referral/reward-toaster";
+import { CopyableInviteLink } from "@/app/(app)/insights/referral/copy-link";
 import { ReferralFeed } from "@/components/referral/referral-feed";
 import { getCurrentViewer } from "@/lib/auth/session";
 import { listPagesForOwner } from "@/lib/pages";
@@ -147,9 +145,8 @@ export default async function ReferralPage() {
         </div>
 
         <p className="mb-4 text-xs leading-6 text-muted-foreground">
-          هر کسی با این لینک ثبت‌نام کنه و پرو رو فعال کنه، هر دو طرف یک ماه
-          پرو رایگان می‌گیرن — تا سقف{" "}
-          {toPersianDigits(stats.cap)} ماه برای شما.
+          هر کسی با این لینک ثبت‌نام کنه و پرو رو فعال کنه، هر دو طرف یک ماه پرو
+          رایگان می‌گیرن — تا سقف {toPersianDigits(stats.cap)} ماه برای شما.
         </p>
 
         {/* Invite link chip with Kioar logo */}
@@ -332,7 +329,9 @@ function StatTile({
         </span>
         <span>{label}</span>
       </div>
-      <div className={cn("mt-1.5 text-2xl font-extrabold leading-none", valueCls)}>
+      <div
+        className={cn("mt-1.5 text-2xl font-extrabold leading-none", valueCls)}
+      >
         {toPersianDigits(value)}
       </div>
     </div>

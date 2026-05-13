@@ -17,7 +17,7 @@ import {
   UserIcon,
 } from "lucide-react";
 
-import { signOutAction } from "@/app/(app)/dashboard/actions";
+import { signOutAction } from "@/app/(app)/insights/actions";
 import { Button } from "@/components/ui/button";
 import { requireCompletedProfile } from "@/lib/auth/session";
 import { getAffiliateStateForUser } from "@/lib/affiliate";

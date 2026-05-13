@@ -60,7 +60,7 @@ export async function GET(request: Request) {
     );
   }
 
-  const dest = state.returnTo ?? "/dashboard";
+  const dest = state.returnTo ?? "/me";
   const sep = dest.includes("?") ? "&" : "?";
   return NextResponse.redirect(`${base}${dest}${sep}google=connected`);
 }
