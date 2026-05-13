@@ -24,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import { getDb } from "@/db";
 import { requireAdmin } from "@/lib/auth/session";
 import {
@@ -83,6 +84,7 @@ type Row = {
   full_name: string | null;
   title: string | null;
   avatar_url: string | null;
+  avatar_seed: string | null;
   created_at: Date;
   user_id: string;
   user_phone: string;
@@ -106,14 +108,6 @@ type Stats = {
   newLast30d: number;
   trend: { date: string; value: number }[];
 };
-
-function getInitials(name: string | null, fallback: string) {
-  if (!name) return fallback.slice(-2);
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return fallback.slice(-2);
-  if (parts.length === 1) return parts[0].slice(0, 2);
-  return (parts[0][0] + parts[parts.length - 1][0]).slice(0, 2);
-}
 
 function buildPageActions(r: Row): RowAction[] {
   return [
@@ -300,6 +294,7 @@ export default async function AdminPagesDirectory({
         p."full_name"           AS full_name,
         p."title"               AS title,
         p."avatar_url"          AS avatar_url,
+        p."avatar_seed"         AS avatar_seed,
         p."created_at"          AS created_at,
         u."id"                  AS user_id,
         u."phone"               AS user_phone,
@@ -463,8 +458,8 @@ export default async function AdminPagesDirectory({
                       {r.avatar_url ? (
                         <AvatarImage src={r.avatar_url} alt="" />
                       ) : null}
-                      <AvatarFallback className="text-xs font-bold">
-                        {getInitials(r.full_name, r.slug)}
+                      <AvatarFallback>
+                        <KioarAvatar seed={r.avatar_seed} size={44} />
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0 flex-1">
@@ -573,8 +568,8 @@ export default async function AdminPagesDirectory({
                             {r.avatar_url ? (
                               <AvatarImage src={r.avatar_url} alt="" />
                             ) : null}
-                            <AvatarFallback className="text-xs font-bold">
-                              {getInitials(r.full_name, r.slug)}
+                            <AvatarFallback>
+                              <KioarAvatar seed={r.avatar_seed} size={36} />
                             </AvatarFallback>
                           </Avatar>
                           <div className="min-w-0">
