@@ -166,15 +166,54 @@ const nextConfig: NextConfig = {
   },
 };
 
+// IMPORTANT — PWA caching policy
+// ----------------------------------------------------------------------------
+// We deliberately keep the service worker as small and conservative as
+// possible. The default ducanh/next-pwa runtime caching uses NetworkFirst
+// for *every* same-origin HTML and RSC response (`pages`, `pages-rsc`,
+// `pages-rsc-prefetch`). On a multi-tenant, cookie-driven app like Kioar
+// that's catastrophic:
+//
+//   1. The dashboard, /me, /admin, etc. all vary by the `kioar_session` and
+//      `kioar_page_id` cookies. NetworkFirst stores the response keyed only
+//      by URL, so when the user switches pages (page-switcher) or signs in
+//      as a different account the SW happily serves the previous user's
+//      cached RSC payload. React then bails out with hydration error #418
+//      and Next.js falls back to a hard navigation to "/", which is itself
+//      cached as the *public* landing page → user is silently logged out.
+//
+//   2. `cacheOnFrontEndNav` + `aggressiveFrontEndNavCaching` patches every
+//      `<Link>` prefetch into the same poisoned cache, multiplying the bug.
+//
+//   3. `cacheStartUrl` precaches "/", which for an authed user redirects to
+//      "/me". The cached body is the unauth landing page, so the SW serves
+//      a logged-out shell to a logged-in user.
+//
+//   4. The precache manifest also pinned per-build chunk hashes for
+//      authenticated routes (e.g. /admin). After a deploy the old SW kept
+//      requesting the old chunk URLs which 404 on the new server →
+//      `ChunkLoadError: Loading chunk … failed` (exactly what users hit on
+//      kioar.com/admin).
+//
+// Fix: register an empty `runtimeCaching` array so workbox does NOT install
+// any of those NetworkFirst route handlers, exclude the entire `app/`
+// build output (server components, RSC, route handlers) from precache so
+// only truly immutable static assets (`/_next/static/*` JS/CSS, fonts,
+// images in `public/`) are precached, and disable `cacheStartUrl` /
+// front-end-nav caching. Documents always go to the network. Offline page
+// is still wired through `fallbacks.document`.
 export default withPWA({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
   reloadOnOnline: true,
-  cacheStartUrl: true,
-  dynamicStartUrl: false,
+  // Do NOT precache or runtime-cache the start URL — it varies by auth.
+  cacheStartUrl: false,
+  dynamicStartUrl: true,
+  // Do NOT intercept client-side navigation; it caches RSC payloads keyed
+  // only by URL, leaking auth state across users / pages.
+  cacheOnFrontEndNav: false,
+  aggressiveFrontEndNavCaching: false,
   fallbacks: {
     document: "/~offline",
   },
@@ -183,11 +222,26 @@ export default withPWA({
     // chunks with old hashes (deleted after a new deployment) don't cause
     // "bad-precaching-response" 404 errors in the browser console.
     cleanupOutdatedCaches: true,
-    // Exclude admin route chunks from the precache manifest. Admin routes are
-    // never visited by regular users, so there is no value in caching them in
-    // the PWA. More importantly, intercepting-route chunks (e.g. @modal/…)
-    // can produce 404s when hashes rotate between deployments because the old
-    // SW manifest still references the previous hash.
-    exclude: [/^app\/admin\//, /chunks\/app\/admin\//],
+    // Empty runtime caching = no NetworkFirst handler for HTML/RSC. The
+    // browser's normal HTTP cache still applies; we just stop the SW from
+    // serving stale auth-bound responses.
+    runtimeCaching: [],
+    // Strip everything route-shaped (server components, RSC, routes,
+    // middleware) from the precache manifest. Only truly static immutable
+    // chunks under /_next/static remain. This single-handedly fixes the
+    // "Loading chunk … failed" errors that appear after a deploy because
+    // the old SW manifest no longer points at routes that have since been
+    // rebuilt with new hashes.
+    exclude: [
+      /\/app\//,
+      /chunks\/app\//,
+      /^app\//,
+      // Source maps and HMR partials should never be in the precache.
+      /\.map$/,
+      /^manifest.*\.js$/,
+      // /uploads is user-content — varies in size and is not part of the
+      // app shell. Don't ship a multi-MB precache to every user.
+      /^\/?uploads\//,
+    ],
   },
 })(nextConfig);

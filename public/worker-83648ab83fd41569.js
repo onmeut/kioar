@@ -1,0 +1,1 @@
+(()=>{let s=new Set(["pages","pages-rsc","pages-rsc-prefetch","apis","cross-origin","next-data","static-data-assets","next-static-js-assets","static-js-assets","static-style-assets"]);self.addEventListener("activate",t=>{t.waitUntil((async()=>{let t=await caches.keys();await Promise.all(t.filter(t=>s.has(t)).map(s=>caches.delete(s)))})())})})();
