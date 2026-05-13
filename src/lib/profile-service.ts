@@ -8,6 +8,7 @@ import {
   invalidateProfileCacheBySlug,
   invalidateProfileCacheOnSlugChange,
 } from "@/lib/cache/profile-cache";
+import { invalidateDiscoverCache } from "@/lib/cache/page-list-cache";
 import { getProfileWithLinksByUserId } from "@/lib/data";
 import {
   ensureFreeSubscriptionForPage,
@@ -203,6 +204,10 @@ export async function saveProfileDetailsForUser(
     await invalidateProfileCacheBySlug(parsed.data.slug);
   }
 
+  // Name/avatar/title change → stale discover cards. Bump the version so
+  // cached grid pages are orphaned and rebuild on the next request.
+  await invalidateDiscoverCache();
+
   return { ok: true };
 }
 
@@ -345,6 +350,10 @@ export async function savePageSettingsForUser(
     existingProfile.slug,
     parsed.data.slug,
   );
+
+  // discoverEnabled / discoverCategory / pageType changes directly affect
+  // which profiles appear in the discover directory.
+  await invalidateDiscoverCache();
 
   return {
     ok: true,
@@ -533,6 +542,10 @@ export async function saveOnboardingProfileForUser(
   } else {
     await invalidateProfileCacheBySlug(parsed.data.slug);
   }
+
+  // New page joins discover by default (discover_enabled=true column default);
+  // bump the version so the directory reflects the new entry immediately.
+  await invalidateDiscoverCache();
 
   return { ok: true, pageId, isFirstPage };
 }

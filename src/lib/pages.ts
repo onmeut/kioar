@@ -34,6 +34,7 @@ import {
 } from "@/db/schema";
 import { generateAvatarSeed } from "@/lib/avatar-seed";
 import { invalidateProfileCacheBySlug } from "@/lib/cache/profile-cache";
+import { invalidateDiscoverCache } from "@/lib/cache/page-list-cache";
 import {
   readCurrentPageIdCookie,
   writeCurrentPageIdCookie,
@@ -243,6 +244,9 @@ export async function createPageForOwner(
     // have cached the 404 sentinel; drop it so the new page is visible
     // immediately instead of after 60s.
     await invalidateProfileCacheBySlug(slug);
+    // New page joins discover by default (discover_enabled col default=true);
+    // bump the version so the directory reflects the new entry immediately.
+    await invalidateDiscoverCache();
     return { ok: true, page };
   } catch (error) {
     // 23505 = unique_violation. With the user_id unique gone, the only

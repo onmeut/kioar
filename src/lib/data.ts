@@ -25,6 +25,7 @@ import {
 } from "@/db/schema";
 import { blockKindToFeatureKey } from "@/lib/block-features";
 import { getPublicActiveBookingBlocks } from "@/lib/booking-data";
+import { withEventsCache } from "@/lib/cache/page-list-cache";
 import { withProfileCache } from "@/lib/cache/profile-cache";
 import { getPageEntitlements } from "@/lib/entitlements";
 import { getPublicActiveFormBlocks } from "@/lib/form-service";
@@ -83,19 +84,19 @@ async function loadPublicProfileBySlug(slug: string) {
   // calling pageHasFeature three times — this is correct even in route-
   // handler contexts where React cache() is a no-op (no shared render scope).
   const [links, entitlements, owner] = await Promise.all([
-      db
-        .select()
-        .from(profileLinks)
-        .where(
-          and(
-            eq(profileLinks.profileId, profile.id),
-            eq(profileLinks.isActive, true),
-          ),
-        )
-        .orderBy(asc(profileLinks.sortOrder)),
-      getPageEntitlements(profile.id),
-      db.query.users.findFirst({ where: eq(users.id, profile.userId) }),
-    ]);
+    db
+      .select()
+      .from(profileLinks)
+      .where(
+        and(
+          eq(profileLinks.profileId, profile.id),
+          eq(profileLinks.isActive, true),
+        ),
+      )
+      .orderBy(asc(profileLinks.sortOrder)),
+    getPageEntitlements(profile.id),
+    db.query.users.findFirst({ where: eq(users.id, profile.userId) }),
+  ]);
 
   // A null feature key means "no gate" — block is always visible.
   const bookingsGranted = bookingKey === null || entitlements.has(bookingKey);
@@ -121,13 +122,14 @@ async function loadPublicProfileBySlug(slug: string) {
 }
 
 export async function getPublishedEvents() {
-  const db = getDb();
-
-  return db
-    .select()
-    .from(events)
-    .where(eq(events.status, "published"))
-    .orderBy(asc(events.startsAt));
+  return withEventsCache(() => {
+    const db = getDb();
+    return db
+      .select()
+      .from(events)
+      .where(eq(events.status, "published"))
+      .orderBy(asc(events.startsAt));
+  });
 }
 
 export async function getRegisteredEventIds(userId: string) {

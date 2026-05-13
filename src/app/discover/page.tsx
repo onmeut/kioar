@@ -14,6 +14,10 @@ import {
   getAllActiveCategories,
   getPopulatedDiscoverCategories,
 } from "@/lib/discover";
+import {
+  type DiscoverCacheParams,
+  withDiscoverCache,
+} from "@/lib/cache/page-list-cache";
 import { resolveIconEntry } from "@/lib/link-icons";
 import { absoluteUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
@@ -121,106 +125,122 @@ export default async function DiscoverPage({
   const qRaw = readParam(sp.q);
   const q = qRaw ? qRaw.trim().slice(0, 80) : "";
 
-  // Only show categories that have at least one listed profile (respects the
-  // current tab's accountType filter so switching to "کسب‌وکارها" hides
-  // personal-only categories).
-  const [categoriesForRail, allActiveCategories] = await Promise.all([
-    getPopulatedDiscoverCategories(accountType),
-    getAllActiveCategories(),
-  ]);
-
-  // Full label map — cards from any account type still show their category.
-  const labelBySlug = new Map(
-    allActiveCategories.map((c) => [c.slug, c.titleFa]),
-  );
-
-  // Validate the `category` param against the current rail.
-  const validSlugs = new Set(categoriesForRail.map((c) => c.slug));
-  const category =
-    categoryRaw && validSlugs.has(categoryRaw) ? categoryRaw : null;
-
-  // ---------------------------------------------------------------------------
-  // Data: Meilisearch for free-text queries, Postgres for browsing.
-  // ---------------------------------------------------------------------------
-
-  let items: ResultRow[] = [];
-  let hasMore = false;
   const searching = q.length > 0;
 
-  {
-    const db = getDb();
+  // ---------------------------------------------------------------------------
+  // Data: wrapped in a read-through Redis cache.
+  // Free-text queries (q != "") bypass the cache — unbounded key cardinality.
+  // All other combinations of (type, category, sort, page) are cached for
+  // DISCOVER_TTL_SECONDS. The cache version is bumped whenever any profile
+  // mutation touches discover-visible fields.
+  // ---------------------------------------------------------------------------
+  const cacheParams: DiscoverCacheParams = {
+    type,
+    categoryRaw,
+    sort,
+    page: pageNum,
+    q,
+  };
 
-    const filters = and(
-      eq(profiles.discoverEnabled, true),
-      eq(profiles.isComplete, true),
-      eq(profiles.isPublished, true),
-      accountType ? eq(profiles.pageType, accountType) : undefined,
-      category ? eq(profiles.discoverCategory, category) : undefined,
-      q
-        ? or(
-            ilike(profiles.fullName, `%${q}%`),
-            ilike(profiles.title, `%${q}%`),
-            ilike(profiles.slug, `%${q}%`),
-          )
-        : undefined,
-    );
+  const { categoriesForRail, category, items, hasMore } =
+    await withDiscoverCache(cacheParams, async () => {
+      // Categories — needed for the filter rail and to validate the
+      // `category` URL param against slugs that actually have profiles.
+      const [railCategories, allActiveCategories] = await Promise.all([
+        getPopulatedDiscoverCategories(accountType),
+        getAllActiveCategories(),
+      ]);
 
-    const sinceIso = (() => {
-      const d = new Date();
-      d.setUTCDate(d.getUTCDate() - POPULAR_WINDOW_DAYS);
-      return tehranIsoDate(d);
-    })();
+      const labelBySlug = new Map(
+        allActiveCategories.map((c) => [c.slug, c.titleFa]),
+      );
 
-    const recentViews = db
-      .select({
-        profileId: profileStatsByDay.profileId,
-        total:
-          sql<number>`coalesce(sum(${profileStatsByDay.views}), 0)::int`.as(
-            "recent_views",
-          ),
-      })
-      .from(profileStatsByDay)
-      .where(gte(profileStatsByDay.statDate, sinceIso))
-      .groupBy(profileStatsByDay.profileId)
-      .as("recent_views");
+      const validSlugs = new Set(railCategories.map((c) => c.slug));
+      const validatedCategory =
+        categoryRaw && validSlugs.has(categoryRaw) ? categoryRaw : null;
 
-    const baseQuery = db
-      .select({
-        id: profiles.id,
-        slug: profiles.slug,
-        fullName: profiles.fullName,
-        title: profiles.title,
-        avatarUrl: profiles.avatarUrl,
-        avatarSeed: profiles.avatarSeed,
-        discoverCategory: profiles.discoverCategory,
-        createdAt: profiles.createdAt,
-        recentViews: sql<number>`coalesce(${recentViews.total}, 0)::int`,
-      })
-      .from(profiles)
-      .leftJoin(recentViews, eq(recentViews.profileId, profiles.id))
-      .where(filters);
+      const db = getDb();
 
-    const orderedQuery =
-      !searching && sort === "popular"
-        ? baseQuery.orderBy(
-            desc(sql`coalesce(${recentViews.total}, 0)`),
-            desc(profiles.createdAt),
-          )
-        : baseQuery.orderBy(desc(profiles.createdAt));
+      const filters = and(
+        eq(profiles.discoverEnabled, true),
+        eq(profiles.isComplete, true),
+        eq(profiles.isPublished, true),
+        accountType ? eq(profiles.pageType, accountType) : undefined,
+        validatedCategory
+          ? eq(profiles.discoverCategory, validatedCategory)
+          : undefined,
+        q
+          ? or(
+              ilike(profiles.fullName, `%${q}%`),
+              ilike(profiles.title, `%${q}%`),
+              ilike(profiles.slug, `%${q}%`),
+            )
+          : undefined,
+      );
 
-    const rows = await orderedQuery.limit(PAGE_SIZE + 1).offset(offset);
-    hasMore = rows.length > PAGE_SIZE;
-    items = rows.slice(0, PAGE_SIZE).map((r) => ({
-      id: r.id,
-      slug: r.slug,
-      fullName: r.fullName,
-      title: r.title,
-      avatarUrl: r.avatarUrl,
-      avatarSeed: r.avatarSeed,
-      categoryLabel:
-        (r.discoverCategory && labelBySlug.get(r.discoverCategory)) ?? null,
-    }));
-  }
+      const sinceIso = (() => {
+        const d = new Date();
+        d.setUTCDate(d.getUTCDate() - POPULAR_WINDOW_DAYS);
+        return tehranIsoDate(d);
+      })();
+
+      const recentViews = db
+        .select({
+          profileId: profileStatsByDay.profileId,
+          total:
+            sql<number>`coalesce(sum(${profileStatsByDay.views}), 0)::int`.as(
+              "recent_views",
+            ),
+        })
+        .from(profileStatsByDay)
+        .where(gte(profileStatsByDay.statDate, sinceIso))
+        .groupBy(profileStatsByDay.profileId)
+        .as("recent_views");
+
+      const baseQuery = db
+        .select({
+          id: profiles.id,
+          slug: profiles.slug,
+          fullName: profiles.fullName,
+          title: profiles.title,
+          avatarUrl: profiles.avatarUrl,
+          avatarSeed: profiles.avatarSeed,
+          discoverCategory: profiles.discoverCategory,
+          createdAt: profiles.createdAt,
+          recentViews: sql<number>`coalesce(${recentViews.total}, 0)::int`,
+        })
+        .from(profiles)
+        .leftJoin(recentViews, eq(recentViews.profileId, profiles.id))
+        .where(filters);
+
+      const orderedQuery =
+        !searching && sort === "popular"
+          ? baseQuery.orderBy(
+              desc(sql`coalesce(${recentViews.total}, 0)`),
+              desc(profiles.createdAt),
+            )
+          : baseQuery.orderBy(desc(profiles.createdAt));
+
+      const rows = await orderedQuery.limit(PAGE_SIZE + 1).offset(offset);
+      const pageHasMore = rows.length > PAGE_SIZE;
+      const pageItems: ResultRow[] = rows.slice(0, PAGE_SIZE).map((r) => ({
+        id: r.id,
+        slug: r.slug,
+        fullName: r.fullName,
+        title: r.title,
+        avatarUrl: r.avatarUrl,
+        avatarSeed: r.avatarSeed,
+        categoryLabel:
+          (r.discoverCategory && labelBySlug.get(r.discoverCategory)) ?? null,
+      }));
+
+      return {
+        categoriesForRail: railCategories,
+        category: validatedCategory,
+        items: pageItems,
+        hasMore: pageHasMore,
+      };
+    });
 
   const hasPrev = pageNum > 1;
 
