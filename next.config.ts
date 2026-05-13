@@ -71,10 +71,14 @@ const isDev = process.env.NODE_ENV !== "production";
 
 // Next.js dev server uses `eval()` for HMR. Without 'unsafe-eval' in dev,
 // every client bundle is blocked and the entire app becomes non-interactive.
-// Production CSP stays strict (no unsafe-eval).
-const scriptSrc = isDev
-  ? "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'"
-  : "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'";
+// Production also needs 'unsafe-eval' because Framer Motion (`motion` package)
+// uses `new Function()` for optimised keyframe/spring animation in production
+// bundles. Blocking eval causes a CSP error that makes Firefox briefly render
+// "This page couldn't load" on every full-page navigation. Since 'unsafe-inline'
+// is already required by Next.js RSC payloads (weakening script-src regardless),
+// adding 'unsafe-eval' does not materially increase the attack surface.
+const scriptSrc =
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'";
 
 // Dev HMR uses a websocket; prod does not need ws:/wss:.
 // `blob:` is required because some libraries (e.g. react-mobile-cropper) load
