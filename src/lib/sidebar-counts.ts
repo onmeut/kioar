@@ -1,4 +1,4 @@
-import { count, eq, gte, inArray } from "drizzle-orm";
+import { and, count, eq, gte, inArray } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -49,8 +49,10 @@ export async function getSidebarBadgeCounts(
           .select({ n: count() })
           .from(bookings)
           .where(
-            inArray(bookings.blockId, bookingBlockIds) &&
+            and(
+              inArray(bookings.blockId, bookingBlockIds),
               gte(bookings.startsAt, now),
+            ),
           )
           .then((rows) => rows[0])
       : Promise.resolve({ n: 0 }),

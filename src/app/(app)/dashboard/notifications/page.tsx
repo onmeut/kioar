@@ -2,6 +2,9 @@ import { BellIcon } from "lucide-react";
 
 import { ComingSoon } from "@/components/shared/coming-soon";
 
+// Authenticated shell — no direct session call, so be explicit.
+export const dynamic = "force-dynamic";
+
 export const metadata = {
   title: "اعلان‌ها",
 };

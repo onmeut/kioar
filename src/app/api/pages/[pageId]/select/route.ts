@@ -8,6 +8,7 @@
  * URL is stable across deployments — no hashed action IDs that can go
  * stale when a client has cached JS from an older build.
  */
+import { revalidatePath } from "next/cache";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireUser } from "@/lib/auth/session";
@@ -38,6 +39,11 @@ export async function POST(
       { status: 404 },
     );
   }
+
+  // Bust the authenticated shell so the sidebar/header reflect the
+  // newly-selected page on the next navigation, consistent with
+  // switchPageAction (the server-action equivalent).
+  revalidatePath("/", "layout");
 
   return NextResponse.json({ ok: true, slug: page.slug });
 }
