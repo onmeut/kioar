@@ -165,6 +165,17 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: securityHeaders,
       },
+      {
+        // Belt-and-suspenders: ensure the landing page is never served from
+        // the browser HTTP cache or Back-Forward Cache (BFCache) for logged-in
+        // users. `force-dynamic` already sets no-store via Next.js, but an
+        // explicit header guarantees it survives any CDN or proxy in between.
+        source: "/",
+        headers: [
+          { key: "Cache-Control", value: "no-store, must-revalidate" },
+          { key: "Pragma", value: "no-cache" },
+        ],
+      },
     ];
   },
 };

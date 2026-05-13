@@ -1,4 +1,11 @@
 import { redirect } from "next/navigation";
+
+// Always server-render this page on every request so the proxy middleware
+// redirect (and the in-component `redirect("/me")`) always executes for
+// logged-in users. This also sets Cache-Control: no-store on the response,
+// which prevents the browser's Back-Forward Cache from restoring a stale
+// unauthenticated version of the landing page after the user logs in.
+export const dynamic = "force-dynamic";
 import type { Route } from "next";
 import Image from "next/image";
 import Link from "next/link";
