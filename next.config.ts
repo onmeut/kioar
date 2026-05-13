@@ -166,82 +166,44 @@ const nextConfig: NextConfig = {
   },
 };
 
-// IMPORTANT — PWA caching policy
+// PWA is DISABLED on purpose.
 // ----------------------------------------------------------------------------
-// We deliberately keep the service worker as small and conservative as
-// possible. The default ducanh/next-pwa runtime caching uses NetworkFirst
-// for *every* same-origin HTML and RSC response (`pages`, `pages-rsc`,
-// `pages-rsc-prefetch`). On a multi-tenant, cookie-driven app like Kioar
-// that's catastrophic:
+// The previous next-pwa configuration (NetworkFirst on every HTML/RSC,
+// `cacheOnFrontEndNav`, `cacheStartUrl`, precache of authed route chunks)
+// poisoned production. Symptoms users hit:
 //
-//   1. The dashboard, /me, /admin, etc. all vary by the `kioar_session` and
-//      `kioar_page_id` cookies. NetworkFirst stores the response keyed only
-//      by URL, so when the user switches pages (page-switcher) or signs in
-//      as a different account the SW happily serves the previous user's
-//      cached RSC payload. React then bails out with hydration error #418
-//      and Next.js falls back to a hard navigation to "/", which is itself
-//      cached as the *public* landing page → user is silently logged out.
+//  - Page-switcher → hard-fallback to `/` showing logged-out landing.
+//  - React minified error #418 from stale RSC payloads served by the SW.
+//  - `ChunkLoadError: Loading chunk … failed` after every deploy because
+//    the old SW precache pointed at chunk hashes the new server no longer
+//    serves.
+//  - "اتصال اینترنت برقرار نیست" on /me, /bookings, /dashboard/referral,
+//    etc. because the SW caught the failed fetch and served the offline
+//    fallback.
 //
-//   2. `cacheOnFrontEndNav` + `aggressiveFrontEndNavCaching` patches every
-//      `<Link>` prefetch into the same poisoned cache, multiplying the bug.
+// Replacing the config alone is not enough: every existing browser is
+// already controlled by the broken SW and keeps serving stale chunks
+// until that SW is replaced. So we
 //
-//   3. `cacheStartUrl` precaches "/", which for an authed user redirects to
-//      "/me". The cached body is the unauth landing page, so the SW serves
-//      a logged-out shell to a logged-in user.
+//   1. Set `disable: true` here so next-pwa does NOT generate `sw.js`,
+//      does NOT inject `swe-worker`, and does NOT register any service
+//      worker for new visitors.
+//   2. Ship a hand-written kill-switch at `public/sw.js` that runs once
+//      in every old client, unregisters itself, deletes every Cache
+//      Storage bucket, and reloads the tab.
 //
-//   4. The precache manifest also pinned per-build chunk hashes for
-//      authenticated routes (e.g. /admin). After a deploy the old SW kept
-//      requesting the old chunk URLs which 404 on the new server →
-//      `ChunkLoadError: Loading chunk … failed` (exactly what users hit on
-//      kioar.com/admin).
+// Result: every user (new or existing) ends up with NO service worker
+// and a clean cache the next time they visit. Plain HTTP. The
+// page-switcher, RSC navigation, server actions, and chunk loading all
+// work the way Next.js intends.
 //
-// Fix: register an empty `runtimeCaching` array so workbox does NOT install
-// any of those NetworkFirst route handlers, exclude the entire `app/`
-// build output (server components, RSC, route handlers) from precache so
-// only truly immutable static assets (`/_next/static/*` JS/CSS, fonts,
-// images in `public/`) are precached, and disable `cacheStartUrl` /
-// front-end-nav caching. Documents always go to the network. Offline page
-// is still wired through `fallbacks.document`.
+// Once production is verified healthy, we can introduce a much smaller,
+// purpose-built SW (offline page only, no document/RSC caching) in a
+// later release. For now: no PWA.
 export default withPWA({
   dest: "public",
-  disable: process.env.NODE_ENV === "development",
-  register: true,
-  reloadOnOnline: true,
-  // Do NOT precache or runtime-cache the start URL — it varies by auth.
-  cacheStartUrl: false,
-  dynamicStartUrl: true,
-  // Do NOT intercept client-side navigation; it caches RSC payloads keyed
-  // only by URL, leaking auth state across users / pages.
-  cacheOnFrontEndNav: false,
-  aggressiveFrontEndNavCaching: false,
-  fallbacks: {
-    document: "/~offline",
-  },
-  workboxOptions: {
-    // Purge stale precache entries from old builds on SW install so that
-    // chunks with old hashes (deleted after a new deployment) don't cause
-    // "bad-precaching-response" 404 errors in the browser console.
-    cleanupOutdatedCaches: true,
-    // Empty runtime caching = no NetworkFirst handler for HTML/RSC. The
-    // browser's normal HTTP cache still applies; we just stop the SW from
-    // serving stale auth-bound responses.
-    runtimeCaching: [],
-    // Strip everything route-shaped (server components, RSC, routes,
-    // middleware) from the precache manifest. Only truly static immutable
-    // chunks under /_next/static remain. This single-handedly fixes the
-    // "Loading chunk … failed" errors that appear after a deploy because
-    // the old SW manifest no longer points at routes that have since been
-    // rebuilt with new hashes.
-    exclude: [
-      /\/app\//,
-      /chunks\/app\//,
-      /^app\//,
-      // Source maps and HMR partials should never be in the precache.
-      /\.map$/,
-      /^manifest.*\.js$/,
-      // /uploads is user-content — varies in size and is not part of the
-      // app shell. Don't ship a multi-MB precache to every user.
-      /^\/?uploads\//,
-    ],
-  },
+  // Disable everywhere — including production builds — until the SW
+  // story is rebuilt from scratch.
+  disable: true,
+  register: false,
 })(nextConfig);
