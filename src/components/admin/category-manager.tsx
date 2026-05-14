@@ -25,7 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Edit2, GripVertical, Plus, Trash2 } from "lucide-react";
 
-import { LinkIconPicker } from "@/components/dashboard/link-icon-picker";
+import { AdminIconPicker } from "@/components/admin/admin-icon-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -172,6 +172,17 @@ function SortableCategoryRow({
   );
 }
 
+/** Derive a URL-safe slug from an English string. */
+function deriveSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 function CategoryFormDialog({
   open,
   onClose,
@@ -191,7 +202,13 @@ function CategoryFormDialog({
 }) {
   const isEdit = category !== null;
 
-  // Initialise from the category prop (reset guaranteed by `key` on the parent).
+  // All text fields are controlled so React 19's form-action reset doesn't wipe them.
+  const [titleFa, setTitleFa] = useState(category?.titleFa ?? "");
+  const [titleEn, setTitleEn] = useState(category?.titleEn ?? "");
+  const [slug, setSlug] = useState(category?.slug ?? "");
+  // Track whether user has manually edited the slug (disable auto-fill if so).
+  const [slugDirty, setSlugDirty] = useState(isEdit);
+
   const [industryId, setIndustryId] = useState(
     category?.industryId ?? defaultIndustry.id,
   );
@@ -215,6 +232,18 @@ function CategoryFormDialog({
     }
     prevStateRef.current = state;
   });
+
+  function handleTitleEnChange(v: string) {
+    setTitleEn(v);
+    if (!slugDirty) {
+      setSlug(deriveSlug(v));
+    }
+  }
+
+  function handleSlugChange(v: string) {
+    setSlug(v);
+    setSlugDirty(true);
+  }
 
   const selectedIndustry =
     industries.find((i) => i.id === industryId) ?? defaultIndustry;
@@ -275,7 +304,8 @@ function CategoryFormDialog({
             <Input
               id="cat-fa"
               name="titleFa"
-              defaultValue={category?.titleFa}
+              value={titleFa}
+              onChange={(e) => setTitleFa(e.target.value)}
               placeholder="مثلاً: رستوران"
               required
               maxLength={80}
@@ -288,7 +318,8 @@ function CategoryFormDialog({
             <Input
               id="cat-en"
               name="titleEn"
-              defaultValue={category?.titleEn}
+              value={titleEn}
+              onChange={(e) => handleTitleEnChange(e.target.value)}
               placeholder="e.g. Restaurant"
               required
               dir="ltr"
@@ -301,7 +332,8 @@ function CategoryFormDialog({
             <Input
               id="cat-slug"
               name="slug"
-              defaultValue={category?.slug}
+              value={slug}
+              onChange={(e) => handleSlugChange(e.target.value)}
               placeholder="e.g. restaurant"
               required
               dir="ltr"
@@ -346,10 +378,9 @@ function CategoryFormDialog({
           <div className="space-y-1.5">
             <Label>آیکون</Label>
             <div className="flex h-64 flex-col overflow-hidden rounded-lg border">
-              <LinkIconPicker
-                url=""
-                value={{ iconKey, iconUrl: null, imageUrl: null }}
-                onChange={(v) => setIconKey(v.iconKey ?? "t:star")}
+              <AdminIconPicker
+                value={iconKey}
+                onChange={(k) => setIconKey(k)}
               />
             </div>
           </div>

@@ -27,7 +27,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronLeft, Edit2, GripVertical, Plus, Trash2 } from "lucide-react";
 
-import { LinkIconPicker } from "@/components/dashboard/link-icon-picker";
+import { AdminIconPicker } from "@/components/admin/admin-icon-picker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -180,6 +180,17 @@ function SortableIndustryRow({
   );
 }
 
+/** Derive a URL-safe slug from an English string. */
+function deriveSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 function IndustryFormDialog({
   open,
   onClose,
@@ -194,6 +205,12 @@ function IndustryFormDialog({
   updateAction: UpdateAction;
 }) {
   const isEdit = industry !== null;
+
+  // All text fields are controlled so React 19's form-action reset doesn't wipe them.
+  const [titleFa, setTitleFa] = useState(industry?.titleFa ?? "");
+  const [titleEn, setTitleEn] = useState(industry?.titleEn ?? "");
+  const [slug, setSlug] = useState(industry?.slug ?? "");
+  const [slugDirty, setSlugDirty] = useState(isEdit);
 
   const [iconKey, setIconKey] = useState(industry?.iconKey ?? "t:star");
   const [isActive, setIsActive] = useState(industry?.isActive ?? true);
@@ -215,6 +232,18 @@ function IndustryFormDialog({
     }
     prevStateRef.current = state;
   });
+
+  function handleTitleEnChange(v: string) {
+    setTitleEn(v);
+    if (!slugDirty) {
+      setSlug(deriveSlug(v));
+    }
+  }
+
+  function handleSlugChange(v: string) {
+    setSlug(v);
+    setSlugDirty(true);
+  }
 
   return (
     <Dialog
@@ -247,7 +276,8 @@ function IndustryFormDialog({
             <Input
               id="ind-fa"
               name="titleFa"
-              defaultValue={industry?.titleFa}
+              value={titleFa}
+              onChange={(e) => setTitleFa(e.target.value)}
               placeholder="مثلاً: غذا و نوشیدنی"
               required
               maxLength={80}
@@ -260,7 +290,8 @@ function IndustryFormDialog({
             <Input
               id="ind-en"
               name="titleEn"
-              defaultValue={industry?.titleEn}
+              value={titleEn}
+              onChange={(e) => handleTitleEnChange(e.target.value)}
               placeholder="e.g. Food & Beverage"
               required
               dir="ltr"
@@ -273,7 +304,8 @@ function IndustryFormDialog({
             <Input
               id="ind-slug"
               name="slug"
-              defaultValue={industry?.slug}
+              value={slug}
+              onChange={(e) => handleSlugChange(e.target.value)}
               placeholder="e.g. food-beverage"
               required
               dir="ltr"
@@ -311,10 +343,9 @@ function IndustryFormDialog({
           <div className="space-y-1.5">
             <Label>آیکون</Label>
             <div className="flex h-64 flex-col overflow-hidden rounded-lg border">
-              <LinkIconPicker
-                url=""
-                value={{ iconKey, iconUrl: null, imageUrl: null }}
-                onChange={(v) => setIconKey(v.iconKey ?? "t:star")}
+              <AdminIconPicker
+                value={iconKey}
+                onChange={(k) => setIconKey(k)}
               />
             </div>
           </div>
