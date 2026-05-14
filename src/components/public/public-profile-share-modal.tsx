@@ -168,14 +168,14 @@ function ShareModalContent({
     <div className="flex flex-col gap-5 px-4 pb-6 pt-2" dir="rtl">
       {/* QR code */}
       <div
-        className="relative flex aspect-square items-center justify-center rounded-2xl border border-border p-6"
+        className="relative flex items-center justify-center rounded-2xl border border-border p-4"
         style={{
           backgroundImage:
             "radial-gradient(circle, #d1d5db 1px, transparent 1px)",
           backgroundSize: "16px 16px",
         }}
       >
-        <div className="size-48 rounded-2xl bg-white p-3 shadow-sm">
+        <div className="w-full rounded-2xl bg-white p-2 shadow-sm">
           <QrRenderer
             text={url}
             style={resolvedQrStyle}

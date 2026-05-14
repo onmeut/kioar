@@ -27,8 +27,10 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const startY = useRef<number | null>(null);
   const pulling = useRef(false);
+  const pullRef = useRef(0);
   const [pull, setPull] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const refreshingRef = useRef(false);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -66,48 +68,57 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
     }
 
     function onTouchStart(e: TouchEvent) {
-      if (refreshing) return;
+      if (refreshingRef.current) return;
       if (getScrollTop() > 0) return;
       startY.current = e.touches[0].clientY;
       pulling.current = false;
     }
 
     function onTouchMove(e: TouchEvent) {
-      if (refreshing || startY.current === null) return;
+      if (refreshingRef.current || startY.current === null) return;
       const delta = e.touches[0].clientY - startY.current;
       if (delta <= 0) {
         pulling.current = false;
+        pullRef.current = 0;
         setPull(0);
         return;
       }
       if (getScrollTop() > 0) {
         pulling.current = false;
+        pullRef.current = 0;
         setPull(0);
         return;
       }
       pulling.current = true;
       // Resistance — feels native.
       const damped = Math.min(MAX_PULL, delta * 0.5);
+      pullRef.current = damped;
       setPull(damped);
     }
 
     function onTouchEnd() {
       if (!pulling.current) {
+        pullRef.current = 0;
         setPull(0);
         startY.current = null;
         return;
       }
-      if (pull >= TRIGGER_DISTANCE) {
+      if (pullRef.current >= TRIGGER_DISTANCE) {
+        refreshingRef.current = true;
         setRefreshing(true);
+        pullRef.current = TRIGGER_DISTANCE;
         setPull(TRIGGER_DISTANCE);
         router.refresh();
         // Hide indicator after a short delay; `router.refresh()` doesn't
         // expose a completion signal but is generally fast.
         window.setTimeout(() => {
+          refreshingRef.current = false;
           setRefreshing(false);
+          pullRef.current = 0;
           setPull(0);
         }, 800);
       } else {
+        pullRef.current = 0;
         setPull(0);
       }
       pulling.current = false;
@@ -129,10 +140,8 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
       target.removeEventListener("touchmove", onTouchMove as EventListener);
       target.removeEventListener("touchend", onTouchEnd as EventListener);
     };
-    // We intentionally re-bind only on mount; `pull`/`refreshing` are
-    // read via closure-of-state but `onTouchEnd` re-reads via setState
-    // callbacks pattern — keeping deps empty avoids re-binding on every
-    // pixel of pull.
+    // Empty deps is correct: all mutable values are read via refs
+    // (pullRef, refreshingRef, pulling, startY) so handlers never go stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
