@@ -4,7 +4,7 @@ import { useActionState } from "react";
 
 import { CheckCircle2Icon, Loader2Icon, SaveIcon } from "lucide-react";
 
-import { updateBankingAction } from "@/app/affiliate/dashboard/actions";
+import { updateBankingAction } from "@/app/affiliate/portal/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { idleState } from "@/lib/action-state";

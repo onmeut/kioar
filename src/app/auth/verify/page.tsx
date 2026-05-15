@@ -23,7 +23,7 @@ export default async function VerifyPage({
   }
 
   if (viewer?.user) {
-    redirect("/onboarding");
+    redirect("/start");
   }
 
   const params = await searchParams;

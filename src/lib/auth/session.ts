@@ -180,7 +180,7 @@ export async function requireCompletedProfile() {
 
   const profile = viewer.profile;
   if (!profile || !profile.isComplete) {
-    redirect("/onboarding");
+    redirect("/start");
   }
 
   // After the guard the current page is non-null and complete; narrow the

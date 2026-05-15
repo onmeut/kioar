@@ -27,10 +27,10 @@ import {
 
 import { BrandMark } from "@/components/shared/brand-mark";
 
-import { ShareSheet } from "@/app/(app)/insights/referral/share-sheet";
-import { RedeemGrid } from "@/app/(app)/insights/referral/redeem-grid";
-import { ReferralRewardToaster } from "@/app/(app)/insights/referral/reward-toaster";
-import { CopyableInviteLink } from "@/app/(app)/insights/referral/copy-link";
+import { ShareSheet } from "@/app/(app)/referral/share-sheet";
+import { RedeemGrid } from "@/app/(app)/referral/redeem-grid";
+import { ReferralRewardToaster } from "@/app/(app)/referral/reward-toaster";
+import { CopyableInviteLink } from "@/app/(app)/referral/copy-link";
 import { ReferralFeed } from "@/components/referral/referral-feed";
 import { getCurrentViewer } from "@/lib/auth/session";
 import { listPagesForOwner } from "@/lib/pages";

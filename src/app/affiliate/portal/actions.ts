@@ -65,9 +65,9 @@ export async function requestPayoutAction(
     return { status: "error", message: messages[result.reason] ?? "خطا" };
   }
 
-  revalidatePath("/affiliate/dashboard");
-  revalidatePath("/affiliate/dashboard/payouts");
-  redirect(`/affiliate/dashboard/payouts?success=${result.amount}`);
+  revalidatePath("/affiliate/portal");
+  revalidatePath("/affiliate/portal/payouts");
+  redirect(`/affiliate/portal/payouts?success=${result.amount}`);
 }
 
 export async function updateBankingAction(
@@ -122,6 +122,6 @@ export async function updateBankingAction(
   // Avoid eslint unused
   void eq;
 
-  revalidatePath("/affiliate/dashboard/settings");
+  revalidatePath("/affiliate/portal/settings");
   return { status: "success", message: "اطلاعات ذخیره شد." };
 }

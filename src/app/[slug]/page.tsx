@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { DesktopMobileQr } from "@/components/public/desktop-mobile-qr";
+import { KioarBadge } from "@/components/public/kioar-badge";
 import { PublicLinkClickTracker } from "@/components/public/public-link-click-tracker";
 import { PublicProfileCard } from "@/components/public/public-profile-card";
 import { PublicProfileShareButton } from "@/components/public/public-profile-actions";
@@ -266,13 +267,7 @@ export default async function PublicProfilePage({
           }
           footerSlot={
             <div className="flex flex-col items-center gap-3">
-              <Link
-                href="https://kioar.com?ref=profile"
-                className="inline-flex items-center gap-1.5 rounded-full border border-sidebar-border bg-sidebar px-4 py-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-70"
-              >
-                <Image src="/brand/logo.svg" alt="" width={13} height={16} />
-                <span>ساخته‌شده با کی‌یو‌آر</span>
-              </Link>
+              <KioarBadge />
             </div>
           }
           profile={{

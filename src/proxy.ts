@@ -17,12 +17,19 @@ function normalizeSlug(input: string) {
 export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
-  if (pathname === "/auth") {
+  // Legacy `/auth?handle=…` deep-links and the old `/onboarding` route both
+  // get rewritten to the new `/start` wizard. We also still set the
+  // pending-slug cookie for /start to pick up as a prefill.
+  if (pathname === "/auth" || pathname === "/onboarding") {
     const handle = searchParams.get("handle");
+    const url = request.nextUrl.clone();
     if (handle) {
       const normalized = normalizeSlug(handle);
-      const url = request.nextUrl.clone();
+      url.pathname = "/start";
       url.searchParams.delete("handle");
+      if (normalized) {
+        url.searchParams.set("handle", normalized);
+      }
       const response = NextResponse.redirect(url);
       if (normalized) {
         response.cookies.set(PENDING_SLUG_COOKIE, normalized, {
@@ -34,6 +41,10 @@ export function proxy(request: NextRequest) {
         });
       }
       return response;
+    }
+    if (pathname === "/onboarding") {
+      url.pathname = "/start";
+      return NextResponse.redirect(url);
     }
   }
 
@@ -50,5 +61,5 @@ export function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/", "/auth"],
+  matcher: ["/", "/auth", "/onboarding"],
 };

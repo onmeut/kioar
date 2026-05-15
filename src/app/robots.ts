@@ -21,6 +21,8 @@ export default function robots(): MetadataRoute.Robots {
           "/page/",
           "/onboarding",
           "/onboarding/",
+          "/start",
+          "/start/",
           "/bookings",
           "/bookings/",
           "/forms",

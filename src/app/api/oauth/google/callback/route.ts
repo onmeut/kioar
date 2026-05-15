@@ -23,18 +23,16 @@ export async function GET(request: Request) {
 
   if (error) {
     return NextResponse.redirect(
-      `${base}/dashboard?google=error&reason=${encodeURIComponent(error)}`,
+      `${base}/me?google=error&reason=${encodeURIComponent(error)}`,
     );
   }
   if (!code || !stateRaw) {
-    return NextResponse.redirect(
-      `${base}/dashboard?google=error&reason=missing`,
-    );
+    return NextResponse.redirect(`${base}/me?google=error&reason=missing`);
   }
 
   const state = verifyOAuthState(stateRaw);
   if (!state || state.provider !== "google") {
-    return NextResponse.redirect(`${base}/dashboard?google=error&reason=state`);
+    return NextResponse.redirect(`${base}/me?google=error&reason=state`);
   }
 
   try {
@@ -55,9 +53,7 @@ export async function GET(request: Request) {
     const reason = encodeURIComponent(
       err instanceof Error ? err.message : "unknown",
     );
-    return NextResponse.redirect(
-      `${base}/dashboard?google=error&reason=${reason}`,
-    );
+    return NextResponse.redirect(`${base}/me?google=error&reason=${reason}`);
   }
 
   const dest = state.returnTo ?? "/me";

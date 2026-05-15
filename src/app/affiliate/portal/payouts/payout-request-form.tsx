@@ -4,7 +4,7 @@ import { useActionState } from "react";
 
 import { Loader2Icon, BanknoteIcon } from "lucide-react";
 
-import { requestPayoutAction } from "@/app/affiliate/dashboard/actions";
+import { requestPayoutAction } from "@/app/affiliate/portal/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { idleState } from "@/lib/action-state";

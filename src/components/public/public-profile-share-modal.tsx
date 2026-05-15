@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { CheckIcon, LinkIcon } from "lucide-react";
 import {
   IconBrandFacebook,
@@ -197,27 +196,6 @@ function ShareModalContent({
           />
         ))}
       </div>
-
-      {/* Divider + CTA */}
-      <div className="flex flex-col gap-3">
-        <div className="h-px bg-border" />
-        <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">
-              با {title} در کیوآر باش
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              لینک‌ها، فرم‌ها و رزرو وقت — رایگان.
-            </p>
-          </div>
-          <Link
-            href="https://kioar.com/auth/register?ref=share-modal"
-            className="flex h-11 w-full shrink-0 items-center justify-center rounded-full bg-foreground px-5 text-sm font-semibold text-background transition-opacity hover:opacity-80 sm:w-auto"
-          >
-            ثبت‌نام رایگان
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }
@@ -267,7 +245,7 @@ export function PublicProfileShareModal({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm gap-0 p-0">
-        <DialogTitle className="px-4 py-4 text-center text-base font-semibold">
+        <DialogTitle className="px-4 pt-5 pb-3 text-center text-base font-semibold">
           اشتراک‌گذاری پروفایل
         </DialogTitle>
         <ShareModalContent

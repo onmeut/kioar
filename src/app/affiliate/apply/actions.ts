@@ -77,14 +77,14 @@ export async function submitAffiliateApplicationAction(
 
   if (!result.ok) {
     if (result.reason === "already_open") {
-      redirect("/affiliate/dashboard?already=pending");
+      redirect("/affiliate/portal?already=pending");
     }
     if (result.reason === "already_approved") {
-      redirect("/affiliate/dashboard");
+      redirect("/affiliate/portal");
     }
   }
 
-  revalidatePath("/affiliate/dashboard");
+  revalidatePath("/affiliate/portal");
   redirect("/affiliate/apply/thanks");
 }
 

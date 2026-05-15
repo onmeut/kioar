@@ -1,5 +1,5 @@
 /**
- * `/affiliate/dashboard/resources` — share kit + brand assets + tips.
+ * `/affiliate/portal/resources` — share kit + brand assets + tips.
  */
 import Image from "next/image";
 import Link from "next/link";
@@ -11,7 +11,7 @@ import {
   MessageCircleIcon,
 } from "lucide-react";
 
-import { CopyableSnippet } from "@/app/affiliate/dashboard/resources/copyable-snippet";
+import { CopyableSnippet } from "@/app/affiliate/portal/resources/copyable-snippet";
 import { getAffiliateStateForUser } from "@/lib/affiliate";
 import { requireUser } from "@/lib/auth/session";
 import { absoluteUrl } from "@/lib/site";

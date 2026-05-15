@@ -109,10 +109,9 @@ function PageAvatar({
 
 /**
  * Sidebar-header dropdown that names the page being edited and lets the
- * user switch to another of their owned pages or jump to the full-page
- * "Add new page" onboarding flow at `/onboarding/new-page`. The latter
- * reuses the exact same `<OnboardingForm>` as first-run signup so the
- * experience is identical whether it's the user's first page or fifth.
+ * user switch to another of their owned pages or jump to the `/start`
+ * wizard to create a new page. `/start` is the single entry point for
+ * creating any page — first or Nth — regardless of auth state.
  * Light theme; Persian copy.
  */
 export function PageSwitcher({
@@ -186,7 +185,7 @@ export function PageSwitcher({
       <DropdownMenuSeparator />
 
       <DropdownMenuItem
-        onClick={() => router.push("/onboarding/new-page" as Route)}
+        onClick={() => router.push("/start" as Route)}
         className="cursor-pointer items-center gap-3 py-2"
       >
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-700">

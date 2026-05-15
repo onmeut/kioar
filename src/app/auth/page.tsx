@@ -15,7 +15,9 @@ export default async function AuthPage() {
   }
 
   if (viewer?.user) {
-    redirect("/onboarding");
+    // Authed but no completed profile — legacy users finish onboarding via
+    // the new /start wizard.
+    redirect("/start");
   }
 
   return (

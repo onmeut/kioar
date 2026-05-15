@@ -47,7 +47,7 @@ export default async function PricingRoute() {
     if (firstPage) {
       ctaTargetForPaid = "/pro" as Route;
     } else {
-      ctaTargetForPaid = "/onboarding" as Route;
+      ctaTargetForPaid = "/start" as Route;
     }
   }
 

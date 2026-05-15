@@ -1,5 +1,5 @@
 /**
- * `/affiliate/dashboard/payouts` — request payout + history.
+ * `/affiliate/portal/payouts` — request payout + history.
  */
 import { eq } from "drizzle-orm";
 
@@ -13,7 +13,7 @@ import { getDb } from "@/db";
 import { affiliateProfiles } from "@/db/schema";
 import { formatPersianNumber, toPersianDigits } from "@/lib/persian";
 import { formatShamsiDate } from "@/lib/date/persian";
-import { PayoutRequestForm } from "@/app/affiliate/dashboard/payouts/payout-request-form";
+import { PayoutRequestForm } from "@/app/affiliate/portal/payouts/payout-request-form";
 
 type SearchParams = Promise<{ success?: string }>;
 

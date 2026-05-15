@@ -393,7 +393,7 @@ export default async function LandingPage() {
             </div>
           </aside>
 
-          <section className="order-1 flex max-w-xl flex-col items-center text-center md:items-start md:text-right md:justify-self-end md:pb-12">
+          <section className="order-1 flex min-h-[58dvh] max-w-xl flex-col items-center text-center md:min-h-0 md:items-start md:text-right md:justify-self-end md:pb-12">
             <div className="inline-flex items-center gap-2 whitespace-nowrap rounded-[28px] border border-white/10 bg-black/16 px-4 py-3 pl-5 shadow-[0_28px_70px_-42px_rgba(0,0,0,0.95)] backdrop-blur-sm">
               <span className="rounded-full border border-white/8 px-3 py-1 text-[10px] font-bold text-white/44">
                 نسخه پریمیوم
@@ -414,7 +414,7 @@ export default async function LandingPage() {
             <div className="mt-11 flex w-full flex-col items-center gap-3 sm:mt-12 sm:w-auto sm:flex-row sm:items-center md:items-start">
               <div className="hero-cta-ring w-fit">
                 <Link
-                  href="/auth"
+                  href="/start"
                   className="relative inline-flex h-15 items-center justify-center gap-2.5 rounded-full bg-[#1ED760] px-5 text-lg font-bold text-[#03140b] transition-colors hover:bg-[#18c653]"
                 >
                   ساخت صفحه رایگان

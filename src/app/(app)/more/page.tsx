@@ -114,7 +114,7 @@ export default async function MorePage() {
       icon: UserIcon,
     },
     {
-      href: "/dashboard/notifications" as Route,
+      href: "/notifications" as Route,
       label: "اعلان‌ها",
       icon: BellIcon,
       badge: formatBadge(badgeCounts.notifications),
@@ -154,7 +154,7 @@ export default async function MorePage() {
   }
 
   accountRows.push({
-    href: "/dashboard/referral" as Route,
+    href: "/referral" as Route,
     label: "دعوت دوستان",
     icon: GiftIcon,
     badge:
@@ -173,7 +173,7 @@ export default async function MorePage() {
   const affiliateRows: MoreRow[] = [
     {
       href: (affiliateState.kind === "approved"
-        ? "/affiliate/dashboard"
+        ? "/affiliate/portal"
         : "/affiliate/apply") as Route,
       label: "همکاری در فروش",
       icon: HandshakeIcon,

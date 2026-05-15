@@ -175,7 +175,7 @@ export default async function InvitedPage({
               ورود
             </Link>
             <Link
-              href="/auth"
+              href="/start"
               className="flex h-11 items-center justify-center rounded-full bg-foreground px-5 text-sm font-bold text-background transition-colors hover:bg-foreground/90"
             >
               ثبت‌نام رایگان
@@ -412,7 +412,7 @@ export default async function InvitedPage({
             <Button
               size="lg"
               className="h-12 rounded-full px-8 text-[15px] font-bold"
-              render={<Link href="/auth" />}
+              render={<Link href="/start" />}
             >
               ساخت صفحه رایگان
             </Button>

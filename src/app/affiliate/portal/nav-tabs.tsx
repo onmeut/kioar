@@ -6,11 +6,11 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 
 const TABS: { href: string; label: string }[] = [
-  { href: "/affiliate/dashboard", label: "نمای کلی" },
-  { href: "/affiliate/dashboard/earnings", label: "درآمد" },
-  { href: "/affiliate/dashboard/payouts", label: "تسویه" },
-  { href: "/affiliate/dashboard/resources", label: "منابع و کیت برند" },
-  { href: "/affiliate/dashboard/settings", label: "تنظیمات" },
+  { href: "/affiliate/portal", label: "نمای کلی" },
+  { href: "/affiliate/portal/earnings", label: "درآمد" },
+  { href: "/affiliate/portal/payouts", label: "تسویه" },
+  { href: "/affiliate/portal/resources", label: "منابع و کیت برند" },
+  { href: "/affiliate/portal/settings", label: "تنظیمات" },
 ];
 
 export function AffiliateNavTabs() {
@@ -23,7 +23,7 @@ export function AffiliateNavTabs() {
     >
       {TABS.map((t) => {
         const active =
-          t.href === "/affiliate/dashboard"
+          t.href === "/affiliate/portal"
             ? pathname === t.href
             : pathname?.startsWith(t.href);
         return (

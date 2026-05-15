@@ -1309,18 +1309,6 @@ export function LinksPageClient({
             />
           </PhoneMockupFrame>
         </div>
-        <div className="flex items-center justify-center gap-2 px-3 pt-3 pb-5">
-          <PublicShareBar
-            publicUrl={publicUrl}
-            slug={profile.slug}
-            displayName={profile.fullName || "کارت"}
-            host={`${profile.domain}/${profile.slug}`}
-            pageId={profile.id}
-            canCustomizeQr={canCustomizeQr}
-            savedQrStyle={savedQrStyle}
-            saveQrStyleAction={saveQrStyleAction}
-          />
-        </div>
       </aside>
 
       {/* Floating mobile share/preview bar was removed — these

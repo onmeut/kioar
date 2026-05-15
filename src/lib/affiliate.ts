@@ -136,7 +136,7 @@ export type AffiliateState =
       affiliateStatus: "active" | "paused" | "banned";
     };
 
-/** What surface should this user see when they hit /affiliate/dashboard? */
+/** What surface should this user see when they hit /affiliate/portal? */
 export async function getAffiliateStateForUser(
   userId: string,
 ): Promise<AffiliateState> {

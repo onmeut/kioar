@@ -23,15 +23,15 @@ export async function GET(request: Request) {
 
   if (error) {
     return NextResponse.redirect(
-      `${base}/dashboard?zoom=error&reason=${encodeURIComponent(error)}`,
+      `${base}/me?zoom=error&reason=${encodeURIComponent(error)}`,
     );
   }
   if (!code || !stateRaw) {
-    return NextResponse.redirect(`${base}/dashboard?zoom=error&reason=missing`);
+    return NextResponse.redirect(`${base}/me?zoom=error&reason=missing`);
   }
   const state = verifyOAuthState(stateRaw);
   if (!state || state.provider !== "zoom") {
-    return NextResponse.redirect(`${base}/dashboard?zoom=error&reason=state`);
+    return NextResponse.redirect(`${base}/me?zoom=error&reason=state`);
   }
   try {
     const tokens = await exchangeZoomCode(code);
@@ -51,9 +51,7 @@ export async function GET(request: Request) {
     const reason = encodeURIComponent(
       err instanceof Error ? err.message : "unknown",
     );
-    return NextResponse.redirect(
-      `${base}/dashboard?zoom=error&reason=${reason}`,
-    );
+    return NextResponse.redirect(`${base}/me?zoom=error&reason=${reason}`);
   }
   const dest = state.returnTo ?? "/me";
   const sep = dest.includes("?") ? "&" : "?";

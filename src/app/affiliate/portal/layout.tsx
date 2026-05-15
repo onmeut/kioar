@@ -1,5 +1,5 @@
 /**
- * `/affiliate/dashboard/*` — partner portal shell.
+ * `/affiliate/portal/*` — partner portal shell.
  *
  * Distinct from the main user dashboard (`(app)/...`). Single horizontal
  * top nav, no sidebar — affiliates have a small, focused surface
@@ -15,8 +15,8 @@ import { redirect } from "next/navigation";
 
 import { signOutAction } from "@/app/(app)/insights/actions";
 import { BrandMark } from "@/components/shared/brand-mark";
-import { AffiliateNavTabs } from "@/app/affiliate/dashboard/nav-tabs";
-import { AffiliateStatusBadge } from "@/app/affiliate/dashboard/status-badge";
+import { AffiliateNavTabs } from "@/app/affiliate/portal/nav-tabs";
+import { AffiliateStatusBadge } from "@/app/affiliate/portal/status-badge";
 import { Button } from "@/components/ui/button";
 import { getAffiliateStateForUser } from "@/lib/affiliate";
 import { getCurrentViewer } from "@/lib/auth/session";
@@ -34,7 +34,7 @@ export default async function AffiliateDashboardLayout({
 }) {
   const viewer = await getCurrentViewer();
   if (!viewer?.user) {
-    redirect("/auth?next=%2Faffiliate%2Fdashboard");
+    redirect("/auth?next=%2Faffiliate%2Fportal");
   }
   const state = await getAffiliateStateForUser(viewer.user.id);
 

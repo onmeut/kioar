@@ -1,18 +1,30 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { idleState, type ActionState } from "@/lib/action-state";
 import { issueSignInOtp, verifySignInOtp } from "@/lib/auth/otp";
+import {
+  clearPendingPageIntent,
+  clearPendingSlug,
+  getPendingPageIntent,
+} from "@/lib/auth/pending-intent";
 import {
   continuePendingEventRegistrationOrRedirect,
   createSessionForUser,
   findOrCreateUserByPhone,
 } from "@/lib/auth/session";
 import { log } from "@/lib/log";
+import { writeCurrentPageIdCookie } from "@/lib/page-cookie";
+import { createPageForOwner, listPagesForOwner } from "@/lib/pages";
+import { saveOnboardingProfileForUser } from "@/lib/profile-service";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { getClientIp, ipRateKey, phoneRateKey } from "@/lib/request-ip";
+import { startTrial } from "@/lib/trial";
 import { authRequestSchema, verifyOtpSchema } from "@/lib/validations";
+
+const MAX_PAGES_PER_OWNER = 25;
 
 // Rate limits for OTP issuance. These are deliberately strict because every
 // successful call sends an SMS we pay for and because OTP endpoints are the
@@ -232,8 +244,99 @@ export async function verifyOtpAction(
 
   await createSessionForUser(user.id);
 
+  // Consume any pre-auth page-creation intent the visitor accumulated on
+  // /start. The slug stays uncommitted to the DB until right now. This
+  // works for both first-time signups (incomplete profile → fill in the
+  // empty profile row) and returning users (already onboarded → create an
+  // *additional* page).
+  const intent = await getPendingPageIntent();
+  if (intent) {
+    if (!user.profile?.isComplete) {
+      const fd = new FormData();
+      fd.set("slug", intent.slug);
+      // pageName isn't asked in the new wizard — default to the slug.
+      fd.set("pageName", intent.slug);
+      if (intent.pageType) fd.set("pageType", intent.pageType);
+      if (intent.discoverCategory)
+        fd.set("discoverCategory", intent.discoverCategory);
+
+      const result = await saveOnboardingProfileForUser(user.id, fd);
+      if (!result.ok) {
+        // Most likely the slug was taken between cookie-set and OTP success
+        // (or the cookie got tampered with). Clear it so /start lets the
+        // user pick fresh choices.
+        await clearPendingPageIntent();
+        await clearPendingSlug();
+        log.warn("auth.intent.commit_failed", {
+          userId: user.id,
+          message: result.message,
+        });
+        redirect("/start");
+      }
+      await clearPendingPageIntent();
+      await clearPendingSlug();
+
+      if (result.isFirstPage) {
+        const planKey = intent.pageType === "business" ? "business" : "pro";
+        await startTrial({
+          pageId: result.pageId,
+          planKey,
+          ownerId: user.id,
+        });
+      }
+
+      await continuePendingEventRegistrationOrRedirect(user.id);
+      redirect("/me");
+    }
+
+    // Returning user signing in with a pending intent → create an
+    // additional page on top of their existing one(s).
+    const existing = await listPagesForOwner(user.id);
+    if (existing.length >= MAX_PAGES_PER_OWNER) {
+      await clearPendingPageIntent();
+      await clearPendingSlug();
+      log.warn("auth.intent.max_pages", { userId: user.id });
+      await continuePendingEventRegistrationOrRedirect(user.id);
+      redirect("/me");
+    }
+
+    const created = await createPageForOwner({
+      ownerId: user.id,
+      slug: intent.slug,
+      fullName: intent.slug,
+      pageType: intent.pageType,
+      discoverCategory: intent.discoverCategory,
+    });
+
+    if (!created.ok) {
+      await clearPendingPageIntent();
+      await clearPendingSlug();
+      log.warn("auth.intent.create_page_failed", {
+        userId: user.id,
+        reason: created.reason,
+      });
+      redirect("/start");
+    }
+
+    await writeCurrentPageIdCookie(created.page.id);
+    revalidatePath("/", "layout");
+
+    await clearPendingPageIntent();
+    await clearPendingSlug();
+
+    await startTrial({
+      pageId: created.page.id,
+      planKey: intent.pageType === "business" ? "business" : "pro",
+      ownerId: user.id,
+    });
+
+    await continuePendingEventRegistrationOrRedirect(user.id);
+    redirect("/me");
+  }
+
   if (!user.profile?.isComplete) {
-    redirect("/onboarding");
+    // No intent — legacy path. Send them to /start to complete onboarding.
+    redirect("/start");
   }
 
   await continuePendingEventRegistrationOrRedirect(user.id);

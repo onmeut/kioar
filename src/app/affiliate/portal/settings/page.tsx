@@ -1,9 +1,9 @@
 /**
- * `/affiliate/dashboard/settings` — banking + contact info.
+ * `/affiliate/portal/settings` — banking + contact info.
  */
 import { eq } from "drizzle-orm";
 
-import { SettingsForm } from "@/app/affiliate/dashboard/settings/settings-form";
+import { SettingsForm } from "@/app/affiliate/portal/settings/settings-form";
 import { requireUser } from "@/lib/auth/session";
 import { getDb } from "@/db";
 import { affiliateProfiles, users } from "@/db/schema";

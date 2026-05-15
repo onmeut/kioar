@@ -1,5 +1,5 @@
 /**
- * `/affiliate/dashboard/earnings` — full ledger of every commission
+ * `/affiliate/portal/earnings` — full ledger of every commission
  * entry with status, dates, and unlock countdown.
  */
 import { getAffiliateBalance, listAffiliateLedger } from "@/lib/affiliate";

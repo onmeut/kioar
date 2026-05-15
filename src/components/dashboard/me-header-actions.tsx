@@ -46,29 +46,48 @@ export function MeHeaderActions({
   if (!/^\/me(\/|$)/.test(pathname)) return null;
 
   return (
-    <div className="flex items-center gap-1 lg:hidden">
-      <button
-        type="button"
-        onClick={() =>
-          window.dispatchEvent(new CustomEvent("open-page-preview"))
-        }
-        aria-label="پیش‌نمایش کارت"
-        className="tap-target inline-flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
-      >
-        <EyeIcon className="size-5" aria-hidden />
-      </button>
-      <PublicShareBar
-        publicUrl={publicUrl}
-        slug={slug}
-        displayName={displayName}
-        host={host}
-        pageId={pageId}
-        canCustomizeQr={canCustomizeQr}
-        savedQrStyle={savedQrStyle}
-        saveQrStyleAction={saveQrStyleAction}
-        variant="icon"
-      />
-    </div>
+    <>
+      {/* Mobile: eye preview + share icon */}
+      <div className="flex items-center gap-1 md:hidden">
+        <button
+          type="button"
+          onClick={() =>
+            window.dispatchEvent(new CustomEvent("open-page-preview"))
+          }
+          aria-label="پیش‌نمایش کارت"
+          className="tap-target inline-flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+        >
+          <EyeIcon className="size-5" aria-hidden />
+        </button>
+        <PublicShareBar
+          publicUrl={publicUrl}
+          slug={slug}
+          displayName={displayName}
+          host={host}
+          pageId={pageId}
+          canCustomizeQr={canCustomizeQr}
+          savedQrStyle={savedQrStyle}
+          saveQrStyleAction={saveQrStyleAction}
+          variant="icon"
+        />
+      </div>
+
+      {/* Desktop: full share pill, hugs content width */}
+      <div className="hidden md:flex">
+        <PublicShareBar
+          publicUrl={publicUrl}
+          slug={slug}
+          displayName={displayName}
+          host={host}
+          pageId={pageId}
+          canCustomizeQr={canCustomizeQr}
+          savedQrStyle={savedQrStyle}
+          saveQrStyleAction={saveQrStyleAction}
+          variant="pill"
+          className="w-auto max-w-none"
+        />
+      </div>
+    </>
   );
 }
 

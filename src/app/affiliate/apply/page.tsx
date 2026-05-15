@@ -3,9 +3,9 @@
  *
  * Behaviour matrix (see `getAffiliateStateForUser`):
  *   - signed out                      → redirect to /auth?next=/affiliate/apply
- *   - has approved code               → redirect to /affiliate/dashboard
+ *   - has approved code               → redirect to /affiliate/portal
  *   - has open application (pending / needs_info)
- *                                     → redirect to /affiliate/dashboard?already=pending
+ *                                     → redirect to /affiliate/portal?already=pending
  *   - rejected before, or never applied
  *                                     → render the form
  *
@@ -40,12 +40,12 @@ export default async function AffiliateApplyPage() {
     getApplyDefaults(viewer.user.id),
   ]);
 
-  if (affiliateState.kind === "approved") redirect("/affiliate/dashboard");
+  if (affiliateState.kind === "approved") redirect("/affiliate/portal");
   if (
     affiliateState.kind === "pending" ||
     affiliateState.kind === "needs_info"
   ) {
-    redirect("/affiliate/dashboard?already=pending");
+    redirect("/affiliate/portal?already=pending");
   }
 
   return (

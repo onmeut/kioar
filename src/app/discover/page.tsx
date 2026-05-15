@@ -304,7 +304,7 @@ export default async function DiscoverPage({
               ورود
             </Link>
             <Link
-              href="/auth"
+              href="/start"
               className="flex h-14 items-center justify-center rounded-full bg-foreground px-7 text-base font-bold text-background transition-colors hover:bg-foreground/90"
             >
               ثبت‌نام رایگان

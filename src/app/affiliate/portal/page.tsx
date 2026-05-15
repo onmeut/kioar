@@ -1,5 +1,5 @@
 /**
- * `/affiliate/dashboard` — overview page.
+ * `/affiliate/portal` — overview page.
  *
  * Hero with the affiliate's unique link + copy/share, then a stat strip
  * (clicks / signups / conversions / earned), then a slim ledger preview
@@ -16,7 +16,7 @@ import {
   WalletIcon,
 } from "lucide-react";
 
-import { CopyableLink } from "@/app/affiliate/dashboard/copyable-link";
+import { CopyableLink } from "@/app/affiliate/portal/copyable-link";
 import {
   getAffiliateBalance,
   getAffiliateStateForUser,
@@ -118,7 +118,7 @@ export default async function AffiliateDashboardOverview() {
 
       <div className="flex justify-center">
         <Link
-          href="/affiliate/dashboard/payouts"
+          href="/affiliate/portal/payouts"
           className="rounded-full bg-ink px-6 py-3 text-[14px] font-bold text-paper hover:bg-ink/90"
         >
           درخواست تسویه
@@ -132,7 +132,7 @@ export default async function AffiliateDashboardOverview() {
             آخرین فروش‌ها
           </h2>
           <Link
-            href="/affiliate/dashboard/earnings"
+            href="/affiliate/portal/earnings"
             className="text-[12px] font-bold text-violet-700 hover:underline"
           >
             دیدن همه ←

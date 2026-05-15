@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   ArrowLeftIcon,
-  CheckIcon,
   IdCardIcon,
   QrCodeIcon,
   Share2Icon,
@@ -14,7 +13,6 @@ import { AnimatePresence, motion } from "motion/react";
 import Image from "next/image";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -249,27 +247,29 @@ function ShareHeader({
 }) {
   const showBack = view !== "home";
   return (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-b px-5 pt-5 pb-3">
-      <div className="flex items-center gap-2">
+    <div className="relative flex shrink-0 items-center justify-between px-5 pt-5 pb-4">
+      <div className="size-8 shrink-0">
         {showBack ? (
           <button
             type="button"
             onClick={onBack}
             aria-label="بازگشت"
-            className="tap-target inline-flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+            className="inline-flex size-8 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
           >
-            <ArrowLeftIcon className="size-5 rtl:rotate-180" aria-hidden />
+            <ArrowLeftIcon className="size-4 rtl:rotate-180" aria-hidden />
           </button>
         ) : null}
-        <h2 className="text-base font-semibold">{VIEW_TITLES[view]}</h2>
       </div>
+      <h2 className="pointer-events-none absolute inset-x-0 text-center text-base font-semibold">
+        {VIEW_TITLES[view]}
+      </h2>
       <button
         type="button"
         onClick={onClose}
         aria-label="بستن"
-        className="tap-target inline-flex size-9 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+        className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-muted text-foreground transition-colors hover:bg-muted/70"
       >
-        <XIcon className="size-5" aria-hidden />
+        <XIcon className="size-4" aria-hidden />
       </button>
     </div>
   );
@@ -323,38 +323,6 @@ function HomeView({
 
   return (
     <div className="space-y-4">
-      {/* URL chip — logo + url + کپی button */}
-      <div
-        dir="ltr"
-        className="flex items-center gap-2.5 rounded-full border border-border bg-muted/40 ps-3.5 pe-1.5 py-1.5"
-      >
-        <Image
-          src="/brand/logo.svg"
-          alt=""
-          width={14}
-          height={18}
-          className="shrink-0 opacity-75"
-        />
-        <span className="flex-1 truncate text-sm font-medium text-foreground/80">
-          {displayHost}
-        </span>
-        <Button
-          type="button"
-          size="sm"
-          onClick={copy}
-          className="h-8 rounded-full px-4 text-sm"
-        >
-          {copied ? (
-            <>
-              <CheckIcon className="size-3.5" aria-hidden />
-              <span className="font-medium">کپی شد</span>
-            </>
-          ) : (
-            <span className="font-medium">کپی</span>
-          )}
-        </Button>
-      </div>
-
       {/* QR card */}
       <button
         type="button"

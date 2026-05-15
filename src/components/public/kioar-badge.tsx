@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { ArrowLeftIcon } from "lucide-react";
 import { motion, useAnimate } from "motion/react";
 
 /**
@@ -19,7 +20,10 @@ export function KioarBadge() {
   const buzz = () => {
     animate(
       scope.current,
-      { rotate: [0, -8, 8, -6, 6, -3, 3, 0], scale: [1, 1.08, 1.08, 1.08, 1.08, 1.04, 1.04, 1] },
+      {
+        rotate: [0, -8, 8, -6, 6, -3, 3, 0],
+        scale: [1, 1.08, 1.08, 1.08, 1.08, 1.04, 1.04, 1],
+      },
       { duration: 0.55, ease: "easeInOut" },
     );
   };
@@ -48,10 +52,10 @@ export function KioarBadge() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasBuzzed]);
 
-  // Repeat every 45 s after first buzz
+  // Repeat every 10 s after first buzz
   useEffect(() => {
     if (!hasBuzzed) return;
-    const id = setInterval(buzz, 45_000);
+    const id = setInterval(buzz, 10_000);
     return () => clearInterval(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasBuzzed]);
@@ -64,7 +68,8 @@ export function KioarBadge() {
         className="inline-flex items-center gap-1.5 rounded-full border border-sidebar-border bg-sidebar px-4 py-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-70"
       >
         <Image src="/brand/logo.svg" alt="" width={13} height={16} />
-        <span>ساخته‌شده با کی‌یو‌آر</span>
+        <span>لینکِ کی‌یو‌آرِت رو بساز</span>
+        <ArrowLeftIcon className="size-3.5 shrink-0" aria-hidden />
       </Link>
     </motion.div>
   );

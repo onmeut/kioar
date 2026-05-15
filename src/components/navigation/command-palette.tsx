@@ -277,7 +277,7 @@ export function CommandPalette({
             <CommandItem
               value="nav-notifications"
               keywords={["notifications", "اعلان"]}
-              onSelect={() => goPage("/insights/notifications")}
+              onSelect={() => goPage("/notifications")}
             >
               <BellIcon />
               <span>اعلان‌ها</span>
@@ -301,7 +301,7 @@ export function CommandPalette({
             <CommandItem
               value="nav-referral"
               keywords={["referral", "invite", "دعوت", "دوست"]}
-              onSelect={() => goPage("/insights/referral")}
+              onSelect={() => goPage("/referral")}
             >
               <GiftIcon />
               <span>دعوت دوستان</span>

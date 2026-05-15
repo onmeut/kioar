@@ -86,7 +86,7 @@ export default function manifest(): MetadataRoute.Manifest {
         name: "داشبورد من",
         short_name: "داشبورد",
         description: "دسترسی سریع به پروفایل و کارت دیجیتال",
-        url: "/dashboard?source=pwa-shortcut",
+        url: "/me?source=pwa-shortcut",
         icons: [
           {
             src: "/icons/icon-192x192.png",

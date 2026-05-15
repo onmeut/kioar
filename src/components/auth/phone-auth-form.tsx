@@ -56,7 +56,7 @@ export function PhoneAuthForm() {
         <BrandMark variant="mark" className="size-14" />
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
-            به کیوآر خوش آمدید
+            ورود به کیوآر
           </h1>
           <p className="text-sm text-muted-foreground sm:text-base">
             شماره موبایل خود را وارد کنید تا ادامه دهید
@@ -64,7 +64,11 @@ export function PhoneAuthForm() {
         </div>
       </div>
 
-      <form action={formAction} className="flex w-full flex-col gap-4">
+      <form
+        action={formAction}
+        className="flex w-full flex-col gap-4"
+        suppressHydrationWarning
+      >
         <input
           id="phone"
           name="phone"
@@ -91,6 +95,7 @@ export function PhoneAuthForm() {
             "focus-visible:ring-3 focus-visible:ring-ring/20",
             phoneError && "ring-3 ring-destructive/30",
           )}
+          suppressHydrationWarning
         />
 
         {phoneError ? (

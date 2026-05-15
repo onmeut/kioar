@@ -255,7 +255,7 @@ export default function NotFound() {
                     خانه
                   </Link>
                   <Link
-                    href="/auth"
+                    href="/start"
                     className="nf-btn-primary inline-flex items-center gap-2 h-10.5 px-4.5 rounded-full text-[14px] font-semibold no-underline"
                     style={{
                       background: "var(--primary)",

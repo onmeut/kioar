@@ -96,7 +96,7 @@ export function SiteHeaderClient({
                   ورود
                 </Link>
                 <Link
-                  href="/auth"
+                  href="/start"
                   className={cn(
                     buttonVariants({ size: "sm" }),
                     "h-9 rounded-full bg-ink px-3 text-[13px] font-medium text-paper hover:bg-ink/90 sm:px-4",
@@ -158,7 +158,7 @@ export function SiteHeaderClient({
           {!isAuthed && (
             <div className="flex items-center gap-2.5 pb-1 pt-4">
               <Link
-                href="/auth"
+                href="/start"
                 className={cn(
                   buttonVariants({ size: "default" }),
                   "h-11 flex-1 rounded-full bg-ink text-[14px] font-medium text-paper hover:bg-ink/90",

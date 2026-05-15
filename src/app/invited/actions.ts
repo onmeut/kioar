@@ -21,5 +21,7 @@ export async function claimHandleAction(formData: FormData) {
   if (normalized && normalized.length >= 2 && !isReservedSlug(normalized)) {
     await setPendingSlug(normalized);
   }
-  redirect("/auth");
+  // New flow: send the visitor through the slug → page type → category
+  // wizard first; the OTP step is gated behind a completed wizard.
+  redirect("/start");
 }

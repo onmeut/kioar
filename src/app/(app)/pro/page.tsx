@@ -63,7 +63,7 @@ export default async function ProRoute() {
   if (!page) {
     // No pages yet — bounce through onboarding so we always have a
     // subscription row to work with.
-    redirect("/onboarding");
+    redirect("/start");
   }
 
   const db = getDb();

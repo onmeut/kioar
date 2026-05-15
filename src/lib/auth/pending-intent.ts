@@ -1,9 +1,15 @@
 import { cookies } from "next/headers";
 
-import { normalizeSlug } from "@/lib/slug";
+import { isPageTypeSlug, type PageTypeSlug } from "@/lib/page-type";
+import { isReservedSlug, normalizeSlug } from "@/lib/slug";
 
 const PENDING_EVENT_COOKIE = "kioar_pending_event";
 const PENDING_SLUG_COOKIE = "kioar_pending_slug";
+// JSON-encoded `{slug, pageType, discoverCategory}` carrying the visitor's
+// pre-auth page-creation intent. Set by /start; consumed by verifyOtpAction
+// after a successful OTP. Until OTP success no row exists in the DB — the
+// slug is **not** reserved by setting this cookie.
+const PENDING_PAGE_INTENT_COOKIE = "kioar_pending_page_intent";
 
 const cookieOptions = {
   httpOnly: true,
@@ -46,6 +52,54 @@ export async function getPendingSlug() {
 export async function clearPendingSlug() {
   const cookieStore = await cookies();
   cookieStore.set(PENDING_SLUG_COOKIE, "", {
+    ...cookieOptions,
+    maxAge: 0,
+  });
+}
+
+export type PendingPageIntent = {
+  slug: string;
+  pageType: PageTypeSlug | null;
+  discoverCategory: string | null;
+};
+
+export async function setPendingPageIntent(intent: PendingPageIntent) {
+  const slug = normalizeSlug(intent.slug);
+  if (!slug || slug.length < 2 || isReservedSlug(slug)) return;
+  const pageType =
+    intent.pageType && isPageTypeSlug(intent.pageType) ? intent.pageType : null;
+  const discoverCategory = intent.discoverCategory || null;
+  const value = JSON.stringify({ slug, pageType, discoverCategory });
+  const cookieStore = await cookies();
+  cookieStore.set(PENDING_PAGE_INTENT_COOKIE, value, cookieOptions);
+}
+
+export async function getPendingPageIntent(): Promise<PendingPageIntent | null> {
+  const cookieStore = await cookies();
+  const raw = cookieStore.get(PENDING_PAGE_INTENT_COOKIE)?.value;
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<PendingPageIntent>;
+    const slug =
+      typeof parsed.slug === "string" ? normalizeSlug(parsed.slug) : "";
+    if (!slug || slug.length < 2 || isReservedSlug(slug)) return null;
+    const pageType =
+      parsed.pageType && isPageTypeSlug(parsed.pageType)
+        ? parsed.pageType
+        : null;
+    const discoverCategory =
+      typeof parsed.discoverCategory === "string" && parsed.discoverCategory
+        ? parsed.discoverCategory
+        : null;
+    return { slug, pageType, discoverCategory };
+  } catch {
+    return null;
+  }
+}
+
+export async function clearPendingPageIntent() {
+  const cookieStore = await cookies();
+  cookieStore.set(PENDING_PAGE_INTENT_COOKIE, "", {
     ...cookieOptions,
     maxAge: 0,
   });
