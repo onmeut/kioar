@@ -254,8 +254,7 @@ export async function verifyOtpAction(
     if (!user.profile?.isComplete) {
       const fd = new FormData();
       fd.set("slug", intent.slug);
-      // pageName isn't asked in the new wizard — default to the slug.
-      fd.set("pageName", intent.slug);
+      fd.set("pageName", intent.fullName ?? intent.slug);
       if (intent.pageType) fd.set("pageType", intent.pageType);
       if (intent.discoverCategory)
         fd.set("discoverCategory", intent.discoverCategory);
@@ -303,7 +302,7 @@ export async function verifyOtpAction(
     const created = await createPageForOwner({
       ownerId: user.id,
       slug: intent.slug,
-      fullName: intent.slug,
+      fullName: intent.fullName ?? intent.slug,
       pageType: intent.pageType,
       discoverCategory: intent.discoverCategory,
     });

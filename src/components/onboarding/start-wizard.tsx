@@ -41,6 +41,7 @@ type StartWizardProps = {
   action: (state: ActionState, formData: FormData) => Promise<ActionState>;
   initialSlug?: string;
   initialPageType?: PageTypeSlug | null;
+  initialFullName?: string | null;
   initialDiscoverCategory?: string | null;
   industries: Industry[];
   categories: Category[];
@@ -76,12 +77,13 @@ export function StartWizard({
   action,
   initialSlug,
   initialPageType,
+  initialFullName,
   initialDiscoverCategory,
   industries,
   categories,
 }: StartWizardProps) {
   const [state, formAction] = useActionState(action, idleState);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
 
   const [slug, setSlug] = useState(() =>
     initialSlug ? normalizeSlug(initialSlug) : "",
@@ -89,17 +91,19 @@ export function StartWizard({
   const [pageType, setPageType] = useState<PageTypeSlug | null>(
     initialPageType ?? null,
   );
-  const [selectedIndustryId, setSelectedIndustryId] = useState<string | null>(
-    null,
-  );
+  const [fullName, setFullName] = useState<string>(initialFullName ?? "");
   const [discoverCategory, setDiscoverCategory] = useState<string | null>(
     initialDiscoverCategory ?? null,
   );
   const [categoryQuery, setCategoryQuery] = useState("");
+  const [activeIndustryId, setActiveIndustryId] = useState<string | null>(null);
 
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const slugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const slugAbortRef = useRef<AbortController | null>(null);
+  // Track whether the user has manually changed the slug since mount so we
+  // can skip the debounce on the very first check (pre-filled from cookie).
+  const slugUserEditedRef = useRef(false);
 
   useEffect(() => {
     if (!slug || slug.length < 2) {
@@ -110,6 +114,10 @@ export function StartWizard({
     setSlugStatus("checking");
     if (slugTimerRef.current) clearTimeout(slugTimerRef.current);
     if (slugAbortRef.current) slugAbortRef.current.abort();
+    // Use a short delay only when the user is actively typing; on the
+    // initial mount (slug comes pre-filled from a cookie) fire immediately
+    // so the button enables without requiring a keystroke.
+    const delay = slugUserEditedRef.current ? 400 : 0;
     slugTimerRef.current = setTimeout(async () => {
       const controller = new AbortController();
       slugAbortRef.current = controller;
@@ -130,7 +138,7 @@ export function StartWizard({
       } catch {
         // aborted — ignore
       }
-    }, 400);
+    }, delay);
     return () => {
       if (slugTimerRef.current) clearTimeout(slugTimerRef.current);
     };
@@ -148,19 +156,17 @@ export function StartWizard({
     return null;
   })();
 
-  const slugOk =
-    slug.length >= 2 &&
-    slugStatus !== "taken" &&
-    slugStatus !== "reserved" &&
-    slugStatus !== "invalid" &&
-    slugStatus !== "too_short";
+  // Require an explicit "available" confirmation so the button stays
+  // disabled while the check is in-flight. This also means a pre-filled
+  // slug (from cookie) forces the check to run on mount before advancing.
+  const slugOk = slug.length >= 2 && slugStatus === "available";
 
   const slugServerError = state.fieldErrors?.slug?.[0];
 
   // Step 1 — slug picker
   if (step === 1) {
     return (
-      <div className="flex flex-col items-center gap-7">
+      <div className="flex flex-col items-center gap-7" suppressHydrationWarning>
         <div className="flex flex-col items-center gap-5 text-center">
           <BrandMark variant="mark" className="size-14" />
           <div className="flex flex-col gap-2">
@@ -186,7 +192,7 @@ export function StartWizard({
                   "ring-2 ring-destructive/40",
               )}
             >
-              <span className="ps-5 font-mono text-[15px] font-semibold text-muted-foreground whitespace-nowrap select-none">
+              <span className="ps-5 font-mono text-[16px] font-semibold text-muted-foreground whitespace-nowrap select-none">
                 kioar.me/
               </span>
               <input
@@ -203,6 +209,7 @@ export function StartWizard({
                 enterKeyHint="next"
                 value={slug}
                 onChange={(event) => {
+                  slugUserEditedRef.current = true;
                   setSlug(normalizeSlug(event.target.value));
                 }}
                 onKeyDown={(e) => {
@@ -346,29 +353,108 @@ export function StartWizard({
     );
   }
 
-  // Step 3 — discover industry + category (skippable) + final submit
+  // Step 3 — page display name
+  if (step === 3) {
+    const trimmedName = fullName.trim();
+    const nameOk = trimmedName.length >= 1 && trimmedName.length <= 80;
+    const placeholder =
+      pageType === "business" ? "جواهری گوهربین" : "ایلان ماسک";
+    const nameServerError = state.fieldErrors?.pageName?.[0];
+    return (
+      <div className="flex flex-col items-center gap-7">
+        <div className="flex flex-col items-center gap-5 text-center">
+          <BrandMark variant="mark" className="size-14" />
+          <div className="flex flex-col gap-2">
+            <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
+              نام صفحه‌ات چیه؟
+            </h1>
+            <p className="text-sm text-muted-foreground sm:text-base">
+              {pageType === "business"
+                ? "اسم کسب‌وکارت رو وارد کن. توی صفحه عمومی نمایش داده می‌شه."
+                : "اسمی که می‌خوای روی صفحه‌ات نشون داده بشه."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex w-full flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <input
+              type="text"
+              inputMode="text"
+              autoComplete="name"
+              autoCapitalize="words"
+              autoCorrect="off"
+              spellCheck={false}
+              autoFocus
+              enterKeyHint="next"
+              maxLength={80}
+              aria-label="نام صفحه"
+              placeholder={placeholder}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && nameOk) {
+                  e.preventDefault();
+                  setStep(4);
+                }
+              }}
+              className={cn(
+                "h-14 w-full rounded-full bg-muted px-5 text-base font-semibold text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/20",
+                nameServerError && "ring-2 ring-destructive/40",
+              )}
+            />
+            {nameServerError ? (
+              <p className="px-3 text-xs text-destructive" role="alert">
+                {nameServerError}
+              </p>
+            ) : null}
+          </div>
+
+          <button
+            type="button"
+            disabled={!nameOk}
+            onClick={() => setStep(4)}
+            className={cn(
+              "tap-target inline-flex h-14 w-full items-center justify-center rounded-full text-base font-semibold transition-colors duration-200 outline-none focus-visible:ring-3 focus-visible:ring-ring/30 disabled:cursor-not-allowed",
+              !nameOk
+                ? "bg-muted text-muted-foreground"
+                : "bg-foreground text-background hover:bg-foreground/90 active:translate-y-px",
+            )}
+          >
+            ادامه
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setStep(2)}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            بازگشت
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 4 — discover industry + category (skippable) + final submit
   const accountType: AccountType =
     pageType === "business" ? "business" : "personal";
   const visibleIndustries = industries.filter((i) =>
     i.accountTypes.includes(accountType),
   );
-  const activeIndustryId =
-    selectedIndustryId &&
-    visibleIndustries.some((i) => i.id === selectedIndustryId)
-      ? selectedIndustryId
-      : (visibleIndustries[0]?.id ?? null);
   const query = categoryQuery.trim();
   const filteredCategories = categories.filter((c) => {
     if (c.accountType !== accountType) return false;
-    if (
-      query.length === 0 &&
-      activeIndustryId &&
-      c.industryId !== activeIndustryId
-    )
-      return false;
     if (query.length > 0 && !c.titleFa.includes(query)) return false;
     return true;
   });
+  const industriesById = new Map(visibleIndustries.map((i) => [i.id, i]));
+  const groupedByIndustry = visibleIndustries
+    .map((ind) => ({
+      industry: ind,
+      items: filteredCategories.filter((c) => c.industryId === ind.id),
+    }))
+    .filter((g) => g.items.length > 0);
 
   return (
     <div className="flex flex-col items-center gap-7">
@@ -387,119 +473,24 @@ export function StartWizard({
       <form action={formAction} className="flex w-full flex-col gap-4">
         <input type="hidden" name="slug" value={slug} />
         <input type="hidden" name="pageType" value={pageType ?? ""} />
+        <input type="hidden" name="pageName" value={fullName.trim()} />
         <input
           type="hidden"
           name="discoverCategory"
           value={discoverCategory ?? ""}
         />
 
-        {visibleIndustries.length > 0 ? (
-          <div
-            role="tablist"
-            aria-label="صنف"
-            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
-          >
-            {visibleIndustries.map((ind) => {
-              const selected = activeIndustryId === ind.id;
-              const entry = resolveIconEntry(ind.iconKey, null);
-              const Icon = entry.Icon;
-              return (
-                <button
-                  key={ind.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  onClick={() => {
-                    setSelectedIndustryId(ind.id);
-                    if (
-                      discoverCategory &&
-                      !categories.some(
-                        (c) =>
-                          c.slug === discoverCategory &&
-                          c.industryId === ind.id,
-                      )
-                    ) {
-                      setDiscoverCategory(null);
-                    }
-                  }}
-                  className={cn(
-                    "tap-target inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                    selected
-                      ? "bg-foreground text-background"
-                      : "bg-muted text-foreground hover:bg-muted/70",
-                  )}
-                >
-                  <Icon
-                    className="size-4"
-                    style={selected ? undefined : { color: entry.color }}
-                  />
-                  <span className="truncate">{ind.titleFa}</span>
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
-
-        <div className="relative">
-          <SearchIcon
-            aria-hidden
-            className="absolute inset-e-5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            type="text"
-            inputMode="search"
-            enterKeyHint="search"
-            value={categoryQuery}
-            onChange={(e) => setCategoryQuery(e.target.value)}
-            placeholder="جستجوی دسته‌بندی…"
-            aria-label="جستجوی دسته‌بندی"
-            className="h-14 w-full rounded-full bg-muted ps-5 pe-14 text-base font-medium text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/20"
-          />
-        </div>
-
-        <div
-          role="listbox"
-          aria-label="دسته‌بندی‌ها"
-          className="grid max-h-72 grid-cols-2 gap-2 overflow-y-auto rounded-3xl bg-muted/40 p-2"
-        >
-          {filteredCategories.length === 0 ? (
-            <p className="col-span-2 px-3 py-8 text-center text-sm text-muted-foreground">
-              دسته‌بندی‌ای پیدا نشد.
-            </p>
-          ) : (
-            filteredCategories.map((c) => {
-              const selected = discoverCategory === c.slug;
-              const entry = resolveIconEntry(c.iconKey, null);
-              const Icon = entry.Icon;
-              return (
-                <button
-                  key={c.slug}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  onClick={() => setDiscoverCategory(selected ? null : c.slug)}
-                  className={cn(
-                    "tap-target flex items-center gap-2 rounded-2xl px-3 py-3 text-start text-sm font-medium transition-colors",
-                    selected
-                      ? "bg-foreground text-background"
-                      : "bg-background text-foreground hover:bg-background/70",
-                  )}
-                >
-                  <span
-                    aria-hidden
-                    className="inline-flex items-center text-base"
-                  >
-                    <Icon
-                      className="size-4"
-                      style={selected ? undefined : { color: entry.color }}
-                    />
-                  </span>
-                  <span className="truncate">{c.titleFa}</span>
-                </button>
-              );
-            })
-          )}
-        </div>
+        <CategoryPicker
+          industries={visibleIndustries}
+          industriesById={industriesById}
+          groupedByIndustry={groupedByIndustry}
+          query={categoryQuery}
+          onQueryChange={setCategoryQuery}
+          activeIndustryId={activeIndustryId}
+          setActiveIndustryId={setActiveIndustryId}
+          discoverCategory={discoverCategory}
+          setDiscoverCategory={setDiscoverCategory}
+        />
 
         {state.message && state.status === "error" && !slugServerError ? (
           <p className="text-center text-sm text-destructive" role="alert">
@@ -507,16 +498,255 @@ export function StartWizard({
           </p>
         ) : null}
 
-        <SubmitButton disabled={!slug || !pageType} />
+        <SubmitButton
+          disabled={!slug || !pageType || fullName.trim().length === 0}
+        />
 
         <button
           type="button"
-          onClick={() => setStep(2)}
+          onClick={() => setStep(3)}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >
           بازگشت
         </button>
       </form>
+    </div>
+  );
+}
+
+type CategoryPickerProps = {
+  industries: Industry[];
+  industriesById: Map<string, Industry>;
+  groupedByIndustry: { industry: Industry; items: Category[] }[];
+  query: string;
+  onQueryChange: (value: string) => void;
+  activeIndustryId: string | null;
+  setActiveIndustryId: (id: string | null) => void;
+  discoverCategory: string | null;
+  setDiscoverCategory: (slug: string | null) => void;
+};
+
+function CategoryPicker({
+  industries,
+  industriesById: _industriesById,
+  groupedByIndustry,
+  query,
+  onQueryChange,
+  activeIndustryId,
+  setActiveIndustryId,
+  discoverCategory,
+  setDiscoverCategory,
+}: CategoryPickerProps) {
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const isScrollingProgrammatically = useRef(false);
+  const programmaticTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Track which section is currently most-visible inside the scroll container.
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isScrollingProgrammatically.current) return;
+        // Pick the entry whose top is closest to the container top while still
+        // intersecting. Falls back to the largest intersection ratio.
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => {
+            const ay = a.boundingClientRect.top;
+            const by = b.boundingClientRect.top;
+            return Math.abs(ay) - Math.abs(by);
+          });
+        const top = visible[0];
+        if (top) {
+          const id = top.target.getAttribute("data-industry-id");
+          if (id) setActiveIndustryId(id);
+        }
+      },
+      {
+        root,
+        // A horizontal band near the top of the container — when a section
+        // crosses it, that section becomes "active".
+        rootMargin: "0px 0px -70% 0px",
+        threshold: [0, 0.1, 0.25, 0.5, 1],
+      },
+    );
+    sectionRefs.current.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [groupedByIndustry, setActiveIndustryId]);
+
+  // Keep the active tab visible inside its own horizontally-scrollable strip.
+  useEffect(() => {
+    if (!activeIndustryId) return;
+    const tab = tabRefs.current.get(activeIndustryId);
+    if (tab && typeof tab.scrollIntoView === "function") {
+      tab.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+        inline: "center",
+      });
+    }
+  }, [activeIndustryId]);
+
+  // Default the active industry to the first visible section.
+  useEffect(() => {
+    if (activeIndustryId) return;
+    const first = groupedByIndustry[0]?.industry.id;
+    if (first) setActiveIndustryId(first);
+  }, [activeIndustryId, groupedByIndustry, setActiveIndustryId]);
+
+  const handleTabClick = (industryId: string) => {
+    setActiveIndustryId(industryId);
+    const section = sectionRefs.current.get(industryId);
+    const root = scrollRef.current;
+    if (!section || !root) return;
+    isScrollingProgrammatically.current = true;
+    const top = section.offsetTop - root.offsetTop;
+    root.scrollTo({ top, behavior: "smooth" });
+    if (programmaticTimer.current) clearTimeout(programmaticTimer.current);
+    programmaticTimer.current = setTimeout(() => {
+      isScrollingProgrammatically.current = false;
+    }, 600);
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      {industries.length > 0 ? (
+        <div
+          role="tablist"
+          aria-label="صنف"
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
+        >
+          {industries.map((ind) => {
+            const selected = activeIndustryId === ind.id;
+            const entry = resolveIconEntry(ind.iconKey, null);
+            const Icon = entry.Icon;
+            return (
+              <button
+                key={ind.id}
+                type="button"
+                role="tab"
+                aria-selected={selected}
+                ref={(el) => {
+                  if (el) tabRefs.current.set(ind.id, el);
+                  else tabRefs.current.delete(ind.id);
+                }}
+                onClick={() => handleTabClick(ind.id)}
+                className={cn(
+                  "tap-target inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium",
+                  selected
+                    ? "bg-foreground text-background"
+                    : "bg-muted text-foreground hover:bg-muted/70",
+                )}
+              >
+                <Icon
+                  className="size-4"
+                  style={selected ? undefined : { color: entry.color }}
+                />
+                <span className="truncate">{ind.titleFa}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
+      <div className="relative">
+        <SearchIcon
+          aria-hidden
+          className="absolute inset-e-5 top-1/2 size-5 -translate-y-1/2 text-muted-foreground"
+        />
+        <input
+          type="text"
+          inputMode="search"
+          enterKeyHint="search"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          placeholder="جستجوی دسته‌بندی…"
+          aria-label="جستجوی دسته‌بندی"
+          className="h-14 w-full rounded-full bg-muted ps-5 pe-14 text-base font-medium text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus-visible:ring-3 focus-visible:ring-ring/20"
+        />
+      </div>
+
+      <div
+        ref={scrollRef}
+        role="listbox"
+        aria-label="دسته‌بندی‌ها"
+        className="max-h-80 overflow-y-auto rounded-3xl bg-muted/40 p-2"
+      >
+        {groupedByIndustry.length === 0 ? (
+          <p className="px-3 py-8 text-center text-sm text-muted-foreground">
+            دسته‌بندی‌ای پیدا نشد.
+          </p>
+        ) : (
+          <div className="flex flex-col gap-3">
+            {groupedByIndustry.map(({ industry, items }) => {
+              const indEntry = resolveIconEntry(industry.iconKey, null);
+              const IndIcon = indEntry.Icon;
+              return (
+                <section
+                  key={industry.id}
+                  data-industry-id={industry.id}
+                  ref={(el) => {
+                    if (el) sectionRefs.current.set(industry.id, el);
+                    else sectionRefs.current.delete(industry.id);
+                  }}
+                  aria-label={industry.titleFa}
+                  className="flex flex-col gap-1.5"
+                >
+                  <header className="sticky top-0 z-10 -mx-2 flex items-center gap-2 bg-muted/40 px-3 py-1.5 backdrop-blur-sm">
+                    <IndIcon
+                      className="size-3.5"
+                      style={{ color: indEntry.color }}
+                    />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {industry.titleFa}
+                    </span>
+                  </header>
+                  <div className="grid grid-cols-2 gap-2">
+                    {items.map((c) => {
+                      const selected = discoverCategory === c.slug;
+                      const entry = resolveIconEntry(c.iconKey, null);
+                      const Icon = entry.Icon;
+                      return (
+                        <button
+                          key={c.slug}
+                          type="button"
+                          role="option"
+                          aria-selected={selected}
+                          onClick={() =>
+                            setDiscoverCategory(selected ? null : c.slug)
+                          }
+                          className={cn(
+                            "tap-target flex items-center gap-2 rounded-2xl px-3 py-3 text-start text-sm font-medium transition-colors",
+                            selected
+                              ? "bg-foreground text-background"
+                              : "bg-background text-foreground hover:bg-background/70",
+                          )}
+                        >
+                          <span
+                            aria-hidden
+                            className="inline-flex items-center text-base"
+                          >
+                            <Icon
+                              className="size-4"
+                              style={
+                                selected ? undefined : { color: entry.color }
+                              }
+                            />
+                          </span>
+                          <span className="truncate">{c.titleFa}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

@@ -60,16 +60,26 @@ export async function clearPendingSlug() {
 export type PendingPageIntent = {
   slug: string;
   pageType: PageTypeSlug | null;
+  fullName: string | null;
   discoverCategory: string | null;
 };
+
+const MAX_FULL_NAME_LENGTH = 80;
+
+function sanitizeFullName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim().slice(0, MAX_FULL_NAME_LENGTH);
+  return trimmed.length > 0 ? trimmed : null;
+}
 
 export async function setPendingPageIntent(intent: PendingPageIntent) {
   const slug = normalizeSlug(intent.slug);
   if (!slug || slug.length < 2 || isReservedSlug(slug)) return;
   const pageType =
     intent.pageType && isPageTypeSlug(intent.pageType) ? intent.pageType : null;
+  const fullName = sanitizeFullName(intent.fullName);
   const discoverCategory = intent.discoverCategory || null;
-  const value = JSON.stringify({ slug, pageType, discoverCategory });
+  const value = JSON.stringify({ slug, pageType, fullName, discoverCategory });
   const cookieStore = await cookies();
   cookieStore.set(PENDING_PAGE_INTENT_COOKIE, value, cookieOptions);
 }
@@ -87,11 +97,12 @@ export async function getPendingPageIntent(): Promise<PendingPageIntent | null> 
       parsed.pageType && isPageTypeSlug(parsed.pageType)
         ? parsed.pageType
         : null;
+    const fullName = sanitizeFullName(parsed.fullName);
     const discoverCategory =
       typeof parsed.discoverCategory === "string" && parsed.discoverCategory
         ? parsed.discoverCategory
         : null;
-    return { slug, pageType, discoverCategory };
+    return { slug, pageType, fullName, discoverCategory };
   } catch {
     return null;
   }

@@ -12,10 +12,7 @@ import {
 import { getCurrentViewer } from "@/lib/auth/session";
 import { writeCurrentPageIdCookie } from "@/lib/page-cookie";
 import { isPageTypeSlug, type PageTypeSlug } from "@/lib/page-type";
-import {
-  createPageForOwner,
-  listPagesForOwner,
-} from "@/lib/pages";
+import { createPageForOwner, listPagesForOwner } from "@/lib/pages";
 import { saveOnboardingProfileForUser } from "@/lib/profile-service";
 import { isReservedSlug, normalizeSlug } from "@/lib/slug";
 import { startTrial } from "@/lib/trial";
@@ -66,11 +63,21 @@ export async function commitPageIntentAction(
   const rawCategory = String(formData.get("discoverCategory") ?? "");
   const discoverCategory = rawCategory.length > 0 ? rawCategory : null;
 
+  const rawFullName = String(formData.get("pageName") ?? "").trim();
+  const fullName = rawFullName.length > 0 ? rawFullName.slice(0, 80) : null;
+  if (!fullName) {
+    return {
+      status: "error",
+      fieldErrors: { pageName: ["نام صفحه را وارد کنید."] },
+      message: "نام صفحه را وارد کنید.",
+    };
+  }
+
   const viewer = await getCurrentViewer();
 
   // Unauthenticated → stash in cookie, send to /auth.
   if (!viewer?.user) {
-    await setPendingPageIntent({ slug, pageType, discoverCategory });
+    await setPendingPageIntent({ slug, pageType, fullName, discoverCategory });
     // Drop the legacy single-slug cookie; the new intent cookie supersedes it.
     await clearPendingSlug();
     redirect("/auth");
@@ -89,7 +96,7 @@ export async function commitPageIntentAction(
     const result = await createPageForOwner({
       ownerId: viewer.user.id,
       slug,
-      fullName: slug,
+      fullName,
       pageType,
       discoverCategory,
     });
@@ -112,7 +119,9 @@ export async function commitPageIntentAction(
       return {
         status: "error",
         fieldErrors: {
-          slug: ["نام کاربری معتبر نیست (۳ تا ۳۰ کاراکتر، حروف انگلیسی و عدد)."],
+          slug: [
+            "نام کاربری معتبر نیست (۳ تا ۳۰ کاراکتر، حروف انگلیسی و عدد).",
+          ],
         },
         message: "نام کاربری نامعتبر است.",
       };
@@ -139,9 +148,7 @@ export async function commitPageIntentAction(
   // profile service (updates the existing empty profile row in place).
   const fd = new FormData();
   fd.set("slug", slug);
-  // pageName isn't asked in the new wizard — default to the slug, the user
-  // can edit it later in the profile editor.
-  fd.set("pageName", slug);
+  fd.set("pageName", fullName);
   if (pageType) fd.set("pageType", pageType);
   if (discoverCategory) fd.set("discoverCategory", discoverCategory);
 

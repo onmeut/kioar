@@ -56,7 +56,7 @@ export function PhoneAuthForm() {
         <BrandMark variant="mark" className="size-14" />
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold leading-tight sm:text-3xl">
-            ورود به کیوآر
+            به کیوآر خوش‌آمدید
           </h1>
           <p className="text-sm text-muted-foreground sm:text-base">
             شماره موبایل خود را وارد کنید تا ادامه دهید

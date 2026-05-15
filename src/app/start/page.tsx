@@ -35,8 +35,7 @@ export default async function StartPage({
       getAllActiveCategories(),
     ]);
 
-  const initialSlug =
-    pendingIntent?.slug || pendingSlug || params.handle || "";
+  const initialSlug = pendingIntent?.slug || pendingSlug || params.handle || "";
 
   return (
     <AuthShell>
@@ -44,6 +43,7 @@ export default async function StartPage({
         action={commitPageIntentAction}
         initialSlug={initialSlug}
         initialPageType={pendingIntent?.pageType ?? null}
+        initialFullName={pendingIntent?.fullName ?? null}
         initialDiscoverCategory={pendingIntent?.discoverCategory ?? null}
         industries={industries}
         categories={categories}
