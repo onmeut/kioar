@@ -166,7 +166,10 @@ export function StartWizard({
   // Step 1 — slug picker
   if (step === 1) {
     return (
-      <div className="flex flex-col items-center gap-7" suppressHydrationWarning>
+      <div
+        className="flex flex-col items-center gap-7"
+        suppressHydrationWarning
+      >
         <div className="flex flex-col items-center gap-5 text-center">
           <BrandMark variant="mark" className="size-14" />
           <div className="flex flex-col gap-2">
