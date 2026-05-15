@@ -423,6 +423,7 @@ export function CategoryManager({
 }: CategoryManagerProps) {
   const [editTarget, setEditTarget] = useState<Category | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [createKey, setCreateKey] = useState(0);
   const [items, setItems] = useState(categories);
   const [, startTransition] = useTransition();
 
@@ -459,7 +460,14 @@ export function CategoryManager({
         <p className="text-sm text-muted-foreground">
           {items.length} دسته‌بندی
         </p>
-        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+        <Button
+          type="button"
+          size="sm"
+          onClick={() => {
+            setCreateOpen(true);
+            setCreateKey((k) => k + 1);
+          }}
+        >
           <Plus className="me-1.5 size-4" />
           دسته‌بندی جدید
         </Button>
@@ -505,7 +513,7 @@ export function CategoryManager({
       />
       {/* Create dialog */}
       <CategoryFormDialog
-        key="__create__"
+        key={`__create__${createKey}`}
         open={createOpen}
         onClose={() => setCreateOpen(false)}
         category={null}

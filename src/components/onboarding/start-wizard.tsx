@@ -12,7 +12,7 @@ import {
   SearchIcon,
   UserRoundIcon,
 } from "lucide-react";
-import { useFormStatus } from "react-dom";
+import { useFormStatus, flushSync } from "react-dom";
 
 import { idleState, type ActionState } from "@/lib/action-state";
 import { type AccountType, type Category, type Industry } from "@/lib/discover";
@@ -67,7 +67,7 @@ function SubmitButton({ disabled }: { disabled: boolean }) {
           <span>در حال ادامه…</span>
         </>
       ) : (
-        <span>ادامه به ورود</span>
+        <span>ادامه</span>
       )}
     </button>
   );
@@ -97,6 +97,7 @@ export function StartWizard({
   );
   const [categoryQuery, setCategoryQuery] = useState("");
   const [activeIndustryId, setActiveIndustryId] = useState<string | null>(null);
+  const categoryFormRef = useRef<HTMLFormElement | null>(null);
 
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
   const slugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -473,7 +474,11 @@ export function StartWizard({
         </div>
       </div>
 
-      <form action={formAction} className="flex w-full flex-col gap-4">
+      <form
+        ref={categoryFormRef}
+        action={formAction}
+        className="flex w-full flex-col gap-4"
+      >
         <input type="hidden" name="slug" value={slug} />
         <input type="hidden" name="pageType" value={pageType ?? ""} />
         <input type="hidden" name="pageName" value={fullName.trim()} />
@@ -504,6 +509,19 @@ export function StartWizard({
         <SubmitButton
           disabled={!slug || !pageType || fullName.trim().length === 0}
         />
+
+        <button
+          type="button"
+          onClick={() => {
+            // Clear the category, flush the state update so the hidden input
+            // reflects the new value, then submit the form.
+            flushSync(() => setDiscoverCategory(null));
+            categoryFormRef.current?.requestSubmit();
+          }}
+          className="tap-target inline-flex h-11 w-full items-center justify-center rounded-full bg-muted text-sm font-medium text-muted-foreground hover:bg-muted/70 transition-colors"
+        >
+          بعداً انتخاب می‌کنم
+        </button>
 
         <button
           type="button"
