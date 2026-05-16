@@ -128,13 +128,7 @@ export function PageSettingsSheet({
 }: Props) {
   const router = useRouter();
   const [values, setValues] = useState<PageSettingsValues>(initial);
-  // Industry picker is purely UI-side; on read it's derived from the chosen
-  // category's industryId. This transient holder lets users switch industries
-  // before picking a category so the second dropdown can narrow correctly.
-  const [pendingIndustryId, setPendingIndustryId] = useState<string | null>(
-    null,
-  );
-  const [settingsCategoryQuery, setSettingsCategoryQuery] = useState("");
+  const [categoryPickerOpen, setCategoryPickerOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string[] | undefined>>(
     {},
   );
@@ -158,8 +152,7 @@ export function PageSettingsSheet({
       setOgFile(null);
       setOgPreview(null);
       setOgRemove(false);
-      setPendingIndustryId(null);
-      setSettingsCategoryQuery("");
+      setCategoryPickerOpen(false);
     }
   }, [open, initial]);
 
@@ -607,157 +600,53 @@ export function PageSettingsSheet({
             </div>
           </div>
 
-          {/* ---- Industry tabs + category grid ---- */}
+          {/* ---- Category card ---- */}
           {(() => {
-            const accountType: "personal" | "business" | null =
+            const accountType =
               values.pageType === "business" ? "business" : "personal";
-            const visibleIndustries = industries.filter((i) =>
-              i.accountTypes.includes(accountType),
-            );
             const currentCategory = values.discoverCategory
               ? (categories.find((c) => c.slug === values.discoverCategory) ??
                 null)
               : null;
-            const selectedIndustryId = currentCategory?.industryId ?? null;
-            const activeIndustryId =
-              pendingIndustryId ??
-              selectedIndustryId ??
-              visibleIndustries[0]?.id ??
-              null;
-            const catQuery = settingsCategoryQuery.trim();
-            const filteredCategories = categories.filter((c) => {
-              if (c.accountType !== accountType) return false;
-              if (
-                catQuery.length === 0 &&
-                activeIndustryId &&
-                c.industryId !== activeIndustryId
-              )
-                return false;
-              if (catQuery.length > 0 && !c.titleFa.includes(catQuery))
-                return false;
-              return true;
-            });
+            const catEntry = currentCategory
+              ? resolveIconEntry(currentCategory.iconKey, null)
+              : null;
+            const CatIcon = catEntry?.Icon;
             return (
-              <div className="space-y-2">
-                <Label className="text-sm font-medium">دسته‌بندی</Label>
-                {visibleIndustries.length > 0 && (
-                  <div
-                    role="tablist"
-                    aria-label="صنف"
-                    className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
-                  >
-                    {visibleIndustries.map((ind) => {
-                      const selected = activeIndustryId === ind.id;
-                      const entry = resolveIconEntry(ind.iconKey, null);
-                      const Icon = entry.Icon;
-                      return (
-                        <button
-                          key={ind.id}
-                          type="button"
-                          role="tab"
-                          aria-selected={selected}
-                          onClick={() => {
-                            setPendingIndustryId(ind.id);
-                            if (
-                              values.discoverCategory &&
-                              !categories.some(
-                                (c) =>
-                                  c.slug === values.discoverCategory &&
-                                  c.industryId === ind.id,
-                              )
-                            ) {
-                              patch("discoverCategory", null);
-                            }
-                          }}
-                          className={cn(
-                            "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
-                            selected
-                              ? "bg-foreground text-background"
-                              : "bg-muted text-foreground hover:bg-muted/70",
-                          )}
-                        >
-                          <Icon
-                            className="size-3.5"
-                            style={
-                              selected ? undefined : { color: entry.color }
-                            }
-                          />
-                          <span className="truncate">{ind.titleFa}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="relative">
-                  <SearchIcon
-                    aria-hidden
-                    className="absolute inset-e-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                  />
-                  <input
-                    type="text"
-                    inputMode="search"
-                    enterKeyHint="search"
-                    value={settingsCategoryQuery}
-                    onChange={(e) => setSettingsCategoryQuery(e.target.value)}
-                    placeholder="جستجوی دسته‌بندی…"
-                    aria-label="جستجوی دسته‌بندی"
-                    className="h-11 w-full rounded-full bg-muted ps-4 pe-10 text-sm font-medium text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/20"
-                  />
-                </div>
-                <div
-                  role="listbox"
-                  aria-label="دسته‌بندی‌ها"
-                  className="grid max-h-52 grid-cols-2 gap-1.5 overflow-y-auto rounded-2xl bg-muted/40 p-1.5"
+              <>
+                <button
+                  type="button"
+                  onClick={() => setCategoryPickerOpen(true)}
+                  className="flex w-full items-center justify-between gap-3 rounded-2xl border bg-muted/40 px-3 py-3 text-start transition-colors hover:bg-muted/60"
                 >
-                  {filteredCategories.length === 0 ? (
-                    <p className="col-span-2 px-3 py-6 text-center text-sm text-muted-foreground">
-                      دسته‌بندی‌ای پیدا نشد.
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">دسته‌بندی</p>
+                    <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                      {currentCategory && CatIcon ? (
+                        <>
+                          <CatIcon
+                            className="size-3 shrink-0"
+                            style={{ color: catEntry?.color }}
+                          />
+                          {currentCategory.titleFa}
+                        </>
+                      ) : (
+                        "انتخاب نشده"
+                      )}
                     </p>
-                  ) : (
-                    filteredCategories.map((c) => {
-                      const selected = values.discoverCategory === c.slug;
-                      return (
-                        <button
-                          key={c.slug}
-                          type="button"
-                          role="option"
-                          aria-selected={selected}
-                          onClick={() =>
-                            patch("discoverCategory", selected ? null : c.slug)
-                          }
-                          className={cn(
-                            "flex items-center gap-2 rounded-xl px-2.5 py-2 text-start text-xs font-medium transition-colors",
-                            selected
-                              ? "bg-foreground text-background"
-                              : "bg-background text-foreground hover:bg-background/70",
-                          )}
-                        >
-                          <span
-                            aria-hidden
-                            className="inline-flex items-center"
-                          >
-                            {(() => {
-                              const entry = resolveIconEntry(c.iconKey, null);
-                              const CatIcon = entry.Icon;
-                              return (
-                                <CatIcon
-                                  className="size-3.5"
-                                  style={
-                                    selected
-                                      ? undefined
-                                      : { color: entry.color }
-                                  }
-                                />
-                              );
-                            })()}
-                          </span>
-                          <span className="truncate">{c.titleFa}</span>
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
+                  </div>
+                  <PencilIcon className="size-4 shrink-0 text-muted-foreground" />
+                </button>
+                <CategoryPickerDialog
+                  open={categoryPickerOpen}
+                  onOpenChange={setCategoryPickerOpen}
+                  accountType={accountType}
+                  industries={industries}
+                  categories={categories}
+                  initialCategory={values.discoverCategory}
+                  onSave={(slug) => patch("discoverCategory", slug)}
+                />
+              </>
             );
           })()}
 
@@ -920,6 +809,207 @@ export function PageSettingsSheet({
       />
       {cropOverlay}
     </>
+  );
+}
+
+/* ---------------- CategoryPickerDialog ---------------- */
+
+function CategoryPickerDialog({
+  open,
+  onOpenChange,
+  accountType,
+  industries,
+  categories,
+  initialCategory,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  accountType: "personal" | "business";
+  industries: Industry[];
+  categories: Category[];
+  initialCategory: string | null;
+  onSave: (slug: string | null) => void;
+}) {
+  const isMobile = useIsMobile();
+  const [activeIndustryId, setActiveIndustryId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [pending, setPending] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    setPending(initialCategory);
+    setQuery("");
+    const cat = initialCategory
+      ? categories.find((c) => c.slug === initialCategory)
+      : null;
+    setActiveIndustryId(cat?.industryId ?? null);
+  }, [open, initialCategory, categories]);
+
+  const visibleIndustries = industries.filter((i) =>
+    i.accountTypes.includes(accountType),
+  );
+  const effectiveIndustryId =
+    activeIndustryId ?? visibleIndustries[0]?.id ?? null;
+
+  const q = query.trim();
+  const filteredCategories = categories.filter((c) => {
+    if (c.accountType !== accountType) return false;
+    if (
+      q.length === 0 &&
+      effectiveIndustryId &&
+      c.industryId !== effectiveIndustryId
+    )
+      return false;
+    if (q.length > 0 && !c.titleFa.includes(q)) return false;
+    return true;
+  });
+
+  const pickerBody = (
+    <>
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        {visibleIndustries.length > 0 && (
+          <div
+            role="tablist"
+            aria-label="صنف"
+            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
+          >
+            {visibleIndustries.map((ind) => {
+              const selected = effectiveIndustryId === ind.id;
+              const entry = resolveIconEntry(ind.iconKey, null);
+              const Icon = entry.Icon;
+              return (
+                <button
+                  key={ind.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => setActiveIndustryId(ind.id)}
+                  className={cn(
+                    "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                    selected
+                      ? "bg-foreground text-background"
+                      : "bg-muted text-foreground hover:bg-muted/70",
+                  )}
+                >
+                  <Icon
+                    className="size-3.5"
+                    style={selected ? undefined : { color: entry.color }}
+                  />
+                  <span className="truncate">{ind.titleFa}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="relative">
+          <SearchIcon
+            aria-hidden
+            className="absolute inset-e-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          />
+          <input
+            type="text"
+            inputMode="search"
+            enterKeyHint="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="جستجوی دسته‌بندی…"
+            aria-label="جستجوی دسته‌بندی"
+            className="h-11 w-full rounded-full bg-muted ps-4 pe-10 text-sm font-medium text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/20"
+          />
+        </div>
+
+        <div
+          role="listbox"
+          aria-label="دسته‌بندی‌ها"
+          className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted/40 p-1.5"
+        >
+          {filteredCategories.length === 0 ? (
+            <p className="col-span-2 px-3 py-6 text-center text-sm text-muted-foreground">
+              دسته‌بندی‌ای پیدا نشد.
+            </p>
+          ) : (
+            filteredCategories.map((c) => {
+              const selected = pending === c.slug;
+              const entry = resolveIconEntry(c.iconKey, null);
+              const CatIcon = entry.Icon;
+              return (
+                <button
+                  key={c.slug}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onClick={() => setPending(selected ? null : c.slug)}
+                  className={cn(
+                    "flex items-center gap-2 rounded-xl px-2.5 py-2 text-start text-xs font-medium transition-colors",
+                    selected
+                      ? "bg-foreground text-background"
+                      : "bg-background text-foreground hover:bg-background/70",
+                  )}
+                >
+                  <CatIcon
+                    className="size-3.5 shrink-0"
+                    style={selected ? undefined : { color: entry.color }}
+                  />
+                  <span className="truncate">{c.titleFa}</span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+
+      <div className="safe-pb shrink-0 border-t px-4 py-3">
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="h-11"
+          >
+            انصراف
+          </Button>
+          <Button
+            type="button"
+            onClick={() => {
+              onSave(pending);
+              onOpenChange(false);
+            }}
+            className="h-11"
+          >
+            ذخیره
+          </Button>
+        </div>
+      </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent
+          side="bottom"
+          className="flex h-[75dvh] flex-col gap-0 rounded-t-3xl p-0"
+        >
+          <SheetHeader className="shrink-0 border-b px-4 py-3 text-start">
+            <SheetTitle className="text-sm font-bold">دسته‌بندی</SheetTitle>
+          </SheetHeader>
+          {pickerBody}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85dvh] max-w-md flex-col gap-0 overflow-hidden rounded-3xl p-0">
+        <div className="shrink-0 border-b px-4 py-3">
+          <DialogTitle className="text-sm font-bold">دسته‌بندی</DialogTitle>
+        </div>
+        {pickerBody}
+      </DialogContent>
+    </Dialog>
   );
 }
 

@@ -96,7 +96,6 @@ export function StartWizard({
     initialDiscoverCategory ?? null,
   );
   const [categoryQuery, setCategoryQuery] = useState("");
-  const [activeIndustryId, setActiveIndustryId] = useState<string | null>(null);
   const categoryFormRef = useRef<HTMLFormElement | null>(null);
 
   const [slugStatus, setSlugStatus] = useState<SlugStatus>("idle");
@@ -452,7 +451,6 @@ export function StartWizard({
     if (query.length > 0 && !c.titleFa.includes(query)) return false;
     return true;
   });
-  const industriesById = new Map(visibleIndustries.map((i) => [i.id, i]));
   const groupedByIndustry = visibleIndustries
     .map((ind) => ({
       industry: ind,
@@ -489,13 +487,9 @@ export function StartWizard({
         />
 
         <CategoryPicker
-          industries={visibleIndustries}
-          industriesById={industriesById}
           groupedByIndustry={groupedByIndustry}
           query={categoryQuery}
           onQueryChange={setCategoryQuery}
-          activeIndustryId={activeIndustryId}
-          setActiveIndustryId={setActiveIndustryId}
           discoverCategory={discoverCategory}
           setDiscoverCategory={setDiscoverCategory}
         />
@@ -536,143 +530,22 @@ export function StartWizard({
 }
 
 type CategoryPickerProps = {
-  industries: Industry[];
-  industriesById: Map<string, Industry>;
   groupedByIndustry: { industry: Industry; items: Category[] }[];
   query: string;
   onQueryChange: (value: string) => void;
-  activeIndustryId: string | null;
-  setActiveIndustryId: (id: string | null) => void;
   discoverCategory: string | null;
   setDiscoverCategory: (slug: string | null) => void;
 };
 
 function CategoryPicker({
-  industries,
-  industriesById: _industriesById,
   groupedByIndustry,
   query,
   onQueryChange,
-  activeIndustryId,
-  setActiveIndustryId,
   discoverCategory,
   setDiscoverCategory,
 }: CategoryPickerProps) {
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
-  const tabRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const isScrollingProgrammatically = useRef(false);
-  const programmaticTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Track which section is currently most-visible inside the scroll container.
-  useEffect(() => {
-    const root = scrollRef.current;
-    if (!root) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (isScrollingProgrammatically.current) return;
-        // Pick the entry whose top is closest to the container top while still
-        // intersecting. Falls back to the largest intersection ratio.
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => {
-            const ay = a.boundingClientRect.top;
-            const by = b.boundingClientRect.top;
-            return Math.abs(ay) - Math.abs(by);
-          });
-        const top = visible[0];
-        if (top) {
-          const id = top.target.getAttribute("data-industry-id");
-          if (id) setActiveIndustryId(id);
-        }
-      },
-      {
-        root,
-        // A horizontal band near the top of the container — when a section
-        // crosses it, that section becomes "active".
-        rootMargin: "0px 0px -70% 0px",
-        threshold: [0, 0.1, 0.25, 0.5, 1],
-      },
-    );
-    sectionRefs.current.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [groupedByIndustry, setActiveIndustryId]);
-
-  // Keep the active tab visible inside its own horizontally-scrollable strip.
-  useEffect(() => {
-    if (!activeIndustryId) return;
-    const tab = tabRefs.current.get(activeIndustryId);
-    if (tab && typeof tab.scrollIntoView === "function") {
-      tab.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-        inline: "center",
-      });
-    }
-  }, [activeIndustryId]);
-
-  // Default the active industry to the first visible section.
-  useEffect(() => {
-    if (activeIndustryId) return;
-    const first = groupedByIndustry[0]?.industry.id;
-    if (first) setActiveIndustryId(first);
-  }, [activeIndustryId, groupedByIndustry, setActiveIndustryId]);
-
-  const handleTabClick = (industryId: string) => {
-    setActiveIndustryId(industryId);
-    const section = sectionRefs.current.get(industryId);
-    const root = scrollRef.current;
-    if (!section || !root) return;
-    isScrollingProgrammatically.current = true;
-    const top = section.offsetTop - root.offsetTop;
-    root.scrollTo({ top, behavior: "smooth" });
-    if (programmaticTimer.current) clearTimeout(programmaticTimer.current);
-    programmaticTimer.current = setTimeout(() => {
-      isScrollingProgrammatically.current = false;
-    }, 600);
-  };
-
   return (
     <div className="flex flex-col gap-3">
-      {industries.length > 0 ? (
-        <div
-          role="tablist"
-          aria-label="صنف"
-          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 no-scrollbar"
-        >
-          {industries.map((ind) => {
-            const selected = activeIndustryId === ind.id;
-            const entry = resolveIconEntry(ind.iconKey, null);
-            const Icon = entry.Icon;
-            return (
-              <button
-                key={ind.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                ref={(el) => {
-                  if (el) tabRefs.current.set(ind.id, el);
-                  else tabRefs.current.delete(ind.id);
-                }}
-                onClick={() => handleTabClick(ind.id)}
-                className={cn(
-                  "tap-target inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-medium",
-                  selected
-                    ? "bg-foreground text-background"
-                    : "bg-muted text-foreground hover:bg-muted/70",
-                )}
-              >
-                <Icon
-                  className="size-4"
-                  style={selected ? undefined : { color: entry.color }}
-                />
-                <span className="truncate">{ind.titleFa}</span>
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-
       <div className="relative">
         <SearchIcon
           aria-hidden
@@ -691,10 +564,9 @@ function CategoryPicker({
       </div>
 
       <div
-        ref={scrollRef}
         role="listbox"
         aria-label="دسته‌بندی‌ها"
-        className="max-h-80 overflow-y-auto rounded-3xl bg-muted/40 p-2"
+        className="max-h-80 overflow-y-auto rounded-3xl bg-muted/40 px-2 pb-2"
       >
         {groupedByIndustry.length === 0 ? (
           <p className="px-3 py-8 text-center text-sm text-muted-foreground">
@@ -708,20 +580,15 @@ function CategoryPicker({
               return (
                 <section
                   key={industry.id}
-                  data-industry-id={industry.id}
-                  ref={(el) => {
-                    if (el) sectionRefs.current.set(industry.id, el);
-                    else sectionRefs.current.delete(industry.id);
-                  }}
                   aria-label={industry.titleFa}
                   className="flex flex-col gap-1.5"
                 >
-                  <header className="sticky top-0 z-10 -mx-2 flex items-center gap-2 bg-muted/40 px-3 py-1.5 backdrop-blur-sm">
+                  <header className="sticky top-0 z-10 -mx-2 flex items-center gap-2 bg-muted/40 px-3 py-2.5 backdrop-blur-sm">
                     <IndIcon
-                      className="size-3.5"
+                      className="size-4"
                       style={{ color: indEntry.color }}
                     />
-                    <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    <span className="text-xs font-semibold text-muted-foreground">
                       {industry.titleFa}
                     </span>
                   </header>

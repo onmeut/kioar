@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,7 +21,31 @@ type BIPEvent = Event & {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 };
 
-const STORAGE_KEY = "kioar:install-prompt-dismissed:v1";
+/**
+ * v1 key (binary flag, no expiry) — kept only for migration.
+ * If it exists we treat the user as having dismissed within the last week
+ * so we don't immediately re-prompt after the deploy that introduced v2.
+ */
+const STORAGE_KEY_V1 = "kioar:install-prompt-dismissed:v1";
+
+/** v2 key stores the Unix-ms timestamp of the last dismissal. */
+const STORAGE_KEY = "kioar:install-prompt:v2";
+
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+function isWithinCooldown(): boolean {
+  try {
+    // Migration: old users who dismissed with the v1 key are treated as
+    // having dismissed "just now" until they clear storage or it naturally
+    // expires when they install the PWA.
+    if (window.localStorage.getItem(STORAGE_KEY_V1)) return true;
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    return Date.now() - parseInt(raw, 10) < ONE_WEEK_MS;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Add-to-Home-Screen prompt.
@@ -32,13 +56,17 @@ const STORAGE_KEY = "kioar:install-prompt-dismissed:v1";
  *  - **iOS Safari**: no programmatic install API; show an instructional
  *    sheet pointing users at Share → افزودن به صفحه‌اصلی.
  *
- * Shown once per user; dismissal persisted in localStorage. Hidden when
- * the page is already running standalone.
+ * Shown at most once per week; dismissal timestamp persisted in
+ * localStorage. Hidden permanently when the page runs in standalone mode
+ * (i.e. the PWA is already installed).
  */
 export function InstallPrompt() {
   const [open, setOpen] = useState(false);
   const [bip, setBip] = useState<BIPEvent | null>(null);
   const [iosFlow, setIosFlow] = useState(false);
+  // Ensures we schedule at most one show-timer per component lifetime,
+  // even if beforeinstallprompt fires multiple times.
+  const scheduledRef = useRef(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -51,40 +79,53 @@ export function InstallPrompt() {
         true;
     if (isStandalone) return;
 
-    // Sticky dismissal.
-    try {
-      if (window.localStorage.getItem(STORAGE_KEY)) return;
-    } catch {
-      // storage may be blocked (private mode, etc.) — fall through and
-      // just don't persist; we still gate by event/UA.
-    }
+    // Within the 7-day cooldown — skip.
+    if (isWithinCooldown()) return;
 
     const ua = window.navigator.userAgent;
     const isIos = /iPad|iPhone|iPod/.test(ua);
     const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
 
     if (isIos && isSafari) {
+      if (scheduledRef.current) return;
+      scheduledRef.current = true;
       // Delay so we don't fight the page's first paint or other modals.
       const t = window.setTimeout(() => {
+        // Re-check at fire time in case the user dismissed from another tab.
+        if (isWithinCooldown()) return;
         setIosFlow(true);
         setOpen(true);
       }, 8000);
-      return () => window.clearTimeout(t);
+      return () => {
+        window.clearTimeout(t);
+        scheduledRef.current = false;
+      };
     }
 
     const onBip = (e: Event) => {
       e.preventDefault();
+      // Always update the captured event so we use the freshest reference.
       setBip(e as BIPEvent);
+      // Only schedule one timer per session even if the browser re-fires.
+      if (scheduledRef.current) return;
+      scheduledRef.current = true;
       // Same delay — let the page settle before suggesting install.
-      window.setTimeout(() => setOpen(true), 4000);
+      window.setTimeout(() => {
+        // Re-check at fire time in case the user dismissed from another tab.
+        if (isWithinCooldown()) return;
+        setOpen(true);
+      }, 4000);
     };
     window.addEventListener("beforeinstallprompt", onBip);
-    return () => window.removeEventListener("beforeinstallprompt", onBip);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBip);
+      scheduledRef.current = false;
+    };
   }, []);
 
   function persistDismiss() {
     try {
-      window.localStorage.setItem(STORAGE_KEY, "1");
+      window.localStorage.setItem(STORAGE_KEY, String(Date.now()));
     } catch {
       /* ignore */
     }
