@@ -323,6 +323,13 @@
       "when": 1778535600000,
       "tag": "0046_industries_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1747429200000,
+      "tag": "0047_page_admin_disabled",
+      "breakpoints": true
     }
   ]
 }
