@@ -5,7 +5,7 @@ import { eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
-import { pageEntitlements, pageSubscriptions, plans } from "@/db/schema";
+import { pageEntitlements, pageSubscriptions, plans, profiles } from "@/db/schema";
 import { recordAdminAudit } from "@/lib/admin-audit";
 import { type ActionState } from "@/lib/action-state";
 import { requireAdmin } from "@/lib/auth/session";
@@ -894,4 +894,108 @@ export async function adminApplyDiscountToNextRenewalAction(
   });
   revalidatePath(`/admin/billing/pages/${pageId}`);
   return { status: "success", message: "کد تخفیف برای تمدید بعدی ثبت شد." };
+}
+
+// ---------- Disable / enable page -----------------------------------------
+
+const disablePageSchema = z.object({
+  pageId: z.string().uuid(),
+});
+
+export async function adminDisablePageAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const viewer = await requireAdmin();
+  const parsed = disablePageSchema.safeParse({
+    pageId: formData.get("pageId"),
+  });
+  if (!parsed.success) {
+    return { status: "error", message: "ورودی نامعتبر است." };
+  }
+  const { pageId } = parsed.data;
+
+  const db = getDb();
+  const page = await db.query.profiles.findFirst({
+    where: eq(profiles.id, pageId),
+    columns: { id: true, adminDisabledAt: true, slug: true },
+  });
+  if (!page) return { status: "error", message: "صفحه یافت نشد." };
+  if (page.adminDisabledAt) {
+    return { status: "error", message: "این صفحه قبلاً غیرفعال شده است." };
+  }
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(profiles)
+      .set({ adminDisabledAt: now, updatedAt: now })
+      .where(eq(profiles.id, pageId));
+
+    await recordAdminAudit(
+      {
+        actorUserId: viewer.user.id,
+        action: "page.admin_disable",
+        targetPageId: pageId,
+      },
+      tx,
+    );
+  });
+
+  await invalidateProfileCacheById(pageId);
+
+  log.info("admin.page.disable", { adminId: viewer.user.id, pageId });
+  revalidatePath(`/admin/billing/pages/${pageId}`);
+  revalidatePath("/admin/pages");
+  revalidatePath("/admin/billing/pages");
+  return { status: "success", message: "صفحه غیرفعال شد." };
+}
+
+export async function adminEnablePageAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const viewer = await requireAdmin();
+  const parsed = disablePageSchema.safeParse({
+    pageId: formData.get("pageId"),
+  });
+  if (!parsed.success) {
+    return { status: "error", message: "ورودی نامعتبر است." };
+  }
+  const { pageId } = parsed.data;
+
+  const db = getDb();
+  const page = await db.query.profiles.findFirst({
+    where: eq(profiles.id, pageId),
+    columns: { id: true, adminDisabledAt: true },
+  });
+  if (!page) return { status: "error", message: "صفحه یافت نشد." };
+  if (!page.adminDisabledAt) {
+    return { status: "error", message: "این صفحه در حال حاضر فعال است." };
+  }
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    await tx
+      .update(profiles)
+      .set({ adminDisabledAt: null, updatedAt: now })
+      .where(eq(profiles.id, pageId));
+
+    await recordAdminAudit(
+      {
+        actorUserId: viewer.user.id,
+        action: "page.admin_enable",
+        targetPageId: pageId,
+      },
+      tx,
+    );
+  });
+
+  await invalidateProfileCacheById(pageId);
+
+  log.info("admin.page.enable", { adminId: viewer.user.id, pageId });
+  revalidatePath(`/admin/billing/pages/${pageId}`);
+  revalidatePath("/admin/pages");
+  revalidatePath("/admin/billing/pages");
+  return { status: "success", message: "صفحه مجدداً فعال شد." };
 }

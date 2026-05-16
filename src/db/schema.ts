@@ -262,6 +262,12 @@ export const profiles = pgTable(
      */
     isPublished: boolean("is_published").default(true).notNull(),
     /**
+     * When set by an admin, the page is suspended and visitors see a
+     * "this page has been disabled" message instead of the full profile.
+     * Set via the admin panel; null means the page is not admin-disabled.
+     */
+    adminDisabledAt: timestamp("admin_disabled_at", { withTimezone: true }),
+    /**
      * IANA timezone of the page owner's working hours. Nullable; display
      * falls back to Asia/Tehran. Booking blocks own their own `timezone`
      * column for finer control, but this is the page-level default.

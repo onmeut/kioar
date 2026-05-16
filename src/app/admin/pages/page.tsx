@@ -9,9 +9,9 @@ import {
 } from "lucide-react";
 
 import {
-  RowActionsMenu,
   type RowAction,
 } from "@/components/admin/row-actions-menu";
+import { PageActionsMenu } from "@/components/admin/page-actions-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -97,6 +97,7 @@ type Row = {
   trial_ends_at: Date | null;
   block_count: number;
   view_count: number;
+  admin_disabled_at: Date | null;
 };
 
 type Stats = {
@@ -314,7 +315,8 @@ export default async function AdminPagesDirectory({
         COALESCE((
           SELECT sum("views")::int FROM "profile_stats_by_day" psd
           WHERE psd."profile_id" = p."id"
-        ), 0) AS view_count
+        ), 0) AS view_count,
+        p."admin_disabled_at"    AS admin_disabled_at
       FROM "profiles" p
       JOIN "users" u ON u."id" = p."user_id"
       LEFT JOIN "page_subscriptions" s ON s."page_id" = p."id"
@@ -535,7 +537,11 @@ export default async function AdminPagesDirectory({
                         <span>
                           ساخته‌شده: {formatPersianDate(r.created_at)}
                         </span>
-                        <RowActionsMenu actions={buildPageActions(r)} />
+                        <PageActionsMenu
+                          pageId={r.page_id}
+                          isDisabled={!!r.admin_disabled_at}
+                          actions={buildPageActions(r)}
+                        />
                       </div>
                     </div>
                   </div>
@@ -654,7 +660,11 @@ export default async function AdminPagesDirectory({
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-2">
-                          <RowActionsMenu actions={buildPageActions(r)} />
+                          <PageActionsMenu
+                            pageId={r.page_id}
+                            isDisabled={!!r.admin_disabled_at}
+                            actions={buildPageActions(r)}
+                          />
                         </div>
                       </TableCell>
                     </TableRow>

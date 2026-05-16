@@ -67,7 +67,9 @@ export type AdminAuditAction =
   | "category.create"
   | "category.update"
   | "category.deactivate"
-  | "category.delete";
+  | "category.delete"
+  | "page.admin_disable"
+  | "page.admin_enable";
 
 type Executor = {
   insert: ReturnType<typeof getDb>["insert"];
@@ -219,4 +221,6 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   "category.update": "ویرایش دسته‌بندی",
   "category.deactivate": "غیرفعال‌سازی دسته‌بندی",
   "category.delete": "حذف دسته‌بندی",
+  "page.admin_disable": "غیرفعال‌سازی دستی صفحه",
+  "page.admin_enable": "فعال‌سازی مجدد صفحه",
 };

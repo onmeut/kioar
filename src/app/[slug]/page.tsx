@@ -192,6 +192,26 @@ export default async function PublicProfilePage({
     notFound();
   }
 
+  if (profile.adminDisabledAt) {
+    return (
+      <main
+        dir="rtl"
+        className="flex min-h-dvh items-center justify-center bg-muted px-4 text-center"
+      >
+        <div className="max-w-sm space-y-3">
+          <p className="text-4xl">🚫</p>
+          <h1 className="text-xl font-bold text-foreground">
+            این صفحه غیرفعال شده است
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            این صفحه توسط تیم پشتیبانی کی‌یو‌آر غیرفعال شده است. برای اطلاع از
+            دلیل و درخواست فعال‌سازی مجدد، با پشتیبانی تماس بگیرید.
+          </p>
+        </div>
+      </main>
+    );
+  }
+
   // Fire-and-forget: increment today's view counter without blocking the render.
   // Day key anchors to Asia/Tehran (CLAUDE.md mandates `tehranIsoDate` for
   // backend day-keys); using UTC would shift counts off-day for ~3.5 h

@@ -12,9 +12,9 @@ import {
 } from "lucide-react";
 
 import {
-  RowActionsMenu,
   type RowAction,
 } from "@/components/admin/row-actions-menu";
+import { PageActionsMenu } from "@/components/admin/page-actions-menu";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { getDb } from "@/db";
@@ -75,6 +75,7 @@ type Row = {
   current_period_end: Date;
   trial_ends_at: Date | null;
   cancel_at_period_end: boolean;
+  admin_disabled_at: Date | null;
 };
 
 type Overview = {
@@ -335,7 +336,8 @@ export default async function AdminSubscriptionsPage({
         s."status"::text        AS status,
         s."current_period_end"  AS current_period_end,
         s."trial_ends_at"       AS trial_ends_at,
-        s."cancel_at_period_end" AS cancel_at_period_end
+        s."cancel_at_period_end" AS cancel_at_period_end,
+        p."admin_disabled_at"    AS admin_disabled_at
       FROM "page_subscriptions" s
       JOIN "profiles" p ON p."id" = s."page_id"
       JOIN "users" u    ON u."id" = p."user_id"
@@ -785,7 +787,11 @@ function PageRowDesktop({ row }: { row: Row }) {
         {formatPersianDate(row.current_period_end)}
       </td>
       <td className="p-3 text-end">
-        <RowActionsMenu actions={buildSubActions(row)} />
+        <PageActionsMenu
+          pageId={row.page_id}
+          isDisabled={!!row.admin_disabled_at}
+          actions={buildSubActions(row)}
+        />
       </td>
     </tr>
   );
@@ -822,7 +828,11 @@ function PageRowMobile({ row }: { row: Row }) {
         </div>
       </div>
       <div className="mt-3 flex items-center justify-end">
-        <RowActionsMenu actions={buildSubActions(row)} />
+        <PageActionsMenu
+          pageId={row.page_id}
+          isDisabled={!!row.admin_disabled_at}
+          actions={buildSubActions(row)}
+        />
       </div>
     </li>
   );

@@ -1,9 +1,11 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CalendarPlusIcon, RefreshCcwIcon } from "lucide-react";
+import { BanIcon, CalendarPlusIcon, CheckCircleIcon, RefreshCcwIcon } from "lucide-react";
 
 import {
+  adminDisablePageAction,
+  adminEnablePageAction,
   adminExtendPeriodAction,
   adminManualPlanChangeAction,
 } from "@/app/admin/billing/actions";
@@ -32,6 +34,7 @@ type Props = {
   currentPlanKey: "free" | "pro" | "business";
   currentBillingCycle: "monthly" | "annual";
   plans: PlanOption[];
+  isDisabled: boolean;
 };
 
 export function SubscriptionActions({
@@ -39,6 +42,7 @@ export function SubscriptionActions({
   currentPlanKey,
   currentBillingCycle,
   plans,
+  isDisabled,
 }: Props) {
   const [extendOpen, setExtendOpen] = useState(false);
   const [extendState, extendAction, extendPending] = useActionState(
@@ -50,9 +54,14 @@ export function SubscriptionActions({
     adminManualPlanChangeAction,
     idleState,
   );
+  const [disableOpen, setDisableOpen] = useState(false);
+  const [disableState, disableAction, disablePending] = useActionState(
+    isDisabled ? adminEnablePageAction : adminDisablePageAction,
+    idleState,
+  );
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2 items-center">
       <Dialog open={extendOpen} onOpenChange={setExtendOpen}>
         <DialogTrigger
           render={
@@ -180,6 +189,64 @@ export function SubscriptionActions({
             <DialogFooter>
               <Button type="submit" disabled={planPending}>
                 {planPending ? "در حال ثبت…" : "اعمال تغییر"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={disableOpen} onOpenChange={setDisableOpen}>
+        <DialogTrigger
+          render={
+            <Button
+              size="sm"
+              variant={isDisabled ? "outline" : "destructive"}
+              className="h-9 gap-1"
+            />
+          }
+        >
+          {isDisabled ? (
+            <CheckCircleIcon className="size-4" />
+          ) : (
+            <BanIcon className="size-4" />
+          )}
+          {isDisabled ? "فعال‌سازی مجدد" : "غیرفعال کردن"}
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+          <form action={disableAction}>
+            <input type="hidden" name="pageId" value={pageId} />
+            <DialogHeader>
+              <DialogTitle>
+                {isDisabled ? "فعال‌سازی مجدد صفحه" : "غیرفعال کردن صفحه"}
+              </DialogTitle>
+              <DialogDescription>
+                {isDisabled
+                  ? "صفحه مجدداً در دسترس عموم قرار می‌گیرد."
+                  : "صفحه برای بازدیدکنندگان نمایش داده نمی‌شود و پیام غیرفعال‌بودن نشان داده می‌شود. این عمل قابل بازگشت است."}
+              </DialogDescription>
+            </DialogHeader>
+            {disableState.status === "error" && disableState.message ? (
+              <p className="mt-3 text-xs text-destructive">
+                {disableState.message}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDisableOpen(false)}
+              >
+                انصراف
+              </Button>
+              <Button
+                type="submit"
+                variant={isDisabled ? "default" : "destructive"}
+                disabled={disablePending}
+              >
+                {disablePending
+                  ? "در حال ثبت…"
+                  : isDisabled
+                    ? "فعال‌سازی"
+                    : "غیرفعال کردن"}
               </Button>
             </DialogFooter>
           </form>

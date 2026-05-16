@@ -97,6 +97,7 @@ type PageDetail = {
   trial_ends_at: Date | null;
   has_used_trial_pro: boolean;
   has_used_trial_business: boolean;
+  admin_disabled_at: Date | null;
   cancel_at_period_end: boolean;
   pending_plan_change_plan_id: string | null;
   pending_plan_change_name_fa: string | null;
@@ -191,6 +192,7 @@ export default async function AdminBillingPageDetailPage({
       s."trial_ends_at"            AS trial_ends_at,
       s."has_used_trial_pro"       AS has_used_trial_pro,
       s."has_used_trial_business"  AS has_used_trial_business,
+      p."admin_disabled_at"        AS admin_disabled_at,
       s."cancel_at_period_end"     AS cancel_at_period_end,
       s."pending_plan_change_plan_id" AS pending_plan_change_plan_id,
       pp."name_fa"                 AS pending_plan_change_name_fa,
@@ -392,6 +394,7 @@ export default async function AdminBillingPageDetailPage({
             currentPlanKey={detail.plan_key}
             currentBillingCycle={detail.billing_cycle}
             plans={allPlans.map((p) => ({ key: p.key, nameFa: p.name_fa }))}
+            isDisabled={!!detail.admin_disabled_at}
           />
         </div>
         <div className="mt-3 border-t border-border pt-3">
