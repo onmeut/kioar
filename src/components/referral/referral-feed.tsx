@@ -183,15 +183,6 @@ function Row({ row }: { row: ReferralFeedClientRow }) {
               <p className="truncate text-sm font-bold text-foreground">
                 {row.refereeName?.trim() || `@${row.refereeSlug}`}
               </p>
-              {row.refereePlanKey === "pro" ||
-              row.refereePlanKey === "business" ? (
-                <Badge
-                  variant="outline"
-                  className="border-violet-200 bg-violet-50 text-[10px] font-bold text-violet-700"
-                >
-                  پرو
-                </Badge>
-              ) : null}
             </div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
               {profileUrl ? (

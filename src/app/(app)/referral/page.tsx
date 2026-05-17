@@ -145,8 +145,10 @@ export default async function ReferralPage() {
         </div>
 
         <p className="mb-4 text-xs leading-6 text-muted-foreground">
-          هر کسی با این لینک ثبت‌نام کنه و پرو رو فعال کنه، هر دو طرف یک ماه پرو
-          رایگان می‌گیرن — تا سقف {toPersianDigits(stats.cap)} ماه برای شما.
+          هر کسی با این لینک ثبت‌نام کنه و{" "}
+          <strong className="font-bold text-foreground">پرو رو فعال کنه</strong>،
+          هر دو طرف یک ماه پرو رایگان می‌گیرن — تا سقف{" "}
+          {toPersianDigits(stats.cap)} ماه برای شما.
         </p>
 
         {/* Invite link chip with Kioar logo */}
