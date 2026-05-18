@@ -75,7 +75,9 @@ scripts/                       # generate-pwa-icons, seed-plans, seed-sms-templa
 
 ## Migration discipline — MANDATORY
 
-**Auto-migration is wired into the Docker ENTRYPOINT** via `scripts/migrate.ts` (programmatic drizzle-orm `migrate()` — NOT the unreliable `drizzle-kit` CLI). On every deploy the container runs all pending SQL migrations before starting the app. If any migration fails, the container exits 1 and never starts — fail loud, never silent.
+**Auto-migration runs inside the Next.js process itself** via `src/instrumentation.ts`. The `register()` hook executes **once before the server accepts any request** — no PaaS can bypass it (unlike Dockerfile ENTRYPOINT which Hamravesh/Darkube overrides). If any migration fails, `process.exit(1)` kills the container.
+
+A secondary defense-in-depth migration also runs in the Dockerfile ENTRYPOINT via `scripts/migrate.ts` for non-PaaS deploys. Both use `drizzle-orm/postgres-js/migrator` programmatically — never `drizzle-kit` CLI.
 
 This means: **if a column exists in `src/db/schema.ts` but no migration SQL file exists for it, production WILL crash with `column does not exist`.**
 
@@ -85,7 +87,7 @@ This means: **if a column exists in `src/db/schema.ts` but no migration SQL file
 3. Use `npm run db:generate` for standard schema changes. If the meta snapshots are out of sync (missing snapshots for recent migrations), hand-write the SQL instead and add it to `_journal.json` — but never skip either step.
 4. Hand-written migrations follow the naming pattern `NNNN_short_description.sql` where `NNNN` is the next sequential number.
 5. After writing a migration, verify locally with `npm run db:migrate` before pushing.
-6. The migration runner is `scripts/migrate.ts`. It uses `drizzle-orm/postgres-js/migrator` directly — no CLI tools, no TypeScript config parsing at runtime. Do not revert to `drizzle-kit migrate`.
+6. **Do not delete or modify `src/instrumentation.ts`** — it is the primary migration runner. Do not revert to `drizzle-kit migrate`.
 
 ## Persian (Shamsi) calendar — MANDATORY
 

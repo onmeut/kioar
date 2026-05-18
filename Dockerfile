@@ -64,7 +64,7 @@ RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads
 
 USER nextjs
 EXPOSE 3000
-# Run pending migrations then start the app.
-# Uses programmatic drizzle-orm migrate() — crashes hard if any migration fails,
-# so the container never starts with a broken schema.
+# Primary migration path: src/instrumentation.ts (runs inside Next.js before
+# the first request — cannot be bypassed by PaaS overriding ENTRYPOINT/CMD).
+# The ENTRYPOINT migration below is defense-in-depth for non-PaaS deploys.
 ENTRYPOINT ["/bin/sh", "-c", "node --import tsx scripts/migrate.ts && exec node /app/server.js"]
