@@ -136,7 +136,7 @@ function SpotlightForm({
         icon={<PinIcon className="size-5" />}
         selected={spotlight === "pin"}
         locked={!pinAllowed}
-        onSelect={() => setSpotlight("pin")}
+        onSelect={() => setSpotlight(spotlight === "pin" ? "none" : "pin")}
       />
       <RadioRow
         title="انیمیشن"
@@ -144,7 +144,7 @@ function SpotlightForm({
         icon={<ZapIcon className="size-5" />}
         selected={spotlight === "animate"}
         locked={!animateAllowed}
-        onSelect={() => setSpotlight("animate")}
+        onSelect={() => setSpotlight(spotlight === "animate" ? "none" : "animate")}
       >
         {spotlight === "animate" && animateAllowed ? (
           <div className="grid grid-cols-2 gap-2 pt-3 sm:grid-cols-4">

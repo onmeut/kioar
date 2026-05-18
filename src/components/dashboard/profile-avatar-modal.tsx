@@ -17,11 +17,10 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
-  DialogTitle,
 } from "@/components/ui/dialog";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
+import { getKioarAvatarSvg } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 
 /**
@@ -104,6 +103,23 @@ function generateSeeds(count: number): string[] {
 }
 
 const SEED_GRID_COUNT = 18;
+
+/** Fills 100% of its parent container — no fixed pixel dimensions. */
+function AvatarFill({ seed }: { seed: string }) {
+  const svg = getKioarAvatarSvg(seed, { size: 128 });
+  // Replace fixed width/height attrs with 100% so the SVG stretches to fill.
+  const scaledSvg = svg.replace(
+    /(<svg[^>]*)\s+width="[^"]*"\s+height="[^"]*"/,
+    '$1 width="100%" height="100%"',
+  );
+  return (
+    <span
+      aria-hidden
+      className="absolute inset-0 overflow-hidden rounded-full"
+      dangerouslySetInnerHTML={{ __html: scaledSvg }}
+    />
+  );
+}
 
 type ProfileAvatarModalProps = {
   open: boolean;
@@ -339,7 +355,7 @@ export function ProfileAvatarModal({
       {cropOverlay}
 
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-h-[92dvh] overflow-y-auto p-0 sm:max-w-md">
+        <DialogContent className="max-h-[92dvh] overflow-y-auto p-0 sm:max-w-md" showCloseButton={false}>
           <div className="flex flex-col">
             {/* Header — current avatar centred, title underneath */}
             <DialogHeader className="px-5 pt-6 pb-4 text-center sm:text-center">
@@ -435,7 +451,7 @@ export function ProfileAvatarModal({
                           busy && !isPicked ? "opacity-50" : "opacity-100",
                         )}
                       >
-                        <KioarAvatar seed={seed} size={64} />
+                        <AvatarFill seed={seed} />
                         {isPicked && isPickingSeed ? (
                           <span className="absolute inset-0 flex items-center justify-center bg-black/40">
                             <Loader2Icon className="size-4 animate-spin text-white" />
@@ -452,9 +468,9 @@ export function ProfileAvatarModal({
               </ul>
             </section>
 
-            {/* Delete uploaded photo */}
-            {currentUrl && onDelete ? (
-              <div className="border-t border-border/60 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+            {/* Delete uploaded photo + close */}
+            <div className="border-t border-border/60 px-5 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] flex flex-col gap-1.5">
+              {currentUrl && onDelete ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -465,10 +481,17 @@ export function ProfileAvatarModal({
                   <Trash2Icon className="size-4" />
                   حذف تصویر بارگذاری‌شده
                 </Button>
-              </div>
-            ) : (
-              <div className="pb-[max(0.5rem,env(safe-area-inset-bottom))]" />
-            )}
+              ) : null}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={busy}
+                className="h-11 w-full rounded-full text-sm font-semibold"
+              >
+                بستن
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

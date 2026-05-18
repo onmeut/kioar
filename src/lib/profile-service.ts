@@ -256,6 +256,10 @@ export async function savePageSettingsForUser(
     discoverCategory: formData.get("discoverCategory"),
     city: formData.get("city"),
     pageType: formData.get("pageType"),
+    publicPhone: formData.get("publicPhone") ?? "",
+    showPublicPhone: formData.get("showPublicPhone") ?? undefined,
+    email: formData.get("email") ?? "",
+    showPublicEmail: formData.get("showPublicEmail") ?? undefined,
   });
 
   if (!parsed.success) {
@@ -331,6 +335,10 @@ export async function savePageSettingsForUser(
         discoverCategory: parsed.data.discoverCategory,
         city: parsed.data.city,
         pageType: parsed.data.pageType,
+        publicPhone: parsed.data.publicPhone || null,
+        showPublicPhone: parsed.data.showPublicPhone,
+        email: parsed.data.email || null,
+        showPublicEmail: parsed.data.showPublicEmail,
         ogImageUrl,
         updatedAt: new Date(),
       })

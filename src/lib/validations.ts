@@ -144,9 +144,7 @@ export const profileLinkSchema = z.object({
     .transform((v) => (v ? v : null)),
 });
 
-export const profileLinksArraySchema = z
-  .array(profileLinkSchema)
-  .max(8, "حداکثر ۸ لینک قابل ثبت است.");
+export const profileLinksArraySchema = z.array(profileLinkSchema);
 
 // ---------------------------------------------------------------------------
 // Form blocks
@@ -401,6 +399,21 @@ export const pageSettingsFormSchema = z.object({
     .refine((v) => v === null || isPageTypeSlug(v), {
       message: "نوع صفحه نامعتبر است.",
     }),
+  // Contact info — value + visibility flag together.
+  publicPhone: optionalString.transform((v) =>
+    v ? normalizeIranianPhone(v) : "",
+  ),
+  showPublicPhone: z
+    .union([z.literal("on"), z.literal("off"), z.boolean()])
+    .default(false)
+    .transform((v) => (typeof v === "boolean" ? v : v === "on")),
+  email: z
+    .union([z.literal(""), z.string().trim().email("ایمیل معتبر نیست.")])
+    .default(""),
+  showPublicEmail: z
+    .union([z.literal("on"), z.literal("off"), z.boolean()])
+    .default(false)
+    .transform((v) => (typeof v === "boolean" ? v : v === "on")),
 });
 
 // Onboarding captures the page's identity in four steps: slug, page name,

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ShareIcon } from "lucide-react";
+import Image from "next/image";
 
 import { ShareModal } from "@/components/dashboard/share/share-modal";
 import type { QrStyle } from "@/lib/qr/types";
@@ -102,18 +103,24 @@ export function PublicShareBar({
           if (e.key === "Enter" || e.key === " ") setOpen(true);
         }}
         className={cn(
-          "flex w-full max-w-62.5 cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-background/90 px-4 py-2.5 text-sm backdrop-blur transition-colors hover:bg-muted/60",
+          "flex h-12 w-full max-w-62.5 cursor-pointer items-center justify-center gap-2 rounded-full border border-border bg-background/90 px-5 text-sm backdrop-blur transition-colors hover:bg-muted/60",
           className,
         )}
         dir={label ? "rtl" : "ltr"}
       >
-        <ShareIcon className="size-4 shrink-0 text-foreground" />
+        <Image src="/brand/logo.svg" alt="Kioar" width={14} height={16} className="shrink-0" />
         <span
-          className="truncate font-semibold text-foreground/80"
+          className="truncate font-semibold text-foreground"
           title={publicUrl}
         >
           {label ?? displayHost}
         </span>
+        {!label && (
+          <>
+            <span className="shrink-0 text-border select-none">|</span>
+            <span className="shrink-0 font-semibold text-foreground" dir="rtl">اشتراک‌گذاری</span>
+          </>
+        )}
       </div>
       {modal}
     </>

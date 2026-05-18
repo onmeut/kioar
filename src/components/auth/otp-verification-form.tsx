@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2Icon } from "lucide-react";
 import { useFormStatus } from "react-dom";
@@ -166,65 +165,48 @@ export function OtpVerificationForm({
         </div>
       </form>
 
-      {/* Resend form — sibling of verify form, never nested */}
-      <div className="flex w-full flex-col gap-3">
-        <div className="flex items-center justify-between gap-3 text-sm">
-          <span className="text-muted-foreground">
-            کد ارسال شد به{" "}
-            <span dir="ltr" className="font-medium text-foreground">
-              {phoneDisplay}
-            </span>
-          </span>
-          <form action={resendAction}>
-            <input type="hidden" name="phone" value={phone} />
-            <button
-              type="submit"
-              disabled={remaining > 0}
-              className={cn(
-                "text-sm font-bold transition-colors disabled:cursor-not-allowed",
-                remaining > 0
-                  ? "text-muted-foreground"
-                  : "text-foreground hover:text-foreground/80",
-              )}
-            >
-              {remaining > 0
-                ? `ارسال مجدد در ${toPersianDigits(remaining)} ثانیه`
-                : "ارسال دوباره کد"}
-            </button>
-          </form>
-        </div>
-
+      {/* Resend + edit — sibling of verify form, never nested */}
+      <div className="flex w-full flex-col gap-2">
         {resendState.status === "success" && resendState.message ? (
           <p className="text-center text-sm text-primary">
             {resendState.message}
           </p>
         ) : null}
 
-        <Link
-          href="/auth"
-          className="tap-target inline-flex h-14 w-full items-center justify-center rounded-full bg-muted text-base font-semibold text-foreground transition-colors hover:bg-muted/80 active:translate-y-px"
-        >
-          ویرایش شماره
-        </Link>
-
-        <p className="px-2 pt-1 text-center text-xs leading-relaxed text-muted-foreground">
-          با ادامه، شما{" "}
-          <Link
-            href="#"
-            className="font-semibold text-foreground underline-offset-4 hover:underline"
-          >
-            شرایط استفاده
-          </Link>
-          {" "}و{" "}
-          <Link
-            href="#"
-            className="font-semibold text-foreground underline-offset-4 hover:underline"
-          >
-            سیاست حریم خصوصی
-          </Link>
-          {" "}
-          را می‌پذیرید.
-        </p>
+        <div className="flex items-center justify-between gap-2 rounded-2xl bg-muted px-4 py-3">
+          <div className="flex flex-col gap-0.5">
+            <span className="text-xs text-muted-foreground">کد ارسال شد به</span>
+            <span dir="ltr" className="text-sm font-semibold text-foreground">
+              {phoneDisplay}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <form action={resendAction}>
+              <input type="hidden" name="phone" value={phone} />
+              <button
+                type="submit"
+                disabled={remaining > 0}
+                className={cn(
+                  "text-xs font-semibold transition-colors disabled:cursor-not-allowed",
+                  remaining > 0
+                    ? "text-muted-foreground"
+                    : "text-primary hover:text-primary/80",
+                )}
+              >
+                {remaining > 0
+                  ? `${toPersianDigits(remaining)}ث`
+                  : "ارسال مجدد"}
+              </button>
+            </form>
+            <span className="h-4 w-px bg-border" />
+            <a
+              href="/auth"
+              className="text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
+            >
+              ویرایش
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );

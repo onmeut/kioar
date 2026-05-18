@@ -135,10 +135,6 @@ export function PublicProfileCard({
   bookingSubmitAction?: PublicBookingSubmitAction;
 }) {
   const displayName = profile.fullName || "کارت دیجیتال";
-  const hasQuickAction = Boolean(
-    profile.publicPhone || profile.email || profile.slug,
-  );
-
   const Wrapper = as;
 
   return (
@@ -194,31 +190,35 @@ export function PublicProfileCard({
         ) : null}
       </div>
 
-      {/* Quick actions — icon-only, 3 columns */}
-      {hasQuickAction ? (
-        <div className="relative mt-6 grid grid-cols-3 gap-2.5">
+      {/* Quick actions — vCard always shows; phone/email only when user opted in */}
+      <div className="relative mt-6 grid gap-2.5"
+        style={{
+          gridTemplateColumns: `repeat(${1 + (profile.publicPhone ? 1 : 0) + (profile.email ? 1 : 0)}, minmax(0,1fr))`,
+        }}
+      >
+        {profile.publicPhone ? (
           <QuickAction
-            href={
-              profile.publicPhone ? `tel:${profile.publicPhone}` : undefined
-            }
+            href={interactive ? `tel:${profile.publicPhone}` : undefined}
             icon={<PhoneIcon className="size-5" />}
             label="تماس"
             interactive={interactive}
           />
+        ) : null}
+        {profile.email ? (
           <QuickAction
-            href={profile.email ? `mailto:${profile.email}` : undefined}
+            href={interactive ? `mailto:${profile.email}` : undefined}
             icon={<AtSignIcon className="size-5" />}
             label="ایمیل"
             interactive={interactive}
           />
-          <QuickAction
-            href={interactive ? `/${profile.slug}/contact.vcf` : undefined}
-            icon={<DownloadIcon className="size-5" />}
-            label="ذخیره"
-            interactive={interactive}
-          />
-        </div>
-      ) : null}
+        ) : null}
+        <QuickAction
+          href={interactive ? `/${profile.slug}/contact.vcf` : undefined}
+          icon={<DownloadIcon className="size-5" />}
+          label="ذخیره"
+          interactive={interactive}
+        />
+      </div>
 
       {/* Bio */}
       {profile.bio ? (

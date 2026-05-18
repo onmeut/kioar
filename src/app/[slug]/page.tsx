@@ -244,8 +244,8 @@ export default async function PublicProfilePage({
       jobTitle: profile.title || undefined,
       description: profile.bio || profile.seoDescription || undefined,
       image: profile.avatarUrl || undefined,
-      email: profile.email || undefined,
-      telephone: profile.publicPhone || undefined,
+      email: profile.showPublicEmail ? (profile.email || undefined) : undefined,
+      telephone: profile.showPublicPhone ? (profile.publicPhone || undefined) : undefined,
       sameAs: profile.links
         .filter((l) => l.isActive && /^https?:\/\//i.test(l.url))
         .map((l) => l.url),
@@ -295,8 +295,8 @@ export default async function PublicProfilePage({
             title: profile.title,
             bio: profile.bio,
             slug,
-            publicPhone: profile.publicPhone,
-            email: profile.email,
+            publicPhone: profile.showPublicPhone ? profile.publicPhone : null,
+            email: profile.showPublicEmail ? profile.email : null,
             avatarUrl: profile.avatarUrl,
             avatarSeed: profile.avatarSeed,
             city: profile.city,

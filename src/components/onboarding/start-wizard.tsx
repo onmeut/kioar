@@ -251,15 +251,6 @@ export function StartWizard({
             ادامه
           </button>
 
-          <p className="text-center text-sm text-muted-foreground">
-            حساب کاربری دارید؟{" "}
-            <Link
-              href="/auth"
-              className="font-semibold text-foreground underline-offset-4 hover:underline"
-            >
-              ورود
-            </Link>
-          </p>
         </div>
       </div>
     );

@@ -32,9 +32,9 @@ export async function generateMetadata({
     return { title: "نصب آسان", robots: { index: false, follow: false } };
   }
   return {
-    title: `نصب لینک ${profile.fullName || slug} در بیوی اینستاگرام`,
+    title: `نصب لینک ${profile.fullName || slug} در بایو‌ی اینستاگرام`,
     description:
-      "با یک تپ، لینک کیوآر را کپی کرده و در بیوی اینستاگرام پیست کنید.",
+      "با یک تپ، لینک کیوآر را کپی کرده و در بایو‌ی اینستاگرام پیست کنید.",
     robots: { index: false, follow: false },
   };
 }

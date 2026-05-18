@@ -141,7 +141,7 @@ export async function commitPageIntentAction(
       ownerId: viewer.user.id,
     });
 
-    redirect("/me");
+    redirect("/me?new=1");
   }
 
   // Legacy authed-but-incomplete user: write directly via the onboarding
@@ -173,5 +173,5 @@ export async function commitPageIntentAction(
     });
   }
 
-  redirect("/me");
+  redirect("/me?new=1");
 }

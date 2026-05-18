@@ -74,6 +74,10 @@ export type PageSettingsValues = {
   discoverCategory: string | null;
   city: string | null;
   pageType: string | null;
+  publicPhone: string;
+  showPublicPhone: boolean;
+  email: string;
+  showPublicEmail: boolean;
 };
 
 type Result =
@@ -376,6 +380,63 @@ export function PageSettingsSheet({
             {errors.bio?.[0] ? (
               <p className="text-xs text-destructive">{errors.bio[0]}</p>
             ) : null}
+          </div>
+
+          {/* ---- Contact info + visibility (privacy-sensitive — opt-in only) ---- */}
+          <div className="space-y-2 pt-1">
+            <Label className="text-xs font-medium">اطلاعات تماس عمومی</Label>
+
+            {/* Phone */}
+            <div className="rounded-2xl border bg-muted/40 px-3 py-2.5 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">شماره تماس</p>
+                <Switch
+                  checked={values.showPublicPhone}
+                  onCheckedChange={(c) => patch("showPublicPhone", Boolean(c))}
+                />
+              </div>
+              <Input
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                enterKeyHint="next"
+                dir="ltr"
+                value={values.publicPhone}
+                onChange={(e) => patch("publicPhone", e.target.value)}
+                placeholder="09123456789"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {values.showPublicPhone
+                  ? "نمایش داده می‌شود و قابل کلیک است."
+                  : "کلید را روشن کن تا در صفحه عمومی نمایش داده شود."}
+              </p>
+            </div>
+
+            {/* Email */}
+            <div className="rounded-2xl border bg-muted/40 px-3 py-2.5 space-y-2">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium">ایمیل</p>
+                <Switch
+                  checked={values.showPublicEmail}
+                  onCheckedChange={(c) => patch("showPublicEmail", Boolean(c))}
+                />
+              </div>
+              <Input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                enterKeyHint="next"
+                dir="ltr"
+                value={values.email}
+                onChange={(e) => patch("email", e.target.value)}
+                placeholder="you@example.com"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                {values.showPublicEmail
+                  ? "نمایش داده می‌شود و قابل کلیک است."
+                  : "کلید را روشن کن تا در صفحه عمومی نمایش داده شود."}
+              </p>
+            </div>
           </div>
         </section>
 

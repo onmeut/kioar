@@ -308,7 +308,8 @@ export default async function DashboardLayout({
               </div>
 
               {/* Desktop: 3-column grid that perfectly centres the
-                  ⌘K palette pill regardless of title/actions widths. */}
+                  ⌘K palette pill regardless of title/actions widths.
+                  Share pill has moved into the preview column. */}
               <div className="hidden h-14 items-center gap-3 px-3 sm:h-16 sm:px-6 md:grid md:grid-cols-[1fr_minmax(0,360px)_1fr]">
                 <div className="min-w-0">
                   <DashboardPageTitle />

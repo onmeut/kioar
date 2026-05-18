@@ -164,7 +164,7 @@ export default async function ProRoute() {
       </header>
 
       {/* Page identity card — shows which page this checkout affects. */}
-      <section className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200">
+      <section className="hidden sm:block rounded-3xl bg-white p-5 ring-1 ring-zinc-200">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 items-center gap-4">
             <Avatar className="size-14 shrink-0 rounded-2xl ring-2 ring-background [&_svg]:size-full!">
@@ -208,9 +208,6 @@ export default async function ProRoute() {
           <h2 className="text-xl font-bold text-zinc-900 sm:text-2xl">
             مقایسه‌ی امکانات پلن‌ها
           </h2>
-          <p className="text-xs leading-6 text-zinc-500 sm:text-sm">
-            همه‌ی امکانات از تنظیمات پلن خوانده می‌شود.
-          </p>
         </div>
         <PlanComparisonTable
           plans={activePlans.map((p) => ({

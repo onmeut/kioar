@@ -61,7 +61,7 @@ export function IgInstallView({ publicUrl, slug }: Props) {
         </div>
         <div className="mt-4 space-y-2 text-center">
           <h3 className="text-base font-bold">
-            افزودن لینک به بیوی اینستاگرام
+            افزودن لینک به بایو‌ی اینستاگرام
           </h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
             با یک تپ، لینک شما کپی می‌شود و اینستاگرام باز خواهد شد. کافی است در

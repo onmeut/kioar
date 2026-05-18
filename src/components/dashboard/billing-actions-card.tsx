@@ -98,7 +98,9 @@ export function BillingActionsCard({ state }: Props) {
   // the trial into a paid subscription).
   const onTrial = state.status === "trialing";
 
-  // Sort the registry options Free → Pro → Business for predictable UI.
+  // Keep options in whatever order the server provided; visual order is
+  // controlled by CSS `order` per breakpoint (mobile: business→pro→free,
+  // desktop: free→pro→business).
   const sortedOptions = [...state.options].sort((a, b) => {
     const order: Record<BillingPlanOption["key"], number> = {
       free: 0,
@@ -225,15 +227,6 @@ export function BillingActionsCard({ state }: Props) {
     <section className="rounded-3xl bg-white p-5 ring-1 ring-zinc-200 sm:p-6">
       <div className="space-y-5">
         <div className="space-y-3">
-          <div className="flex flex-col items-center gap-1 text-center">
-            <h2 className="text-lg font-bold text-zinc-900 sm:text-xl">
-              مدیریت اشتراک
-            </h2>
-            <p className="text-xs leading-6 text-zinc-500 sm:text-sm">
-              تغییر پلن یا چرخی‌ صورت‌حساب این صفحه از اینجا انجام می‌شود.
-            </p>
-          </div>
-
           <Tabs
             value={cycle}
             onValueChange={(v) => setCycle(v as "monthly" | "annual")}
@@ -321,11 +314,16 @@ export function BillingActionsCard({ state }: Props) {
                         ? "خرید"
                         : "ارتقا و پرداخت";
 
+            // Mobile: business(1)→pro(2)→free(3); Desktop: free(1)→pro(2)→business(3)
+            const mobileOrder = { business: 1, pro: 2, free: 3 }[option.key];
+
             return (
               <div
                 key={option.id}
+                style={{ order: mobileOrder }}
                 className={cn(
                   "flex flex-col rounded-2xl bg-white p-5 ring-1 transition-all",
+                  `plan-order-${option.key}`,
                   isExactCurrent
                     ? option.key === "business"
                       ? "shadow-sm ring-2 ring-purple-500"

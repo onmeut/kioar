@@ -64,6 +64,10 @@
   --shadow-primary-glow: 0 16px 34px -14px
     color-mix(in srgb, var(--primary) 60%, transparent);
 
+  /* ── Brand color ── */
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+
   /* ── Marketing / editorial palette ── */
   --color-paper: var(--paper);
   --color-paper-soft: var(--paper-soft);
@@ -126,6 +130,10 @@
   --butter: oklch(0.92 0.082 92);
   --blush: oklch(0.88 0.058 32);
   --clay: oklch(0.78 0.078 50);
+
+  /* ── Brand color ── */
+  --brand: #1ed760;
+  --brand-foreground: #000000;
 
   /* ── Digital business card background palette ── */
   --card-color-1: #d5ee5c;
@@ -535,6 +543,45 @@
   .float-slowest {
     animation: float-y 9s ease-in-out infinite;
     animation-delay: -4s;
+  }
+
+  /* Plan card ordering: mobile = business→pro→free (set via inline style),
+     desktop overrides inline style: free→pro→business */
+  @media (min-width: 768px) {
+    .plan-order-free     { order: 1 !important; }
+    .plan-order-pro      { order: 2 !important; }
+    .plan-order-business { order: 3 !important; }
+  }
+
+  /* Hide the app header and (mobile only) promo bar while the activation wizard is open */
+  body[data-wizard-open] header {
+    display: none !important;
+  }
+  @media (max-width: 639px) {
+    body[data-wizard-open] [data-promo-bar] {
+      display: none !important;
+    }
+  }
+
+  /* Activation wizard — one-shot confetti fall */
+  @keyframes confetti-fall {
+    0% {
+      transform: translateY(-10px) rotate(var(--rotate, 0deg)) scale(1);
+      opacity: 1;
+    }
+    80% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(110vh) rotate(calc(var(--rotate, 0deg) + 540deg)) scale(0.6);
+      opacity: 0;
+    }
+  }
+
+  .confetti-piece {
+    animation-name: confetti-fall;
+    animation-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation-iteration-count: 1;
   }
 
   /* Hero CTA — traveling arc border (pill button variant of claim-form-wrapper) */

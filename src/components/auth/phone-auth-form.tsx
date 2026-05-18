@@ -117,22 +117,14 @@ export function PhoneAuthForm() {
         <ContinueButton disabled={!isValid} />
 
         <p className="px-2 text-center text-xs leading-relaxed text-muted-foreground">
-          با ادامه، شما{" "}
+          با ثبت‌نام در کیوآر، شما{" "}
           <Link
             href="#"
             className="font-semibold text-foreground underline-offset-4 hover:underline"
           >
-            شرایط استفاده
+            قوانین استفاده از آن
           </Link>
-          {" "}و{" "}
-          <Link
-            href="#"
-            className="font-semibold text-foreground underline-offset-4 hover:underline"
-          >
-            سیاست حریم خصوصی
-          </Link>
-          {" "}
-          را می‌پذیرید.
+          {" "}را می‌پذیرید.
         </p>
       </form>
     </div>

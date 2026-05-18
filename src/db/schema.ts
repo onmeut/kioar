@@ -237,7 +237,11 @@ export const profiles = pgTable(
      */
     avatarSeed: text("avatar_seed"),
     publicPhone: text("public_phone"),
+    /** When true, the public phone number is shown and linked on the profile page. Default false (opt-in). */
+    showPublicPhone: boolean("show_public_phone").default(false).notNull(),
     email: text("email"),
+    /** When true, the email is shown and linked on the profile page. Default false (opt-in). */
+    showPublicEmail: boolean("show_public_email").default(false).notNull(),
     /**
      * Public host the user prefers for their share URL. Stored separately
      * from the slug so it can change without breaking the canonical URL.

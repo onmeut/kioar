@@ -11,6 +11,8 @@ import {
 } from "@tabler/icons-react";
 import { toast } from "sonner";
 
+import Image from "next/image";
+
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { QrRenderer } from "@/components/dashboard/share/qr-renderer";
@@ -181,6 +183,27 @@ function ShareModalContent({
             className="size-full"
           />
         </div>
+      </div>
+
+      {/* URL chip + copy button */}
+      <div className="flex items-center gap-2 rounded-2xl border bg-muted/40 px-4 py-3" dir="ltr">
+        <Image
+          src="/brand/logo.svg"
+          alt="Kioar"
+          width={14}
+          height={18}
+          className="shrink-0"
+        />
+        <span className="min-w-0 flex-1 truncate text-center text-sm font-medium text-foreground">
+          {url}
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="shrink-0 rounded-lg bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition-colors hover:bg-foreground/80"
+        >
+          {copied ? "کپی شد" : "کپی"}
+        </button>
       </div>
 
       {/* Share options */}

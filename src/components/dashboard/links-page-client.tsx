@@ -30,6 +30,7 @@ import {
   MousePointerClickIcon,
   PencilIcon,
   PlusIcon,
+  SparklesIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -89,6 +90,9 @@ import { idleState, type ActionState } from "@/lib/action-state";
 import type { LinkMetadata } from "@/lib/link-metadata";
 import { submitFormAction as publicSubmitFormAction } from "@/lib/public-form-actions";
 import { isSafeLinkUrl } from "@/lib/validations";
+import { ActivationWizard } from "@/components/dashboard/activation-wizard/activation-wizard";
+import { hasSavedDraft, clearActivationDraft } from "@/components/dashboard/activation-wizard/use-activation-draft";
+import { NewPageCelebration } from "@/components/dashboard/new-page-celebration";
 
 type ProfileSnapshot = {
   id: string;
@@ -97,7 +101,9 @@ type ProfileSnapshot = {
   bio: string;
   slug: string;
   publicPhone: string;
+  showPublicPhone: boolean;
   email: string;
+  showPublicEmail: boolean;
   avatarUrl: string | null;
   /** Seed for the DiceBear avatar fallback when `avatarUrl` is null. */
   avatarSeed: string | null;
@@ -241,6 +247,13 @@ type LinksPageClientProps = {
     state: ActionState,
     formData: FormData,
   ) => Promise<ActionState>;
+  /** ISO string of trial end date. Null = no active trial (free plan). */
+  trialEndsAt?: string | null;
+  /** Profile details autosave — used by the activation wizard step 3. */
+  autosaveProfileDetailsAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
 };
 
 /** Stable dnd-kit id for an item in the unified blocks list. */
@@ -292,6 +305,8 @@ export function LinksPageClient({
   industries,
   categories,
   setBlockSpotlightAction,
+  trialEndsAt = null,
+  autosaveProfileDetailsAction,
 }: LinksPageClientProps) {
   const router = useRouter();
 
@@ -316,6 +331,15 @@ export function LinksPageClient({
   useEffect(() => {
     setProductBlocks(initialProductBlocks);
   }, [initialProductBlocks]);
+  const [wizardOpen, setWizardOpen] = useState(false);
+  // Ref to wizard's resetDraft so we can reset its in-memory state without remounting
+  const wizardResetDraftRef = useRef<(() => void) | null>(null);
+  // Read draft existence once on mount (SSR-safe: hasSavedDraft is client-only).
+  const [draftExists, setDraftExists] = useState(false);
+  useEffect(() => {
+    setDraftExists(hasSavedDraft(profile.id));
+  }, [profile.id]);
+
   const [addOpen, setAddOpen] = useState(false);
   const [bookingFlowOpen, setBookingFlowOpen] = useState(false);
   const [creatingBooking, setCreatingBooking] = useState(false);
@@ -576,12 +600,21 @@ export function LinksPageClient({
   }
 
   function removeLink(id: string) {
-    setLinks((current) =>
-      current
+    let becameEmpty = false;
+    setLinks((current) => {
+      const next = current
         .filter((item) => item.id !== id)
-        .map((item, index) => ({ ...item, sortOrder: index })),
-    );
+        .map((item, index) => ({ ...item, sortOrder: index }));
+      if (next.length === 0) becameEmpty = true;
+      return next;
+    });
     if (editingId === id) setEditingId(null);
+    // After the state update is scheduled, reset the wizard draft if the list is now empty.
+    if (becameEmpty) {
+      clearActivationDraft(profile.id);
+      setDraftExists(false);
+      wizardResetDraftRef.current?.();
+    }
   }
 
   // -------- Spotlight handler (links + bookings + forms + products) --------
@@ -950,6 +983,10 @@ export function LinksPageClient({
     fd.set("discoverCategory", next.discoverCategory ?? "");
     fd.set("city", next.city ?? "");
     fd.set("pageType", next.pageType ?? "");
+    fd.set("publicPhone", next.publicPhone ?? "");
+    fd.set("showPublicPhone", next.showPublicPhone ? "on" : "off");
+    fd.set("email", next.email ?? "");
+    fd.set("showPublicEmail", next.showPublicEmail ? "on" : "off");
     if (next.ogImageRemove) fd.set("ogImageRemove", "1");
     if (next.ogImageFile) fd.set("ogImage", next.ogImageFile);
 
@@ -980,20 +1017,26 @@ export function LinksPageClient({
       discoverCategory: next.discoverCategory,
       city: next.city,
       pageType: next.pageType,
+      publicPhone: next.publicPhone,
+      showPublicPhone: next.showPublicPhone,
+      email: next.email,
+      showPublicEmail: next.showPublicEmail,
     }));
     router.refresh();
     return { ok: true as const };
   }
 
-  const canAdd = links.length < 8;
+  const canAdd = true;
+  // The activation CTA is visible only when the user has zero blocks/links.
+  const hasAnyBlocks = blocksOrder.length > 0 || links.length > 0;
   const activeLinks = links.filter((l) => l.isActive);
   const previewProfile = {
     fullName: profile.fullName,
     title: profile.title,
     bio: profile.bio,
     slug: profile.slug,
-    publicPhone: profile.publicPhone,
-    email: profile.email,
+    publicPhone: profile.showPublicPhone ? profile.publicPhone : null,
+    email: profile.showPublicEmail ? profile.email : null,
     avatarUrl: profile.avatarUrl,
     avatarSeed: profile.avatarSeed,
     links: activeLinks.map((l) => ({
@@ -1097,16 +1140,60 @@ export function LinksPageClient({
               differs. "ویرایش" keeps its natural width, "+ افزودن بلاک"
               fills the rest with `flex-1`.
              ────────────────────────────────────────────────────────── */}
+          {/* ── Mobile action buttons — stacked with no gap between them ── */}
+          <div className="flex flex-col gap-2 lg:hidden">
+            {!hasAnyBlocks && (
+              <Button
+                type="button"
+                onClick={() => setWizardOpen(true)}
+                className="h-12 w-full gap-2 rounded-full text-sm font-bold"
+                style={{
+                  backgroundColor: "var(--brand)",
+                  color: "var(--brand-foreground)",
+                }}
+              >
+                <SparklesIcon className="size-4" />
+                {draftExists ? "ادامه ساخت صفحه" : "شروع ساخت صفحه"}
+              </Button>
+            )}
+            <Button
+              type="button"
+              onClick={() => setAddOpen(true)}
+              disabled={!canAdd}
+              className={hasAnyBlocks ? "h-12 w-full rounded-full text-sm font-bold" : "h-12 rounded-full px-6 text-sm font-bold"}
+              variant={!hasAnyBlocks ? "outline" : "default"}
+            >
+              <PlusIcon className="size-4" />
+              افزودن بلوک
+            </Button>
+          </div>
+
+          {/* Desktop action row */}
           <section className="hidden lg:block">
             <div className="flex items-stretch gap-2">
+              {!hasAnyBlocks && (
+                <Button
+                  type="button"
+                  onClick={() => setWizardOpen(true)}
+                  className="h-12 flex-1 gap-1.5 rounded-full text-sm font-bold"
+                  style={{
+                    backgroundColor: "var(--brand)",
+                    color: "var(--brand-foreground)",
+                  }}
+                >
+                  <SparklesIcon className="size-4" />
+                  {draftExists ? "ادامه ساخت صفحه" : "شروع ساخت صفحه"}
+                </Button>
+              )}
               <Button
                 type="button"
                 onClick={() => setAddOpen(true)}
                 disabled={!canAdd}
-                className="h-12 flex-1 gap-1.5 rounded-full text-sm font-bold"
+                className={hasAnyBlocks ? "h-12 flex-1 gap-1.5 rounded-full text-sm font-bold" : "h-12 gap-1.5 rounded-full px-6 text-sm font-bold"}
+                variant={hasAnyBlocks ? "default" : "outline"}
               >
                 <PlusIcon className="size-4" />
-                افزودن بلاک
+                افزودن بلوک
               </Button>
               <Button
                 type="button"
@@ -1118,30 +1205,7 @@ export function LinksPageClient({
                 تنظیمات صفحه
               </Button>
             </div>
-            {!canAdd ? (
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                حداکثر ۸ لینک قابل ثبت است.
-              </p>
-            ) : null}
           </section>
-
-          {/* MOBILE — full-width add button (kept as before). */}
-          <div className="lg:hidden">
-            <Button
-              type="button"
-              onClick={() => setAddOpen(true)}
-              disabled={!canAdd}
-              className="h-12 w-full rounded-full text-sm font-bold"
-            >
-              <PlusIcon className="size-4" />
-              افزودن بلاک
-            </Button>
-            {!canAdd ? (
-              <p className="mt-2 text-center text-xs text-muted-foreground">
-                حداکثر ۸ لینک قابل ثبت است.
-              </p>
-            ) : null}
-          </div>
 
           {/* Unified blocks list (links + bookings + forms in one order) */}
           {blocksOrder.length ? (
@@ -1278,18 +1342,20 @@ export function LinksPageClient({
           ) : (
             <button
               type="button"
-              onClick={() => setAddOpen(true)}
+              onClick={() => setWizardOpen(true)}
               className="flex w-full flex-col items-center gap-2 rounded-4xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground transition-colors hover:border-primary hover:bg-primary/5"
             >
-              <PlusIcon className="size-5 text-primary" />
+              <SparklesIcon className="size-5 text-primary" />
               اولین بلوک خود را اضافه کنید.
             </button>
           )}
 
           {linksState.status === "success" ? (
-            <p className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
-              <Check className="size-3" />
-              ذخیره شد
+            <p className="flex items-center justify-center">
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                <Check className="size-3" />
+                ذخیره شد
+              </span>
             </p>
           ) : null}
         </div>
@@ -1297,7 +1363,22 @@ export function LinksPageClient({
 
       {/* Desktop preview column */}
       <aside className="hidden lg:sticky lg:top-0 lg:flex lg:h-[calc(100dvh-var(--promo-bar-height,0)-4rem)] lg:flex-col bg-sidebar-accent/30">
-        <div className="flex min-h-0 flex-1 flex-col items-center overflow-hidden px-6 pt-6">
+        {/* Share pill — centered above the phone mockup */}
+        <div className="shrink-0 flex justify-center px-6 pt-6 pb-6">
+          <PublicShareBar
+            publicUrl={publicUrl}
+            slug={profile.slug}
+            displayName={profile.fullName || "کارت"}
+            host={`${profile.domain}/${profile.slug}`}
+            pageId={profile.id}
+            canCustomizeQr={canCustomizeQr}
+            savedQrStyle={savedQrStyle}
+            saveQrStyleAction={saveQrStyleAction}
+            variant="pill"
+            className="w-auto max-w-none"
+          />
+        </div>
+        <div className="flex min-h-0 flex-1 flex-col items-center overflow-hidden px-6 pb-6">
           {/* Phone frame — fills remaining column height (flex-1 in a flex-col
               parent is cross-browser reliable; h-full against items-stretch
               breaks in WebKit). translateZ(0) makes it the containing block
@@ -1455,6 +1536,10 @@ export function LinksPageClient({
           discoverCategory: profile.discoverCategory,
           city: profile.city,
           pageType: profile.pageType,
+          publicPhone: profile.publicPhone,
+          showPublicPhone: profile.showPublicPhone,
+          email: profile.email,
+          showPublicEmail: profile.showPublicEmail,
         }}
         preview={{
           fullName: profile.fullName,
@@ -1468,6 +1553,47 @@ export function LinksPageClient({
         onAvatarUpload={handleAvatarSave}
         onAvatarDelete={handleAvatarDelete}
         onAvatarPickSeed={handleAvatarPickSeed}
+      />
+
+      {/* New-page celebration overlay — shown once after account creation (?new=1) */}
+      <NewPageCelebration
+        previewProfile={previewProfile}
+        onComplete={() => setWizardOpen(true)}
+      />
+
+      {/* Activation wizard — always rendered so it never remounts when blocks change */}
+      <ActivationWizard
+        open={wizardOpen}
+        onClose={() => {
+          setWizardOpen(false);
+          setDraftExists(hasSavedDraft(profile.id));
+        }}
+        pageId={profile.id}
+        resetDraftRef={wizardResetDraftRef}
+        initialDisplayName={profile.fullName ?? ""}
+        initialBio={profile.bio ?? ""}
+        initialAvatarUrl={profile.avatarUrl}
+        initialAvatarSeed={profile.avatarSeed}
+        trialEndsAt={trialEndsAt ?? null}
+        previewProfile={previewProfile}
+        autosaveLinksAction={autosaveLinksAction}
+        autosaveAvatarAction={autosaveAvatarAction}
+        deleteAvatarAction={deleteAvatarAction}
+        saveAvatarSeedAction={saveAvatarSeedAction}
+        saveProfileDetails={autosaveProfileDetailsAction}
+        onLinksAdded={(newLinks) => {
+          setLinks((prev) => [...prev, ...newLinks]);
+          setDraftExists(false);
+        }}
+        onProfileUpdated={(patch) => {
+          setProfile((prev) => ({
+            ...prev,
+            fullName: patch.fullName,
+            bio: patch.bio,
+            ...(patch.avatarUrl !== null ? { avatarUrl: patch.avatarUrl } : {}),
+            ...(patch.avatarSeed !== null ? { avatarSeed: patch.avatarSeed } : {}),
+          }));
+        }}
       />
     </div>
   );

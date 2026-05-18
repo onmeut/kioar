@@ -72,21 +72,7 @@ export function MeHeaderActions({
         />
       </div>
 
-      {/* Desktop: full share pill, hugs content width */}
-      <div className="hidden md:flex">
-        <PublicShareBar
-          publicUrl={publicUrl}
-          slug={slug}
-          displayName={displayName}
-          host={host}
-          pageId={pageId}
-          canCustomizeQr={canCustomizeQr}
-          savedQrStyle={savedQrStyle}
-          saveQrStyleAction={saveQrStyleAction}
-          variant="pill"
-          className="w-auto max-w-none"
-        />
-      </div>
+      {/* Desktop: share pill lives in the preview column, not here */}
     </>
   );
 }

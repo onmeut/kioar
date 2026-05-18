@@ -123,8 +123,8 @@ export function CommandPaletteTrigger({
         onClick={() => setOpen(true)}
         aria-label="باز کردن جستجوی سراسری (⌘K)"
         className={cn(
-          "group inline-flex h-9 w-full max-w-[320px] items-center gap-2 rounded-full",
-          "border border-input bg-muted/40 ps-3 pe-1.5 text-sm",
+          "group inline-flex h-9 w-full max-w-[280px] items-center gap-2 rounded-full",
+          "border border-input bg-muted/10 ps-3 pe-1.5 text-sm",
           "text-muted-foreground transition-colors",
           "hover:bg-muted/70 hover:text-foreground hover:border-ring/40",
           "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",

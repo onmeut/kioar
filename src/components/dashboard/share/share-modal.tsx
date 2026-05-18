@@ -53,7 +53,7 @@ const VIEW_TITLES: Record<ShareView, string> = {
   home: "اشتراک‌گذاری",
   qr: "کد QR",
   card: "کارت ویزیت دیجیتال",
-  ig: "افزودن به بیوی اینستاگرام",
+  ig: "افزودن به اینستاگرام",
 };
 
 const STYLE_STORAGE_PREFIX = "kioar:qr-style:v1:";
@@ -350,8 +350,30 @@ function HomeView({
         </div>
       </button>
 
-      {/* Action row — horizontal scroll, Linktree-style */}
-      <div className="flex gap-1 overflow-x-auto no-scrollbar pb-1">
+      {/* URL chip + copy button */}
+      <div className="flex items-center gap-2 rounded-2xl border bg-muted/40 px-4 py-3" dir="ltr">
+        <Image
+          src="/brand/logo.svg"
+          alt="Kioar"
+          width={14}
+          height={18}
+          className="shrink-0"
+        />
+        <span className="min-w-0 flex-1 truncate text-center text-sm font-medium">
+          <span className="text-muted-foreground">https://</span>
+          <span className="text-foreground">{displayHost}</span>
+        </span>
+        <button
+          type="button"
+          onClick={copy}
+          className="shrink-0 rounded-lg bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition-colors hover:bg-foreground/80"
+        >
+          {copied ? "کپی شد" : "کپی"}
+        </button>
+      </div>
+
+      {/* Action row — equal-width grid */}
+      <div className="grid grid-cols-5 gap-1">
         <ActionTile
           icon={
             <Image
@@ -373,17 +395,16 @@ function HomeView({
         <ActionTile
           icon={<IdCardIcon className="size-5" aria-hidden />}
           label="کارت ویزیت"
-          badge="جدید"
           onClick={onOpenCard}
         />
         <ActionTile
           icon={<InstagramIcon className="size-5" aria-hidden />}
-          label="بیوی اینستاگرام"
+          label="اینستاگرام"
           onClick={onOpenIg}
         />
         <ActionTile
           icon={<Share2Icon className="size-5" aria-hidden />}
-          label="اشتراک سیستمی"
+          label="اشتراک‌گذاری"
           onClick={nativeShare}
         />
       </div>
@@ -421,7 +442,7 @@ function ActionTile({
   );
 
   const cls = cn(
-    "tap-target flex flex-col items-center justify-start gap-1.5 rounded-2xl border border-transparent p-2 text-center transition-colors min-w-[4.5rem]",
+    "tap-target flex w-full flex-col items-center justify-start gap-1.5 rounded-2xl border border-transparent p-2 text-center transition-colors",
     "hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-foreground/20 focus-visible:outline-none",
   );
 

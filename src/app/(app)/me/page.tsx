@@ -11,6 +11,7 @@ import { fetchLinkMetadataAction } from "./actions";
 import {
   autosaveAvatarAction,
   autosaveLinksAction,
+  autosaveProfileDetailsAction,
   deleteAvatarAction,
   reorderBlocksAction,
   saveAvatarSeedAction,
@@ -51,6 +52,7 @@ import {
   pageHasFeature,
 } from "@/lib/entitlements";
 import { blockKindToFeatureKey } from "@/lib/block-features";
+import { listOwnedPagesWithPlan } from "@/lib/pages";
 import type {
   ProductBlockCurrency,
   ProductBlockDisplayMode,
@@ -343,10 +345,18 @@ export default async function DashboardLinksPage() {
     ? await pageHasFeature(pageId, "qr_code_customization").catch(() => false)
     : false;
 
-  const [industries, allCategories] = await Promise.all([
+  const [industries, allCategories, ownedPages] = await Promise.all([
     getIndustries(),
     getAllActiveCategories(),
+    listOwnedPagesWithPlan(viewer.user.id).catch(() => []),
   ]);
+
+  // Find the trial end date for the page currently being edited.
+  const currentPageTrial = ownedPages.find((p) => p.id === pageId);
+  const trialEndsAt =
+    currentPageTrial?.isOnTrial && currentPageTrial.trialEndsAt
+      ? currentPageTrial.trialEndsAt.toISOString()
+      : null;
 
   return (
     <LinksPageClient
@@ -366,7 +376,9 @@ export default async function DashboardLinksPage() {
         bio: profile?.bio ?? "",
         slug,
         publicPhone: profile?.publicPhone ?? "",
+        showPublicPhone: profile?.showPublicPhone ?? false,
         email: profile?.email ?? "",
+        showPublicEmail: profile?.showPublicEmail ?? false,
         avatarUrl: profile?.avatarUrl ?? null,
         avatarSeed: profile?.avatarSeed ?? null,
         domain: profileDomain,
@@ -425,6 +437,8 @@ export default async function DashboardLinksPage() {
       industries={industries}
       categories={allCategories}
       setBlockSpotlightAction={setBlockSpotlightAction}
+      trialEndsAt={trialEndsAt}
+      autosaveProfileDetailsAction={autosaveProfileDetailsAction}
     />
   );
 }

@@ -58,7 +58,7 @@ export function IgInstallClient({ publicUrl, displayHost }: Props) {
         <>
           <div className="space-y-1.5">
             <h1 className="text-2xl font-bold leading-tight">
-              نصب آسان در بیوی اینستاگرام
+              نصب آسان در بایو‌ی اینستاگرام
             </h1>
             <p className="text-sm text-muted-foreground">
               برای کپی لینک کیوآر تپ کنید

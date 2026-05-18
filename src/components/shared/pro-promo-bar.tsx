@@ -47,6 +47,7 @@ export function ProPromoBar({
   return (
     <div
       dir="rtl"
+      data-promo-bar=""
       className="relative z-30 flex h-12 shrink-0 items-center justify-center gap-3 bg-zinc-950 px-4 text-xs font-semibold sm:text-sm"
     >
       <span className="text-white">

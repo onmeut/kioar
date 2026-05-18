@@ -282,6 +282,7 @@ export async function verifyOtpAction(
           planKey,
           ownerId: user.id,
         });
+        redirect("/me?new=1");
       }
 
       await continuePendingEventRegistrationOrRedirect(user.id);
@@ -329,8 +330,7 @@ export async function verifyOtpAction(
       ownerId: user.id,
     });
 
-    await continuePendingEventRegistrationOrRedirect(user.id);
-    redirect("/me");
+    redirect("/me?new=1");
   }
 
   if (!user.profile?.isComplete) {
