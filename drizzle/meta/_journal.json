@@ -330,6 +330,13 @@
       "when": 1747429200000,
       "tag": "0047_page_admin_disabled",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1747601400000,
+      "tag": "0048_show_public_contact",
+      "breakpoints": true
     }
   ]
 }

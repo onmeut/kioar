@@ -73,6 +73,17 @@ scripts/                       # generate-pwa-icons, seed-plans, seed-sms-templa
 - Multi-tenancy: **page-owned**, not user-owned. The `profiles` table is the `pages` entity (owner = `userId`, but a user can have many pages). Resolve "current page" with `resolveCurrentPageForOwner()` — never assume `users.id === pages.id`.
 - Plan/feature registry tables: `plans`, `features`, `plan_features`, `page_subscriptions`, `page_entitlements`. **No plan-name comparisons in product code** — gate via `pageHasFeature(pageId, lookupKey)`. Limits via `getPageEntitlementLimit()`.
 
+## Migration discipline — MANDATORY
+
+**The Dockerfile ENTRYPOINT already runs `npm run db:migrate` before starting the app** — auto-migration is active on every deploy. This means: if a column exists in `src/db/schema.ts` but no migration has been written for it, production will crash immediately after deploy with a `column does not exist` error.
+
+**Rules:**
+1. **Every schema change (new column, new table, new enum value, rename, drop) MUST have a corresponding migration SQL file in `drizzle/` AND an entry in `drizzle/meta/_journal.json` before the code is committed.**
+2. **Never add a column to `src/db/schema.ts` without simultaneously creating the migration.** The two files are always a single atomic commit.
+3. Use `npm run db:generate` for standard schema changes. If the meta snapshots are out of sync (missing snapshots for recent migrations), hand-write the SQL instead and add it to `_journal.json` — but never skip either step.
+4. Hand-written migrations follow the naming pattern `NNNN_short_description.sql` where `NNNN` is the next sequential number.
+5. After writing a migration, verify locally with `npm run db:migrate` before pushing.
+
 ## Persian (Shamsi) calendar — MANDATORY
 
 Single source of truth: **`src/lib/date/persian.ts`** (+ `src/lib/date/timezone.ts`). Everything else imports from there. The legacy `src/lib/persian.ts` is a deprecated re-export shim — do not add new exports to it.
