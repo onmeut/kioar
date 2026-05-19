@@ -52,7 +52,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Migration & seed assets (drizzle-kit + tsx are devDeps, install them here)
+# Migration & seed assets
 COPY --from=deps --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle ./drizzle
 COPY --from=builder --chown=nextjs:nodejs /app/drizzle.config.ts ./drizzle.config.ts
@@ -60,11 +60,14 @@ COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=nextjs:nodejs /app/src/db ./src/db
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
+# Replace standalone server.js with our migration wrapper.
+# The PaaS runs `node server.js` — our wrapper runs migrations FIRST,
+# then loads the real Next.js server (_server.js). Unfuckable.
+RUN mv server.js _server.js \
+ && cp scripts/server-wrapper.cjs server.js
+
 RUN mkdir -p /app/public/uploads && chown -R nextjs:nodejs /app/public/uploads
 
 USER nextjs
 EXPOSE 3000
-# Primary migration path: src/instrumentation.ts (runs inside Next.js before
-# the first request — cannot be bypassed by PaaS overriding ENTRYPOINT/CMD).
-# The ENTRYPOINT migration below is defense-in-depth for non-PaaS deploys.
-ENTRYPOINT ["/bin/sh", "-c", "node --import tsx scripts/migrate.ts && exec node /app/server.js"]
+ENTRYPOINT ["node", "server.js"]
