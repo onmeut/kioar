@@ -75,9 +75,12 @@ scripts/                       # generate-pwa-icons, seed-plans, seed-sms-templa
 
 ## Migration discipline — MANDATORY
 
-**Auto-migration runs inside the Next.js process itself** via `src/instrumentation.ts`. The `register()` hook executes **once before the server accepts any request** — no PaaS can bypass it (unlike Dockerfile ENTRYPOINT which Hamravesh/Darkube overrides). If any migration fails, `process.exit(1)` kills the container.
+**Auto-migration runs via `scripts/server-wrapper.cjs`** which replaces the standalone `server.js` in the Docker image. On every deploy:
+1. Raw `ALTER TABLE … IF NOT EXISTS` runs directly for critical columns (bypasses drizzle entirely)
+2. `scripts/migrate.ts` runs drizzle-orm `migrate()` for all other pending migrations
+3. Next.js starts only after both steps succeed
 
-A secondary defense-in-depth migration also runs in the Dockerfile ENTRYPOINT via `scripts/migrate.ts` for non-PaaS deploys. Both use `drizzle-orm/postgres-js/migrator` programmatically — never `drizzle-kit` CLI.
+Hamravesh/Darkube PaaS overrides Dockerfile ENTRYPOINT — the wrapper approach is unfuckable because the PaaS MUST run `node server.js` which IS our wrapper.
 
 This means: **if a column exists in `src/db/schema.ts` but no migration SQL file exists for it, production WILL crash with `column does not exist`.**
 
@@ -87,7 +90,7 @@ This means: **if a column exists in `src/db/schema.ts` but no migration SQL file
 3. Use `npm run db:generate` for standard schema changes. If the meta snapshots are out of sync (missing snapshots for recent migrations), hand-write the SQL instead and add it to `_journal.json` — but never skip either step.
 4. Hand-written migrations follow the naming pattern `NNNN_short_description.sql` where `NNNN` is the next sequential number.
 5. After writing a migration, verify locally with `npm run db:migrate` before pushing.
-6. **Do not delete or modify `src/instrumentation.ts`** — it is the primary migration runner. Do not revert to `drizzle-kit migrate`.
+6. **Do not delete `scripts/server-wrapper.cjs` or `scripts/migrate.ts`** — they are the production migration runners.
 
 ## Persian (Shamsi) calendar — MANDATORY
 
