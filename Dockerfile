@@ -14,7 +14,12 @@ COPY package.json package-lock.json ./
 RUN npm ci --loglevel=error --no-fund --legacy-peer-deps \
       --registry=https://repo.hmirror.ir/npm
 
-# ---------- Stage 2: migrator ------------------------------------------------
+# ---------- Stage 2: migrator (unused by PaaS) --------------------------------
+# This stage is kept for manual / local use only:
+#   docker build --target migrator -t kioar-migrator .
+#   docker run --env DATABASE_URL=... kioar-migrator
+# The PaaS builds the final `runner` stage. Migrations in production are
+# handled by scripts/server-wrapper.cjs (see Stage 4).
 FROM deps AS migrator
 WORKDIR /app
 
