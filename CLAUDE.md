@@ -91,6 +91,7 @@ This means: **if a column exists in `src/db/schema.ts` but no migration SQL file
 4. Hand-written migrations follow the naming pattern `NNNN_short_description.sql` where `NNNN` is the next sequential number.
 5. After writing a migration, verify locally with `npm run db:migrate` before pushing.
 6. **Do not delete `scripts/server-wrapper.cjs` or `scripts/migrate.ts`** — they are the production migration runners.
+7. **NEVER run `drizzle-kit migrate` (the CLI) against the production database.** The CLI has a bug where it records a migration as applied in `__drizzle_migrations` even when the DDL fails — creating phantom entries. Once a migration is phantom-applied, drizzle skips its SQL on every future deploy, leaving columns missing forever. This is exactly what caused the `show_public_phone` incident. The programmatic `migrate()` in `scripts/migrate.ts` wraps DDL + journal insert in one transaction — if DDL fails, the journal entry rolls back too.
 
 ## Persian (Shamsi) calendar — MANDATORY
 

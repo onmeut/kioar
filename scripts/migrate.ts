@@ -1,10 +1,17 @@
 /**
  * Programmatic migration runner.
  *
- * Replaces `drizzle-kit migrate` (CLI tool) for production use.
- * This script is invoked by the Docker ENTRYPOINT before the app starts.
- * If ANY migration fails, the process exits with code 1 — the container
- * will NOT start, which is the correct behavior (fail loud, not silent).
+ * Use this (via `npm run db:migrate`) — NEVER use `drizzle-kit migrate` CLI.
+ *
+ * WHY: drizzle-kit CLI has a bug where it records a migration as applied in
+ * __drizzle_migrations even when the DDL fails (phantom-apply). Once
+ * phantom-applied, drizzle skips that SQL on every future deploy, leaving
+ * schema changes missing forever. This is what caused the show_public_phone
+ * production incident.
+ *
+ * This script uses drizzle-orm's programmatic migrate() which wraps the DDL
+ * AND the journal insert in one transaction — if DDL fails, the journal entry
+ * rolls back too. No phantom entries possible.
  *
  * Usage: node --import tsx scripts/migrate.ts
  *        (or via `npm run db:migrate`)
