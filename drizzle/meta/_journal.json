@@ -337,6 +337,13 @@
       "when": 1747601400000,
       "tag": "0048_show_public_contact",
       "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1747610400000,
+      "tag": "0049_fix_show_public_contact",
+      "breakpoints": true
     }
   ]
 }
