@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,14 @@ export function SmsTemplateRow(props: Props) {
   const [reconcileState, reconcileAction] = useActionState(
     reconcileSmsTemplateAction,
     idleState,
+  );
+
+  const [kavenegarTemplate, setKavenegarTemplate] = useState(
+    props.kavenegarTemplate ?? "",
+  );
+  const [isActive, setIsActive] = useState(props.isActive);
+  const [bodyFaPreview, setBodyFaPreview] = useState(
+    props.bodyFaPreview ?? "",
   );
 
   const variables = props.variableSchema ?? [];
@@ -116,7 +124,8 @@ export function SmsTemplateRow(props: Props) {
             <Input
               id={`${props.templateKey}-mapping`}
               name="kavenegarTemplate"
-              defaultValue={props.kavenegarTemplate ?? ""}
+              value={kavenegarTemplate}
+              onChange={(e) => setKavenegarTemplate(e.target.value)}
               placeholder="kioarTrialStarted"
               dir="ltr"
               autoCapitalize="none"
@@ -133,7 +142,8 @@ export function SmsTemplateRow(props: Props) {
               <Switch
                 id={`${props.templateKey}-active`}
                 name="isActive"
-                defaultChecked={props.isActive}
+                checked={isActive}
+                onCheckedChange={setIsActive}
               />
               فعال
             </Label>
@@ -217,7 +227,8 @@ export function SmsTemplateRow(props: Props) {
           <Textarea
             id={`${props.templateKey}-body-preview`}
             name="bodyFaPreview"
-            defaultValue={props.bodyFaPreview ?? ""}
+            value={bodyFaPreview}
+            onChange={(e) => setBodyFaPreview(e.target.value)}
             placeholder="مثال: سلام {plan} عزیز، اشتراک شما {daysLeft} روز دیگر تجدید می‌شود."
             rows={3}
           />

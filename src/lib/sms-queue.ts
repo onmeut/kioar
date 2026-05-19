@@ -106,6 +106,11 @@ export async function enqueueSms(input: EnqueueSmsInput): Promise<void> {
 
 const MAX_ATTEMPTS = 3;
 const BACKOFF_CAP_MINUTES = 60;
+// Per-call delay between Kavenegar dispatches inside a single batch.
+// 50 rows * 150ms = ~7.5s extra wall-clock per batch — safely under the
+// server-action timeout while keeping us well below any provider burst
+// threshold. Skipped on the last row in a batch.
+const INTER_CALL_DELAY_MS = 150;
 
 export type ProcessSmsQueueResult = {
   scanned: number;
@@ -192,7 +197,8 @@ export async function processSmsQueue(options?: {
     .where(sql`${smsTemplates.key} = ANY(${templateKeys})`);
   const templateByKey = new Map(templates.map((t) => [t.key, t]));
 
-  for (const row of claimedRows) {
+  for (let i = 0; i < claimedRows.length; i++) {
+    const row = claimedRows[i]!;
     const template = templateByKey.get(row.templateKey);
 
     // Hard-fail conditions (no retry — the operator must fix something).
@@ -266,6 +272,14 @@ export async function processSmsQueue(options?: {
           error: message,
         });
       }
+    }
+
+    // Throttle outbound Kavenegar calls within a batch. Skip the delay
+    // after the final row so we don't waste wall-clock at the tail.
+    if (i < claimedRows.length - 1) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, INTER_CALL_DELAY_MS),
+      );
     }
   }
 

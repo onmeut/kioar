@@ -1,5 +1,6 @@
-import { desc, sql } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 
+import { SmsQueueControls } from "@/components/admin/sms-queue-controls";
 import { SmsTemplateRow } from "@/components/admin/sms-template-row";
 import { Badge } from "@/components/ui/badge";
 import { getDb } from "@/db";
@@ -34,19 +35,38 @@ export default async function AdminSmsPage() {
   await requireAdmin();
   const db = getDb();
 
-  const [templates, queueRows, queueCounts] = await Promise.all([
-    db.select().from(smsTemplates).orderBy(smsTemplates.nameFa),
-    db.select().from(smsQueue).orderBy(desc(smsQueue.createdAt)).limit(50),
-    db
-      .select({
-        status: smsQueue.status,
-        count: sql<number>`count(*)::int`,
-      })
-      .from(smsQueue)
-      .groupBy(smsQueue.status),
-  ]);
+  const [templates, queueRows, queueCounts, queuedBreakdownRows] =
+    await Promise.all([
+      db.select().from(smsTemplates).orderBy(smsTemplates.nameFa),
+      db.select().from(smsQueue).orderBy(desc(smsQueue.createdAt)).limit(50),
+      db
+        .select({
+          status: smsQueue.status,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(smsQueue)
+        .groupBy(smsQueue.status),
+      db
+        .select({
+          templateKey: smsQueue.templateKey,
+          count: sql<number>`count(*)::int`,
+          oldestCreatedAt: sql<Date>`min(${smsQueue.createdAt})`,
+        })
+        .from(smsQueue)
+        .where(eq(smsQueue.status, "queued"))
+        .groupBy(smsQueue.templateKey)
+        .orderBy(sql`count(*) desc`),
+    ]);
 
   const counts = new Map(queueCounts.map((row) => [row.status, row.count]));
+  const queuedBreakdown = queuedBreakdownRows.map((r) => ({
+    templateKey: r.templateKey,
+    count: r.count,
+    oldestCreatedAtIso:
+      r.oldestCreatedAt instanceof Date
+        ? r.oldestCreatedAt.toISOString()
+        : new Date(r.oldestCreatedAt).toISOString(),
+  }));
 
   const unmapped = templates.filter((t) => !t.kavenegarTemplate).length;
   const inactive = templates.filter((t) => !t.isActive).length;
@@ -120,19 +140,26 @@ export default async function AdminSmsPage() {
       </section>
 
       <section className="space-y-3">
-        <header className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">صف ارسال (۵۰ مورد اخیر)</h2>
-          <div className="flex flex-wrap gap-2 text-xs">
-            {(["queued", "sending", "sent", "failed"] as const).map((s) => (
-              <Badge
-                key={s}
-                variant="outline"
-                className={cn("rounded-full", STATUS_STYLES[s].className)}
-              >
-                {STATUS_STYLES[s].label}: {toPersianDigits(counts.get(s) ?? 0)}
-              </Badge>
-            ))}
+        <header className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-2">
+            <h2 className="text-lg font-semibold">صف ارسال (۵۰ مورد اخیر)</h2>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {(["queued", "sending", "sent", "failed"] as const).map((s) => (
+                <Badge
+                  key={s}
+                  variant="outline"
+                  className={cn("rounded-full", STATUS_STYLES[s].className)}
+                >
+                  {STATUS_STYLES[s].label}: {toPersianDigits(counts.get(s) ?? 0)}
+                </Badge>
+              ))}
+            </div>
           </div>
+          <SmsQueueControls
+            queuedCount={counts.get("queued") ?? 0}
+            sendingCount={counts.get("sending") ?? 0}
+            queuedBreakdown={queuedBreakdown}
+          />
         </header>
 
         {queueRows.length === 0 ? (

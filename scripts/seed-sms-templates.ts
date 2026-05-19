@@ -51,7 +51,7 @@ const TEMPLATES: SmsTemplateSeed[] = [
     key: "trial_started",
     nameFa: "شروع آزمایش رایگان",
     descriptionFa: "تأیید شروع دوره آزمایشی Pro/Business.",
-    variableSchema: ["plan", "days"],
+    variableSchema: ["days", "plan"],
   },
   {
     key: "trial_ending_soon",

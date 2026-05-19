@@ -1,15 +1,15 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import { z } from "zod";
 
 import { getDb } from "@/db";
-import { smsTemplates } from "@/db/schema";
+import { smsQueue, smsTemplates } from "@/db/schema";
 import { type ActionState } from "@/lib/action-state";
 import { requireAdmin } from "@/lib/auth/session";
 import { log } from "@/lib/log";
-import { sendSmsTemplateTest } from "@/lib/sms-queue";
+import { processSmsQueue, sendSmsTemplateTest } from "@/lib/sms-queue";
 
 const updateMappingSchema = z.object({
   key: z.string().trim().min(1),
@@ -222,5 +222,107 @@ export async function testSmsTemplateAction(
       result.provider === "console"
         ? "ارسال آزمایشی در حالت توسعه (لاگ کنسول) انجام شد."
         : "پیامک آزمایشی ارسال شد.",
+  };
+}
+
+/**
+ * Manually drain up to 50 due rows from the SMS queue.
+ * Equivalent to one tick of the /api/cron/sms worker.
+ *
+ * The worker itself throttles outbound Kavenegar calls
+ * (see `INTER_CALL_DELAY_MS` in `lib/sms-queue.ts`), so back-to-back
+ * clicks are safe at the provider layer. The UI also enforces a short
+ * client-side cooldown to discourage runaway clicking.
+ */
+export async function flushSmsQueueAction(
+  _prev: ActionState,
+  _formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  try {
+    const result = await processSmsQueue({ limit: 50 });
+    log.info("admin.sms.flush", result);
+    revalidatePath("/admin/sms");
+    return {
+      status: "success",
+      message: `بررسی شد: ${result.scanned} پیام — ارسال: ${result.sent} · تلاش مجدد: ${result.retried} · ناموفق: ${result.failed}`,
+    };
+  } catch (err) {
+    return {
+      status: "error",
+      message: `خطا در پردازش صف: ${(err as Error).message}`,
+    };
+  }
+}
+
+/**
+ * Reset rows truly stuck in 'sending' back to 'queued'. We require the
+ * row to have been in `sending` for at least 5 minutes — otherwise we
+ * might be racing an in-flight dispatch and could trigger a duplicate
+ * send. A healthy Kavenegar call finishes in well under that window.
+ */
+const STUCK_THRESHOLD_MINUTES = 5;
+
+export async function resetStuckSendingAction(
+  _prev: ActionState,
+  _formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const db = getDb();
+  const cutoff = new Date(Date.now() - STUCK_THRESHOLD_MINUTES * 60 * 1000);
+  const rows = await db
+    .update(smsQueue)
+    .set({
+      status: "queued",
+      scheduledFor: new Date(),
+      updatedAt: new Date(),
+    })
+    .where(and(eq(smsQueue.status, "sending"), lt(smsQueue.updatedAt, cutoff)))
+    .returning({ id: smsQueue.id });
+  const count = rows.length;
+  log.info("admin.sms.reset_stuck", {
+    count,
+    thresholdMinutes: STUCK_THRESHOLD_MINUTES,
+  });
+  revalidatePath("/admin/sms");
+  return {
+    status: "success",
+    message: `${count} پیام گیر کرده به صف بازگشتند.`,
+  };
+}
+
+/**
+ * Mark old `queued` rows as `failed` with reason `stale_backlog`
+ * instead of sending them. Used to drain a backlog of messages whose
+ * timing has passed (e.g. "trial started 14 days ago" → don't send).
+ *
+ * Cutoff comes from the form (whole days). Defaults to 3 days if the
+ * value is missing or invalid. Capped at 365 to avoid foot-guns.
+ */
+export async function purgeStaleQueuedAction(
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  await requireAdmin();
+  const raw = Number(formData.get("olderThanDays"));
+  const days =
+    Number.isFinite(raw) && raw >= 1 && raw <= 365 ? Math.floor(raw) : 3;
+  const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+  const db = getDb();
+  const rows = await db
+    .update(smsQueue)
+    .set({
+      status: "failed",
+      lastError: "stale_backlog",
+      updatedAt: new Date(),
+    })
+    .where(and(eq(smsQueue.status, "queued"), lt(smsQueue.createdAt, cutoff)))
+    .returning({ id: smsQueue.id });
+  const count = rows.length;
+  log.info("admin.sms.purge_stale", { count, days });
+  revalidatePath("/admin/sms");
+  return {
+    status: "success",
+    message: `${count} پیام قدیمی‌تر از ${days} روز به‌عنوان منقضی علامت خوردند.`,
   };
 }
