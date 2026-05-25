@@ -310,6 +310,14 @@ export const profiles = pgTable(
      * without schema migrations. Null = use DEFAULT_QR_STYLE.
      */
     qrStyle: jsonb("qr_style"),
+    /**
+     * Page customization — theme + wallpaper. Null falls back to
+     * `DEFAULT_APPEARANCE` so existing rows render exactly as they did
+     * before the feature shipped. Validated server-side by
+     * `pageAppearanceSchema` in `src/lib/appearance/schema.ts`.
+     */
+    appearance:
+      jsonb("appearance").$type<import("@/lib/appearance/types").PageAppearance>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

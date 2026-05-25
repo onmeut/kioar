@@ -6,11 +6,15 @@ import { DEFAULT_QR_STYLE, type QrStyle } from "@/lib/qr/types";
 export async function DesktopMobileQr({
   url,
   qrStyle,
+  isDark = false,
 }: {
   url: string;
   qrStyle?: QrStyle | null;
+  isDark?: boolean;
 }) {
   const style = qrStyle ?? DEFAULT_QR_STYLE;
+  // Always render the QR on a white background so user-customised dot
+  // colors remain scannable. The widget card itself adapts to dark mode.
   const svg = renderQrSvg({ text: url, style, background: "#ffffff" });
 
   return (
@@ -19,7 +23,23 @@ export async function DesktopMobileQr({
       className="pointer-events-auto fixed bottom-6 z-40 hidden lg:block inset-e-6"
       aria-label="مشاهده روی موبایل"
     >
-      <div className="flex items-center gap-3 rounded-[1.5rem] border bg-card/95 p-3 shadow-[0_10px_30px_-12px_rgba(15,23,42,0.25),0_30px_60px_-24px_rgba(15,23,42,0.2)] backdrop-blur">
+      <div
+        className="flex items-center gap-3 rounded-[1.5rem] border p-3 backdrop-blur"
+        style={
+          isDark
+            ? {
+                background: "rgba(28,28,28,0.95)",
+                borderColor: "rgba(255,255,255,0.08)",
+                boxShadow:
+                  "0 10px 30px -12px rgba(0,0,0,0.6),0 30px 60px -24px rgba(0,0,0,0.5)",
+              }
+            : {
+                background: "rgba(255,255,255,0.95)",
+                boxShadow:
+                  "0 10px 30px -12px rgba(15,23,42,0.25),0 30px 60px -24px rgba(15,23,42,0.2)",
+              }
+        }
+      >
         <div
           className="size-24 shrink-0 overflow-hidden rounded-2xl bg-white"
           dangerouslySetInnerHTML={{ __html: svg }}

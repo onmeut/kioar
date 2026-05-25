@@ -14,13 +14,13 @@
     "db:up": "docker compose up -d postgres",
     "db:setup": "npm run db:up && npm run db:migrate",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "node --import tsx scripts/migrate.ts",
+    "db:migrate": "node --env-file=.env --import tsx scripts/migrate.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "db:seed:plans": "tsx scripts/seed-plans.ts",
-    "db:seed:sms": "tsx scripts/seed-sms-templates.ts",
-    "db:seed:app-settings": "tsx scripts/seed-app-settings.ts",
-    "db:seed:categories": "tsx scripts/seed-categories.ts"
+    "db:seed:plans": "node --env-file=.env --import tsx scripts/seed-plans.ts",
+    "db:seed:sms": "node --env-file=.env --import tsx scripts/seed-sms-templates.ts",
+    "db:seed:app-settings": "node --env-file=.env --import tsx scripts/seed-app-settings.ts",
+    "db:seed:categories": "node --env-file=.env --import tsx scripts/seed-categories.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1036.0",

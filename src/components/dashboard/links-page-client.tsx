@@ -73,6 +73,7 @@ import {
   PageSettingsSheet,
   type PageSettingsValues,
 } from "@/components/dashboard/page-settings-sheet";
+import { CustomizeButton } from "@/components/appearance/design-editor";
 import { PublicShareBar } from "@/components/dashboard/public-share-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -1204,6 +1205,7 @@ export function LinksPageClient({
                 <PencilIcon className="size-4" />
                 تنظیمات صفحه
               </Button>
+              <CustomizeButton />
             </div>
           </section>
 

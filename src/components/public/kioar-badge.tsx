@@ -6,13 +6,24 @@ import { useEffect, useRef, useState } from "react";
 import { ArrowLeftIcon } from "lucide-react";
 import { motion, useAnimate } from "motion/react";
 
+import { cn } from "@/lib/utils";
+
 /**
  * "ساخته‌شده با کی‌یو‌آر" badge.
  *
  * Buzz animation fires once when the badge enters the viewport (first impression),
  * then repeats every 45 s so it stays visible without feeling spammy.
+ *
+ * `variant="dark"` flips the chip to a near-black background with the
+ * white logo + white text. Used by the public profile page when the
+ * user picks a dark theme, where the default chip (sidebar bg +
+ * sidebar-foreground text) was rendering near-invisible.
  */
-export function KioarBadge() {
+export function KioarBadge({
+  variant = "default",
+}: {
+  variant?: "default" | "dark";
+}) {
   const ref = useRef<HTMLAnchorElement>(null);
   const [scope, animate] = useAnimate();
   const [hasBuzzed, setHasBuzzed] = useState(false);
@@ -60,14 +71,22 @@ export function KioarBadge() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasBuzzed]);
 
+  const isDark = variant === "dark";
+  const logoSrc = isDark ? "/brand/logo-white.svg" : "/brand/logo.svg";
+
   return (
     <motion.div ref={scope} style={{ display: "inline-block" }}>
       <Link
         ref={ref}
         href="https://kioar.com?ref=profile"
-        className="inline-flex items-center gap-1.5 rounded-full border border-sidebar-border bg-sidebar px-4 py-2 text-sm font-semibold text-foreground transition-opacity hover:opacity-70"
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70",
+          isDark
+            ? "border-white/10 bg-[#111111] text-white"
+            : "border-sidebar-border bg-sidebar text-foreground",
+        )}
       >
-        <Image src="/brand/logo.svg" alt="" width={13} height={16} />
+        <Image src={logoSrc} alt="" width={13} height={16} />
         <span>لینکِ کی‌یو‌آرِت رو بساز</span>
         <ArrowLeftIcon className="size-3.5 shrink-0" aria-hidden />
       </Link>

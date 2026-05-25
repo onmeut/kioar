@@ -8,6 +8,8 @@ import { KioarBadge } from "@/components/public/kioar-badge";
 import { PublicLinkClickTracker } from "@/components/public/public-link-click-tracker";
 import { PublicProfileCard } from "@/components/public/public-profile-card";
 import { PublicProfileShareButton } from "@/components/public/public-profile-actions";
+import { PageThemeProvider } from "@/components/public-page/page-theme-provider";
+import { coerceAppearance } from "@/lib/appearance/types";
 import { getDb } from "@/db";
 import { profileStatsByDay } from "@/db/schema";
 import { sql } from "drizzle-orm";
@@ -252,11 +254,23 @@ export default async function PublicProfilePage({
     },
   };
 
+  const appearance = coerceAppearance(profile.appearance);
+  // Themes where a dark logo would be near-invisible on the page bg.
+  // Right now only the `dark` neutral preset needs the inversion; if we
+  // ever add another dark-leaning preset (e.g. "midnight"), add its id
+  // here.
+  const isDarkTheme = appearance.theme === "dark";
+  const headerLogoSrc = isDarkTheme ? "/brand/logo-white.svg" : "/brand/logo.svg";
+
   return (
     <main
       dir="rtl"
-      className="relative min-h-dvh overflow-x-hidden bg-muted text-foreground"
+      className="relative min-h-dvh overflow-x-hidden text-foreground"
     >
+      <PageThemeProvider
+        appearance={appearance}
+        className="min-h-dvh w-full bg-muted"
+      >
       <div className="relative mx-auto flex min-h-dvh w-full max-w-145 flex-col pt-[env(safe-area-inset-top)] lg:pt-10">
         <PublicProfileCard
           className="flex-1"
@@ -268,7 +282,7 @@ export default async function PublicProfilePage({
                 aria-label="کی‌یو‌آر"
                 className="tap-target inline-flex size-10 items-center justify-center rounded-full bg-foreground/[0.07] text-foreground transition-colors hover:bg-foreground/12"
               >
-                <Image src="/brand/logo.svg" alt="" width={17} height={21} />
+                <Image src={headerLogoSrc} alt="" width={17} height={21} />
               </Link>
               <PublicProfileShareButton
                 url={publicUrl}
@@ -287,7 +301,7 @@ export default async function PublicProfilePage({
           }
           footerSlot={
             <div className="flex flex-col items-center gap-3">
-              <KioarBadge />
+              <KioarBadge variant={isDarkTheme ? "dark" : "default"} />
             </div>
           }
           profile={{
@@ -392,6 +406,7 @@ export default async function PublicProfilePage({
       {/* Desktop only: scan-on-mobile QR */}
       <DesktopMobileQr
         url={publicUrl}
+        isDark={isDarkTheme}
         qrStyle={
           (profile.qrStyle as import("@/lib/qr/types").QrStyle | null) ?? null
         }
@@ -402,6 +417,7 @@ export default async function PublicProfilePage({
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
       />
+      </PageThemeProvider>
     </main>
   );
 }

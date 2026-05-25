@@ -23,18 +23,27 @@ export async function GET(
     return new NextResponse("Not found", { status: 404 });
   }
 
-  const displayName = profile.fullName || slug;
   const themeColor = profile.appIconColor || "#195c54";
 
-  // The home-screen app should carry the user's handle so the user
-  // recognises it among other installed apps. The page title is for
-  // search engines & link previews — not for the launcher.
-  const appName = `@${slug}`;
+  // Home-screen identity is the user's real name (with role/title as a
+  // secondary line, when present). The launcher label MUST belong to the
+  // owner of this page — never the "Kioar" brand and never `@slug`.
+  // Order: fullName → title → @slug. Trim because users paste whitespace.
+  const fullName = (profile.fullName ?? "").trim();
+  const role = (profile.title ?? "").trim();
+  const appName = fullName || role || `@${slug}`;
+  // `short_name` lands on Android launcher tiles where space is tight
+  // (~12 chars). Truncate by grapheme-safe character count, not bytes,
+  // so multi-byte Persian glyphs aren't sliced mid-codepoint.
+  const shortName = Array.from(appName).slice(0, 12).join("");
+  const description =
+    profile.seoDescription ||
+    profile.bio ||
+    (role ? `${appName} — ${role}` : appName);
   const manifest = {
     name: appName,
-    short_name: appName.length > 12 ? appName.slice(0, 12) : appName,
-    description:
-      profile.seoDescription || profile.bio || `${displayName} on Kioar`,
+    short_name: shortName,
+    description,
     id: `/${slug}/?source=pwa`,
     start_url: `/${slug}/?source=pwa`,
     scope: `/${slug}/`,

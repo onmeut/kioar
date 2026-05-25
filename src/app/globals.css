@@ -833,6 +833,118 @@
   }
 }
 
+/* ---------------------------------------------------------------------- */
+/* Page customization — the [data-page-theme] wrapper on the public page  */
+/* uses inline CSS custom properties from `lib/appearance/themes.ts` to   */
+/* override the shadcn tokens (background/foreground/primary/…) for that  */
+/* subtree only. This block holds the structural styles for the wallpaper */
+/* layer + tint overlay, not the per-theme colours.                       */
+/* ---------------------------------------------------------------------- */
+.page-theme-root {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.page-theme-root > .page-wallpaper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-color: var(--background);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+.page-theme-root > .page-wallpaper-tint {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.page-theme-root > .page-theme-content {
+  position: relative;
+  z-index: 2;
+  /*
+   * Anchor inherited `color` to the theme's foreground. Without this, any
+   * descendant element that doesn't declare its own color (e.g. <h1>,
+   * <p> without `text-*`) inherits from the outer <main className="text-foreground">,
+   * which was painted with the app-level token at build time — so the
+   * dark theme would render dark-on-dark titles. Re-anchoring here lets
+   * the per-theme `--foreground` flow through inheritance.
+   */
+  color: var(--foreground);
+}
+
+/*
+ * Custom wallpaper inset on mobile.
+ *
+ * When the user picks anything other than the default theme background
+ * (a coloured fill, a gradient, or a photo), the card otherwise eats
+ * the entire mobile viewport width and the wallpaper is hidden behind
+ * it. Add a small padding to the page-theme-content so the wallpaper
+ * reads as a frame around the card, and round the inner card so the
+ * inset looks intentional. Desktop already has the card centred with
+ * margin, so this only kicks in below the lg breakpoint.
+ *
+ * Targets the first-child `section` (the PublicProfileCard root) via
+ * `:has()` rather than a structural descendant selector to avoid
+ * leaking the rule into nested popovers or future markup changes.
+ */
+@media (max-width: 1023px) {
+  .page-theme-root[data-custom-wallpaper="1"] > .page-theme-content {
+    padding: 20px;
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+  .page-theme-root[data-custom-wallpaper="1"]
+    > .page-theme-content
+    > div
+    > section {
+    border-radius: 28px;
+    overflow: hidden;
+    padding-bottom: 1.5rem;
+  }
+  /* The `flushBottom` desktop overrides force-flat the bottom on lg.
+     Below lg the section is already fully rounded; nothing to undo. */
+}
+
+/*
+ * Image wallpapers — the busy background eats `bg-foreground/5` chips and
+ * the muted-foreground subtitle becomes unreadable. We override the card
+ * and text tokens to a high-contrast translucent surface so titles, bio,
+ * and link pills stay legible regardless of the underlying photo.
+ *
+ * The white-on-dark variant is the safe default (matches the tint
+ * overlay, which is always dark over images). If we ever introduce a
+ * light tint, scope a second selector with the appropriate inverse.
+ */
+.page-theme-root[data-wallpaper-kind="image"] {
+  --card: rgba(20, 20, 20, 0.55);
+  --card-foreground: oklch(0.985 0 0);
+  --foreground: oklch(0.985 0 0);
+  --muted-foreground: oklch(0.92 0 0);
+  --border: rgba(255, 255, 255, 0.18);
+  color-scheme: dark;
+}
+
+/*
+ * `--shadow-card` carries an `inset 0 1px 0 rgba(255,255,255,0.9)`
+ * frosted-glass highlight that reads as a bright white stripe at the top
+ * edge of the card on any dark surface. Override the shadow for dark
+ * themes (and image wallpapers, which force dark surfaces above the
+ * photo) so the card sits flush.
+ */
+/* lg:shadow-card is the responsive variant class name Tailwind v4 emits */
+.page-theme-root[data-page-theme="dark"] .shadow-card,
+.page-theme-root[data-page-theme="dark"] .lg\:shadow-card,
+.page-theme-root[data-wallpaper-kind="image"] .shadow-card,
+.page-theme-root[data-wallpaper-kind="image"] .lg\:shadow-card {
+  box-shadow:
+    0 0 0 0.5px rgba(255, 255, 255, 0.04),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    0 20px 60px -4px rgba(0, 0, 0, 0.55);
+}
+
 .dark {
   --background: oklch(0.1822 0 0);
   --foreground: oklch(0.985 0 0);

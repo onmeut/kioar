@@ -27,8 +27,14 @@ function equalHashes(first: string, second: string) {
 
 export async function issueSignInOtp(phone: string) {
   const db = getDb();
+  // Only unconsumed OTPs count toward cooldown — a consumed row means the
+  // prior login succeeded, so there's no reason to block the next request.
   const latestOtp = await db.query.otpCodes.findFirst({
-    where: and(eq(otpCodes.phone, phone), eq(otpCodes.purpose, "sign-in")),
+    where: and(
+      eq(otpCodes.phone, phone),
+      eq(otpCodes.purpose, "sign-in"),
+      isNull(otpCodes.consumedAt),
+    ),
     orderBy: [desc(otpCodes.createdAt)],
   });
 
