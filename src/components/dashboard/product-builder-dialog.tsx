@@ -755,17 +755,95 @@ export function ProductBuilderDialog({
                       items={draft.items.map((it) => it._key)}
                       strategy={verticalListSortingStrategy}
                     >
-                      <ul className="flex flex-col gap-2">
-                        {draft.items.map((it, i) => (
-                          <SortableItemRow
-                            key={it._key}
-                            item={it}
-                            currency={draft.currency}
-                            onEdit={() => setEditingIndex(i)}
-                            onDelete={() => setConfirmDelete(i)}
-                          />
-                        ))}
-                      </ul>
+                      {draft.sections.length > 0 ? (
+                        <div className="flex flex-col gap-4">
+                          {draft.sections.map((section) => {
+                            const sectionItems = draft.items.filter(
+                              (it) => it.sectionRef === section._key,
+                            );
+                            return (
+                              <div key={section._key} className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                  <TagIcon className="size-3.5 shrink-0 text-muted-foreground" />
+                                  <span className="text-xs font-bold text-muted-foreground">
+                                    {section.title || "(بدون عنوان)"}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground/60">
+                                    ({toPersianDigits(sectionItems.length)})
+                                  </span>
+                                </div>
+                                {sectionItems.length === 0 ? (
+                                  <p className="rounded-xl border border-dashed px-3 py-2 text-center text-xs text-muted-foreground">
+                                    موردی در این دسته‌بندی نیست
+                                  </p>
+                                ) : (
+                                  <ul className="flex flex-col gap-2">
+                                    {sectionItems.map((it) => {
+                                      const i = draft.items.indexOf(it);
+                                      return (
+                                        <SortableItemRow
+                                          key={it._key}
+                                          item={it}
+                                          currency={draft.currency}
+                                          onEdit={() => setEditingIndex(i)}
+                                          onDelete={() => setConfirmDelete(i)}
+                                        />
+                                      );
+                                    })}
+                                  </ul>
+                                )}
+                              </div>
+                            );
+                          })}
+                          {(() => {
+                            const uncategorized = draft.items.filter(
+                              (it) =>
+                                !it.sectionRef ||
+                                !draft.sections.some((s) => s._key === it.sectionRef),
+                            );
+                            if (uncategorized.length === 0) return null;
+                            return (
+                              <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                  <TagIcon className="size-3.5 shrink-0 text-muted-foreground/50" />
+                                  <span className="text-xs font-bold text-muted-foreground/70">
+                                    بدون دسته‌بندی
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground/50">
+                                    ({toPersianDigits(uncategorized.length)})
+                                  </span>
+                                </div>
+                                <ul className="flex flex-col gap-2">
+                                  {uncategorized.map((it) => {
+                                    const i = draft.items.indexOf(it);
+                                    return (
+                                      <SortableItemRow
+                                        key={it._key}
+                                        item={it}
+                                        currency={draft.currency}
+                                        onEdit={() => setEditingIndex(i)}
+                                        onDelete={() => setConfirmDelete(i)}
+                                      />
+                                    );
+                                  })}
+                                </ul>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      ) : (
+                        <ul className="flex flex-col gap-2">
+                          {draft.items.map((it, i) => (
+                            <SortableItemRow
+                              key={it._key}
+                              item={it}
+                              currency={draft.currency}
+                              onEdit={() => setEditingIndex(i)}
+                              onDelete={() => setConfirmDelete(i)}
+                            />
+                          ))}
+                        </ul>
+                      )}
                     </SortableContext>
                   </DndContext>
                 )}
