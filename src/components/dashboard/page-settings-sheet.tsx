@@ -340,9 +340,7 @@ export function PageSettingsSheet({
 
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between">
-              <Label htmlFor="page-title" className="text-xs font-medium">
-                عنوان
-              </Label>
+              <SectionTitle title="عنوان" />
               <span className="text-[10px] text-muted-foreground">
                 {values.title.length}/۸۰
               </span>
@@ -362,9 +360,7 @@ export function PageSettingsSheet({
 
           <div className="space-y-1.5 pt-1">
             <div className="flex items-center justify-between">
-              <Label htmlFor="page-bio" className="text-xs font-medium">
-                بیو
-              </Label>
+            <SectionTitle title="متن بایو" />
               <span className="text-[10px] text-muted-foreground">
                 {values.bio.length}/۲۸۰
               </span>
@@ -383,9 +379,11 @@ export function PageSettingsSheet({
           </div>
 
           {/* ---- Contact info + visibility (privacy-sensitive — opt-in only) ---- */}
-          <div className="space-y-2 pt-1">
-            <Label className="text-xs font-medium">اطلاعات تماس عمومی</Label>
-
+          <div className="space-y-2 pt-1 mt-4">
+            <SectionTitle
+                  title="اطلاعات تماس عمومی"
+                  hint="این اطلاعات در پروفایل شما نمایش داده می‌شود"
+            />
             {/* Phone */}
             <div className="rounded-2xl border bg-muted/40 px-3 py-2.5 space-y-2">
               <div className="flex items-center justify-between gap-3">
@@ -405,11 +403,6 @@ export function PageSettingsSheet({
                 onChange={(e) => patch("publicPhone", e.target.value)}
                 placeholder="09123456789"
               />
-              <p className="text-[11px] text-muted-foreground">
-                {values.showPublicPhone
-                  ? "نمایش داده می‌شود و قابل کلیک است."
-                  : "کلید را روشن کن تا در صفحه عمومی نمایش داده شود."}
-              </p>
             </div>
 
             {/* Email */}
@@ -431,11 +424,6 @@ export function PageSettingsSheet({
                 onChange={(e) => patch("email", e.target.value)}
                 placeholder="you@example.com"
               />
-              <p className="text-[11px] text-muted-foreground">
-                {values.showPublicEmail
-                  ? "نمایش داده می‌شود و قابل کلیک است."
-                  : "کلید را روشن کن تا در صفحه عمومی نمایش داده شود."}
-              </p>
             </div>
           </div>
         </section>
@@ -487,7 +475,7 @@ export function PageSettingsSheet({
         {/* ---- Page identity (was "SEO") ---- */}
         <section className="space-y-3">
           <SectionTitle
-            title="معرفی صفحه"
+            title="معرفی صفحه به گوگل"
             hint="عنوان و توضیح کوتاهی که در گوگل و شبکه‌های اجتماعی نمایش داده می‌شود."
           />
 
@@ -499,7 +487,6 @@ export function PageSettingsSheet({
             avatarSeed={preview.avatarSeed}
             fallbackChar={fallbackChar}
           />
-
           <Field
             id="page-title"
             label="عنوان در نتایج جست‌وجو"
@@ -518,7 +505,7 @@ export function PageSettingsSheet({
 
           <Field
             id="page-desc"
-            label="توضیح کوتاه"
+            label="توضیح کوتاه برای گوگل"
             counter={`${values.seoDescription.length}/۲۰۰`}
             error={errors.seoDescription?.[0]}
           >
@@ -539,7 +526,6 @@ export function PageSettingsSheet({
         <section className="space-y-3">
           <SectionTitle
             title="پیش‌نمایش زنده"
-            hint="هرچه بالاتر تغییر می‌دهی، اینجا همان لحظه نشان داده می‌شود."
           />
 
           <SocialSharePreview
@@ -571,16 +557,14 @@ export function PageSettingsSheet({
         </section>
 
         {/* ---- Search visibility (last, friendly copy) ---- */}
-        <section>
+        <section className="space-y-3">
           <div className="flex items-center justify-between gap-3 rounded-2xl border bg-muted/40 px-3 py-3">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium">
                 نمایش صفحه در نتایج گوگل
               </Label>
               <p className="text-[11px] text-muted-foreground">
-                اگر روشن باشد، کسی که نامت را در گوگل جست‌وجو می‌کند می‌تواند
-                صفحه‌ت را پیدا کند. خاموش که باشد، صفحه‌ت در گوگل پنهان می‌شود
-                (خود لینک همچنان کار می‌کند).
+             اگه روشن باشه، هرکی اسمتو تو گوگل بزنه می‌تونه پیجتو پیدا کنه.
               </p>
             </div>
             <Switch
@@ -588,19 +572,11 @@ export function PageSettingsSheet({
               onCheckedChange={(c) => patch("indexEnabled", Boolean(c))}
             />
           </div>
-        </section>
-
-        {/* ---- Discover ---- */}
-        <section className="space-y-3">
-          <SectionTitle
-            title="دیسکاور"
-            hint="اگر روشن باشد، صفحه‌ات در فهرست عمومی کیوآر (kioar.com/discover) دیده می‌شود تا کاربران تازه‌ای پیدایش کنند."
-          />
           <div className="flex items-center justify-between gap-3 rounded-2xl border bg-muted/40 px-3 py-3">
             <div className="space-y-0.5">
               <Label className="text-sm font-medium">نمایش در دیسکاور</Label>
               <p className="text-[11px] text-muted-foreground">
-                فقط صفحه‌های منتشرشده و کامل در دیسکاور لیست می‌شوند.
+اگه روشن باشه، پیجت تو لیست عمومی کیوآر دیده می‌شه و آدمای جدید می‌تونن پیداش کنن.
               </p>
             </div>
             <Switch
@@ -608,10 +584,14 @@ export function PageSettingsSheet({
               onCheckedChange={(c) => patch("discoverEnabled", Boolean(c))}
             />
           </div>
+        </section>
 
-          {/* ---- Page type ---- */}
+        {/* ---- Page type ---- */}
+        <section className="space-y-3">
+          <SectionTitle
+            title="دسته‌بندی"
+          />
           <div className="space-y-2">
-            <Label className="text-sm font-medium">نوع صفحه</Label>
             <div className="flex flex-col gap-2">
               {PAGE_TYPES.map((t) => {
                 const selected = values.pageType === t.slug;
@@ -789,6 +769,17 @@ export function PageSettingsSheet({
                 src={cropSrc}
                 stencilComponent={RectangleStencil}
                 stencilProps={{ aspectRatio: 1200 / 630, grid: true }}
+                defaultSize={({ imageSize, visibleArea }) => {
+                  const area = visibleArea ?? imageSize;
+                  const ratio = 1200 / 630;
+                  let width = area.width;
+                  let height = width / ratio;
+                  if (height > area.height) {
+                    height = area.height;
+                    width = height * ratio;
+                  }
+                  return { width, height };
+                }}
                 style={{ width: "100%", height: "100%" }}
                 className="size-full"
               />
@@ -1250,10 +1241,6 @@ function SocialSharePreview({
           </div>
         </div>
       </div>
-      <p className="text-[11px] text-muted-foreground">
-        نسبت پیشنهادی ۱۲۰۰×۶۳۰. اگر عکسی نگذاری، تصویر پیش‌فرض برند نمایش داده
-        می‌شود.
-      </p>
     </div>
   );
 }

@@ -159,7 +159,7 @@ const profilePreview = {
       description: "خدمات منتخب برای شفاف‌سازی جایگاه، پیام و مسیر تبدیل برند.",
       preset: "services",
       layout: "cards",
-      itemLabel: "خدمت",
+      itemLabel: "سرویس",
       currency: "IRT",
       showPrices: true,
       displayMode: "pill",

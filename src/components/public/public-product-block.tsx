@@ -10,7 +10,7 @@
 // share this surface; the only thing that changes is the layout (list /
 // grid / cards) and the cosmetic itemLabel/pillLabel copy.
 
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from "react";
 import Image from "next/image";
 import { TagIcon, XIcon } from "lucide-react";
 
@@ -158,7 +158,7 @@ function PublicProductModal({
           "inset-0 h-full max-h-none rounded-none border-0 p-0 sm:max-w-none",
       }
     : {
-        className: "max-w-2xl p-0 overflow-hidden flex flex-col max-h-[90dvh]",
+        className: "max-w-2xl p-0 gap-0 overflow-hidden flex flex-col max-h-[90dvh]",
       };
 
   return (
@@ -189,33 +189,117 @@ function PublicProductModal({
   );
 }
 
-/** Sentinel used by the «همه» chip — distinguishes "no filter" from a
- * specific section id (which is a UUID string). */
-const ALL_CATEGORIES = "__all__";
-
 function ProductItemsList({ block }: { block: PublicProductBlockData }) {
-  const visibleItems = block.items.filter((it) => it.availability !== "hidden");
-
-  // Categories surfaced as chips are only those defined on the block AND
-  // referenced by at least one visible item. Order follows the host's
-  // configured category order (block.sections is already sorted by
-  // sortOrder server-side).
-  const sectionsById = new Map(block.sections.map((s) => [s.id, s]));
-  const activeSectionIds = new Set(
-    visibleItems
-      .map((it) => it.sectionId)
-      .filter((id): id is string => Boolean(id && sectionsById.has(id))),
-  );
-  const orderedActiveSections = block.sections.filter((s) =>
-    activeSectionIds.has(s.id),
+  const visibleItems = useMemo(
+    () => block.items.filter((it) => it.availability !== "hidden"),
+    [block.items],
   );
 
-  // Spec: hide the chip row entirely when there's only one (or zero)
-  // category in active use — no clutter when categorization isn't
-  // meaningful for this block.
-  const showChips = orderedActiveSections.length >= 2;
+  const orderedActiveSections = useMemo(() => {
+    const byId = new Map(block.sections.map((s) => [s.id, s]));
+    const activeIds = new Set(
+      visibleItems
+        .map((it) => it.sectionId)
+        .filter((id): id is string => Boolean(id && byId.has(id))),
+    );
+    return block.sections.filter((s) => activeIds.has(s.id));
+  }, [block.sections, visibleItems]);
 
-  const [activeChip, setActiveChip] = useState<string>(ALL_CATEGORIES);
+  const showNav = orderedActiveSections.length >= 2;
+
+  const itemsBySection = useMemo(() => {
+    const map = new Map<string, PublicProductItem[]>();
+    for (const s of orderedActiveSections) map.set(s.id, []);
+    const uncategorized: PublicProductItem[] = [];
+    for (const item of visibleItems) {
+      if (item.sectionId && map.has(item.sectionId)) {
+        map.get(item.sectionId)!.push(item);
+      } else {
+        uncategorized.push(item);
+      }
+    }
+    map.set("__uncategorized__", uncategorized);
+    return map;
+  }, [orderedActiveSections, visibleItems]);
+
+  const [activeSection, setActiveSection] = useState<string>(
+    orderedActiveSections[0]?.id ?? "",
+  );
+  const activeSectionRef = useRef(activeSection);
+
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const navRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
+  const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+  const isScrollingProgrammatically = useRef(false);
+
+  const getScrollParent = useCallback(
+    (el: HTMLElement | null): HTMLElement | null => {
+      if (!el || el === document.body) return null;
+      const { overflowY } = getComputedStyle(el);
+      if (overflowY === "auto" || overflowY === "scroll") return el;
+      return getScrollParent(el.parentElement);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!showNav || !wrapperRef.current) return;
+    const container = getScrollParent(wrapperRef.current);
+    if (!container) return;
+
+    const handleScroll = () => {
+      if (isScrollingProgrammatically.current) return;
+      const containerRect = container.getBoundingClientRect();
+      const navHeight = navRef.current?.offsetHeight ?? 48;
+      const threshold = containerRect.top + navHeight + 8;
+
+      let found = orderedActiveSections[0]?.id;
+      for (const section of orderedActiveSections) {
+        const el = sectionRefs.current.get(section.id);
+        if (!el) continue;
+        if (el.getBoundingClientRect().top <= threshold) found = section.id;
+      }
+      if (found && found !== activeSectionRef.current) {
+        activeSectionRef.current = found;
+        setActiveSection(found);
+      }
+    };
+
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [showNav, getScrollParent, orderedActiveSections]);
+
+  useEffect(() => {
+    if (!activeSection) return;
+    const chip = chipRefs.current.get(activeSection);
+    chip?.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [activeSection]);
+
+  const scrollToSection = useCallback(
+    (id: string) => {
+      const el = sectionRefs.current.get(id);
+      if (!el || !wrapperRef.current) return;
+      const container = getScrollParent(wrapperRef.current);
+      if (!container) return;
+
+      activeSectionRef.current = id;
+      setActiveSection(id);
+      isScrollingProgrammatically.current = true;
+
+      const navHeight = navRef.current?.offsetHeight ?? 48;
+      const containerRect = container.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const offset = elRect.top - containerRect.top - navHeight - 8;
+      container.scrollBy({ top: offset, behavior: "smooth" });
+
+      setTimeout(() => {
+        isScrollingProgrammatically.current = false;
+      }, 900);
+    },
+    [getScrollParent],
+  );
 
   if (visibleItems.length === 0) {
     return (
@@ -225,71 +309,69 @@ function ProductItemsList({ block }: { block: PublicProductBlockData }) {
     );
   }
 
-  // If the previously-active chip refers to a category that no longer
-  // appears in the active set (e.g., the host removed it or hid all its
-  // items), fall back to «همه» silently rather than rendering an empty
-  // state for a stale selection.
-  const effectiveChip =
-    activeChip === ALL_CATEGORIES ||
-    orderedActiveSections.some((s) => s.id === activeChip)
-      ? activeChip
-      : ALL_CATEGORIES;
-
-  const filteredItems =
-    effectiveChip === ALL_CATEGORIES
-      ? visibleItems
-      : visibleItems.filter((it) => it.sectionId === effectiveChip);
+  if (!showNav) {
+    return <ProductLayout layout={block.layout} block={block} items={visibleItems} />;
+  }
 
   return (
-    <div className="space-y-4">
-      {showChips ? (
-        <div
-          className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 touch-pan-x"
-          role="tablist"
-          aria-label="دسته‌بندی محصولات"
-        >
+    <div ref={wrapperRef}>
+      <div
+        ref={navRef}
+        className="no-scrollbar sticky top-0 z-10 -mx-4 flex gap-2 overflow-x-auto border-b border-border/40 bg-background/95 px-4 py-2.5 backdrop-blur-sm touch-pan-x"
+        role="tablist"
+        aria-label="دسته‌بندی محصولات"
+      >
+        {orderedActiveSections.map((s) => (
           <CategoryChip
-            label="همه"
-            selected={effectiveChip === ALL_CATEGORIES}
-            onSelect={() => setActiveChip(ALL_CATEGORIES)}
+            key={s.id}
+            ref={(el) => {
+              if (el) chipRefs.current.set(s.id, el);
+              else chipRefs.current.delete(s.id);
+            }}
+            label={s.title}
+            selected={activeSection === s.id}
+            onSelect={() => scrollToSection(s.id)}
           />
-          {orderedActiveSections.map((s) => (
-            <CategoryChip
-              key={s.id}
-              label={s.title}
-              selected={effectiveChip === s.id}
-              onSelect={() => setActiveChip(s.id)}
-            />
-          ))}
-        </div>
-      ) : null}
+        ))}
+      </div>
 
-      {filteredItems.length === 0 ? (
-        <p className="rounded-2xl bg-muted px-4 py-6 text-center text-xs text-muted-foreground">
-          موردی در این دسته‌بندی نیست.
-        </p>
-      ) : (
-        <ProductLayout
-          layout={block.layout}
-          block={block}
-          items={filteredItems}
-        />
-      )}
+      <div className="space-y-8 pt-4">
+        {orderedActiveSections.map((section) => {
+          const sectionItems = itemsBySection.get(section.id) ?? [];
+          if (sectionItems.length === 0) return null;
+          return (
+            <section
+              key={section.id}
+              ref={(el) => {
+                if (el) sectionRefs.current.set(section.id, el as HTMLElement);
+                else sectionRefs.current.delete(section.id);
+              }}
+            >
+              <h4 className="mb-3 px-1 text-sm font-bold">{section.title}</h4>
+              <ProductLayout layout={block.layout} block={block} items={sectionItems} />
+            </section>
+          );
+        })}
+
+        {(itemsBySection.get("__uncategorized__") ?? []).length > 0 && (
+          <ProductLayout
+            layout={block.layout}
+            block={block}
+            items={itemsBySection.get("__uncategorized__")!}
+          />
+        )}
+      </div>
     </div>
   );
 }
 
-function CategoryChip({
-  label,
-  selected,
-  onSelect,
-}: {
-  label: string;
-  selected: boolean;
-  onSelect: () => void;
-}) {
+const CategoryChip = forwardRef<
+  HTMLButtonElement,
+  { label: string; selected: boolean; onSelect: () => void }
+>(function CategoryChip({ label, selected, onSelect }, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       role="tab"
       aria-selected={selected}
@@ -304,7 +386,7 @@ function CategoryChip({
       {label}
     </button>
   );
-}
+});
 
 function ProductLayout({
   layout,

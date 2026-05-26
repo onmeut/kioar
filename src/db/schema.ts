@@ -940,7 +940,7 @@ export const profileProductBlocks = pgTable(
     preset: text("preset"),
     layout: productBlockLayoutEnum("layout").default("list").notNull(),
     /** Optional override for the singular item label visible to visitors
-     * ("غذا", "محصول", "خدمت", "پکیج"…). Falls back to a per-preset default
+     * ("غذا", "محصول", "سرویس", "پکیج"…). Falls back to a per-preset default
      * resolved client-side. */
     itemLabel: text("item_label"),
     /** ISO 4217-ish: "IRT" (Toman), "USD", "EUR". */

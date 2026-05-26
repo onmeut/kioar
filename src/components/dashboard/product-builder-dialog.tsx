@@ -21,9 +21,12 @@ import {
   GripVerticalIcon,
   ImageIcon,
   ImageOffIcon,
+  LayersIcon,
   Loader2Icon,
   PencilIcon,
   PlusIcon,
+  ShoppingBagIcon,
+  TagIcon,
   TrashIcon,
   UploadIcon,
   XIcon,
@@ -173,14 +176,14 @@ export type ProductBlockSubmit = {
 
 const LAYOUT_LABEL: Record<ProductBlockLayout, string> = {
   list: "لیست",
-  grid: "شبکه",
-  cards: "کارت بزرگ",
+  grid: "گرید",
+  cards: "کارت",
 };
 
-const LAYOUT_DESCRIPTION: Record<ProductBlockLayout, string> = {
-  list: "ردیف فشرده با تصویر کوچک — مناسب منو و فهرست‌های طولانی.",
-  grid: "شبکه‌ی دو ستونه با تصویر مربعی — مناسب فروشگاه یا گالری.",
-  cards: "کارت بزرگ تمام‌عرض با تصویر برجسته — مناسب پکیج‌ها و خدمات شاخص.",
+const LAYOUT_SUBLABEL: Record<ProductBlockLayout, string> = {
+  list: "منو / فهرست بلند",
+  grid: "فروشگاه / گالری",
+  cards: "پکیج / خدمات",
 };
 
 const PRICE_TYPE_LABEL: Record<ProductItemPriceType, string> = {
@@ -364,6 +367,16 @@ export function ProductBuilderDialog({
    * yet. Committed only when the user taps the «اضافه کن» button so a
    * cancel never leaves a half-empty row behind. */
   const [pendingItem, setPendingItem] = useState<ProductItemDraft | null>(null);
+  /** Stack of rows for the batch "add many at once" flow. Empty array
+   * means we're not in batch-add mode. Committed in one autoSave when
+   * the user taps «افزودن همه». */
+  const [batchRows, setBatchRows] = useState<ProductItemDraft[] | null>(null);
+  /** Working copy of all existing items for the group-edit flow. Null
+   * when not active. Committed in one autoSave when the user taps
+   * «به‌روزرسانی همه». */
+  const [groupEditRows, setGroupEditRows] = useState<ProductItemDraft[] | null>(
+    null,
+  );
   const [tab, setTab] = useState<"items" | "categories" | "settings">("items");
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   /** Index of a category pending delete confirmation. Separate from item
@@ -452,10 +465,36 @@ export function ProductBuilderDialog({
       ? "افزودن مورد"
       : editingIndex !== null
         ? "ویرایش مورد"
-        : "افزودن محصول / خدمت";
+        : batchRows !== null
+          ? "افزودن چندتایی"
+          : groupEditRows !== null
+            ? "ویرایش گروهی"
+            : "افزودن محصول / سرویس";
+
+  function handleOpenChange(next: boolean) {
+    if (!next) {
+      if (pendingItem !== null) {
+        setPendingItem(null);
+        return;
+      }
+      if (editingIndex !== null) {
+        setEditingIndex(null);
+        return;
+      }
+      if (batchRows !== null) {
+        setBatchRows(null);
+        return;
+      }
+      if (groupEditRows !== null) {
+        setGroupEditRows(null);
+        return;
+      }
+    }
+    onOpenChange(next);
+  }
 
   return (
-    <Container open={open} onOpenChange={onOpenChange}>
+    <Container open={open} onOpenChange={handleOpenChange}>
       <Content {...contentProps}>
         <Title className="sr-only">{headerTitle}</Title>
 
@@ -468,11 +507,16 @@ export function ProductBuilderDialog({
             onClick={() => {
               if (pendingItem !== null) setPendingItem(null);
               else if (editingIndex !== null) setEditingIndex(null);
+              else if (batchRows !== null) setBatchRows(null);
+              else if (groupEditRows !== null) setGroupEditRows(null);
               else if (onBack) onBack();
               else onOpenChange(false);
             }}
             aria-label={
-              pendingItem !== null || editingIndex !== null
+              pendingItem !== null ||
+              editingIndex !== null ||
+              batchRows !== null ||
+              groupEditRows !== null
                 ? "بازگشت"
                 : onBack
                   ? "بازگشت"
@@ -483,13 +527,13 @@ export function ProductBuilderDialog({
           </Button>
           <div className="flex flex-col items-center">
             <h2 className="text-sm font-bold">{headerTitle}</h2>
-            {pendingItem === null && editingIndex === null ? (
+            {pendingItem === null &&
+            editingIndex === null &&
+            batchRows === null &&
+            groupEditRows === null &&
+            savingState !== "idle" ? (
               <span className="text-[10px] text-muted-foreground">
-                {savingState === "saving"
-                  ? "در حال ذخیره…"
-                  : savingState === "saved"
-                    ? "ذخیره شد"
-                    : "تغییرات به‌صورت خودکار ذخیره می‌شود"}
+                {savingState === "saving" ? "در حال ذخیره…" : "ذخیره شد"}
               </span>
             ) : null}
           </div>
@@ -506,7 +550,51 @@ export function ProductBuilderDialog({
         </header>
 
         {/* -------------------------------------------------- ITEM EDITOR */}
-        {pendingItem !== null ? (
+        {batchRows !== null ? (
+          <BatchItemsEditor
+            mode="add"
+            rows={batchRows}
+            currency={draft.currency}
+            sections={draft.sections}
+            itemsCap={itemsCap}
+            currentItemsCount={draft.items.length}
+            onChange={(next) => setBatchRows(next)}
+            onCommit={async () => {
+              const valid = batchRows.filter((r) => r.title.trim());
+              if (valid.length === 0) {
+                setBatchRows(null);
+                return;
+              }
+              const room = itemsCap - draft.items.length;
+              const toAdd = valid.slice(0, Math.max(0, room));
+              const next = {
+                ...draft,
+                items: [...draft.items, ...toAdd],
+              };
+              setBatchRows(null);
+              await autoSave(next);
+            }}
+            onUploadImage={onUploadItemImage}
+          />
+        ) : groupEditRows !== null ? (
+          <BatchItemsEditor
+            mode="edit"
+            rows={groupEditRows}
+            currency={draft.currency}
+            sections={draft.sections}
+            itemsCap={itemsCap}
+            currentItemsCount={0}
+            onChange={(next) => setGroupEditRows(next)}
+            onCommit={async () => {
+              // Drop rows whose title was emptied during edit.
+              const cleaned = groupEditRows.filter((r) => r.title.trim());
+              const next = { ...draft, items: cleaned };
+              setGroupEditRows(null);
+              await autoSave(next);
+            }}
+            onUploadImage={onUploadItemImage}
+          />
+        ) : pendingItem !== null ? (
           <ItemEditor
             mode="add"
             item={pendingItem}
@@ -588,11 +676,61 @@ export function ProductBuilderDialog({
                 value="items"
                 className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4"
               >
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="default"
+                    onClick={() => {
+                      if (draft.items.length >= itemsCap) return;
+                      setPendingItem(emptyItem());
+                    }}
+                    disabled={draft.items.length >= itemsCap}
+                    className="gap-1"
+                  >
+                    <PlusIcon className="size-4" />
+                    افزودن
+                  </Button>
+                  {draft.items.length === 0 ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        if (draft.items.length >= itemsCap) return;
+                        setBatchRows([emptyItem(), emptyItem(), emptyItem()]);
+                      }}
+                      disabled={draft.items.length >= itemsCap}
+                      className="gap-1"
+                    >
+                      <LayersIcon className="size-4" />
+                      افزودن چندتایی
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setGroupEditRows(
+                          draft.items.map((it) => ({ ...it })),
+                        );
+                      }}
+                      className="gap-1"
+                    >
+                      <PencilIcon className="size-4" />
+                      ویرایش گروهی
+                    </Button>
+                  )}
+                  <span className="ms-auto text-xs text-muted-foreground">
+                    {toPersianDigits(draft.items.length)} /{" "}
+                    {toPersianDigits(itemsCap)}
+                  </span>
+                </div>
                 {draft.items.length === 0 ? (
-                  <div className="rounded-2xl bg-muted/40 px-4 py-8 text-center">
+                  <div className="flex flex-col items-center gap-2 rounded-2xl bg-muted/40 px-4 py-10 text-center">
+                    <div className="flex size-10 items-center justify-center rounded-full bg-muted">
+                      <ShoppingBagIcon className="size-5 text-muted-foreground" />
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      از طریق دکمه‌ی زیر اولین محصول یا خدمت خودتون رو ایجاد
-                      کنید.
+                      هنوز موردی اضافه نشده
                     </p>
                   </div>
                 ) : (
@@ -632,25 +770,6 @@ export function ProductBuilderDialog({
                   </DndContext>
                 )}
 
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="default"
-                    onClick={() => {
-                      if (draft.items.length >= itemsCap) return;
-                      setPendingItem(emptyItem());
-                    }}
-                    disabled={draft.items.length >= itemsCap}
-                    className="gap-1"
-                  >
-                    <PlusIcon className="size-4" />
-                    افزودن خدمت/محصول
-                  </Button>
-                  <span className="ms-auto self-center text-xs text-muted-foreground">
-                    {toPersianDigits(draft.items.length)} /{" "}
-                    {toPersianDigits(itemsCap)}
-                  </span>
-                </div>
               </TabsContent>
 
               <TabsContent
@@ -703,29 +822,24 @@ export function ProductBuilderDialog({
                 />
 
                 <div className="grid gap-2">
-                  <Label>چیدمان لیست</Label>
-                  <p className="text-xs text-muted-foreground">
-                    شکل نمایش موارد روی صفحه‌ی شما را انتخاب کنید.
-                  </p>
-                  <div className="grid grid-cols-1 gap-2">
+                  <Label>نمای محصولات</Label>
+                  <div className="grid grid-cols-3 gap-2">
                     {PRODUCT_BLOCK_LAYOUTS.map((l) => (
-                      <SelectableCard
+                      <LayoutTile
                         key={l}
-                        title={LAYOUT_LABEL[l]}
-                        description={LAYOUT_DESCRIPTION[l]}
+                        layout={l}
                         selected={draft.layout === l}
                         onSelect={() => commit({ ...draft, layout: l })}
-                        preview={<LayoutPreview layout={l} />}
                       />
                     ))}
                   </div>
                 </div>
 
                 <div className="grid gap-2">
-                  <Label>روش نمایش روی صفحه</Label>
+                  <Label>نحوه نمایش در صفحه</Label>
                   <div className="grid grid-cols-2 gap-2">
                     {PRODUCT_BLOCK_DISPLAY_MODES.map((m) => (
-                      <DisplayModeCard
+                      <DisplayModeTile
                         key={m}
                         mode={m}
                         selected={draft.displayMode === m}
@@ -975,12 +1089,6 @@ function CategoriesPane({
 
   return (
     <>
-      <p className="text-xs text-muted-foreground">
-        دسته‌بندی‌ها روی صفحه‌ی شما به‌صورت تب‌های افقی نمایش داده می‌شوند و
-        بازدیدکننده می‌تواند بین آن‌ها جابه‌جا شود. تخصیص دسته‌بندی به هر مورد
-        اختیاری است.
-      </p>
-
       <div className="flex items-end gap-2">
         <div className="grid flex-1 gap-1.5">
           <Label htmlFor="cat-new" className="sr-only">
@@ -989,10 +1097,11 @@ function CategoriesPane({
           <Input
             id="cat-new"
             value={newTitle}
-            placeholder="مثلاً: نوشیدنی‌ها / غذاها / دسر"
+            placeholder="مثلاً: خدمات / محصولات / منو"
             maxLength={80}
             enterKeyHint="done"
             disabled={atCap}
+            className="rounded-full"
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -1022,10 +1131,12 @@ function CategoriesPane({
       ) : null}
 
       {sections.length === 0 ? (
-        <div className="rounded-2xl bg-muted/40 px-4 py-8 text-center">
+        <div className="flex flex-col items-center gap-2 rounded-2xl bg-muted/40 px-4 py-10 text-center">
+          <div className="flex size-10 items-center justify-center rounded-full bg-muted">
+            <TagIcon className="size-5 text-muted-foreground" />
+          </div>
           <p className="text-sm text-muted-foreground">
-            هنوز دسته‌بندی‌ای ندارید. وقتی حداقل دو دسته‌بندی داشته باشید، تب‌های
-            فیلتر روی صفحه‌ی شما به‌صورت خودکار نمایش داده می‌شوند.
+            هنوز دسته‌بندی‌ای ندارید
           </p>
         </div>
       ) : (
@@ -1125,6 +1236,123 @@ function SortableCategoryRow({
       >
         <TrashIcon className="size-4" />
       </button>
+    </li>
+  );
+}
+
+function SortableBatchRow({
+  row,
+  currency,
+  sections,
+  submitting,
+  onUpdate,
+  onRemove,
+  onUploadImage,
+}: {
+  row: ProductItemDraft;
+  currency: ProductBlockCurrency;
+  sections: ProductSectionDraft[];
+  submitting: boolean;
+  onUpdate: (patch: Partial<ProductItemDraft>) => void;
+  onRemove: () => void;
+  onUploadImage?: (file: File) => Promise<string | null>;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row._key });
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      className="flex flex-col gap-2.5 rounded-2xl border bg-card p-3"
+    >
+      {/* header: drag handle (right/start) · row number · delete (left/end) */}
+      <div className="flex items-center gap-2">
+        <span
+          className="touch-none cursor-grab text-muted-foreground active:cursor-grabbing"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVerticalIcon className="size-4" />
+        </span>
+        <span className="flex-1" />
+<button
+          type="button"
+          onClick={onRemove}
+          disabled={submitting}
+          aria-label="حذف ردیف"
+          className="grid size-7 place-items-center rounded-lg text-destructive hover:bg-destructive/10"
+        >
+          <TrashIcon className="size-3.5" />
+        </button>
+      </div>
+
+      {/* title 50% + price 50% */}
+      <div className="grid grid-cols-2 gap-2">
+        <Input
+          id={`batch-title-${row._key}`}
+          value={row.title}
+          maxLength={120}
+          placeholder="عنوان"
+          enterKeyHint="next"
+          aria-label="عنوان"
+          onChange={(e) => onUpdate({ title: e.target.value })}
+        />
+        <Input
+          id={`batch-price-${row._key}`}
+          inputMode="decimal"
+          dir="ltr"
+          placeholder={`قیمت (${CURRENCY_LABEL[currency]})`}
+          value={row.priceMajor}
+          enterKeyHint="next"
+          aria-label={`قیمت (${CURRENCY_LABEL[currency]})`}
+          onChange={(e) => onUpdate({ priceMajor: e.target.value })}
+        />
+      </div>
+
+      {sections.length > 0 ? (
+        <Select
+          value={row.sectionRef ?? "__none__"}
+          onValueChange={(v) =>
+            onUpdate({ sectionRef: v === "__none__" ? null : v })
+          }
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue>
+              {(v) =>
+                v === "__none__"
+                  ? "بدون دسته‌بندی"
+                  : (sections.find((s) => s._key === v)?.title ??
+                    "بدون دسته‌بندی")
+              }
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">بدون دسته‌بندی</SelectItem>
+            {sections.map((s) => (
+              <SelectItem key={s._key} value={s._key}>
+                {s.title || "(بدون عنوان)"}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      ) : null}
+
+      <ProductImageField
+        imageUrl={row.imageUrl}
+        onChange={(url) => onUpdate({ imageUrl: url })}
+        onUploadImage={onUploadImage}
+      />
     </li>
   );
 }
@@ -1509,7 +1737,7 @@ function ItemEditor({
       </div>
 
       {/* Submit bar — flex sibling sits naturally at the bottom of the flex column */}
-      <div className="shrink-0 border-t bg-background px-4 py-3 safe-area-bottom">
+      <div className="shrink-0 border-t bg-background px-4 pt-3 safe-pb">
         <Button
           type="button"
           onClick={handleSubmit}
@@ -1610,6 +1838,11 @@ function ProductImageField({
                 src={cropSrc}
                 stencilProps={{ aspectRatio: 1, grid: true }}
                 imageRestriction={ImageRestriction.fitArea}
+                defaultSize={({ imageSize, visibleArea }) => {
+                  const area = visibleArea ?? imageSize;
+                  const side = Math.min(area.width, area.height);
+                  return { width: side, height: side };
+                }}
                 style={{ width: "100%", height: "100%" }}
                 className="size-full"
               />
@@ -1717,21 +1950,176 @@ function ProductImageField({
 }
 
 // ---------------------------------------------------------------------------
-// Layout / display-mode selector cards
+// Batch items editor — used by both "add multiple at once" and "group edit".
+//
+// One stacked card per row exposing the four essentials (title · category ·
+// price · image). Per-row delete; "add another row" appends in add-mode.
+// A single bottom action commits the whole batch in one autoSave call so
+// the server is only hit once per batch.
 // ---------------------------------------------------------------------------
 
-function SelectableCard({
-  title,
-  description,
+function BatchItemsEditor({
+  mode,
+  rows,
+  currency,
+  sections,
+  itemsCap,
+  currentItemsCount,
+  onChange,
+  onCommit,
+  onUploadImage,
+}: {
+  mode: "add" | "edit";
+  rows: ProductItemDraft[];
+  currency: ProductBlockCurrency;
+  sections: ProductSectionDraft[];
+  /** Hard cap on the block as a whole. In add-mode, prevents the user
+   * from staging more rows than the block can accept. */
+  itemsCap: number;
+  /** Items already on the block. In add-mode, `currentItemsCount + rows.length`
+   * must stay ≤ itemsCap. In edit-mode, pass 0 (the rows ARE the items). */
+  currentItemsCount: number;
+  onChange: (next: ProductItemDraft[]) => void;
+  onCommit: () => Promise<void> | void;
+  onUploadImage?: (file: File) => Promise<string | null>;
+}) {
+  const [submitting, setSubmitting] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+  const titledCount = rows.filter((r) => r.title.trim()).length;
+  const atCap =
+    mode === "add" && currentItemsCount + rows.length >= itemsCap;
+
+  function updateRow(index: number, patch: Partial<ProductItemDraft>) {
+    onChange(rows.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+  }
+
+  function removeRow(index: number) {
+    onChange(rows.filter((_, i) => i !== index));
+  }
+
+  function addRow() {
+    if (atCap) return;
+    onChange([...rows, emptyItem()]);
+  }
+
+  async function handleSubmit() {
+    setSubmitting(true);
+    try {
+      await onCommit();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const submitLabel =
+    mode === "add"
+      ? titledCount > 0
+        ? `افزودن (${toPersianDigits(titledCount)})`
+        : "افزودن"
+      : "به‌روزرسانی همه";
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4">
+        {mode === "add" ? (
+          <p className="text-xs text-muted-foreground">
+            موارد را پشت سر هم وارد کنید. ردیف‌های بدون عنوان نادیده گرفته
+            می‌شوند.
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            همه موارد در یک نما — ویرایش هر کدام و در پایان «به‌روزرسانی همه».
+          </p>
+        )}
+
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event: DragEndEvent) => {
+            const { active, over } = event;
+            if (!over || active.id === over.id) return;
+            const ids = rows.map((r) => r._key);
+            const oldIndex = ids.indexOf(String(active.id));
+            const newIndex = ids.indexOf(String(over.id));
+            if (oldIndex !== -1 && newIndex !== -1) {
+              onChange(arrayMove(rows, oldIndex, newIndex));
+            }
+          }}
+        >
+          <SortableContext
+            items={rows.map((r) => r._key)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="flex flex-col gap-3">
+              {rows.map((row, i) => (
+                <SortableBatchRow
+                  key={row._key}
+                  row={row}
+                  currency={currency}
+                  sections={sections}
+                  submitting={submitting}
+                  onUpdate={(patch) => updateRow(i, patch)}
+                  onRemove={() => removeRow(i)}
+                  onUploadImage={onUploadImage}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
+
+        <Button
+          type="button"
+          variant="outline"
+          onClick={addRow}
+          disabled={atCap || submitting}
+          className="w-full gap-1"
+        >
+          <PlusIcon className="size-4" />
+          افزودن ردیف دیگر
+        </Button>
+
+        {atCap ? (
+          <p className="text-[11px] text-muted-foreground">
+            به سقف {toPersianDigits(itemsCap)} مورد رسیدید.
+          </p>
+        ) : null}
+      </div>
+
+      <div className="shrink-0 border-t bg-background px-4 pt-3 safe-pb">
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={
+            submitting || (mode === "add" && titledCount === 0) || rows.length === 0
+          }
+          className="w-full gap-1"
+        >
+          {submitting ? (
+            <Loader2Icon className="size-4 animate-spin" />
+          ) : (
+            <PlusIcon className="size-4" />
+          )}
+          {submitLabel}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Layout tile — compact 3-up horizontal selector with distinct skeletons
+// ---------------------------------------------------------------------------
+
+function LayoutTile({
+  layout,
   selected,
   onSelect,
-  preview,
 }: {
-  title: string;
-  description: string;
+  layout: ProductBlockLayout;
   selected: boolean;
   onSelect: () => void;
-  preview: React.ReactNode;
 }) {
   return (
     <button
@@ -1739,68 +2127,80 @@ function SelectableCard({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "flex items-start gap-3 rounded-2xl border bg-card p-3 text-start transition",
+        "flex flex-col gap-2 rounded-2xl border bg-card p-2.5 text-center transition",
         selected
-          ? "border-foreground ring-2 ring-foreground/10"
+          ? "border-foreground bg-foreground/5 ring-2 ring-foreground/10"
           : "hover:border-foreground/20",
       )}
     >
-      <span
-        className={cn(
-          "mt-1 grid size-5 shrink-0 place-items-center rounded-full border-2 transition",
-          selected
-            ? "border-foreground bg-foreground"
-            : "border-muted-foreground/30",
-        )}
-      >
-        {selected ? (
-          <span className="size-1.5 rounded-full bg-background" />
-        ) : null}
-      </span>
-      <div className="min-w-0 flex-1">
-        <p className="text-sm font-bold">{title}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
-        <div className="mt-3 grid h-20 place-items-center overflow-hidden rounded-xl bg-muted/40">
-          {preview}
-        </div>
+      <div className="grid h-16 w-full place-items-center overflow-hidden rounded-xl bg-muted/50">
+        <LayoutSketch layout={layout} active={selected} />
+      </div>
+      <div>
+        <p className={cn("text-xs font-bold leading-tight", selected ? "text-foreground" : "text-foreground/80")}>
+          {LAYOUT_LABEL[layout]}
+        </p>
+        <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
+          {LAYOUT_SUBLABEL[layout]}
+        </p>
       </div>
     </button>
   );
 }
 
-function LayoutPreview({ layout }: { layout: ProductBlockLayout }) {
+function LayoutSketch({ layout, active }: { layout: ProductBlockLayout; active: boolean }) {
+  const bar = active ? "bg-foreground/25" : "bg-foreground/12";
+  const thumb = active ? "bg-foreground/35" : "bg-foreground/18";
+  const price = active ? "bg-foreground/50" : "bg-foreground/30";
+
   if (layout === "list") {
     return (
-      <div className="flex w-full flex-col gap-1.5 px-4">
+      <div className="flex w-full flex-col gap-1.5 px-3">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="flex items-center gap-2">
-            <div className="size-4 rounded bg-muted" />
-            <div className="h-1.5 flex-1 rounded bg-muted" />
-            <div className="h-1.5 w-6 rounded bg-foreground/40" />
+          <div key={i} className="flex items-center gap-1.5">
+            <div className={cn("size-5 shrink-0 rounded-md", thumb)} />
+            <div className={cn("h-1.5 flex-1 rounded-full", bar)} />
+            <div className={cn("h-1.5 w-5 shrink-0 rounded-full", price)} />
           </div>
         ))}
       </div>
     );
   }
+
   if (layout === "grid") {
     return (
-      <div className="grid w-full grid-cols-3 gap-1.5 px-4">
+      <div className="grid w-full grid-cols-3 gap-1 px-3">
         {[0, 1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="aspect-square rounded bg-muted" />
+          <div key={i} className="flex flex-col gap-0.5">
+            <div className={cn("aspect-square w-full rounded-md", thumb)} />
+            <div className={cn("h-1 w-full rounded-full", bar)} />
+          </div>
         ))}
       </div>
     );
   }
+
   // cards
   return (
-    <div className="flex w-full flex-col gap-1.5 px-4">
-      <div className="h-8 rounded-md bg-muted" />
-      <div className="h-8 rounded-md bg-muted" />
+    <div className="flex w-full flex-col gap-1.5 px-3">
+      {[0, 1].map((i) => (
+        <div key={i} className={cn("flex items-center gap-2 rounded-lg p-1.5", thumb)}>
+          <div className={cn("size-6 shrink-0 rounded-md", active ? "bg-foreground/20" : "bg-foreground/10")} />
+          <div className="flex flex-1 flex-col gap-1">
+            <div className={cn("h-1.5 w-3/4 rounded-full", bar)} />
+            <div className={cn("h-1 w-1/2 rounded-full", active ? "bg-foreground/35" : "bg-foreground/20")} />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
 
-function DisplayModeCard({
+// ---------------------------------------------------------------------------
+// Display mode tile — "where does the block live on the public page?"
+// ---------------------------------------------------------------------------
+
+function DisplayModeTile({
   mode,
   selected,
   onSelect,
@@ -1809,55 +2209,60 @@ function DisplayModeCard({
   selected: boolean;
   onSelect: () => void;
 }) {
-  const title = mode === "pill" ? "دکمه‌ای" : "نمایش مستقیم";
-  const description =
-    mode === "pill"
-      ? "یک دکمه روی صفحه نمایش داده می‌شود که با لمس، لیست محصولات در پنجره‌ای باز می‌شود."
-      : "تمام محصولات به‌صورت مستقیم روی صفحه نمایش داده می‌شوند.";
+  const isPill = mode === "pill";
   return (
     <button
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "flex flex-col gap-2 rounded-2xl border bg-card p-3 text-start transition",
+        "flex flex-col gap-2 rounded-2xl border bg-card p-2.5 text-start transition",
         selected
-          ? "border-foreground ring-2 ring-foreground/10"
+          ? "border-foreground bg-foreground/5 ring-2 ring-foreground/10"
           : "hover:border-foreground/20",
       )}
     >
-      <div className="grid h-20 place-items-center overflow-hidden rounded-xl bg-muted/40">
-        {mode === "pill" ? (
-          <div className="flex flex-col items-center gap-1">
-            <div className="h-2 w-16 rounded bg-muted" />
-            <div className="h-2 w-12 rounded bg-muted" />
-            <div className="mt-1 h-5 w-20 rounded-full bg-foreground/70" />
-          </div>
-        ) : (
-          <div className="flex w-full flex-col gap-1 px-3">
-            <div className="flex items-center gap-2">
-              <div className="size-4 rounded bg-muted" />
-              <div className="h-1.5 flex-1 rounded bg-muted" />
-              <div className="h-1.5 w-6 rounded bg-foreground/40" />
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="size-4 rounded bg-muted" />
-              <div className="h-1.5 flex-1 rounded bg-muted" />
-              <div className="h-1.5 w-6 rounded bg-foreground/40" />
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="size-4 rounded bg-muted" />
-              <div className="h-1.5 flex-1 rounded bg-muted" />
-              <div className="h-1.5 w-6 rounded bg-foreground/40" />
-            </div>
-          </div>
-        )}
+      <div className="grid h-16 w-full place-items-center overflow-hidden rounded-xl bg-muted/50">
+        {isPill ? <DisplaySketchPill active={selected} /> : <DisplaySketchInline active={selected} />}
       </div>
       <div>
-        <p className="text-sm font-bold">{title}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{description}</p>
+        <p className={cn("text-xs font-bold leading-tight", selected ? "text-foreground" : "text-foreground/80")}>
+          {isPill ? "دکمه محصولات" : "مستقیم داخل صفحه"}
+        </p>
+        <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
+          {isPill ? "بعد از کلیک روی دکمه باز می‌شه" : "مستقیم تو پروفایل نمایش داده می‌شه"}
+        </p>
       </div>
     </button>
+  );
+}
+
+function DisplaySketchPill({ active }: { active: boolean }) {
+  const bar = active ? "bg-foreground/20" : "bg-foreground/12";
+  const btn = active ? "bg-foreground/70" : "bg-foreground/40";
+  return (
+    <div className="flex w-full flex-col items-center gap-1.5 px-4">
+      <div className={cn("h-1.5 w-full rounded-full", bar)} />
+      <div className={cn("h-1.5 w-4/5 rounded-full", bar)} />
+      <div className={cn("mt-1 h-5 w-20 rounded-full", btn)} />
+    </div>
+  );
+}
+
+function DisplaySketchInline({ active }: { active: boolean }) {
+  const bar = active ? "bg-foreground/20" : "bg-foreground/12";
+  const thumb = active ? "bg-foreground/30" : "bg-foreground/18";
+  const price = active ? "bg-foreground/50" : "bg-foreground/28";
+  return (
+    <div className="flex w-full flex-col gap-1 px-3">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex items-center gap-1.5">
+          <div className={cn("size-4 shrink-0 rounded", thumb)} />
+          <div className={cn("h-1.5 flex-1 rounded-full", bar)} />
+          <div className={cn("h-1.5 w-4 shrink-0 rounded-full", price)} />
+        </div>
+      ))}
+    </div>
   );
 }
 

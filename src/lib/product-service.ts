@@ -57,7 +57,7 @@ export const PRODUCT_PRESETS: Record<string, ProductPresetDefaults> = {
   },
   services: {
     name: "خدمات",
-    itemLabel: "خدمت",
+    itemLabel: "سرویس",
     pillLabel: "مشاهده خدمات",
   },
   packages: {
