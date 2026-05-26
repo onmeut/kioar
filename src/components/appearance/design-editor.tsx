@@ -24,7 +24,6 @@ import {
   RotateCcwIcon,
   SmartphoneIcon,
   UploadCloudIcon,
-  WallpaperIcon,
   XIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -174,10 +173,10 @@ export function DesignEditor({
           Preview fills the available area; bottom sheet hosts the controls
           with sticky tab bar pinned to the very bottom (above iOS inset). */}
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
-        <div className="flex shrink-0 items-center justify-center bg-muted/30 px-3 py-3">
+        <div className="flex shrink-0 items-center justify-center bg-muted/30 px-3 py-1.5">
           <ViewportToggle value={viewport} onChange={setViewport} compact />
         </div>
-        <div className="flex min-h-0 flex-1 items-start justify-center overflow-hidden bg-muted/30">
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 px-3 py-2">
           <MobilePreviewArea
             draft={draft}
             profile={previewProfile}
@@ -210,16 +209,16 @@ function DesignHeader({
   onReset: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between gap-2 border-b bg-background px-3 py-3 pt-[max(env(safe-area-inset-top),0.75rem)] md:px-6 md:py-4">
-      <div className="flex items-center gap-2">
+    <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between gap-2 border-b bg-background px-2 py-1.5 pt-[max(env(safe-area-inset-top),0.375rem)] md:px-6 md:py-4 md:pt-4">
+      <div className="flex items-center gap-1.5 md:gap-2">
         <Link
           href={"/me" as Route}
           aria-label="بازگشت"
-          className="tap-target inline-flex size-11 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="inline-flex size-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground md:size-11"
         >
           <ArrowRightIcon className="size-5" aria-hidden />
         </Link>
-        <h1 className="text-lg font-bold md:text-xl">طراحی</h1>
+        <h1 className="text-base font-bold md:text-xl">طراحی</h1>
       </div>
       <div className="flex items-center gap-2">
         <Button
@@ -236,7 +235,7 @@ function DesignHeader({
           type="button"
           onClick={onSave}
           disabled={saving || !isDirty}
-          className="tap-target h-11 min-w-24 rounded-full font-bold"
+          className="h-9 min-w-20 rounded-full text-sm font-bold md:h-11 md:min-w-24 md:text-base"
         >
           {saving ? "در حال ذخیره…" : "ذخیره"}
         </Button>
@@ -379,21 +378,34 @@ function MobileControlsSheet({
     };
   }, [open]);
 
-  const items: Array<{ id: SectionId; label: string; icon: LucideIcon }> = [
-    { id: "theme", label: "تم", icon: PaletteIcon },
-    { id: "wallpaper", label: "پس‌زمینه", icon: WallpaperIcon },
+  const items: Array<{
+    id: SectionId;
+    label: string;
+    thumb: ReactNode;
+  }> = [
+    {
+      id: "theme",
+      label: "تم",
+      thumb: <ThemeThumb themeId={draft.theme} />,
+    },
+    {
+      id: "wallpaper",
+      label: "پس‌زمینه",
+      thumb: <WallpaperThumb wallpaper={draft.wallpaper} themeId={draft.theme} />,
+    },
   ];
 
   return (
     <>
       {/* Bottom tab bar — always visible, sticky to viewport bottom, safe-area aware.
-          Tapping a tab opens the controls sheet for that section. */}
+          Each tab is a card with a live thumbnail of what it controls (mirrors
+          the desktop sidebar rail). Tapping opens the controls sheet. */}
       <nav
-        className="z-20 flex shrink-0 items-center justify-around gap-1 border-t bg-background px-2 pt-1 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+        className="z-20 flex shrink-0 items-stretch gap-2 border-t bg-background px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
         aria-label="بخش‌های طراحی"
       >
         {items.map((it) => {
-          const active = section === it.id;
+          const active = open && section === it.id;
           return (
             <button
               key={it.id}
@@ -404,14 +416,16 @@ function MobileControlsSheet({
               }}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "tap-target flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-1.5 text-xs font-bold transition-colors",
+                "flex flex-1 items-center gap-2 rounded-2xl border p-1.5 text-start text-sm font-bold transition-colors",
                 active
-                  ? "text-foreground"
-                  : "text-muted-foreground hover:text-foreground",
+                  ? "border-foreground bg-muted text-foreground"
+                  : "border-border bg-background text-foreground hover:bg-muted/60",
               )}
             >
-              <it.icon className="size-5" aria-hidden />
-              {it.label}
+              <span className="size-10 shrink-0 overflow-hidden rounded-lg border border-border bg-background">
+                {it.thumb}
+              </span>
+              <span className="flex-1 truncate">{it.label}</span>
             </button>
           );
         })}
@@ -1286,7 +1300,7 @@ function MobilePreviewArea({
       <PhonePreview
         draft={draft}
         profile={profile}
-        className="my-2 w-auto max-w-full"
+        className="h-full max-h-full w-auto max-w-full"
       />
     );
   }

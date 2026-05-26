@@ -87,6 +87,7 @@ import {
   PRODUCT_ITEM_AVAILABILITY,
   PRODUCT_ITEM_PRICE_TYPES,
   PRODUCT_ITEMS_HARD_CAP,
+  PRODUCT_SECTIONS_MAX,
   type ProductBlockCurrency,
   type ProductBlockDisplayMode,
   type ProductBlockLayout,
@@ -271,6 +272,17 @@ function majorStringToMinor(
 }
 
 function buildPayload(d: ProductBlockDraft): ProductBlockSubmit {
+  // The product-service resolves item.sectionRef via a map keyed by
+  // `section.id ?? __new_${index}`. Client drafts identify sections by
+  // their stable `_key` (which equals `id` for persisted rows but is a
+  // random transient string for newly-created categories). Translate
+  // each item's `sectionRef` through that same convention before
+  // sending so new categories actually attach to their items.
+  const keyToServerRef = new Map<string, string>();
+  d.sections.forEach((s, index) => {
+    keyToServerRef.set(s._key, s.id ?? `__new_${index}`);
+  });
+
   return {
     id: d.id ?? null,
     name: d.name.trim() || "محصولات",
@@ -291,7 +303,10 @@ function buildPayload(d: ProductBlockDraft): ProductBlockSubmit {
     })),
     items: d.items.map((it) => ({
       id: it.id ?? null,
-      sectionRef: it.sectionRef ?? null,
+      sectionRef:
+        it.sectionRef && keyToServerRef.has(it.sectionRef)
+          ? keyToServerRef.get(it.sectionRef)!
+          : null,
       title: it.title.trim(),
       description: it.description?.trim() ? it.description.trim() : null,
       imageUrl: it.imageUrl,
@@ -349,8 +364,13 @@ export function ProductBuilderDialog({
    * yet. Committed only when the user taps the «اضافه کن» button so a
    * cancel never leaves a half-empty row behind. */
   const [pendingItem, setPendingItem] = useState<ProductItemDraft | null>(null);
-  const [tab, setTab] = useState<"items" | "layout" | "settings">("items");
+  const [tab, setTab] = useState<"items" | "categories" | "settings">("items");
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
+  /** Index of a category pending delete confirmation. Separate from item
+   * delete so the two dialogs never collide. */
+  const [confirmDeleteCategory, setConfirmDeleteCategory] = useState<
+    number | null
+  >(null);
   const [savingState, setSavingState] = useState<"idle" | "saving" | "saved">(
     "idle",
   );
@@ -491,6 +511,7 @@ export function ProductBuilderDialog({
             mode="add"
             item={pendingItem}
             currency={draft.currency}
+            sections={draft.sections}
             onChange={(next) => setPendingItem(next)}
             onCommit={async () => {
               if (!pendingItem.title.trim()) return;
@@ -509,6 +530,7 @@ export function ProductBuilderDialog({
             mode="edit"
             item={editingItem}
             currency={draft.currency}
+            sections={draft.sections}
             onChange={(next) =>
               setDraft((d) => ({
                 ...d,
@@ -544,7 +566,7 @@ export function ProductBuilderDialog({
             <Tabs
               value={tab}
               onValueChange={(v) =>
-                setTab(v as "items" | "layout" | "settings")
+                setTab(v as "items" | "categories" | "settings")
               }
               className="flex min-h-0 flex-1 flex-col"
             >
@@ -553,8 +575,8 @@ export function ProductBuilderDialog({
                   <TabsTrigger value="items" className="flex-1">
                     موارد ({toPersianDigits(draft.items.length)})
                   </TabsTrigger>
-                  <TabsTrigger value="layout" className="flex-1">
-                    چیدمان
+                  <TabsTrigger value="categories" className="flex-1">
+                    دسته‌بندی‌ها
                   </TabsTrigger>
                   <TabsTrigger value="settings" className="flex-1">
                     تنظیمات
@@ -632,9 +654,54 @@ export function ProductBuilderDialog({
               </TabsContent>
 
               <TabsContent
-                value="layout"
+                value="categories"
+                className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-4"
+              >
+                <CategoriesPane
+                  sections={draft.sections}
+                  itemsAssignedTo={(sectionId) =>
+                    draft.items.filter((it) => it.sectionRef === sectionId)
+                      .length
+                  }
+                  onAdd={(title) => {
+                    if (draft.sections.length >= PRODUCT_SECTIONS_MAX) return;
+                    commit({
+                      ...draft,
+                      sections: [
+                        ...draft.sections,
+                        { id: null, _key: newKey(), title },
+                      ],
+                    });
+                  }}
+                  onRename={(key, title) => {
+                    commit({
+                      ...draft,
+                      sections: draft.sections.map((s) =>
+                        s._key === key ? { ...s, title } : s,
+                      ),
+                    });
+                  }}
+                  onRequestDelete={(index) => setConfirmDeleteCategory(index)}
+                  onReorder={(oldIndex, newIndex) => {
+                    commit({
+                      ...draft,
+                      sections: arrayMove(draft.sections, oldIndex, newIndex),
+                    });
+                  }}
+                  sensors={sensors}
+                />
+              </TabsContent>
+
+              <TabsContent
+                value="settings"
                 className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4"
               >
+                <SettingsPane
+                  draft={draft}
+                  setDraft={setDraft}
+                  onCommit={(d) => void autoSave(d)}
+                />
+
                 <div className="grid gap-2">
                   <Label>چیدمان لیست</Label>
                   <p className="text-xs text-muted-foreground">
@@ -685,17 +752,6 @@ export function ProductBuilderDialog({
                   </div>
                 ) : null}
               </TabsContent>
-
-              <TabsContent
-                value="settings"
-                className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4"
-              >
-                <SettingsPane
-                  draft={draft}
-                  setDraft={setDraft}
-                  onCommit={(d) => void autoSave(d)}
-                />
-              </TabsContent>
             </Tabs>
           </div>
         )}
@@ -731,6 +787,63 @@ export function ProductBuilderDialog({
               حذف
             </AlertDialogAction>
           </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={confirmDeleteCategory !== null}
+        onOpenChange={(o) => {
+          if (!o) setConfirmDeleteCategory(null);
+        }}
+      >
+        <AlertDialogContent size="sm">
+          {(() => {
+            const section =
+              confirmDeleteCategory !== null
+                ? draft.sections[confirmDeleteCategory]
+                : null;
+            const sectionKey = section?._key ?? null;
+            const assignedCount = sectionKey
+              ? draft.items.filter((it) => it.sectionRef === sectionKey).length
+              : 0;
+            return (
+              <>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    حذف دسته‌بندی{section ? ` «${section.title}»` : ""}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {assignedCount > 0
+                      ? `${toPersianDigits(assignedCount)} مورد به این دسته‌بندی اختصاص داده شده. با حذف دسته‌بندی، خود موارد باقی می‌مانند و فقط بدون دسته‌بندی می‌شوند.`
+                      : "این دسته‌بندی حذف می‌شود. این عمل قابل بازگشت نیست."}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>انصراف</AlertDialogCancel>
+                  <AlertDialogAction
+                    variant="destructive"
+                    onClick={() => {
+                      if (confirmDeleteCategory === null) return;
+                      const idx = confirmDeleteCategory;
+                      const removedKey = draft.sections[idx]?._key;
+                      setConfirmDeleteCategory(null);
+                      commit({
+                        ...draft,
+                        sections: draft.sections.filter((_, i) => i !== idx),
+                        items: draft.items.map((it) =>
+                          it.sectionRef === removedKey
+                            ? { ...it, sectionRef: null }
+                            : it,
+                        ),
+                      });
+                    }}
+                  >
+                    حذف
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </>
+            );
+          })()}
         </AlertDialogContent>
       </AlertDialog>
     </Container>
@@ -821,6 +934,197 @@ function SortableItemRow({
           <TrashIcon className="size-4" />
         </button>
       </div>
+    </li>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Categories pane (formerly "sections" in the data model). Per-block grouping
+// surfaced on the public page as a horizontal chip filter. Optional: items
+// without an assigned category just appear under «همه» on public.
+// ---------------------------------------------------------------------------
+
+function CategoriesPane({
+  sections,
+  itemsAssignedTo,
+  onAdd,
+  onRename,
+  onRequestDelete,
+  onReorder,
+  sensors,
+}: {
+  sections: ProductSectionDraft[];
+  /** Returns how many items reference this category by `_key`. Used for
+   * the assignment hint on each row. */
+  itemsAssignedTo: (sectionKey: string) => number;
+  onAdd: (title: string) => void;
+  onRename: (key: string, title: string) => void;
+  onRequestDelete: (index: number) => void;
+  onReorder: (oldIndex: number, newIndex: number) => void;
+  sensors: ReturnType<typeof useSensors>;
+}) {
+  const [newTitle, setNewTitle] = useState("");
+  const atCap = sections.length >= PRODUCT_SECTIONS_MAX;
+
+  function handleAdd() {
+    const trimmed = newTitle.trim();
+    if (!trimmed || atCap) return;
+    onAdd(trimmed);
+    setNewTitle("");
+  }
+
+  return (
+    <>
+      <p className="text-xs text-muted-foreground">
+        دسته‌بندی‌ها روی صفحه‌ی شما به‌صورت تب‌های افقی نمایش داده می‌شوند و
+        بازدیدکننده می‌تواند بین آن‌ها جابه‌جا شود. تخصیص دسته‌بندی به هر مورد
+        اختیاری است.
+      </p>
+
+      <div className="flex items-end gap-2">
+        <div className="grid flex-1 gap-1.5">
+          <Label htmlFor="cat-new" className="sr-only">
+            عنوان دسته‌بندی
+          </Label>
+          <Input
+            id="cat-new"
+            value={newTitle}
+            placeholder="مثلاً: نوشیدنی‌ها / غذاها / دسر"
+            maxLength={80}
+            enterKeyHint="done"
+            disabled={atCap}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAdd();
+              }
+            }}
+          />
+        </div>
+        <Button
+          type="button"
+          variant="default"
+          onClick={handleAdd}
+          disabled={!newTitle.trim() || atCap}
+          className="gap-1"
+        >
+          <PlusIcon className="size-4" />
+          افزودن
+        </Button>
+      </div>
+
+      {atCap ? (
+        <p className="text-[11px] text-muted-foreground">
+          حداکثر {toPersianDigits(PRODUCT_SECTIONS_MAX)} دسته‌بندی در هر بلوک
+          قابل ثبت است.
+        </p>
+      ) : null}
+
+      {sections.length === 0 ? (
+        <div className="rounded-2xl bg-muted/40 px-4 py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            هنوز دسته‌بندی‌ای ندارید. وقتی حداقل دو دسته‌بندی داشته باشید، تب‌های
+            فیلتر روی صفحه‌ی شما به‌صورت خودکار نمایش داده می‌شوند.
+          </p>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event: DragEndEvent) => {
+            const { active, over } = event;
+            if (!over || active.id === over.id) return;
+            const ids = sections.map((s) => s._key);
+            const oldIndex = ids.indexOf(String(active.id));
+            const newIndex = ids.indexOf(String(over.id));
+            if (oldIndex !== -1 && newIndex !== -1) {
+              onReorder(oldIndex, newIndex);
+            }
+          }}
+        >
+          <SortableContext
+            items={sections.map((s) => s._key)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="flex flex-col gap-2">
+              {sections.map((s, i) => (
+                <SortableCategoryRow
+                  key={s._key}
+                  section={s}
+                  assignedCount={itemsAssignedTo(s._key)}
+                  onRename={(title) => onRename(s._key, title)}
+                  onDelete={() => onRequestDelete(i)}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
+      )}
+    </>
+  );
+}
+
+function SortableCategoryRow({
+  section,
+  assignedCount,
+  onRename,
+  onDelete,
+}: {
+  section: ProductSectionDraft;
+  assignedCount: number;
+  onRename: (title: string) => void;
+  onDelete: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: section._key });
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+      }}
+      className="flex items-center gap-2 rounded-2xl border bg-card px-3 py-2"
+    >
+      <span
+        className="touch-none cursor-grab text-muted-foreground active:cursor-grabbing"
+        {...attributes}
+        {...listeners}
+      >
+        <GripVerticalIcon className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <Input
+          value={section.title}
+          maxLength={80}
+          aria-label="عنوان دسته‌بندی"
+          enterKeyHint="done"
+          onChange={(e) => onRename(e.target.value)}
+          className="h-9 border-0 bg-transparent px-1 text-sm font-bold shadow-none focus-visible:bg-muted/50 focus-visible:ring-0"
+        />
+        <p className="px-1 text-[11px] text-muted-foreground">
+          {assignedCount > 0
+            ? `${toPersianDigits(assignedCount)} مورد`
+            : "بدون مورد"}
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onDelete}
+        className="grid size-8 place-items-center rounded-xl text-destructive hover:bg-destructive/10"
+        aria-label="حذف دسته‌بندی"
+      >
+        <TrashIcon className="size-4" />
+      </button>
     </li>
   );
 }
@@ -922,6 +1226,7 @@ function ItemEditor({
   mode,
   item,
   currency,
+  sections,
   onChange,
   onCommit,
   onUpdate,
@@ -930,6 +1235,10 @@ function ItemEditor({
   mode: "add" | "edit";
   item: ProductItemDraft;
   currency: ProductBlockCurrency;
+  /** Categories defined on this block. When empty, the category select
+   * is hidden entirely — the spec says we either show a populated select
+   * or nothing. */
+  sections: ProductSectionDraft[];
   onChange: (next: ProductItemDraft) => void;
   onCommit?: () => void;
   onUpdate?: () => void;
@@ -967,6 +1276,40 @@ function ItemEditor({
             onChange={(e) => onChange({ ...item, title: e.target.value })}
           />
         </div>
+
+        {sections.length > 0 ? (
+          <div className="grid gap-1.5">
+            <Label htmlFor="item-section">دسته‌بندی (اختیاری)</Label>
+            <Select
+              value={item.sectionRef ?? "__none__"}
+              onValueChange={(v) =>
+                onChange({
+                  ...item,
+                  sectionRef: v === "__none__" ? null : v,
+                })
+              }
+            >
+              <SelectTrigger id="item-section" className="w-full">
+                <SelectValue>
+                  {(v) =>
+                    v === "__none__"
+                      ? "بدون دسته‌بندی"
+                      : (sections.find((s) => s._key === v)?.title ??
+                        "بدون دسته‌بندی")
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">بدون دسته‌بندی</SelectItem>
+                {sections.map((s) => (
+                  <SelectItem key={s._key} value={s._key}>
+                    {s.title || "(بدون عنوان)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        ) : null}
 
         {!isFreeOrOnRequest ? (
           <div className="grid grid-cols-[1fr_auto] gap-3">

@@ -1,6 +1,8 @@
 "use client";
 
-import { EyeIcon, SettingsIcon } from "lucide-react";
+import { EyeIcon, PaletteIcon, SettingsIcon } from "lucide-react";
+import Link from "next/link";
+import type { Route } from "next";
 import { usePathname } from "next/navigation";
 
 import { PublicShareBar } from "@/components/dashboard/public-share-bar";
@@ -78,24 +80,32 @@ export function MeHeaderActions({
 }
 
 /**
- * Mobile-only "page settings" gear button. Rendered on the start side
- * of the dashboard header on `/me`. Dispatches the same DOM event the
- * `LinksPageClient` already listens for to open `PageSettingsSheet`.
+ * Mobile-only "page settings" gear button + design palette link. Rendered
+ * on the start side of the dashboard header on `/me`.
  */
 export function MeSettingsButton() {
   const pathname = usePathname() || "";
   if (!/^\/me(\/|$)/.test(pathname)) return null;
 
   return (
-    <button
-      type="button"
-      onClick={() =>
-        window.dispatchEvent(new CustomEvent("open-page-settings"))
-      }
-      aria-label="تنظیمات صفحه"
-      className="tap-target inline-flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted lg:hidden"
-    >
-      <SettingsIcon className="size-5" aria-hidden />
-    </button>
+    <div className="flex items-center gap-1 lg:hidden">
+      <button
+        type="button"
+        onClick={() =>
+          window.dispatchEvent(new CustomEvent("open-page-settings"))
+        }
+        aria-label="تنظیمات صفحه"
+        className="tap-target inline-flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+      >
+        <SettingsIcon className="size-5" aria-hidden />
+      </button>
+      <Link
+        href={"/me/design" as Route}
+        aria-label="شخصی‌سازی صفحه"
+        className="tap-target inline-flex size-11 items-center justify-center rounded-full text-foreground transition-colors hover:bg-muted"
+      >
+        <PaletteIcon className="size-5" aria-hidden />
+      </Link>
+    </div>
   );
 }

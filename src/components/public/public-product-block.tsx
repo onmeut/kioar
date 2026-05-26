@@ -189,8 +189,34 @@ function PublicProductModal({
   );
 }
 
+/** Sentinel used by the «همه» chip — distinguishes "no filter" from a
+ * specific section id (which is a UUID string). */
+const ALL_CATEGORIES = "__all__";
+
 function ProductItemsList({ block }: { block: PublicProductBlockData }) {
   const visibleItems = block.items.filter((it) => it.availability !== "hidden");
+
+  // Categories surfaced as chips are only those defined on the block AND
+  // referenced by at least one visible item. Order follows the host's
+  // configured category order (block.sections is already sorted by
+  // sortOrder server-side).
+  const sectionsById = new Map(block.sections.map((s) => [s.id, s]));
+  const activeSectionIds = new Set(
+    visibleItems
+      .map((it) => it.sectionId)
+      .filter((id): id is string => Boolean(id && sectionsById.has(id))),
+  );
+  const orderedActiveSections = block.sections.filter((s) =>
+    activeSectionIds.has(s.id),
+  );
+
+  // Spec: hide the chip row entirely when there's only one (or zero)
+  // category in active use — no clutter when categorization isn't
+  // meaningful for this block.
+  const showChips = orderedActiveSections.length >= 2;
+
+  const [activeChip, setActiveChip] = useState<string>(ALL_CATEGORIES);
+
   if (visibleItems.length === 0) {
     return (
       <p className="rounded-2xl bg-muted px-4 py-6 text-center text-xs text-muted-foreground">
@@ -199,39 +225,84 @@ function ProductItemsList({ block }: { block: PublicProductBlockData }) {
     );
   }
 
-  // Group by section (null = ungrouped at top).
-  const sectionsById = new Map(block.sections.map((s) => [s.id, s]));
-  const grouped = new Map<string | null, PublicProductItem[]>();
-  for (const it of visibleItems) {
-    const k =
-      it.sectionId && sectionsById.has(it.sectionId) ? it.sectionId : null;
-    const arr = grouped.get(k) ?? [];
-    arr.push(it);
-    grouped.set(k, arr);
-  }
-  const order: Array<string | null> = [
-    null,
-    ...block.sections.map((s) => s.id),
-  ].filter((k) => grouped.has(k));
+  // If the previously-active chip refers to a category that no longer
+  // appears in the active set (e.g., the host removed it or hid all its
+  // items), fall back to «همه» silently rather than rendering an empty
+  // state for a stale selection.
+  const effectiveChip =
+    activeChip === ALL_CATEGORIES ||
+    orderedActiveSections.some((s) => s.id === activeChip)
+      ? activeChip
+      : ALL_CATEGORIES;
+
+  const filteredItems =
+    effectiveChip === ALL_CATEGORIES
+      ? visibleItems
+      : visibleItems.filter((it) => it.sectionId === effectiveChip);
 
   return (
-    <div className="space-y-6">
-      {order.map((key) => {
-        const items = grouped.get(key) ?? [];
-        if (!items.length) return null;
-        const section = key ? sectionsById.get(key) : null;
-        return (
-          <div key={key ?? "_root"} className="space-y-3">
-            {section ? (
-              <h4 className="text-sm font-bold text-foreground">
-                {section.title}
-              </h4>
-            ) : null}
-            <ProductLayout layout={block.layout} block={block} items={items} />
-          </div>
-        );
-      })}
+    <div className="space-y-4">
+      {showChips ? (
+        <div
+          className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 touch-pan-x"
+          role="tablist"
+          aria-label="دسته‌بندی محصولات"
+        >
+          <CategoryChip
+            label="همه"
+            selected={effectiveChip === ALL_CATEGORIES}
+            onSelect={() => setActiveChip(ALL_CATEGORIES)}
+          />
+          {orderedActiveSections.map((s) => (
+            <CategoryChip
+              key={s.id}
+              label={s.title}
+              selected={effectiveChip === s.id}
+              onSelect={() => setActiveChip(s.id)}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {filteredItems.length === 0 ? (
+        <p className="rounded-2xl bg-muted px-4 py-6 text-center text-xs text-muted-foreground">
+          موردی در این دسته‌بندی نیست.
+        </p>
+      ) : (
+        <ProductLayout
+          layout={block.layout}
+          block={block}
+          items={filteredItems}
+        />
+      )}
     </div>
+  );
+}
+
+function CategoryChip({
+  label,
+  selected,
+  onSelect,
+}: {
+  label: string;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={selected}
+      onClick={onSelect}
+      className={cn(
+        "shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-colors",
+        selected
+          ? "border-foreground bg-foreground text-background"
+          : "border-border bg-background text-foreground hover:bg-foreground/4",
+      )}
+    >
+      {label}
+    </button>
   );
 }
 
