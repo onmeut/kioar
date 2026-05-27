@@ -397,7 +397,6 @@ export default async function DashboardLinksPage() {
       initialBookingBlocks={bookingBlocks}
       initialFormBlocks={formBlocks}
       initialProductBlocks={productBlocks}
-      providerConnections={providerConnections}
       linkClickCounts={clickCounts}
       publicUrl={publicUrl}
       fetchMetadataAction={fetchLinkMetadataAction}

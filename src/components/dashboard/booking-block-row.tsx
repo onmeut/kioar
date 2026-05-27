@@ -6,10 +6,7 @@ import { CalendarIcon, CalendarCheckIcon } from "lucide-react";
 import { BlockCard } from "@/components/dashboard/block-card";
 import { BookingFlowDialog } from "@/components/dashboard/booking-flow-dialog";
 import { SpotlightStarButton } from "@/components/dashboard/spotlight-star-button";
-import type {
-  EditableBookingBlockWithId,
-  ProviderConnection,
-} from "@/components/dashboard/booking.types";
+import type { EditableBookingBlockWithId } from "@/components/dashboard/booking.types";
 import type { RequiredPlanTier } from "@/lib/block-features";
 import type {
   BlockAnimationStyle,
@@ -19,7 +16,6 @@ import { toPersianDigits } from "@/lib/persian";
 
 export type BookingBlockRowProps = {
   block: EditableBookingBlockWithId;
-  providerConnections: ProviderConnection[];
   onUpdate: (next: EditableBookingBlockWithId) => Promise<void> | void;
   onDelete: () => Promise<void> | void;
   onToggleActive: (isActive: boolean) => Promise<void> | void;
@@ -51,7 +47,6 @@ export type BookingBlockRowProps = {
  */
 export function BookingBlockRow({
   block,
-  providerConnections,
   onUpdate,
   onDelete,
   onToggleActive,
@@ -120,7 +115,6 @@ export function BookingBlockRow({
         title="ویرایش هماهنگ"
         initial={block}
         submitting={submitting}
-        providerConnections={providerConnections}
         onSubmit={async (next) => {
           setSubmitting(true);
           try {

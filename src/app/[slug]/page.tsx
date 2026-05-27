@@ -331,6 +331,7 @@ export default async function PublicProfilePage({
               name: b.name,
               description: b.description,
               avatarUrl: b.avatarUrl,
+              ownerName: profile.fullName || null,
               locationType: b.locationType,
               locationAddress: b.locationAddress,
               meetingLink: b.meetingLink,

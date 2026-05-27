@@ -178,18 +178,31 @@ function PublicProductModal({
             <XIcon className="size-4" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-          {block.description ? (
-            <p className="mb-4 text-sm text-foreground">{block.description}</p>
-          ) : null}
-          <ProductItemsList block={block} />
-        </div>
+        <ProductItemsScroller block={block} />
       </Content>
     </Container>
   );
 }
 
-function ProductItemsList({ block }: { block: PublicProductBlockData }) {
+function ProductItemsScroller({ block }: { block: PublicProductBlockData }) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  return (
+    <div ref={scrollRef} className="flex-1 overflow-y-auto pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
+      {block.description ? (
+        <p className="px-4 pt-4 mb-4 text-sm text-foreground">{block.description}</p>
+      ) : null}
+      <ProductItemsList block={block} scrollContainerRef={scrollRef} />
+    </div>
+  );
+}
+
+function ProductItemsList({
+  block,
+  scrollContainerRef,
+}: {
+  block: PublicProductBlockData;
+  scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+}) {
   const visibleItems = useMemo(
     () => block.items.filter((it) => it.availability !== "hidden"),
     [block.items],
@@ -227,31 +240,20 @@ function ProductItemsList({ block }: { block: PublicProductBlockData }) {
   );
   const activeSectionRef = useRef(activeSection);
 
-  const wrapperRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
   const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const isScrollingProgrammatically = useRef(false);
 
-  const getScrollParent = useCallback(
-    (el: HTMLElement | null): HTMLElement | null => {
-      if (!el || el === document.body) return null;
-      const { overflowY } = getComputedStyle(el);
-      if (overflowY === "auto" || overflowY === "scroll") return el;
-      return getScrollParent(el.parentElement);
-    },
-    [],
-  );
-
   useEffect(() => {
-    if (!showNav || !wrapperRef.current) return;
-    const container = getScrollParent(wrapperRef.current);
+    if (!showNav) return;
+    const container = scrollContainerRef?.current;
     if (!container) return;
 
     const handleScroll = () => {
       if (isScrollingProgrammatically.current) return;
-      const containerRect = container.getBoundingClientRect();
       const navHeight = navRef.current?.offsetHeight ?? 48;
+      const containerRect = container.getBoundingClientRect();
       const threshold = containerRect.top + navHeight + 8;
 
       let found = orderedActiveSections[0]?.id;
@@ -269,7 +271,7 @@ function ProductItemsList({ block }: { block: PublicProductBlockData }) {
     container.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
     return () => container.removeEventListener("scroll", handleScroll);
-  }, [showNav, getScrollParent, orderedActiveSections]);
+  }, [showNav, scrollContainerRef, orderedActiveSections]);
 
   useEffect(() => {
     if (!activeSection) return;
@@ -280,9 +282,8 @@ function ProductItemsList({ block }: { block: PublicProductBlockData }) {
   const scrollToSection = useCallback(
     (id: string) => {
       const el = sectionRefs.current.get(id);
-      if (!el || !wrapperRef.current) return;
-      const container = getScrollParent(wrapperRef.current);
-      if (!container) return;
+      const container = scrollContainerRef?.current;
+      if (!el || !container) return;
 
       activeSectionRef.current = id;
       setActiveSection(id);
@@ -291,33 +292,39 @@ function ProductItemsList({ block }: { block: PublicProductBlockData }) {
       const navHeight = navRef.current?.offsetHeight ?? 48;
       const containerRect = container.getBoundingClientRect();
       const elRect = el.getBoundingClientRect();
-      const offset = elRect.top - containerRect.top - navHeight - 8;
-      container.scrollBy({ top: offset, behavior: "smooth" });
+      const delta = elRect.top - containerRect.top - navHeight - 8;
+      container.scrollBy({ top: delta, behavior: "smooth" });
 
       setTimeout(() => {
         isScrollingProgrammatically.current = false;
       }, 900);
     },
-    [getScrollParent],
+    [scrollContainerRef],
   );
 
   if (visibleItems.length === 0) {
     return (
-      <p className="rounded-2xl bg-muted px-4 py-6 text-center text-xs text-muted-foreground">
-        موردی برای نمایش وجود ندارد.
-      </p>
+      <div className="p-4">
+        <p className="rounded-2xl bg-muted px-4 py-6 text-center text-xs text-muted-foreground">
+          موردی برای نمایش وجود ندارد.
+        </p>
+      </div>
     );
   }
 
   if (!showNav) {
-    return <ProductLayout layout={block.layout} block={block} items={visibleItems} />;
+    return (
+      <div className="p-4">
+        <ProductLayout layout={block.layout} block={block} items={visibleItems} />
+      </div>
+    );
   }
 
   return (
-    <div ref={wrapperRef}>
+    <div>
       <div
         ref={navRef}
-        className="no-scrollbar sticky top-0 z-10 -mx-4 flex gap-2 overflow-x-auto border-b border-border/40 bg-background/95 px-4 py-2.5 backdrop-blur-sm touch-pan-x"
+        className="no-scrollbar sticky top-0 z-10 flex gap-2 overflow-x-auto border-b border-border/40 bg-background/95 px-4 py-2.5 backdrop-blur-sm touch-pan-x"
         role="tablist"
         aria-label="دسته‌بندی محصولات"
       >
@@ -335,13 +342,14 @@ function ProductItemsList({ block }: { block: PublicProductBlockData }) {
         ))}
       </div>
 
-      <div className="space-y-8 pt-4">
+      <div className="space-y-8 p-4 pt-4">
         {orderedActiveSections.map((section) => {
           const sectionItems = itemsBySection.get(section.id) ?? [];
           if (sectionItems.length === 0) return null;
           return (
             <section
               key={section.id}
+              data-section-id={section.id}
               ref={(el) => {
                 if (el) sectionRefs.current.set(section.id, el as HTMLElement);
                 else sectionRefs.current.delete(section.id);

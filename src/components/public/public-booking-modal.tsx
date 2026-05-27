@@ -76,6 +76,7 @@ export type PublicBookingBlockData = {
   name: string;
   description: string | null;
   avatarUrl: string | null;
+  ownerName?: string | null;
   locationType: "online" | "in_person";
   locationAddress: string | null;
   meetingLink: string | null;
@@ -747,7 +748,6 @@ function FormStep({
   onDone: (name: string) => void;
 }) {
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -761,8 +761,8 @@ function FormStep({
       setError("نام را وارد کنید.");
       return;
     }
-    if (!email.trim()) {
-      setError("ایمیل را وارد کنید.");
+    if (!phone.trim()) {
+      setError("شماره تماس را وارد کنید.");
       return;
     }
     startTransition(async () => {
@@ -771,8 +771,8 @@ function FormStep({
         bookingTypeId: type.id,
         startsAtIso: slotIso,
         guestName: trimmed,
-        guestEmail: email.trim(),
-        guestPhone: phone.trim() || null,
+        guestEmail: null,
+        guestPhone: phone.trim(),
         notes: notes.trim() || null,
         guestTimezone: bookerTz,
       });
@@ -815,25 +815,7 @@ function FormStep({
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="booking-email">ایمیل</Label>
-        <Input
-          id="booking-email"
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          enterKeyHint="next"
-          dir="ltr"
-          autoCapitalize="none"
-          autoCorrect="off"
-          spellCheck={false}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="booking-phone">شماره تماس (اختیاری)</Label>
+        <Label htmlFor="booking-phone">شماره تماس</Label>
         <Input
           id="booking-phone"
           type="tel"
@@ -843,11 +825,14 @@ function FormStep({
           dir="ltr"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
+          required
         />
       </div>
 
       <div className="space-y-1.5">
-        <Label htmlFor="booking-notes">یادداشت (اختیاری)</Label>
+        <Label htmlFor="booking-notes">
+          یادداشت برای {block.ownerName ?? "میزبان"} (اختیاری)
+        </Label>
         <Textarea
           id="booking-notes"
           rows={3}
@@ -861,8 +846,12 @@ function FormStep({
         <p className="text-sm font-semibold text-destructive">{error}</p>
       ) : null}
 
-      <Button type="submit" disabled={pending} className="w-full">
-        {pending ? "در حال ثبت..." : "تأیید و رزرو"}
+      <Button
+        type="submit"
+        disabled={pending}
+        className="h-14 w-full rounded-full text-base font-bold"
+      >
+        {pending ? "در حال ثبت..." : "هماهنگ کن"}
       </Button>
     </form>
   );

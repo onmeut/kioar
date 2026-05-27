@@ -173,10 +173,10 @@ export function DesignEditor({
           Preview fills the available area; bottom sheet hosts the controls
           with sticky tab bar pinned to the very bottom (above iOS inset). */}
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
-        <div className="flex shrink-0 items-center justify-center bg-muted/30 px-3 py-1.5">
+        <div className="flex shrink-0 items-center justify-center bg-muted/30 px-3 py-1">
           <ViewportToggle value={viewport} onChange={setViewport} compact />
         </div>
-        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 px-3 py-2">
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 px-2 py-1">
           <MobilePreviewArea
             draft={draft}
             profile={previewProfile}
@@ -401,7 +401,7 @@ function MobileControlsSheet({
           Each tab is a card with a live thumbnail of what it controls (mirrors
           the desktop sidebar rail). Tapping opens the controls sheet. */}
       <nav
-        className="z-20 flex shrink-0 items-stretch gap-2 border-t bg-background px-2 pt-2 pb-[max(env(safe-area-inset-bottom),0.5rem)]"
+        className="z-20 flex shrink-0 items-stretch gap-2 border-t bg-background px-2 pt-2 pb-[max(env(safe-area-inset-bottom),1rem)]"
         aria-label="بخش‌های طراحی"
       >
         {items.map((it) => {
@@ -444,7 +444,7 @@ function MobileControlsSheet({
                 className="flex max-h-[80dvh] flex-col rounded-t-3xl bg-background shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="relative flex shrink-0 items-center justify-between border-b px-4 py-3">
+                <div className="relative flex shrink-0 items-center justify-center border-b px-4 py-4">
                   <div className="absolute left-1/2 top-1.5 h-1 w-10 -translate-x-1/2 rounded-full bg-muted-foreground/30" />
                   <h2 className="text-base font-bold">
                     {items.find((i) => i.id === section)?.label}
@@ -453,7 +453,7 @@ function MobileControlsSheet({
                     type="button"
                     aria-label="بستن"
                     onClick={() => setOpen(false)}
-                    className="tap-target inline-flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                    className="tap-target absolute end-3 inline-flex size-10 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
                   >
                     <XIcon className="size-5" aria-hidden />
                   </button>
@@ -1305,7 +1305,7 @@ function MobilePreviewArea({
     );
   }
   return (
-    <DesktopFrame draft={draft} profile={profile} className="w-full" />
+    <DesktopFrame draft={draft} profile={profile} className="w-full max-w-full" />
   );
 }
 
@@ -1430,29 +1430,47 @@ function PreviewSurface({
 
       <div className="page-theme-content no-scrollbar relative z-[2] h-full w-full overflow-y-auto">
         {density === "mobile" ? (
-          custom ? (
-            <div className="p-4">
+          <div
+            style={{
+              transform: "scale(0.82)",
+              transformOrigin: "top center",
+              width: "121.95%",
+              marginLeft: "-10.975%",
+            }}
+          >
+            {custom ? (
+              <div className="p-2">
+                <PublicProfileCard
+                  profile={profile}
+                  interactive={false}
+                  className="!rounded-[24px] !p-4 !shadow-none overflow-hidden"
+                />
+              </div>
+            ) : (
               <PublicProfileCard
                 profile={profile}
                 interactive={false}
-                className="!rounded-[28px] !p-5 !shadow-none overflow-hidden"
+                className="min-h-full !rounded-none !p-5 !shadow-none"
+                flushBottom
+              />
+            )}
+          </div>
+        ) : (
+          <div
+            style={{
+              transform: "scale(0.85)",
+              transformOrigin: "top center",
+              width: "117.65%",
+              marginLeft: "-8.82%",
+            }}
+          >
+            <div className="mx-auto flex min-h-full w-full max-w-[460px] flex-col px-6 py-8">
+              <PublicProfileCard
+                profile={profile}
+                interactive={false}
+                className="!rounded-3xl !p-6 shadow-card"
               />
             </div>
-          ) : (
-            <PublicProfileCard
-              profile={profile}
-              interactive={false}
-              className="min-h-full !rounded-none !p-5 !shadow-none"
-              flushBottom
-            />
-          )
-        ) : (
-          <div className="mx-auto flex min-h-full w-full max-w-[460px] flex-col px-6 py-8">
-            <PublicProfileCard
-              profile={profile}
-              interactive={false}
-              className="!rounded-3xl !p-6 shadow-card"
-            />
           </div>
         )}
       </div>

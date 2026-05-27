@@ -41,7 +41,6 @@ import { BookingFlowDialog } from "@/components/dashboard/booking-flow-dialog";
 import type {
   EditableBookingBlock,
   EditableBookingBlockWithId,
-  ProviderConnection,
 } from "@/components/dashboard/booking.types";
 import {
   FormBuilderDialog,
@@ -127,7 +126,6 @@ type LinksPageClientProps = {
   initialBookingBlocks: EditableBookingBlockWithId[];
   initialFormBlocks: EditableFormBlockWithId[];
   initialProductBlocks: EditableProductBlockWithId[];
-  providerConnections: ProviderConnection[];
   /** All-time click counts keyed by link id. */
   linkClickCounts: Record<string, number>;
   publicUrl: string;
@@ -268,7 +266,6 @@ export function LinksPageClient({
   initialBookingBlocks,
   initialFormBlocks,
   initialProductBlocks,
-  providerConnections,
   linkClickCounts,
   publicUrl,
   fetchMetadataAction,
@@ -1270,7 +1267,6 @@ export function LinksPageClient({
                           key={itemKey(ref)}
                           itemId={itemKey(ref)}
                           block={block}
-                          providerConnections={providerConnections}
                           onUpdate={handleUpdateBooking}
                           onDelete={() => handleDeleteBooking(block.id)}
                           onToggleActive={(v) =>
@@ -1508,7 +1504,6 @@ export function LinksPageClient({
         onOpenChange={setBookingFlowOpen}
         title="هماهنگ"
         submitting={creatingBooking}
-        providerConnections={providerConnections}
         onSubmit={handleCreateBooking}
         onBack={() => {
           setBookingFlowOpen(false);
@@ -1743,7 +1738,6 @@ function SortableLinkBlock({
 function SortableBookingBlock({
   itemId,
   block,
-  providerConnections,
   onUpdate,
   onDelete,
   onToggleActive,
@@ -1755,7 +1749,6 @@ function SortableBookingBlock({
 }: {
   itemId: string;
   block: EditableBookingBlockWithId;
-  providerConnections: ProviderConnection[];
   onUpdate: (next: EditableBookingBlockWithId) => Promise<void> | void;
   onDelete: () => Promise<void> | void;
   onToggleActive: (next: boolean) => Promise<void> | void;
@@ -1788,7 +1781,6 @@ function SortableBookingBlock({
     >
       <BookingBlockRow
         block={block}
-        providerConnections={providerConnections}
         onUpdate={onUpdate}
         onDelete={onDelete}
         onToggleActive={onToggleActive}

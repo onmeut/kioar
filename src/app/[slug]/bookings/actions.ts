@@ -194,7 +194,7 @@ export async function submitPublicBookingAction(
       blockId: block.id,
       bookingTypeId: type.id,
       guestName: data.guestName,
-      guestEmail: data.guestEmail,
+      guestEmail: data.guestEmail ?? "",
       guestTimezone: data.guestTimezone ?? null,
       hostTimezone: block.timezone ?? null,
       startsAt,
@@ -287,7 +287,7 @@ export async function submitPublicBookingAction(
             endIso,
             timezone: tz,
             attendees: [
-              { email: data.guestEmail, displayName: data.guestName },
+              { email: data.guestEmail ?? "", displayName: data.guestName },
             ],
             createMeet: provider === "google_meet",
             location:

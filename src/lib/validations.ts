@@ -673,7 +673,7 @@ export const publicBookingSubmitSchema = z.object({
       message: "زمان معتبر نیست.",
     }),
   guestName: z.string().trim().min(1, "نام خود را وارد کنید.").max(80),
-  guestEmail: z.string().trim().email("ایمیل معتبر نیست.").max(120),
+  guestEmail: z.string().trim().email("ایمیل معتبر نیست.").max(120).optional().nullable(),
   guestPhone: z.string().trim().max(30).optional().nullable(),
   notes: z.string().trim().max(500).optional().nullable(),
   guestTimezone: z.string().trim().max(64).optional().nullable(),
