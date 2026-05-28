@@ -180,6 +180,7 @@ export default async function DashboardLayout({
       icon: "forms",
       badgeCount: badgeCounts.forms,
     },
+    { href: "/connections" as Route, label: "دایره من", icon: "users" },
     { href: "/my-events", label: "رویدادها", icon: "events" },
     { href: "/premium" as Route, label: "کارت هوشمند", icon: "requests" },
   ];

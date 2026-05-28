@@ -11,6 +11,7 @@ import {
   getPendingPageIntent,
 } from "@/lib/auth/pending-intent";
 import {
+  continuePendingConnectOrNext,
   continuePendingEventRegistrationOrRedirect,
   createSessionForUser,
   findOrCreateUserByPhone,
@@ -285,6 +286,7 @@ export async function verifyOtpAction(
         redirect("/me?new=1");
       }
 
+      await continuePendingConnectOrNext(user.id);
       await continuePendingEventRegistrationOrRedirect(user.id);
       redirect("/me");
     }
@@ -296,6 +298,7 @@ export async function verifyOtpAction(
       await clearPendingPageIntent();
       await clearPendingSlug();
       log.warn("auth.intent.max_pages", { userId: user.id });
+      await continuePendingConnectOrNext(user.id);
       await continuePendingEventRegistrationOrRedirect(user.id);
       redirect("/me");
     }
@@ -338,6 +341,7 @@ export async function verifyOtpAction(
     redirect("/start");
   }
 
+  await continuePendingConnectOrNext(user.id);
   await continuePendingEventRegistrationOrRedirect(user.id);
 
   return idleState;

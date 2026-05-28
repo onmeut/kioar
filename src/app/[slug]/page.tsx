@@ -5,17 +5,25 @@ import { notFound } from "next/navigation";
 
 import { DesktopMobileQr } from "@/components/public/desktop-mobile-qr";
 import { KioarBadge } from "@/components/public/kioar-badge";
+import { PublicConnectAction } from "@/components/public/public-connect-action";
 import { PublicLinkClickTracker } from "@/components/public/public-link-click-tracker";
 import { PublicProfileCard } from "@/components/public/public-profile-card";
 import { PublicProfileShareButton } from "@/components/public/public-profile-actions";
 import { PageThemeProvider } from "@/components/public-page/page-theme-provider";
+import {
+  connectToPageAction,
+  disconnectFromPageAction,
+} from "@/app/[slug]/connect-actions";
 import { coerceAppearance } from "@/lib/appearance/types";
 import { getDb } from "@/db";
 import { profileStatsByDay } from "@/db/schema";
 import { sql } from "drizzle-orm";
+import { getCurrentViewer } from "@/lib/auth/session";
+import { isConnected } from "@/lib/connections";
 import { getPublicProfileBySlug } from "@/lib/data";
 import { tehranIsoDate } from "@/lib/date/persian";
 import { isIconKey } from "@/lib/link-icons";
+import { resolveCurrentPageForOwner } from "@/lib/pages";
 import { profileShareUrl } from "@/lib/profile-domains";
 import { submitFormAction } from "@/lib/public-form-actions";
 import { absoluteUrl } from "@/lib/site";
@@ -232,6 +240,36 @@ export default async function PublicProfilePage({
   const canonicalUrl = profileShareUrl(slug, profile.domain);
   const displayName = profile.fullName || "کارت دیجیتال";
 
+  // Connect state.
+  //
+  // Per-viewer, so it must NOT live in the Redis-cached `profile` payload
+  // (every visitor would see the same answer otherwise). One small extra
+  // read for logged-in viewers; anonymous viewers skip the DB hit
+  // entirely and just render the unconnected button.
+  //
+  // The owner viewing their own page gets no Connect tile at all — the
+  // public profile card's grid auto-collapses when `connectSlot` is
+  // omitted, so it doesn't leave a gap.
+  const viewer = await getCurrentViewer();
+  let connectSlot: React.ReactNode = null;
+  if (viewer?.user.id !== profile.userId) {
+    let connected = false;
+    if (viewer) {
+      const viewerPage = await resolveCurrentPageForOwner(viewer.user.id);
+      if (viewerPage) {
+        connected = await isConnected(viewerPage.id, profile.id);
+      }
+    }
+    connectSlot = (
+      <PublicConnectAction
+        slug={slug}
+        initialState={connected ? "connected" : "unconnected"}
+        connectAction={connectToPageAction}
+        disconnectAction={disconnectFromPageAction}
+      />
+    );
+  }
+
   // JSON-LD: ProfilePage + Person. Helps Google build a rich card and
   // surface the user's name, title, social links and contact in SERPs.
   const personJsonLd = {
@@ -275,6 +313,7 @@ export default async function PublicProfilePage({
         <PublicProfileCard
           className="flex-1"
           flushBottom
+          connectSlot={connectSlot}
           headerSlot={
             <div className="flex items-center justify-between">
               <Link

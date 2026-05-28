@@ -28,6 +28,7 @@ import {
   SparklesIcon,
   TagIcon,
   UserIcon,
+  UsersIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -241,6 +242,14 @@ export function CommandPalette({
             >
               <FormInputIcon />
               <span>پاسخ‌های فرم</span>
+            </CommandItem>
+            <CommandItem
+              value="nav-network"
+              keywords={["circle", "connections", "دایره", "افزودن"]}
+              onSelect={() => goPage("/connections")}
+            >
+              <UsersIcon />
+              <span>دایره من</span>
             </CommandItem>
             <CommandItem
               value="nav-events"

@@ -5,6 +5,10 @@ import { isReservedSlug, normalizeSlug } from "@/lib/slug";
 
 const PENDING_EVENT_COOKIE = "kioar_pending_event";
 const PENDING_SLUG_COOKIE = "kioar_pending_slug";
+// Slug the visitor wanted to connect to before auth. Set when an anonymous
+// visitor taps Connect on a public page; consumed by verifyOtpAction after
+// OTP success to complete the connection and redirect back to that page.
+const PENDING_CONNECT_COOKIE = "kioar_pending_connect";
 // JSON-encoded `{slug, pageType, discoverCategory}` carrying the visitor's
 // pre-auth page-creation intent. Set by /start; consumed by verifyOtpAction
 // after a successful OTP. Until OTP success no row exists in the DB — the
@@ -52,6 +56,26 @@ export async function getPendingSlug() {
 export async function clearPendingSlug() {
   const cookieStore = await cookies();
   cookieStore.set(PENDING_SLUG_COOKIE, "", {
+    ...cookieOptions,
+    maxAge: 0,
+  });
+}
+
+export async function setPendingConnect(slug: string) {
+  const normalized = normalizeSlug(slug);
+  if (!normalized) return;
+  const cookieStore = await cookies();
+  cookieStore.set(PENDING_CONNECT_COOKIE, normalized, cookieOptions);
+}
+
+export async function getPendingConnect() {
+  const cookieStore = await cookies();
+  return cookieStore.get(PENDING_CONNECT_COOKIE)?.value ?? null;
+}
+
+export async function clearPendingConnect() {
+  const cookieStore = await cookies();
+  cookieStore.set(PENDING_CONNECT_COOKIE, "", {
     ...cookieOptions,
     maxAge: 0,
   });

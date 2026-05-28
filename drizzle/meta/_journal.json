@@ -358,6 +358,13 @@
       "when": 1748000000000,
       "tag": "0051_profile_appearance",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1778600000000,
+      "tag": "0052_page_connections",
+      "breakpoints": true
     }
   ]
 }

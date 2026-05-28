@@ -2404,3 +2404,67 @@ export const categoriesRelations = relations(categories, ({ one }) => ({
     references: [industries.id],
   }),
 }));
+
+/**
+ * Mutual page-to-page connection ("اتصال" / شبکه من).
+ *
+ * One row represents one undirected connection between two `profiles`
+ * (pages). To keep "exactly one connection per pair" as a DB-enforced
+ * invariant — and to make duplicate inserts under a race a no-op via
+ * `ON CONFLICT DO NOTHING` — we store the pair in a canonical order:
+ * `pageALt` always holds the lexicographically smaller uuid and
+ * `pageBGt` the larger. Callers go through `pairKey()` in
+ * `src/lib/connections.ts`; never insert directly.
+ *
+ * `initiatedBy` records which side actually tapped Connect. Useful for
+ * product analytics later; not surfaced in the UI.
+ *
+ * Both FKs cascade on delete: dropping a user cascades to their pages,
+ * which cascades to every connection row referencing those pages. No
+ * application-level cleanup is required when an account is deleted.
+ *
+ * The `lt < gt` and `lt <> gt` CHECK constraints live in the SQL
+ * migration (drizzle doesn't model them inline). Do not insert
+ * unordered tuples — the unique index won't catch the dup.
+ */
+export const pageConnections = pgTable(
+  "page_connections",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    pageALt: uuid("page_a_lt")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    pageBGt: uuid("page_b_gt")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    initiatedBy: uuid("initiated_by")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("page_connections_pair_idx").on(table.pageALt, table.pageBGt),
+    index("page_connections_a_idx").on(table.pageALt),
+    index("page_connections_b_idx").on(table.pageBGt),
+  ],
+);
+
+export const pageConnectionsRelations = relations(pageConnections, ({ one }) => ({
+  pageA: one(profiles, {
+    fields: [pageConnections.pageALt],
+    references: [profiles.id],
+    relationName: "page_connection_a",
+  }),
+  pageB: one(profiles, {
+    fields: [pageConnections.pageBGt],
+    references: [profiles.id],
+    relationName: "page_connection_b",
+  }),
+  initiator: one(profiles, {
+    fields: [pageConnections.initiatedBy],
+    references: [profiles.id],
+    relationName: "page_connection_initiator",
+  }),
+}));

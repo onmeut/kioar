@@ -2,7 +2,6 @@ import Image from "next/image";
 import {
   AtSignIcon,
   CalendarIcon,
-  DownloadIcon,
   FormInputIcon,
   PhoneIcon,
   SparklesIcon,
@@ -100,6 +99,7 @@ export function PublicProfileCard({
   topSlot,
   headerSlot,
   footerSlot,
+  connectSlot,
   flushBottom = false,
   className,
   as = "section",
@@ -115,6 +115,13 @@ export function PublicProfileCard({
   topSlot?: React.ReactNode;
   /** Optional slot rendered at the very bottom of the card (e.g. branding badge). */
   footerSlot?: React.ReactNode;
+  /**
+   * Quick-action tile rendered in the third slot of the actions row
+   * (replaces the legacy "ذخیره" download). When omitted (editor live
+   * preview, owner's own page), the third tile is skipped entirely and
+   * the grid collapses to whichever of phone/email are present.
+   */
+  connectSlot?: React.ReactNode;
   /** When true, removes bottom border-radius and bottom border so the card
    *  flushes to the viewport bottom edge. */
   flushBottom?: boolean;
@@ -190,35 +197,43 @@ export function PublicProfileCard({
         ) : null}
       </div>
 
-      {/* Quick actions — vCard always shows; phone/email only when user opted in */}
-      <div className="relative mt-6 grid gap-2.5"
-        style={{
-          gridTemplateColumns: `repeat(${1 + (profile.publicPhone ? 1 : 0) + (profile.email ? 1 : 0)}, minmax(0,1fr))`,
-        }}
-      >
-        {profile.publicPhone ? (
-          <QuickAction
-            href={interactive ? `tel:${profile.publicPhone}` : undefined}
-            icon={<PhoneIcon className="size-5" />}
-            label="تماس"
-            interactive={interactive}
-          />
-        ) : null}
-        {profile.email ? (
-          <QuickAction
-            href={interactive ? `mailto:${profile.email}` : undefined}
-            icon={<AtSignIcon className="size-5" />}
-            label="ایمیل"
-            interactive={interactive}
-          />
-        ) : null}
-        <QuickAction
-          href={interactive ? `/${profile.slug}/contact.vcf` : undefined}
-          icon={<DownloadIcon className="size-5" />}
-          label="ذخیره"
-          interactive={interactive}
-        />
-      </div>
+      {/* Quick actions — phone/email show when opted in; Connect comes
+          from `connectSlot` (the public route decides whether to render
+          it based on viewer identity). The grid auto-sizes to however
+          many tiles end up populated. */}
+      {(() => {
+        const tileCount =
+          (profile.publicPhone ? 1 : 0) +
+          (profile.email ? 1 : 0) +
+          (connectSlot ? 1 : 0);
+        if (tileCount === 0) return null;
+        return (
+          <div
+            className="relative mt-6 grid gap-2.5"
+            style={{
+              gridTemplateColumns: `repeat(${tileCount}, minmax(0,1fr))`,
+            }}
+          >
+            {profile.publicPhone ? (
+              <QuickAction
+                href={interactive ? `tel:${profile.publicPhone}` : undefined}
+                icon={<PhoneIcon className="size-5" />}
+                label="تماس"
+                interactive={interactive}
+              />
+            ) : null}
+            {profile.email ? (
+              <QuickAction
+                href={interactive ? `mailto:${profile.email}` : undefined}
+                icon={<AtSignIcon className="size-5" />}
+                label="ایمیل"
+                interactive={interactive}
+              />
+            ) : null}
+            {connectSlot}
+          </div>
+        );
+      })()}
 
       {/* Bio */}
       {profile.bio ? (

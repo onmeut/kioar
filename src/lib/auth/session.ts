@@ -6,13 +6,22 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getDb } from "@/db";
-import { eventRegistrations, events, sessions, users } from "@/db/schema";
+import {
+  eventRegistrations,
+  events,
+  profiles,
+  sessions,
+  users,
+} from "@/db/schema";
+import { createConnection } from "@/lib/connections";
 import { getRequiredEnv } from "@/lib/env";
 import { log } from "@/lib/log";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
 import {
+  clearPendingConnect,
   clearPendingEventRegistration,
+  getPendingConnect,
   getPendingEventRegistration,
 } from "./pending-intent";
 
@@ -472,4 +481,62 @@ export async function continuePendingEventRegistrationOrRedirect(
 
   await clearPendingEventRegistration();
   redirect(`/events/${event.slug}?registered=1`);
+}
+
+/**
+ * Pending Connect-on-auth handoff. Anonymous visitor taps Connect on
+ * `/slug`, we drop a `kioar_pending_connect=slug` cookie and redirect to
+ * `/auth`. After the user completes OTP, the caller invokes this helper.
+ *
+ * If there is no pending slug, returns without doing anything so the
+ * caller can fall through to whatever pending-intent comes next
+ * (currently event registration → /me).
+ *
+ * If the pending slug resolves to a real published page that isn't owned
+ * by the just-authed user, we create the mutual connection (race-safe
+ * via the canonical-pair unique index) and redirect them back to that
+ * page so they land in the connected state.
+ *
+ * Edge cases handled in-line:
+ *  - page deleted between cookie-set and auth → clear cookie, return
+ *  - admin-disabled page → clear cookie, return
+ *  - user is the page owner → clear cookie, redirect to the page anyway
+ *    (they don't connect to themselves; the public-page render hides
+ *    the button)
+ *  - user has no completed page yet (mid-onboarding) → leave the cookie
+ *    in place so the connection happens on next sign-in after they
+ *    finish onboarding; return so `/start` handles the redirect
+ */
+export async function continuePendingConnectOrNext(userId: string) {
+  const pendingSlug = await getPendingConnect();
+  if (!pendingSlug) return;
+
+  const db = getDb();
+  const target = await db.query.profiles.findFirst({
+    where: eq(profiles.slug, pendingSlug),
+  });
+
+  if (!target || target.adminDisabledAt) {
+    await clearPendingConnect();
+    return;
+  }
+
+  if (target.userId === userId) {
+    await clearPendingConnect();
+    redirect(`/${pendingSlug}`);
+  }
+
+  const viewerPage = await resolveCurrentPageForOwner(userId);
+  if (!viewerPage) {
+    // Still in onboarding. Leave the cookie so the connection completes
+    // once they have a page.
+    return;
+  }
+
+  await createConnection({
+    viewerPageId: viewerPage.id,
+    targetPageId: target.id,
+  });
+  await clearPendingConnect();
+  redirect(`/${pendingSlug}`);
 }
