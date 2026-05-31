@@ -30,6 +30,18 @@ type SaveResult =
       message?: string;
     };
 
+// `saveProfileLinksForUser` replaces the whole link set, so callers that keep
+// a client-side mirror (the activation wizard) need the real, DB-generated
+// uuids back — otherwise they hold placeholder ids that later crash reorder
+// queries. This result carries the inserted ids in saved order.
+type SaveLinksResult =
+  | { ok: true; linkIds: string[] }
+  | {
+      ok: false;
+      fieldErrors?: Record<string, string[] | undefined>;
+      message?: string;
+    };
+
 export type OnboardingSaveResult =
   | {
       ok: true;
@@ -372,7 +384,7 @@ export async function savePageSettingsForUser(
 export async function saveProfileLinksForUser(
   userId: string,
   links: z.infer<typeof profileLinksArraySchema>,
-): Promise<SaveResult> {
+): Promise<SaveLinksResult> {
   const db = getDb();
   // Operate on the *current* page — not just "the user's only page". When a
   // user owns multiple pages, the cookie picks which one we're editing.
@@ -397,13 +409,19 @@ export async function saveProfileLinksForUser(
     };
   }
 
-  await db.transaction(async (tx) => {
+  const linkIds = await db.transaction(async (tx) => {
     await tx
       .delete(profileLinks)
       .where(eq(profileLinks.profileId, existingProfile.id));
 
-    if (parsed.data.length) {
-      await tx.insert(profileLinks).values(
+    if (!parsed.data.length) return [] as string[];
+
+    // `.returning()` preserves the insert order, so the ids line up with the
+    // saved links by `sortOrder`. Callers reconcile their client state with
+    // these real uuids.
+    const inserted = await tx
+      .insert(profileLinks)
+      .values(
         parsed.data.map((link, index) => ({
           profileId: existingProfile.id,
           label: link.label,
@@ -417,12 +435,14 @@ export async function saveProfileLinksForUser(
           spotlight: link.spotlight ?? "none",
           animationStyle: link.animationStyle ?? null,
         })),
-      );
-    }
+      )
+      .returning({ id: profileLinks.id });
+
+    return inserted.map((row) => row.id);
   });
 
   await invalidateProfileCacheBySlug(existingProfile.slug);
-  return { ok: true };
+  return { ok: true, linkIds };
 }
 
 export async function saveProfileForUser(
@@ -452,7 +472,10 @@ export async function saveProfileForUser(
     };
   }
 
-  return saveProfileLinksForUser(userId, parsedLinks);
+  const linksResult = await saveProfileLinksForUser(userId, parsedLinks);
+  if (!linksResult.ok) return linksResult;
+  // This caller doesn't surface link ids; normalize to the plain SaveResult.
+  return { ok: true };
 }
 
 /**

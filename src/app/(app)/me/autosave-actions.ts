@@ -239,6 +239,11 @@ export async function autosaveLinksAction(
   return {
     status: "success",
     message: "ذخیره شد",
+    // Hand the real DB uuids back (in saved order) so the client can replace
+    // any temporary placeholder ids it minted before save — otherwise a later
+    // reorder would ship non-uuid ids and crash the query. `values` is
+    // string→string, so the id array is JSON-encoded.
+    values: { linkIds: JSON.stringify(result.linkIds) },
   };
 }
 

@@ -31,6 +31,17 @@ export type ReorderItem = { kind: BlockKind; id: string };
 
 type Result = { ok: true } | { ok: false; message: string };
 
+// All block ids are uuid columns. The client occasionally holds temporary,
+// non-uuid placeholder ids (e.g. the activation wizard's `wizard-<key>-<ts>`
+// strings) before the server round-trips the real ids back. Feeding a
+// non-uuid into `inArray(<uuid column>, …)` makes Postgres throw `22P02`
+// (invalid input syntax for type uuid) and aborts the whole batch — which
+// previously crashed every wizard-driven reorder. Per this module's contract
+// ("silently ignores ids that do not belong to the profile"), we drop any id
+// that isn't a well-formed uuid before it ever reaches the query.
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function reorderBlocksForUser(
   userId: string,
   items: ReorderItem[],
@@ -40,6 +51,11 @@ export async function reorderBlocksForUser(
   // pages and only the current one is being arranged.
   const profile = await resolveCurrentPageForOwner(userId);
   if (!profile) return { ok: false, message: "پروفایل یافت نشد." };
+
+  // Drop any items whose id isn't a real uuid (stale client placeholders).
+  // This both prevents the `22P02` crash and keeps the rest of the batch
+  // working when one bad id slips in alongside valid ones.
+  items = items.filter((i) => UUID_RE.test(i.id));
 
   // Validate ownership per kind in a single round-trip.
   const linkIds = items.filter((i) => i.kind === "link").map((i) => i.id);

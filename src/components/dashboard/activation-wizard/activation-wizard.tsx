@@ -108,6 +108,30 @@ function buildLinksFromDraft(
   return result;
 }
 
+/**
+ * After `autosaveLinksAction` succeeds it returns the real DB uuids (in saved
+ * order) under `values.linkIds` as a JSON-encoded array. Swap them onto the
+ * locally-built links so the parent's `onLinksAdded` receives real ids — the
+ * `wizard-<key>-<ts>` placeholders must never reach the reorder query (they'd
+ * trip Postgres' uuid cast). Falls back to the placeholder if anything is off.
+ */
+function withRealLinkIds(
+  links: EditableLink[],
+  rawLinkIds: string | undefined,
+): EditableLink[] {
+  if (!rawLinkIds) return links;
+  let ids: unknown;
+  try {
+    ids = JSON.parse(rawLinkIds);
+  } catch {
+    return links;
+  }
+  if (!Array.isArray(ids) || ids.length !== links.length) return links;
+  return links.map((link, i) =>
+    typeof ids[i] === "string" ? { ...link, id: ids[i] as string } : link,
+  );
+}
+
 export function ActivationWizard({
   open,
   onClose,
@@ -275,7 +299,7 @@ export function ActivationWizard({
             toast.error(linksResult.message ?? "خطا در ذخیره‌ی لینک‌ها");
             return;
           }
-          onLinksAdded(newLinks);
+          onLinksAdded(withRealLinkIds(newLinks, linksResult.values?.linkIds));
           clearActivationDraft(pageId);
           updateDraft({ step: STEP_DONE });
         });
@@ -321,10 +345,10 @@ export function ActivationWizard({
         }
       }
 
-      const newLinks = buildLinksFromDraft(draft.selectedPlatforms, draft.platformValues);
-      if (newLinks.length > 0) {
+      let savedLinks = buildLinksFromDraft(draft.selectedPlatforms, draft.platformValues);
+      if (savedLinks.length > 0) {
         const linksFd = new FormData();
-        linksFd.append("links", JSON.stringify(newLinks.map((l, i) => ({
+        linksFd.append("links", JSON.stringify(savedLinks.map((l, i) => ({
           label: l.label, url: l.url, description: l.description,
           imageUrl: l.imageUrl, iconKey: l.iconKey, iconUrl: l.iconUrl,
           sortOrder: i, isActive: true, spotlight: "none", animationStyle: null,
@@ -334,10 +358,12 @@ export function ActivationWizard({
           toast.error(linksResult.message ?? "خطا در ذخیره‌ی لینک‌ها");
           return;
         }
+        // Replace placeholder ids with the real DB uuids before they enter state.
+        savedLinks = withRealLinkIds(savedLinks, linksResult.values?.linkIds);
       }
 
       onProfileUpdated({ fullName: draft.displayName, bio: draft.bio, avatarUrl: localAvatarUrl, avatarSeed: localAvatarSeed });
-      onLinksAdded(newLinks);
+      onLinksAdded(savedLinks);
       clearActivationDraft(pageId);
       updateDraft({ step: STEP_DONE });
     });
