@@ -731,10 +731,11 @@ export function LinksPageClient({
     const result = await updateBookingBlockAction(idleState, fd);
     if (result.status === "error") {
       toast.error(result.message ?? "ذخیره نشد.");
+      // Roll back the optimistic update by re-pulling server truth.
       router.refresh();
     } else {
+      // Optimistic state already matches the server; no refetch needed.
       toast.success("ذخیره شد");
-      router.refresh();
     }
   }
 
@@ -748,8 +749,8 @@ export function LinksPageClient({
       toast.error(result.message ?? "حذف نشد.");
       setBookingBlocks(prev);
     } else {
+      // Block already removed from local state; no refetch needed.
       toast.success("حذف شد");
-      router.refresh();
     }
   }
 
@@ -825,8 +826,8 @@ export function LinksPageClient({
       toast.error(result.message ?? "حذف نشد.");
       setFormBlocks(prev);
     } else {
+      // Block already removed from local state; no refetch needed.
       toast.success("حذف شد");
-      router.refresh();
     }
   }
 
@@ -885,8 +886,8 @@ export function LinksPageClient({
       toast.error(result.message ?? "حذف نشد.");
       setProductBlocks(prev);
     } else {
+      // Block already removed from local state; no refetch needed.
       toast.success("حذف شد");
-      router.refresh();
     }
   }
 
@@ -930,7 +931,7 @@ export function LinksPageClient({
     if (newUrl) {
       setProfile((p) => ({ ...p, avatarUrl: newUrl }));
     }
-    router.refresh();
+    // Optimistic profile update already reflects the server; no refetch.
     return { ok: true as const };
   }
 
@@ -941,7 +942,7 @@ export function LinksPageClient({
       return { ok: false as const };
     }
     setProfile((p) => ({ ...p, avatarUrl: null }));
-    router.refresh();
+    // Optimistic profile update already reflects the server; no refetch.
     return { ok: true as const };
   }
 
@@ -956,7 +957,7 @@ export function LinksPageClient({
     // Picking a seed clears any uploaded photo on the server; mirror that
     // optimistically so the editor avatar swaps immediately.
     setProfile((p) => ({ ...p, avatarSeed: seed, avatarUrl: null }));
-    router.refresh();
+    // Optimistic profile update already reflects the server; no refetch.
     return { ok: true as const };
   }
 
@@ -1020,7 +1021,8 @@ export function LinksPageClient({
       email: next.email,
       showPublicEmail: next.showPublicEmail,
     }));
-    router.refresh();
+    // Optimistic profile update already reflects the server (including the
+    // returned OG image URL); no refetch needed.
     return { ok: true as const };
   }
 
