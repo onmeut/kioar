@@ -27,16 +27,30 @@ export const registrationStatusEnum = pgEnum("registration_status", [
   "registered",
   "cancelled",
 ]);
-export const cardTypeEnum = pgEnum("card_type", ["physical", "nfc"]);
-export const cardDesignEnum = pgEnum("card_design", [
-  "design_1",
-  "design_2",
-  "design_3",
+// ---- NFC/QR physical cards (the `/c/{id}` system) -------------------------
+// A physical card whose printed QR + NFC chip + this DB row all encode the
+// same permanent URL `https://kioar.com/c/{id}`. The card binds to a PAGE
+// (profiles row) via `page_id`; the chip/QR never change when (re)binding.
+export const cardStatusEnum = pgEnum("card_status", [
+  "unassigned", // minted, no page bound yet (gift cards ship like this)
+  "assigned", // page_id set → /c/{id} renders that page
+  "disabled", // lost/stolen/revoked → inactive landing
 ]);
-export const cardRequestStatusEnum = pgEnum("card_request_status", [
-  "new",
-  "reviewing",
+export const cardMaterialEnum = pgEnum("card_material", ["colorful", "metal"]);
+export const cardSourceEnum = pgEnum("card_source", [
+  "purchased", // bought outright in the ordering studio
+  "gift_pro", // granted by a yearly Pro subscription
+  "gift_business", // granted by a yearly Business subscription
+]);
+// Lifecycle of a card *order* (the purchase/fulfillment record), distinct
+// from the physical card's `cardStatusEnum`.
+export const cardOrderStatusEnum = pgEnum("card_order_status", [
+  "pending_payment", // checkout started, awaiting Zarinpal verify (purchased only)
+  "paid", // payment verified (or gift redeemed) → enters fulfillment queue
+  "processing", // admin assigned a physical card / writing NFC
+  "shipped",
   "fulfilled",
+  "cancelled",
 ]);
 export const bookingLocationTypeEnum = pgEnum("booking_location_type", [
   "online",
@@ -423,29 +437,6 @@ export const eventRegistrations = pgTable(
   ],
 );
 
-export const cardRequests = pgTable(
-  "card_requests",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    fullName: text("full_name").notNull(),
-    phone: text("phone").notNull(),
-    deliveryInfo: text("delivery_info").notNull(),
-    cardType: cardTypeEnum("card_type").default("physical").notNull(),
-    cardDesign: cardDesignEnum("card_design").default("design_1").notNull(),
-    notes: text("notes"),
-    status: cardRequestStatusEnum("status").default("new").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true })
-      .defaultNow()
-      .notNull(),
-  },
-  (table) => [
-    index("card_requests_status_created_idx").on(table.status, table.createdAt),
-    index("card_requests_user_idx").on(table.userId),
-  ],
-);
 
 export const usersRelations = relations(users, ({ many }) => ({
   // A user owns many pages. Callers that previously read `viewer.profile`
@@ -454,7 +445,6 @@ export const usersRelations = relations(users, ({ many }) => ({
   pages: many(profiles),
   sessions: many(sessions),
   registrations: many(eventRegistrations),
-  cardRequests: many(cardRequests),
   createdEvents: many(events),
   oauthAccounts: many(oauthAccounts),
 }));
@@ -547,12 +537,6 @@ export const eventRegistrationsRelations = relations(
   }),
 );
 
-export const cardRequestsRelations = relations(cardRequests, ({ one }) => ({
-  user: one(users, {
-    fields: [cardRequests.userId],
-    references: [users.id],
-  }),
-}));
 
 // Pre-aggregated daily stats. One row per (profile, date); incremented via
 // UPSERT so the table stays small (≤365 rows/year per profile) regardless of
@@ -2468,3 +2452,134 @@ export const pageConnectionsRelations = relations(pageConnections, ({ one }) => 
     relationName: "page_connection_initiator",
   }),
 }));
+
+// ---------------------------------------------------------------------------
+// NFC / QR physical cards
+// ---------------------------------------------------------------------------
+// One row per physical card. `id` is the short, human-readable, collision-
+// checked base32 code printed on the card AND encoded in both the QR and the
+// locked NFC chip as `https://kioar.com/c/{id}`. It is NOT a uuid — it is the
+// public identifier by construction. The card points to a page via `pageId`;
+// `pageId` NULL + status `unassigned` is a gift card awaiting activation.
+// Re-pointing a card only updates `pageId`; the printed code never changes.
+export const cards = pgTable(
+  "cards",
+  {
+    id: text("id").primaryKey(),
+    pageId: uuid("page_id").references(() => profiles.id, {
+      onDelete: "set null",
+    }),
+    status: cardStatusEnum("status").default("unassigned").notNull(),
+    batch: text("batch").notNull(),
+    color: text("color").notNull(),
+    material: cardMaterialEnum("material").notNull(),
+    source: cardSourceEnum("source").notNull(),
+    // NFC fulfillment checklist (write → tap-test → lock). Tracked per card so
+    // the admin helper can show progress; actual chip writing is out of app
+    // scope (external NFC hardware).
+    nfcWrittenAt: timestamp("nfc_written_at", { withTimezone: true }),
+    nfcLockedAt: timestamp("nfc_locked_at", { withTimezone: true }),
+    claimedAt: timestamp("claimed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("cards_page_id_idx").on(table.pageId),
+    index("cards_status_idx").on(table.status),
+    index("cards_batch_idx").on(table.batch),
+  ],
+);
+
+// A card order is the purchase/redemption + fulfillment record. Purchased
+// orders carry Zarinpal payment fields and become `paid` only after verify;
+// gift redemptions skip payment and are created already `paid`. The physical
+// `cardId` is linked at fulfillment time by an admin.
+export const cardOrders = pgTable(
+  "card_orders",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    color: text("color").notNull(),
+    material: cardMaterialEnum("material").notNull(),
+    nameOnCard: text("name_on_card").notNull(),
+    province: text("province").notNull(),
+    city: text("city").notNull(),
+    address: text("address").notNull(),
+    postalCode: text("postal_code").notNull(),
+    status: cardOrderStatusEnum("status").default("pending_payment").notNull(),
+    source: cardSourceEnum("source").default("purchased").notNull(),
+    // Set at fulfillment when an admin assigns a physical card from inventory.
+    cardId: text("card_id").references(() => cards.id, { onDelete: "set null" }),
+    // Toman amount charged (0 for gift redemptions). Persisted before the
+    // Zarinpal redirect so the verify step can assert the echoed amount.
+    amountToman: integer("amount_toman").default(0).notNull(),
+    // Zarinpal idempotency key (UNIQUE). Null for gift orders.
+    paymentAuthority: text("payment_authority"),
+    paymentRefId: text("payment_ref_id"),
+    paidAt: timestamp("paid_at", { withTimezone: true }),
+    shippedAt: timestamp("shipped_at", { withTimezone: true }),
+    fulfilledAt: timestamp("fulfilled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("card_orders_page_id_idx").on(table.pageId),
+    index("card_orders_user_id_idx").on(table.userId),
+    index("card_orders_status_idx").on(table.status),
+    uniqueIndex("card_orders_payment_authority_idx").on(table.paymentAuthority),
+  ],
+);
+
+// Tracks a gift entitlement granted by a subscription purchase so a single
+// purchase grants its free card exactly once (idempotent on `sourceKey`).
+// Redemption happens when the user completes a (free) card order; we stamp
+// the resulting order id here and flip `redeemedAt`.
+export const cardEntitlements = pgTable(
+  "card_entitlements",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    material: cardMaterialEnum("material").notNull(),
+    source: cardSourceEnum("source").notNull(),
+    // Idempotency key for the granting event, e.g. `invoice:{invoiceId}`.
+    // UNIQUE so the same subscription payment never double-grants.
+    sourceKey: text("source_key").notNull(),
+    redeemedAt: timestamp("redeemed_at", { withTimezone: true }),
+    redeemedOrderId: uuid("redeemed_order_id").references(() => cardOrders.id, {
+      onDelete: "set null",
+    }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("card_entitlements_page_id_idx").on(table.pageId),
+    index("card_entitlements_user_id_idx").on(table.userId),
+    uniqueIndex("card_entitlements_source_key_idx").on(table.sourceKey),
+  ],
+);

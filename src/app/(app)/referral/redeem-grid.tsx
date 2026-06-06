@@ -17,8 +17,8 @@ import { cn } from "@/lib/utils";
  * Visual page picker for redeeming a referral credit. Replaces the old
  * dropdown — every owned page renders as a card with avatar, slug, plan
  * badge, and current `currentPeriodEnd`. The CTA button on each card
- * applies one month and shows a celebratory toast with the new expiry
- * date.
+ * applies one earned credit (3 months) and shows a celebratory toast
+ * with the new expiry date.
  */
 export type RedeemablePage = {
   id: string;
@@ -67,7 +67,7 @@ export function RedeemGrid({
   async function redeem(page: RedeemablePage) {
     if (available < 1 || pendingId) return;
     setPendingId(page.id);
-    const t = toast.loading("در حال اعمال یک ماه پرو…");
+    const t = toast.loading("در حال اعمال ۳ ماه پرو…");
     try {
       const res = await fetch("/api/referrals/redeem", {
         method: "POST",
@@ -85,7 +85,7 @@ export function RedeemGrid({
         return;
       }
       const newEnd = new Date(json.newPeriodEnd);
-      toast.success("یک ماه پرو اضافه شد 🎉", {
+      toast.success("۳ ماه پرو اضافه شد 🎉", {
         id: t,
         description: `اشتراک «${page.fullName ?? page.slug}» تا ${formatFa(newEnd)} تمدید شد.`,
       });
@@ -172,7 +172,7 @@ export function RedeemGrid({
                 ) : (
                   <>
                     <GiftIcon className="size-4" />
-                    اعمال یک ماه پرو
+                    اعمال ۳ ماه پرو
                   </>
                 )}
               </Button>

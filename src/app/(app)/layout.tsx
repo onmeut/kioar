@@ -5,6 +5,7 @@ import { CommandPaletteTrigger } from "@/components/navigation/command-palette-t
 import { MobileHeaderContent } from "@/components/navigation/mobile-header-content";
 import { PageSwitcher } from "@/components/navigation/page-switcher";
 import {
+  SidebarCardCTA,
   SidebarIconRow,
   SidebarNav,
   SidebarReferralCTA,
@@ -182,7 +183,6 @@ export default async function DashboardLayout({
     },
     { href: "/connections" as Route, label: "دایره من", icon: "users" },
     { href: "/my-events", label: "رویدادها", icon: "events" },
-    { href: "/premium" as Route, label: "کارت هوشمند", icon: "requests" },
   ];
 
   // Bottom-of-sidebar utility row. Notifications, profile, help — icon
@@ -265,6 +265,7 @@ export default async function DashboardLayout({
                   planKey={currentPage.planKey}
                 />
               ) : null}
+              <SidebarCardCTA href={"/cards" as Route} />
               <SidebarReferralCTA
                 href={"/referral" as Route}
                 availableMonths={referralAvailableMonths}

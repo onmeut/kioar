@@ -65,8 +65,6 @@ type RecentSignupRow = {
   avatar_url: string | null;
   created_at: Date;
 };
-type CardRequestRow = { status: string; count: number };
-
 export default async function AdminPage() {
   await requireAdmin();
   const db = getDb();
@@ -79,7 +77,6 @@ export default async function AdminPage() {
     recentInvoices,
     recentSignups,
     pageTotalRow,
-    cardRequestRows,
     activeDiscountsRow,
     queuedSmsRow,
   ] = await Promise.all([
@@ -154,11 +151,6 @@ export default async function AdminPage() {
       sql`SELECT COUNT(*)::int AS total FROM "profiles"`,
     ) as unknown as Promise<Array<{ total: number }>>,
     db.execute(sql`
-      SELECT "status"::text AS status, COUNT(*)::int AS count
-      FROM "card_requests"
-      GROUP BY "status"
-    `) as unknown as Promise<CardRequestRow[]>,
-    db.execute(sql`
       SELECT COUNT(*)::int AS active
       FROM "discount_codes"
       WHERE "is_active" = true
@@ -192,8 +184,6 @@ export default async function AdminPage() {
       : Math.round((paymentVerified / paymentTotal) * 100);
 
   const totalPages = pageTotalRow[0]?.total ?? 0;
-  const cardRequestNew =
-    cardRequestRows.find((r) => r.status === "new")?.count ?? 0;
   const activeDiscounts = activeDiscountsRow[0]?.active ?? 0;
   const queuedSms = queuedSmsRow[0]?.queued ?? 0;
 
@@ -307,7 +297,7 @@ export default async function AdminPage() {
       </section>
 
       {/* Secondary stats row */}
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <MiniStat
           label="درآمد سالانه (ARR)"
           value={`${toPersianDigits(formatPersianNumber(arrToman))} تومان`}
@@ -315,11 +305,6 @@ export default async function AdminPage() {
         <MiniStat
           label="فعال (۷ روز اخیر)"
           value={toPersianDigits(userStats.activeLast7d)}
-        />
-        <MiniStat
-          label="درخواست کارت جدید"
-          value={toPersianDigits(cardRequestNew)}
-          href={"/admin/requests" as Route}
         />
         <MiniStat
           label="کدهای تخفیف فعال"
@@ -525,20 +510,13 @@ export default async function AdminPage() {
       </section>
 
       {/* Operational footer */}
-      <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <section className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <OpsCard
           icon={<MessageSquareIcon className="size-4" />}
           label="پیامک‌های در صف یا ناموفق"
           value={toPersianDigits(queuedSms)}
           href={"/admin/sms" as Route}
           tone={queuedSms > 0 ? "warn" : "default"}
-        />
-        <OpsCard
-          icon={<CreditCardIcon className="size-4" />}
-          label="درخواست کارت در انتظار"
-          value={toPersianDigits(cardRequestNew)}
-          href={"/admin/requests" as Route}
-          tone={cardRequestNew > 0 ? "warn" : "default"}
         />
         <OpsCard
           icon={<ShieldCheckIcon className="size-4" />}

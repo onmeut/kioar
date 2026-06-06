@@ -17,5 +17,17 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    container_name: kioar-redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   kioar_postgres_data:

@@ -24,7 +24,6 @@ import {
   MegaphoneIcon,
   MessageCircleQuestionIcon,
   ReceiptIcon,
-  ScrollTextIcon,
   SparklesIcon,
   TagIcon,
   UserIcon,
@@ -258,14 +257,6 @@ export function CommandPalette({
             >
               <CalendarDaysIcon />
               <span>رویدادها</span>
-            </CommandItem>
-            <CommandItem
-              value="nav-card-request"
-              keywords={["card", "request", "کارت", "درخواست"]}
-              onSelect={() => goPage("/premium")}
-            >
-              <ScrollTextIcon />
-              <span>کارت هوشمند</span>
             </CommandItem>
             <CommandItem
               value="nav-billing"

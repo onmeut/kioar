@@ -72,31 +72,6 @@ export function NewPageCelebration({ previewProfile, onComplete }: Props) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
-    if (!visible) return;
-    // zIndex must exceed our overlay (99999) so confetti paints on top
-    const Z = 999999;
-    const colors = ["#1ED760", "#ffffff", "#f97316", "#3b82f6", "#facc15", "#a855f7", "#ec4899"];
-
-    import("canvas-confetti").then(({ default: confetti }) => {
-      // Big opening salvo from center
-      confetti({ particleCount: 180, spread: 100, origin: { y: 0.45 }, colors, zIndex: Z, ticks: 300, decay: 0.93 });
-
-      // Continuous side cannons for 2.5 s
-      const interval = setInterval(() => {
-        confetti({ particleCount: 55, angle: 60, spread: 70, origin: { x: 0, y: 0.6 }, colors, zIndex: Z, ticks: 260, decay: 0.92 });
-        confetti({ particleCount: 55, angle: 120, spread: 70, origin: { x: 1, y: 0.6 }, colors, zIndex: Z, ticks: 260, decay: 0.92 });
-      }, 220);
-
-      // Extra mid-screen burst at 600 ms
-      setTimeout(() => {
-        confetti({ particleCount: 140, spread: 120, origin: { y: 0.38, x: 0.5 }, colors, zIndex: Z, ticks: 320, decay: 0.94 });
-      }, 600);
-
-      // Stop the cannons at 2.6 s
-      setTimeout(() => clearInterval(interval), 2600);
-    });
-  }, [visible]);
 
   if (!mounted || !visible) return null;
 

@@ -69,7 +69,13 @@ export type AdminAuditAction =
   | "category.deactivate"
   | "category.delete"
   | "page.admin_disable"
-  | "page.admin_enable";
+  | "page.admin_enable"
+  | "card.batch_generated"
+  | "card.assigned_to_order"
+  | "card.disabled"
+  | "card.order_status_advanced"
+  | "card.nfc_step"
+  | "card.settings_updated";
 
 type Executor = {
   insert: ReturnType<typeof getDb>["insert"];
@@ -223,4 +229,10 @@ export const ADMIN_AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   "category.delete": "حذف دسته‌بندی",
   "page.admin_disable": "غیرفعال‌سازی دستی صفحه",
   "page.admin_enable": "فعال‌سازی مجدد صفحه",
+  "card.batch_generated": "ساخت دستهٔ کارت",
+  "card.assigned_to_order": "تخصیص کارت به سفارش",
+  "card.disabled": "غیرفعال‌سازی کارت",
+  "card.order_status_advanced": "پیشبرد وضعیت سفارش کارت",
+  "card.nfc_step": "ثبت مرحلهٔ NFC",
+  "card.settings_updated": "بروزرسانی تنظیمات کارت",
 };

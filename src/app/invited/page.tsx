@@ -91,11 +91,11 @@ export async function generateMetadata({
   const inviter = code ? await getInviter(code) : null;
 
   const title = inviter
-    ? `${inviter.fullName} شما را به کی‌یو‌آر دعوت کرد — یک ماه پرو رایگان`
-    : "دعوت‌نامه‌ی کی‌یو‌آر — یک ماه پرو رایگان";
+    ? `${inviter.fullName} شما را به کی‌یو‌آر دعوت کرد — ۳ ماه پرو رایگان`
+    : "دعوت‌نامه‌ی کی‌یو‌آر — ۳ ماه پرو رایگان";
   const description = inviter
-    ? `با لینک ${inviter.fullName} به کی‌یو‌آر بپیوندید و یک ماه پروی رایگان روی صفحه‌تان فعال کنید.`
-    : "با دعوت یک دوست، یک ماه پرو رایگان روی صفحه‌ی شما فعال می‌شود.";
+    ? `با لینک ${inviter.fullName} به کی‌یو‌آر بپیوندید و با پلن سالانه‌ی پرو، ۳ ماه پروی رایگان روی صفحه‌تان فعال کنید.`
+    : "با دعوت یک دوست و فعال‌کردن پلن سالانه‌ی پرو، ۳ ماه پرو رایگان روی صفحه‌ی شما فعال می‌شود.";
 
   const ogImage = code ? `/api/og/invite/${encodeURIComponent(code)}` : null;
 
@@ -225,7 +225,7 @@ export default async function InvitedPage({
                 به کی‌یو‌آر دعوت کرد
               </>
             ) : (
-              <>یک ماه اشتراکِ پرو، مهمانِ ما</>
+              <>۳ ماه اشتراکِ پرو، مهمانِ ما</>
             )}
           </h1>
 
@@ -263,27 +263,28 @@ export default async function InvitedPage({
           <div className="mb-4 flex items-center justify-center gap-2">
             <GiftIcon className="size-4 text-violet-700" />
             <p className="text-sm font-bold text-violet-900">
-              هدیه‌ی دوطرفه: ۳۰ روز پرو رایگان
+              هدیه‌ی دوطرفه: ۹۰ روز پرو رایگان
             </p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl bg-violet-50 p-4 text-center">
               <p className="text-xs font-medium text-violet-700">شما</p>
               <p className="mt-1 text-3xl font-extrabold text-violet-900">
-                ۱ ماه
+                ۳ ماه
               </p>
               <p className="text-xs text-violet-600">پرو رایگان</p>
             </div>
             <div className="rounded-2xl bg-violet-50 p-4 text-center">
               <p className="text-xs font-medium text-violet-700">دوستت</p>
               <p className="mt-1 text-3xl font-extrabold text-violet-900">
-                ۱ ماه
+                ۳ ماه
               </p>
               <p className="text-xs text-violet-600">پرو رایگان</p>
             </div>
           </div>
           <p className="mt-3 text-center text-[11px] leading-5 text-violet-600/80">
-            توام بعدا می‌تونی دوستات رو دعوت کنی و اشتراک رایگان بگیری
+            ۳ ماه هدیه با فعال‌کردن پلن سالانه‌ی پرو. توام بعداً می‌تونی دوستات رو
+            دعوت کنی و اشتراک رایگان بگیری.
           </p>
         </div>
       </section>
@@ -406,8 +407,8 @@ export default async function InvitedPage({
             </span>
             <h3 className="text-xl font-bold sm:text-2xl">همین الان شروع کن</h3>
             <p className="max-w-md text-[13px] leading-7 text-muted-foreground">
-              ساختن صفحه رایگانه. هدیه‌ی یک ماه پرو هم وقتی فعال کنی، خودکار
-              اعمال می‌شه.
+              ساختن صفحه رایگانه. هدیه‌ی ۳ ماه پرو هم وقتی پلن سالانه رو فعال کنی،
+              خودکار اعمال می‌شه.
             </p>
             <Button
               size="lg"

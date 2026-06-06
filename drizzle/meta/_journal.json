@@ -365,6 +365,20 @@
       "when": 1778600000000,
       "tag": "0052_page_connections",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1778700000000,
+      "tag": "0053_nfc_cards",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1778800000000,
+      "tag": "0054_drop_card_requests",
+      "breakpoints": true
     }
   ]
 }

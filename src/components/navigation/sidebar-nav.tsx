@@ -17,6 +17,7 @@ import {
   HandshakeIcon,
   HelpCircleIcon,
   HomeIcon,
+  IdCardIcon,
   Link2Icon,
   MessageSquareIcon,
   PencilRulerIcon,
@@ -55,6 +56,7 @@ type IconKey =
   | "bookings"
   | "forms"
   | "requests"
+  | "cards"
   | "admin"
   | "create"
   | "users"
@@ -111,6 +113,7 @@ const iconMap = {
   bookings: CalendarClockIcon,
   forms: FormInputIcon,
   requests: CreditCardIcon,
+  cards: IdCardIcon,
   admin: ShieldCheckIcon,
   create: PlusSquareIcon,
   users: UsersIcon,
@@ -309,7 +312,7 @@ export function SidebarIconRow({ items }: { items: SidebarIconRowItem[] }) {
  *
  * `availableMonths` flips the right-side pill: when the user has
  * unredeemed credit it pulses emerald with the live count, nudging
- * them to apply it on a page. Otherwise the static "۱ ماه رایگان"
+ * them to apply it on a page. Otherwise the static "۳ ماه رایگان"
  * teaser stays so first-time visitors still get the value prop.
  */
 export function SidebarReferralCTA({
@@ -366,9 +369,38 @@ export function SidebarReferralCTA({
             : "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
         )}
       >
-        {hasCredit ? `${toPersianDigits(availableMonths)} ماه` : "۱ ماه رایگان"}
+        {hasCredit ? `${toPersianDigits(availableMonths)} ماه` : "۳ ماه رایگان"}
       </span>
     </Link>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Smart card animated CTA
+// ---------------------------------------------------------------------------
+
+/**
+ * Full-width pill CTA for the "کارت هوشمند" section. Uses the same
+ * rotating-conic-gradient border trick as `hero-cta-ring` in globals.css
+ * but with the four card colors (orange/lime/cyan/pink). The inner button
+ * has a solid background — no gradient fill, just animated border.
+ */
+export function SidebarCardCTA({ href }: { href: Route }) {
+  return (
+    <div className="sidebar-card-ring w-full">
+      <Link
+        href={href}
+        className={cn(
+          "relative inline-flex h-10 w-full items-center justify-center gap-2",
+          "rounded-full bg-background px-3 text-sm font-bold transition-colors",
+          "text-foreground hover:bg-muted/60",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar",
+        )}
+      >
+        <IdCardIcon className="size-4" />
+        <span>کارت هوشمند</span>
+      </Link>
+    </div>
   );
 }
 

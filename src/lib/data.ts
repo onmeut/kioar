@@ -13,7 +13,6 @@ import {
 
 import { getDb } from "@/db";
 import {
-  cardRequests,
   eventRegistrations,
   events,
   linkStatsByDay,
@@ -237,15 +236,6 @@ export async function getLinkClickCounts(
   return Object.fromEntries(rows.map((r) => [r.linkId, Number(r.total ?? 0)]));
 }
 
-export async function getLatestCardRequest(userId: string) {
-  const db = getDb();
-
-  return db.query.cardRequests.findFirst({
-    where: eq(cardRequests.userId, userId),
-    orderBy: [desc(cardRequests.createdAt)],
-  });
-}
-
 export async function getAdminEvents() {
   const db = getDb();
 
@@ -360,28 +350,6 @@ export async function getEventRecentAttendees(eventId: string, limit = 6) {
     .limit(limit);
 }
 
-export async function getAdminCardRequests() {
-  const db = getDb();
-
-  return db
-    .select({
-      id: cardRequests.id,
-      status: cardRequests.status,
-      createdAt: cardRequests.createdAt,
-      fullName: cardRequests.fullName,
-      phone: cardRequests.phone,
-      deliveryInfo: cardRequests.deliveryInfo,
-      cardType: cardRequests.cardType,
-      cardDesign: cardRequests.cardDesign,
-      notes: cardRequests.notes,
-      userId: cardRequests.userId,
-      userPhone: users.phone,
-    })
-    .from(cardRequests)
-    .innerJoin(users, eq(cardRequests.userId, users.id))
-    .orderBy(desc(cardRequests.createdAt));
-}
-
 // --- Admin user management ----------------------------------------------
 
 export type AdminUserFilter =
@@ -428,7 +396,6 @@ export type AdminUserListItem = {
   isComplete: boolean;
   linkCount: number;
   eventCount: number;
-  cardRequestCount: number;
   pageCount: number;
   pagePlans: AdminUserPagePlan[];
 };
@@ -631,8 +598,7 @@ export async function listAdminUsers({
     pagesByUser.set(row.userId, list);
   }
 
-  // Legacy per-account counts (kept so the existing columns don't go stale).
-  const [linkCounts, eventCounts, cardCounts] = await Promise.all([
+  const [linkCounts, eventCounts] = await Promise.all([
     db
       .select({
         userId: profiles.userId,
@@ -655,14 +621,6 @@ export async function listAdminUsers({
         ),
       )
       .groupBy(eventRegistrations.userId),
-    db
-      .select({
-        userId: cardRequests.userId,
-        value: count(cardRequests.id),
-      })
-      .from(cardRequests)
-      .where(inArray(cardRequests.userId, userIds))
-      .groupBy(cardRequests.userId),
   ]);
 
   const linkByUser = new Map<string, number>(
@@ -670,9 +628,6 @@ export async function listAdminUsers({
   );
   const eventByUser = new Map<string, number>(
     eventCounts.map((row) => [row.userId, Number(row.value)]),
-  );
-  const cardByUser = new Map<string, number>(
-    cardCounts.map((row) => [row.userId, Number(row.value)]),
   );
 
   const items: AdminUserListItem[] = rows.map((row) => {
@@ -692,7 +647,6 @@ export async function listAdminUsers({
       isComplete: Boolean(row.isComplete),
       linkCount: linkByUser.get(row.id) ?? 0,
       eventCount: eventByUser.get(row.id) ?? 0,
-      cardRequestCount: cardByUser.get(row.id) ?? 0,
       pageCount: userPages.length,
       pagePlans: userPages,
     };
@@ -880,12 +834,6 @@ export async function getAdminUserDetail(userId: string, pageId?: string) {
     .where(eq(eventRegistrations.userId, user.id))
     .orderBy(desc(eventRegistrations.createdAt));
 
-  const cards = await db
-    .select()
-    .from(cardRequests)
-    .where(eq(cardRequests.userId, user.id))
-    .orderBy(desc(cardRequests.createdAt));
-
   const sessionRows = await db
     .select({
       id: sessions.id,
@@ -908,7 +856,6 @@ export async function getAdminUserDetail(userId: string, pageId?: string) {
     pagePlans,
     links,
     registrations,
-    cardRequests: cards,
     recentSessions: sessionRows,
   };
 }

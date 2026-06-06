@@ -73,6 +73,8 @@ import {
   type PageSettingsValues,
 } from "@/components/dashboard/page-settings-sheet";
 import { CustomizeButton } from "@/components/appearance/design-editor";
+import { PageThemeProvider } from "@/components/public-page/page-theme-provider";
+import { coerceAppearance } from "@/lib/appearance/types";
 import { PublicShareBar } from "@/components/dashboard/public-share-bar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,6 +120,7 @@ type ProfileSnapshot = {
   discoverCategory: string | null;
   city: string | null;
   pageType: string | null;
+  appearance: import("@/lib/appearance/types").PageAppearance | null;
 };
 
 type LinksPageClientProps = {
@@ -1030,6 +1033,7 @@ export function LinksPageClient({
   // The activation CTA is visible only when the user has zero blocks/links.
   const hasAnyBlocks = blocksOrder.length > 0 || links.length > 0;
   const activeLinks = links.filter((l) => l.isActive);
+  const previewAppearance = coerceAppearance(profile.appearance);
   const previewProfile = {
     fullName: profile.fullName,
     title: profile.title,
@@ -1384,10 +1388,12 @@ export function LinksPageClient({
               breaks in WebKit). translateZ(0) makes it the containing block
               for position:fixed portaled modals. */}
           <PhoneMockupFrame>
-            <ProfilePreviewMock
-              profile={previewProfile}
-              formSubmitAction={publicSubmitFormAction}
-            />
+            <PageThemeProvider appearance={previewAppearance} className="min-h-full" preview>
+              <ProfilePreviewMock
+                profile={previewProfile}
+                formSubmitAction={publicSubmitFormAction}
+              />
+            </PageThemeProvider>
           </PhoneMockupFrame>
         </div>
       </aside>
@@ -1406,13 +1412,13 @@ export function LinksPageClient({
           <SheetHeader className="shrink-0 border-b px-4 pt-4 pb-4 text-center">
             <SheetTitle className="text-center">پیش‌نمایش زنده</SheetTitle>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pt-4 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
-            <div className="mx-auto w-full max-w-md">
+          <div className="min-h-0 flex-1 overflow-y-auto h-full">
+            <PageThemeProvider appearance={previewAppearance} className="min-h-full" preview>
               <ProfilePreviewMock
                 profile={previewProfile}
                 formSubmitAction={publicSubmitFormAction}
               />
-            </div>
+            </PageThemeProvider>
           </div>
         </SheetContent>
       </Sheet>

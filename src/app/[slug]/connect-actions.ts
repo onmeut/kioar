@@ -2,7 +2,6 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { getDb } from "@/db";
 import { profiles } from "@/db/schema";
@@ -47,7 +46,9 @@ async function rateLimitConnect(userId: string) {
  * Idempotent: tapping Connect on a pair you're already connected to
  * is a successful no-op (the unique index hits `ON CONFLICT DO NOTHING`).
  */
-export async function connectToPageAction(formData: FormData) {
+export async function connectToPageAction(
+  formData: FormData,
+): Promise<{ redirect: string } | undefined> {
   const slug = normalizeSlug(String(formData.get("slug") || ""));
   if (!slug) return;
 
@@ -61,7 +62,7 @@ export async function connectToPageAction(formData: FormData) {
 
   if (!viewer) {
     await setPendingConnect(slug);
-    redirect("/auth");
+    return { redirect: "/auth" };
   }
 
   if (viewer.user.id === target.userId) {
@@ -70,7 +71,7 @@ export async function connectToPageAction(formData: FormData) {
 
   if (!viewer.profile?.isComplete) {
     await setPendingConnect(slug);
-    redirect("/start");
+    return { redirect: "/start" };
   }
 
   if (!(await rateLimitConnect(viewer.user.id))) {

@@ -417,16 +417,24 @@ export function ActivationWizard({
         aria-label="ساخت صفحه"
         className={cn(
           "fixed z-[201] flex flex-col bg-background overflow-hidden",
-          "inset-0",
-          "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2",
-          "sm:w-full sm:max-w-md sm:max-h-[88dvh] sm:rounded-3xl sm:shadow-2xl",
+          "inset-x-0 bottom-0 rounded-t-3xl",
+          "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl",
+          "sm:w-full sm:max-w-md sm:max-h-[88dvh] sm:shadow-2xl",
+          isDoneStep ? "top-0" : "max-h-[92dvh]",
         )}
-        style={{ paddingTop: "env(safe-area-inset-top)", paddingBottom: "env(safe-area-inset-bottom)" }}
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         onClick={(e) => e.stopPropagation()}
       >
+        {/* Drag handle — bottom sheet indicator, mobile only */}
+        {!isDoneStep && (
+          <div className="flex shrink-0 justify-center pt-3 pb-1 sm:hidden" aria-hidden="true">
+            <div className="h-1 w-10 rounded-full bg-muted-foreground/25" />
+          </div>
+        )}
+
         {/* Header — hidden on done step */}
         {!isDoneStep && (
-          <div className="flex shrink-0 items-center justify-between border-b px-4 pt-3 pb-3">
+          <div className="flex shrink-0 items-center justify-between border-b px-4 pt-2 pb-3">
             {draft.step > 0 ? (
               <Button
                 type="button"
@@ -531,7 +539,7 @@ export function ActivationWizard({
               >
                 {isSaving ? "در حال ذخیره…" : "ادامه"}
               </Button>
-              {draft.step > 0 && (
+              {draft.step > 0 ? (
                 <Button
                   type="button"
                   variant="ghost"
@@ -541,6 +549,14 @@ export function ActivationWizard({
                 >
                   بازگشت
                 </Button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="h-10 w-full text-sm text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  بستن
+                </button>
               )}
             </div>
           </div>

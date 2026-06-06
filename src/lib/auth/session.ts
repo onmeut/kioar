@@ -32,7 +32,11 @@ export const SESSION_COOKIE_NAME = "kioar_session";
 // session token we restore when the admin "exits" impersonation.
 export const IMPERSONATION_RETURN_COOKIE_NAME = "kioar_imp_return";
 export const OTP_TTL_SECONDS = 60 * 3;
-export const OTP_COOLDOWN_SECONDS = 60;
+export const OTP_COOLDOWN_SECONDS =
+  process.env.NODE_ENV !== "production" &&
+  process.env.OTP_COOLDOWN_SECONDS_DEV
+    ? parseInt(process.env.OTP_COOLDOWN_SECONDS_DEV, 10)
+    : 60;
 export const OTP_MAX_ATTEMPTS = 5;
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
 

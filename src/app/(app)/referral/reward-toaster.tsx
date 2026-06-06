@@ -41,7 +41,7 @@ export function ReferralRewardToaster({
     const id = window.setTimeout(() => {
       toast.success("یک نفر دیگه با لینک تو پرو شد 🎉", {
         description:
-          "یک ماه پرو رایگان به اعتبار شما اضافه شد. آماده‌ی استفاده.",
+          "۳ ماه پرو رایگان به اعتبار شما اضافه شد. آماده‌ی استفاده.",
         icon: <GiftIcon className="size-4" />,
         duration: 6000,
       });

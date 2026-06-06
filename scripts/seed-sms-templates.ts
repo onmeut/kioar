@@ -151,7 +151,7 @@ const TEMPLATES: SmsTemplateSeed[] = [
     key: "referral_referee_rewarded",
     nameFa: "هدیه‌ی پذیرش دعوت",
     descriptionFa:
-      "به دعوت‌شده اطلاع می‌دهد که یک ماه پرو رایگان روی صفحه‌اش فعال شد.",
+      "به دعوت‌شده اطلاع می‌دهد که ۳ ماه پرو رایگان روی صفحه‌اش فعال شد.",
     variableSchema: ["months"],
     bodyFaPreview: "کیوآر: یه دوست دعوتت کرده و %token ماه پرو رایگان برات فعال شد! از داشبوردت ببین.",
   },
@@ -159,7 +159,7 @@ const TEMPLATES: SmsTemplateSeed[] = [
     key: "referral_referrer_rewarded",
     nameFa: "تأیید دریافت اعتبار دعوت",
     descriptionFa:
-      "به دعوت‌کننده اطلاع می‌دهد که یک ماه اعتبار پرو به حسابش اضافه شد.",
+      "به دعوت‌کننده اطلاع می‌دهد که ۳ ماه اعتبار پرو به حسابش اضافه شد.",
     variableSchema: ["refereeName", "balance"],
     bodyFaPreview: "کیوآر: %token اشتراک گرفت و موجودی دعوت‌نامه‌ات به %token2 ماه رسید. ممنون که کیوآر رو معرفی کردی!",
   },

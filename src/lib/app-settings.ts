@@ -55,6 +55,99 @@ export const APP_SETTING_DEFINITIONS = {
     descriptionFa:
       "وقتی قیمت پلن تغییر می‌کند، پیش‌فرض چه باشد: همه به قیمت جدید (always_current) یا قفل قیمت قدیم برای فعلی‌ها (grandfather).",
   },
+
+  // ---- NFC/QR cards -------------------------------------------------------
+  "cards.price_colorful_toman": {
+    schema: z.number().int().min(0),
+    fallback: 390_000,
+    descriptionFa: "قیمت کارت رنگی (تومان).",
+  },
+  "cards.price_metal_toman": {
+    schema: z.number().int().min(0),
+    fallback: 1_290_000,
+    descriptionFa: "قیمت کارت فلزی (تومان).",
+  },
+  // Which plan tier a PAID card purchase grants for one year.
+  "cards.purchase_grants_plan": {
+    schema: z.enum(["free", "pro", "business"]),
+    fallback: "pro" as "free" | "pro" | "business",
+    descriptionFa: "خرید کارت، یک سال کدام پلن را هدیه می‌دهد؟",
+  },
+  // Which card material each plan's yearly purchase grants as a free card.
+  "cards.plan_grants_material": {
+    schema: z.object({
+      pro: z.enum(["colorful", "metal"]),
+      business: z.enum(["colorful", "metal"]),
+    }),
+    fallback: { pro: "colorful", business: "metal" } as {
+      pro: "colorful" | "metal";
+      business: "colorful" | "metal";
+    },
+    descriptionFa: "هر پلن سالانه چه جنس کارتی هدیه می‌دهد (Pro/Business).",
+  },
+  // Available card colors shown in the studio (hex + Persian label per material).
+  "cards.colors": {
+    schema: z.object({
+      colorful: z.array(z.object({ value: z.string(), label: z.string() })),
+      metal: z.array(z.object({ value: z.string(), label: z.string() })),
+    }),
+    fallback: {
+      colorful: [
+        { value: "lime", label: "سبز" },
+        { value: "orange", label: "نارنجی" },
+        { value: "cyan", label: "آبی" },
+        { value: "pink", label: "صورتی" },
+      ],
+      metal: [
+        { value: "black", label: "مشکی" },
+        { value: "silver", label: "نقره‌ای" },
+        { value: "gold", label: "طلایی" },
+      ],
+    } as {
+      colorful: Array<{ value: string; label: string }>;
+      metal: Array<{ value: string; label: string }>;
+    },
+    descriptionFa: "رنگ‌های موجود برای هر جنس کارت.",
+  },
+  // Master on/off for each material's availability in the studio.
+  "cards.material_enabled": {
+    schema: z.object({
+      colorful: z.boolean(),
+      metal: z.boolean(),
+    }),
+    fallback: { colorful: true, metal: true } as {
+      colorful: boolean;
+      metal: boolean;
+    },
+    descriptionFa: "در دسترس بودن هر جنس کارت در فروشگاه.",
+  },
+  // Gift offers (plan→card and card→plan) master toggles.
+  "cards.offer_plan_grants_card_enabled": {
+    schema: z.boolean(),
+    fallback: true,
+    descriptionFa: "فعال بودن هدیهٔ کارت رایگان هنگام خرید پلن سالانه.",
+  },
+  "cards.offer_card_grants_plan_enabled": {
+    schema: z.boolean(),
+    fallback: true,
+    descriptionFa: "فعال بودن هدیهٔ یک سال پلن هنگام خرید کارت.",
+  },
+  // Cross-promo copy (Farsi) shown on the plans page and in the card flow.
+  "cards.copy_plan_includes_card": {
+    schema: z.string().max(200),
+    fallback: "شامل یک کارت فیزیکی رایگان.",
+    descriptionFa: "متن تبلیغی نمایش‌داده‌شده در صفحهٔ پلن‌ها (شامل کارت رایگان).",
+  },
+  "cards.copy_card_includes_plan": {
+    schema: z.string().max(200),
+    fallback: "خرید این کارت شامل یک سال پلن رایگان است.",
+    descriptionFa: "متن تبلیغی نمایش‌داده‌شده در فروشگاه کارت (شامل یک سال پلن).",
+  },
+  "cards.shipping_cost_toman": {
+    schema: z.number().int().min(0),
+    fallback: 0,
+    descriptionFa: "هزینه ارسال کارت (تومان). صفر = رایگان.",
+  },
 } as const;
 
 export type AppSettingKey = keyof typeof APP_SETTING_DEFINITIONS;

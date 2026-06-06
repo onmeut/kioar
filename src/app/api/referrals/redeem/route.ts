@@ -2,7 +2,7 @@
  * `POST /api/referrals/redeem`
  *
  * Body: `{ pageId: string }`. Auth-required. Atomically applies one
- * month of referral credit to the chosen page (`+30 days` on
+ * earned credit (3 months) to the chosen page (`+90 days` on
  * `currentPeriodEnd`). Free-plan pages are rejected.
  *
  * Returns 200 with `{ ok: true, newPeriodEnd }` on success, or 4xx with

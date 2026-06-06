@@ -7,7 +7,7 @@
  * admin-issued discount code. Calls `/api/billing/code/resolve` to
  * classify the code and render type-specific feedback:
  *
- *   - Referral  → "یک ماه پرو رایگان روی این صفحه — به‌مهمان [نام]"
+ *   - Referral  → "۳ ماه پرو رایگان با خرید سالانه — به‌مهمان [نام]"
  *   - Affiliate → "۳ ماه پرو رایگان با خرید سالانه — به‌مهمان [نام]"
  *                 + monthly-cycle warning when applicable
  *   - Discount  → "[X]% تخفیف اعمال شد" + price preview

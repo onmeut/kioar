@@ -38,10 +38,14 @@ import { HalftoneFilter } from "./halftone-filter";
 export function PageThemeProvider({
   appearance,
   className,
+  preview,
   children,
 }: {
   appearance: PageAppearance;
   className?: string;
+  /** Suppresses full-viewport mobile inset styles (padding + card rounding)
+   *  that only apply on the real public page. Set this on all preview uses. */
+  preview?: boolean;
   children: ReactNode;
 }) {
   const cssVars = themeToCssVars(appearance.theme) as CSSProperties;
@@ -55,6 +59,7 @@ export function PageThemeProvider({
       data-page-theme={appearance.theme}
       data-wallpaper-kind={appearance.wallpaper.type}
       data-custom-wallpaper={custom ? "1" : undefined}
+      data-preview={preview ? "" : undefined}
       className={`page-theme-root ${className ?? ""}`}
       style={cssVars}
     >

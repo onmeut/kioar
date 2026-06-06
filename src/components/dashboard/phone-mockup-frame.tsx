@@ -27,7 +27,7 @@ export function PhoneMockupFrame({ children }: { children: React.ReactNode }) {
     >
       <div
         ref={setContainer}
-        className="relative flex-1 overflow-y-auto touch-pan-y"
+        className="relative flex-1 overflow-y-auto touch-pan-y h-full"
       >
         <MockupPortalProvider container={container}>
           {children}

@@ -5,12 +5,12 @@ import {
   CalendarClockIcon,
   CalendarDaysIcon,
   ChevronLeftIcon,
-  CreditCardIcon,
   FileTextIcon,
   FormInputIcon,
   GiftIcon,
   HandshakeIcon,
   HelpCircleIcon,
+  IdCardIcon,
   type LucideIcon,
   LogOutIcon,
   ReceiptIcon,
@@ -99,11 +99,6 @@ export default async function MorePage() {
       label: "رویدادها",
       icon: CalendarDaysIcon,
     },
-    {
-      href: "/premium" as Route,
-      label: "کارت هوشمند",
-      icon: CreditCardIcon,
-    },
   ];
 
   // ── حساب و اشتراک ────────────────────────────────────────────────
@@ -160,7 +155,7 @@ export default async function MorePage() {
     badge:
       referralAvailableMonths > 0
         ? `${toPersianDigits(referralAvailableMonths)} ماه`
-        : "۱ ماه رایگان",
+        : "۳ ماه رایگان",
     description:
       referralAvailableMonths > 0
         ? "اعتبار رایگان آماده‌ی استفاده دارید"
@@ -198,6 +193,16 @@ export default async function MorePage() {
   return (
     <div>
       <div className="section-shell space-y-5 py-6">
+        {/* Smart card CTA — distinguished pill above the regular tool rows */}
+        <div className="sidebar-card-ring w-full">
+          <Link
+            href={"/cards" as Route}
+            className="relative inline-flex h-12 w-full items-center justify-center gap-2.5 rounded-full bg-background px-4 text-sm font-bold text-foreground transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <IdCardIcon className="size-5" aria-hidden />
+            <span>کارت هوشمند</span>
+          </Link>
+        </div>
         <MoreSection title="ابزارها" rows={toolsRows} />
         <MoreSection title="حساب و اشتراک" rows={accountRows} />
         <MoreSection title="کسب درآمد" rows={affiliateRows} />

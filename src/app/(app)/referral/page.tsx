@@ -2,7 +2,7 @@
  * Dashboard → دعوت دوستان (redesign #3).
  *
  * - max-w-3xl shell
- * - "لینک دعوت" hero card: benefit tiles (شما ۱ ماه / دوستت ۱ ماه) +
+ * - "لینک دعوت" hero card: benefit tiles (شما ۳ ماه / دوستت ۳ ماه) +
  *   large discover-style invite-link chip + share button
  * - کد دعوت card removed
  * - Stats + progress: semantic tokens, rounded-4xl
@@ -120,7 +120,7 @@ export default async function ReferralPage() {
       <section className="rounded-4xl bg-card p-5 border border-border">
         <h2 className="text-lg font-bold mb-4">لینک دعوت</h2>
 
-        {/* Benefit visualization — شما ۱ ماه / دوستت ۱ ماه */}
+        {/* Benefit visualization — شما ۳ ماه / دوستت ۳ ماه */}
         <div className="grid grid-cols-2 gap-3 mb-5">
           <div className="rounded-2xl border border-violet-200 bg-violet-50 p-4">
             <div className="flex items-center gap-2 mb-3">
@@ -129,7 +129,7 @@ export default async function ReferralPage() {
               </span>
               <p className="text-sm font-bold text-violet-900">شما</p>
             </div>
-            <p className="text-3xl font-extrabold text-violet-900">۱ ماه</p>
+            <p className="text-3xl font-extrabold text-violet-900">۳ ماه</p>
             <p className="text-xs text-violet-600 mt-1">پرو رایگان</p>
           </div>
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
@@ -139,16 +139,17 @@ export default async function ReferralPage() {
               </span>
               <p className="text-sm font-bold text-emerald-900">دوستت</p>
             </div>
-            <p className="text-3xl font-extrabold text-emerald-900">۱ ماه</p>
+            <p className="text-3xl font-extrabold text-emerald-900">۳ ماه</p>
             <p className="text-xs text-emerald-600 mt-1">پرو رایگان</p>
           </div>
         </div>
 
         <p className="mb-4 text-xs leading-6 text-muted-foreground">
           هر کسی با این لینک ثبت‌نام کنه و{" "}
-          <strong className="font-bold text-foreground">پرو رو فعال کنه</strong>،
-          هر دو طرف یک ماه پرو رایگان می‌گیرن — تا سقف{" "}
-          {toPersianDigits(stats.cap)} ماه برای شما.
+          <strong className="font-bold text-foreground">پلن سالانه‌ی پرو</strong>{" "}
+          رو فعال کنه، هر دو طرف ۳ ماه پرو رایگان می‌گیرن — تا سقف{" "}
+          {toPersianDigits(stats.cap)} ماه برای شما. ۳ ماه هدیه به دوره‌ی اشتراک
+          هر دو طرف اضافه می‌شه.
         </p>
 
         {/* Invite link chip with Kioar logo */}
@@ -262,9 +263,9 @@ export default async function ReferralPage() {
       <section className="rounded-4xl bg-card p-5 border border-border">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-1">
-            <h2 className="text-base font-bold">اعمال یک ماه روی صفحه‌ت</h2>
+            <h2 className="text-base font-bold">اعمال ۳ ماه روی صفحه‌ت</h2>
             <p className="text-xs leading-6 text-muted-foreground">
-              هر بار یه ماه پرو رو روی هر صفحه‌ای که خواستی فعال کن. صفحه‌های
+              هر بار ۳ ماه پرو رو روی هر صفحه‌ای که خواستی فعال کن. صفحه‌های
               رایگان نیاز به ارتقا دارن.
             </p>
           </div>
@@ -348,8 +349,8 @@ function EmptyAvailable() {
       </div>
       <p className="mt-3 text-sm font-bold">هنوز اعتباری نداری</p>
       <p className="mt-1 text-xs leading-6 text-muted-foreground">
-        اولین ماه پروی رایگانت وقتی می‌رسه که اولین دوستت با لینک تو پرو رو فعال
-        کنه. فقط لازمه لینکت رو بفرستی — بقیه کارها خودکاره.
+        اولین ۳ ماه پروی رایگانت وقتی می‌رسه که اولین دوستت با لینک تو پلن سالانه‌ی
+        پرو رو فعال کنه. فقط لازمه لینکت رو بفرستی — بقیه کارها خودکاره.
       </p>
     </div>
   );
@@ -357,12 +358,13 @@ function EmptyAvailable() {
 
 function milestoneFor(conversions: number): string | null {
   if (conversions === 1)
-    return "اولین تبدیل ✨ — کارت معجزه می‌کنه. ادامه بده!";
-  if (conversions === 3) return "۳ نفر پرو شدن. ۳ ماه پرو رایگان مهمون شمایید.";
+    return "اولین تبدیل ✨ — ۳ ماه پرو رایگان گرفتی. ادامه بده!";
+  if (conversions === 2)
+    return "۲ نفر پرو شدن — به سقف ۱۲ ماه رسیدی. عالیه!";
   if (conversions === 5)
     return "۵ تبدیل — حالا جزو دعوت‌کنندگان فعال کی‌یو‌آری.";
   if (conversions === 10)
-    return "۱۰ تبدیل، ۱۰ ماه پرو. واقعاً چیز خاصی فروختی.";
+    return "۱۰ تبدیل. واقعاً چیز خاصی فروختی.";
   return null;
 }
 

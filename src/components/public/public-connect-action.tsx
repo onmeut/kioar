@@ -1,6 +1,7 @@
 "use client";
 
 import { CheckIcon, UserPlusIcon } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -26,13 +27,14 @@ export function PublicConnectAction({
 }: {
   slug: string;
   initialState: State;
-  connectAction: (formData: FormData) => Promise<void>;
+  connectAction: (formData: FormData) => Promise<{ redirect: string } | undefined>;
   disconnectAction: (formData: FormData) => Promise<void>;
 }) {
   // Optimistic local state. We flip to "connected" immediately on tap so
   // the button doesn't blink through the connect server action's
   // round-trip; the server `revalidatePath` keeps the truth in sync on
   // the next render.
+  const router = useRouter();
   const [state, setState] = useState<State>(initialState);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -43,7 +45,12 @@ export function PublicConnectAction({
       try {
         const fd = new FormData();
         fd.set("slug", slug);
-        await connectAction(fd);
+        const result = await connectAction(fd);
+        if (result?.redirect) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          router.push(result.redirect as any);
+          return;
+        }
       } catch {
         setState("unconnected");
         toast.error("افزودن ممکن نشد. لطفاً دوباره تلاش کنید.");

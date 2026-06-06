@@ -217,6 +217,100 @@
     @apply mx-auto w-full max-w-6xl px-4 sm:px-6;
   }
 
+  /*
+   * 3D flippable card primitives (used by the card studio). A stage with
+   * perspective, an inner element that preserves 3D and flips on Y, and
+   * two faces that hide their backface. Pointer-tilt is driven inline via
+   * CSS custom properties (--rx / --ry) so React only writes two vars per
+   * frame instead of re-rendering. No gradients — surface look comes from
+   * solid colors + ring/box-shadow.
+   */
+  .card3d-stage {
+    perspective: 1000px;
+  }
+
+  .card3d-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    /* Tilt vars default to flat; the flip var adds 180deg when flipped. */
+    transform: rotateX(var(--rx, 0deg))
+      rotateY(calc(var(--ry, 0deg) + var(--flip, 0deg)));
+    transition: transform 0.08s ease-out;
+    will-change: transform;
+  }
+
+  .card3d-inner.is-flipped {
+    --flip: 180deg;
+  }
+
+  /* While flipping (click), use a slower spring-y curve; pointer tilt stays snappy. */
+  .card3d-inner.is-animating {
+    transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .card3d-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    overflow: hidden;
+  }
+
+  .card3d-face-back {
+    transform: rotateY(180deg);
+  }
+
+  /* Specular sheen that follows the pointer — a soft white spot positioned
+     via --mx / --my (0–100%). Solid radial used purely as a moving highlight
+     overlay; allowed because it's a lighting effect, not a decorative fill. */
+  .card3d-sheen {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    background: radial-gradient(
+      circle at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.45),
+      rgba(255, 255, 255, 0) 60%
+    );
+    mix-blend-mode: soft-light;
+  }
+
+  /* Only show sheen when viewing the front face */
+  .card3d-stage:not([data-flipped]):hover .card3d-face:not(.card3d-face-back) .card3d-sheen {
+    opacity: 1;
+  }
+
+
+  /* Ambient idle float for the studio hero card — a gentle vertical bob.
+     Disabled for reduced-motion. */
+  @keyframes card-float-bob {
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .card-float {
+    animation: card-float-bob 5s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .card-float {
+      animation: none;
+    }
+    .card3d-inner,
+    .card3d-inner.is-animating {
+      transition: none;
+    }
+  }
+
   .marketing-shell {
     @apply mx-auto w-full max-w-6xl px-5 sm:px-6;
   }
@@ -638,6 +732,54 @@
   }
 
   /* ----------------------------------------------------------------- */
+  /* Sidebar Smart-Card CTA — animated four-color border ring           */
+  /* ----------------------------------------------------------------- */
+
+  @property --card-cta-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  @keyframes card-cta-border {
+    to {
+      --card-cta-angle: 360deg;
+    }
+  }
+
+  .sidebar-card-ring {
+    position: relative;
+    border-radius: 9999px;
+    padding: 1.5px;
+    overflow: hidden;
+    clip-path: inset(0 round 9999px);
+    display: block;
+    isolation: isolate;
+  }
+
+  .sidebar-card-ring::before {
+    content: "";
+    position: absolute;
+    inset: -80%;
+    z-index: -1;
+    background: conic-gradient(
+      from var(--card-cta-angle),
+      #FE774A 0%,
+      #F0FE00 25%,
+      #03BFFF 50%,
+      #FE4CBB 75%,
+      #FE774A 100%
+    );
+    animation: card-cta-border 4s linear infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar-card-ring::before {
+      animation: none;
+    }
+  }
+
+  /* ----------------------------------------------------------------- */
   /* Block "Spotlight" animations — applied to public link/form/booking */
   /* pills when the creator picks an animation style. Loop forever, but */
   /* respect prefers-reduced-motion.                                    */
@@ -864,6 +1006,8 @@
 .page-theme-root > .page-theme-content {
   position: relative;
   z-index: 2;
+  display: flex;
+  flex-direction: column;
   /*
    * Anchor inherited `color` to the theme's foreground. Without this, any
    * descendant element that doesn't declare its own color (e.g. <h1>,
@@ -875,38 +1019,6 @@
   color: var(--foreground);
 }
 
-/*
- * Custom wallpaper inset on mobile.
- *
- * When the user picks anything other than the default theme background
- * (a coloured fill, a gradient, or a photo), the card otherwise eats
- * the entire mobile viewport width and the wallpaper is hidden behind
- * it. Add a small padding to the page-theme-content so the wallpaper
- * reads as a frame around the card, and round the inner card so the
- * inset looks intentional. Desktop already has the card centred with
- * margin, so this only kicks in below the lg breakpoint.
- *
- * Targets the first-child `section` (the PublicProfileCard root) via
- * `:has()` rather than a structural descendant selector to avoid
- * leaking the rule into nested popovers or future markup changes.
- */
-@media (max-width: 1023px) {
-  .page-theme-root[data-custom-wallpaper="1"] > .page-theme-content {
-    padding: 20px;
-    padding-top: max(20px, env(safe-area-inset-top));
-    padding-bottom: max(20px, env(safe-area-inset-bottom));
-  }
-  .page-theme-root[data-custom-wallpaper="1"]
-    > .page-theme-content
-    > div
-    > section {
-    border-radius: 28px;
-    overflow: hidden;
-    padding-bottom: 1.5rem;
-  }
-  /* The `flushBottom` desktop overrides force-flat the bottom on lg.
-     Below lg the section is already fully rounded; nothing to undo. */
-}
 
 /*
  * Image wallpapers — the busy background eats `bg-foreground/5` chips and

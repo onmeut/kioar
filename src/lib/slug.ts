@@ -8,6 +8,8 @@ const RESERVED_SLUGS = new Set([
   "events",
   "onboarding",
   "u",
+  "c",
+  "cards",
   "app",
   "signin",
   "signup",

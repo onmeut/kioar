@@ -1,4 +1,5 @@
 import { LinksPageClient } from "@/components/dashboard/links-page-client";
+import { coerceAppearance } from "@/lib/appearance/types";
 import { requireCompletedProfile } from "@/lib/auth/session";
 import { getBookingBlocksByUserId } from "@/lib/booking-data";
 import { getLinkClickCounts, getProfileWithLinksByUserId } from "@/lib/data";
@@ -392,6 +393,7 @@ export default async function DashboardLinksPage() {
         discoverCategory: profile?.discoverCategory ?? null,
         city: profile?.city ?? null,
         pageType: profile?.pageType ?? null,
+        appearance: profile?.appearance ? coerceAppearance(profile.appearance) : null,
       }}
       initialLinks={links}
       initialBookingBlocks={bookingBlocks}

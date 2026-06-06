@@ -176,7 +176,7 @@ export async function GET(
         >
           {isAffiliate
             ? "Get 3 free months of Pro on the yearly plan."
-            : "Get one free month of Pro on me."}
+            : "Get 3 free months of Pro on the yearly plan, on me."}
         </span>
         <div
           style={{

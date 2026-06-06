@@ -253,7 +253,10 @@ function rewardSummary(args: {
 }): string {
   if (!args.eligible) return "این کد فقط برای اولین خرید کاربران جدید است.";
   if (args.kind === "referral") {
-    return `یک ماه پرو رایگان روی این صفحه — به‌مهمان ${args.inviterName}`;
+    if (args.billingCycle === "annual") {
+      return `۳ ماه پرو رایگان با خرید سالانه — به‌مهمان ${args.inviterName}`;
+    }
+    return `۳ ماه پرو رایگان فقط روی پلن سالانه — به‌مهمان ${args.inviterName}`;
   }
   // affiliate
   if (args.billingCycle === "annual") {

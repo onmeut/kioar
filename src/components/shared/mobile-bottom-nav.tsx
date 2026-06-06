@@ -7,7 +7,6 @@ import type { LucideIcon } from "lucide-react";
 import {
   BarChart3Icon,
   CalendarClockIcon,
-  CreditCardIcon,
   FormInputIcon,
   GlobeIcon,
   LayoutGridIcon,
@@ -70,7 +69,7 @@ const adminItems: NavItem[] = [
   { href: "/admin", label: "نما", icon: LayoutGridIcon, match: "exact" },
   { href: "/admin/users", label: "کاربران", icon: UsersIcon },
   { href: "/admin/events/new", label: "رویداد", icon: PlusSquareIcon },
-  { href: "/admin/requests", label: "درخواست", icon: CreditCardIcon },
+  { href: "/admin/cards", label: "کارت‌ها", icon: FormInputIcon },
 ];
 
 export function MobileBottomNav({

@@ -7,7 +7,6 @@ import {
   BanIcon,
   CalendarDaysIcon,
   CheckCircle2Icon,
-  CreditCardIcon,
   ExternalLinkIcon,
   Link2Icon,
   LogInIcon,
@@ -75,7 +74,6 @@ export default async function AdminUserDetailPage({
     pagePlans,
     links,
     registrations,
-    cardRequests,
     recentSessions,
   } = detail;
 
@@ -210,17 +208,12 @@ export default async function AdminUserDetailPage({
           </div>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
           <MetricBox icon={Link2Icon} label="لینک" value={links.length} />
           <MetricBox
             icon={CalendarDaysIcon}
             label="ثبت‌نام رویداد"
             value={registrations.length}
-          />
-          <MetricBox
-            icon={CreditCardIcon}
-            label="درخواست کارت"
-            value={cardRequests.length}
           />
           <MetricBox
             icon={UserIcon}
@@ -560,34 +553,6 @@ export default async function AdminUserDetailPage({
                 >
                   مشاهده رویداد
                 </Link>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
-      {/* Card requests */}
-      {cardRequests.length ? (
-        <section className="rounded-4xl bg-card p-5 border border-border">
-          <h3 className="mb-3 text-base font-bold">درخواست‌های کارت</h3>
-          <ul className="grid gap-2 text-sm">
-            {cardRequests.map((c) => (
-              <li
-                key={c.id}
-                className="rounded-3xl bg-background/70 p-3 border border-border"
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="font-semibold">
-                    {c.cardType === "nfc" ? "NFC" : "فیزیکی"}
-                  </span>
-                  <Badge className="rounded-full bg-muted text-[10px]">
-                    {c.status}
-                  </Badge>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {formatPersianDateTime(c.createdAt)}
-                </p>
-                <p className="mt-1 text-xs leading-6">{c.deliveryInfo}</p>
               </li>
             ))}
           </ul>

@@ -22,15 +22,16 @@
  *     self-referrals (same userId, same phone).
  *
  *   - `processReferralConversion(tx, ctx)` — invoked after a Zarinpal
- *     verify commits. Idempotent on `referrals.status`. Runs fraud
- *     checks, applies referee bonus (+30 days on the paid page), and
- *     issues the referrer credit.
+ *     verify commits. Idempotent on `referrals.status`. The reward only
+ *     fires on a YEARLY conversion: runs fraud checks, applies the
+ *     referee bonus (+90 days on the paid page), and issues the referrer
+ *     credit (3 months). Monthly conversions are attribution-only.
  *
  *   - `getReferralStats(userId)` — dashboard read model.
  *
  *   - `redeemCredit({ userId, pageId })` — atomic redemption: consumes
- *     one earned credit (oldest-first FIFO) and pushes
- *     `currentPeriodEnd` forward by 30 days on the chosen page.
+ *     one earned credit (3 months) and pushes `currentPeriodEnd`
+ *     forward by 90 days on the chosen page.
  *
  * Money-side primitives (period end advance, plan, etc.) come from
  * `lib/billing-pricing.ts` / `lib/pages.ts`. We do NOT duplicate those.
@@ -61,8 +62,8 @@ import { enqueueSms } from "@/lib/sms-queue";
 // ---------------------------------------------------------------------------
 
 const REFERRER_BALANCE_CAP = 12; // months
-const REFEREE_BONUS_DAYS = 30;
-const REFERRER_CREDIT_MONTHS = 1;
+const REFEREE_BONUS_DAYS = 90; // 3 months, applied on a yearly conversion
+const REFERRER_CREDIT_MONTHS = 3; // one earned credit is worth 3 months
 const FLAG_THRESHOLD = 2;
 const VELOCITY_WINDOW_HOURS = 24;
 const VELOCITY_MAX_CONVERSIONS = 5;
@@ -429,8 +430,8 @@ function extractCardPan(raw: Record<string, unknown> | null): string | null {
  * Idempotent — re-running the verify path is a no-op once we hit any
  * terminal state. Side effects:
  *
- *   - Period extend (30d) on the referee's paid page.
- *   - One `referral_credits` row (`kind='earned'`, +1 month) for the
+ *   - Period extend (90d) on the referee's paid page (yearly only).
+ *   - One `referral_credits` row (`kind='earned'`, +3 months) for the
  *     referrer, gated on the 12-month balance cap.
  *   - Two best-effort SMS messages enqueued post-commit (caller fires).
  *
@@ -629,6 +630,34 @@ export async function processReferralConversion(
       return;
     }
 
+    // The reward (both sides) fires only on a yearly conversion. A
+    // monthly Pro purchase is attribution only: we still mark the row
+    // rewarded so it never reprocesses, but no bonus and no credit.
+    const isYearly = ctx.billingCycle === "annual";
+
+    if (!isYearly) {
+      await tx
+        .update(referrals)
+        .set({
+          status: "rewarded",
+          rewardedAt: new Date(),
+          flagSignals: fraud.signals,
+          updatedAt: new Date(),
+        })
+        .where(eq(referrals.id, candidate.id));
+
+      outcomeRef.value = {
+        kind: "rewarded",
+        referralId: candidate.id,
+        referrerUserId,
+        refereeBonusDays: 0,
+        referrerCreditedMonths: 0,
+        referrerNewBalance: await computeReferrerBalanceTx(tx, referrerUserId),
+        flaggedSignal: fraud.signals[0] ?? null,
+      };
+      return;
+    }
+
     // Apply referee bonus: extend the paid page's currentPeriodEnd by
     // REFEREE_BONUS_DAYS. Use a Postgres interval so we operate on the
     // existing column value (no read-then-write race).
@@ -808,6 +837,10 @@ export async function fireConversionNotifications(args: {
       }
       return;
     }
+
+    // Monthly conversions are attribution-only: no bonus, no credit, no
+    // SMS (mirrors the affiliate monthly branch above).
+    if (refereeBonusDays <= 0) return;
 
     await enqueueSms({
       templateKey: "referral_referee_rewarded",
@@ -1018,11 +1051,12 @@ export type RedeemOutcome =
     };
 
 /**
- * Apply one earned credit to the chosen page. Atomic — claims the
- * oldest unredeemed credit (FIFO) and pushes `currentPeriodEnd`
- * forward by `months × 30 days`. Free-plan pages are rejected: a
- * sentinel period_end is essentially infinite, so the bonus would be
- * meaningless. Users must upgrade or trial first.
+ * Apply one earned credit to the chosen page. Atomic — claims one
+ * earned credit's worth (`REFERRER_CREDIT_MONTHS` = 3 months) and
+ * pushes `currentPeriodEnd` forward by `REFEREE_BONUS_DAYS` (90 days).
+ * Free-plan pages are rejected: a sentinel period_end is essentially
+ * infinite, so the bonus would be meaningless. Users must upgrade or
+ * trial first.
  */
 export async function redeemCredit(args: {
   userId: string;
@@ -1033,7 +1067,7 @@ export async function redeemCredit(args: {
 
   await db.transaction(async (tx) => {
     const balance = await computeReferrerBalanceTx(tx, args.userId);
-    if (balance < 1) {
+    if (balance < REFERRER_CREDIT_MONTHS) {
       result = { ok: false, errorCode: "no_credit" };
       return;
     }
@@ -1065,8 +1099,9 @@ export async function redeemCredit(args: {
       return;
     }
 
-    // Push period end forward by 30 days. Locking on the row ensures
-    // a concurrent renewal/proration callback can't read a stale value.
+    // Push period end forward by REFEREE_BONUS_DAYS (90). Locking on the
+    // row ensures a concurrent renewal/proration callback can't read a
+    // stale value.
     const updated = await tx
       .update(pageSubscriptions)
       .set({
@@ -1078,10 +1113,12 @@ export async function redeemCredit(args: {
       .where(eq(pageSubscriptions.id, sub.id))
       .returning({ currentPeriodEnd: pageSubscriptions.currentPeriodEnd });
 
+    // Consume one earned credit's worth so the ledger balances
+    // (earned - redeemed). A redeem is all-or-nothing: 3 months.
     await tx.insert(referralCredits).values({
       userId: args.userId,
       kind: "redeemed",
-      months: 1,
+      months: REFERRER_CREDIT_MONTHS,
       redeemedOnPageId: args.pageId,
       redeemedOnSubscriptionId: sub.id,
     });

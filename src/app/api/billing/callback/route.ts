@@ -248,6 +248,31 @@ export async function GET(request: Request) {
     });
   }
 
+  // Card gifting (best-effort, never blocks). A yearly Pro/Business purchase
+  // grants a redeemable free card entitlement. Idempotent on the invoice id
+  // (UNIQUE source_key) so a re-fired callback never double-grants.
+  try {
+    if (
+      invoice.billingCycle === "annual" &&
+      (plan.key === "pro" || plan.key === "business")
+    ) {
+      const { grantCardEntitlementForSubscription } = await import(
+        "@/lib/cards/gifting"
+      );
+      await grantCardEntitlementForSubscription({
+        pageId: invoice.pageId,
+        userId: invoice.userId,
+        planKey: plan.key,
+        sourceKey: `invoice:${invoice.id}`,
+      });
+    }
+  } catch (err) {
+    log.warn("billing.callback.card_gift_hook_failed", {
+      invoiceId: invoice.id,
+      error: (err as Error).message,
+    });
+  }
+
   return redirect(
     `/account/billing/${invoice.pageId}?paid=${invoice.number}&ref=${refId}`,
   );

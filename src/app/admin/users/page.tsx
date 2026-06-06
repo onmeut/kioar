@@ -351,11 +351,10 @@ export default async function AdminUsersPage({
                           </Link>
                         ) : null}
 
-                        <dl className="mt-3 grid grid-cols-4 gap-2 text-xs">
+                        <dl className="mt-3 grid grid-cols-3 gap-2 text-xs">
                           <Stat label="صفحه" value={user.pageCount} />
                           <Stat label="لینک" value={user.linkCount} />
                           <Stat label="رویداد" value={user.eventCount} />
-                          <Stat label="کارت" value={user.cardRequestCount} />
                         </dl>
 
                         {user.pagePlans.length > 0 ? (
@@ -388,7 +387,6 @@ export default async function AdminUsersPage({
                     <TableHead>صفحه‌ها</TableHead>
                     <TableHead className="text-center">لینک</TableHead>
                     <TableHead className="text-center">رویداد</TableHead>
-                    <TableHead className="text-center">کارت</TableHead>
                     <TableHead>آخرین ورود</TableHead>
                     <TableHead>عضویت</TableHead>
                     <TableHead></TableHead>
@@ -453,9 +451,6 @@ export default async function AdminUsersPage({
                         </TableCell>
                         <TableCell className="text-center">
                           {toPersianDigits(user.eventCount)}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {toPersianDigits(user.cardRequestCount)}
                         </TableCell>
                         <TableCell className="text-xs text-muted-foreground">
                           {user.lastLoginAt

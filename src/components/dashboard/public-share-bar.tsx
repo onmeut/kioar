@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ShareIcon } from "lucide-react";
+import { QrCodeIcon } from "lucide-react";
 import Image from "next/image";
 
 import { ShareModal } from "@/components/dashboard/share/share-modal";
@@ -86,7 +86,7 @@ export function PublicShareBar({
             className,
           )}
         >
-          <ShareIcon className="size-5" aria-hidden />
+          <QrCodeIcon className="size-5" aria-hidden />
         </button>
         {modal}
       </>

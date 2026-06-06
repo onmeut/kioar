@@ -19,6 +19,7 @@ import { PlanComparisonTable } from "@/components/billing/plan-comparison-table"
 import { Button } from "@/components/ui/button";
 import { BrandMark } from "@/components/shared/brand-mark";
 import { getCurrentViewer } from "@/lib/auth/session";
+import { getSetting } from "@/lib/app-settings";
 import { listPagesForOwner } from "@/lib/pages";
 import { loadPricingPlans } from "@/lib/pricing-registry";
 
@@ -31,9 +32,11 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function PricingRoute() {
-  const [plans, viewer] = await Promise.all([
+  const [plans, viewer, cardOfferEnabled, cardOfferCopy] = await Promise.all([
     loadPricingPlans(),
     getCurrentViewer(),
+    getSetting("cards.offer_plan_grants_card_enabled"),
+    getSetting("cards.copy_plan_includes_card"),
   ]);
 
   // Decide where the CTA on each card should link to. Authenticated users
@@ -81,6 +84,14 @@ export default async function PricingRoute() {
             دهید — بدون قفل ‌شدن اطلاعات قبلی.
           </p>
         </section>
+
+        {cardOfferEnabled ? (
+          <section className="mx-auto mt-6 max-w-2xl">
+            <p className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center text-sm font-medium text-emerald-800">
+              🎁 {cardOfferCopy}
+            </p>
+          </section>
+        ) : null}
 
         <section className="mt-10">
           <PricingCards

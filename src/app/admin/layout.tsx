@@ -66,10 +66,10 @@ const adminNavItems: SidebarNavItem[] = [
     match: "exact",
   },
   {
-    href: "/admin/requests",
-    label: "درخواست‌های کارت",
-    icon: "requests",
-    match: "exact",
+    href: "/admin/cards" as Route,
+    label: "کارت‌ها",
+    icon: "cards",
+    match: "prefix",
   },
   { href: "/admin/sms", label: "پیامک‌ها", icon: "sms", match: "prefix" },
   {

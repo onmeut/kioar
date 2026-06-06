@@ -32,14 +32,16 @@ export function ProfilePreviewMock({
   className?: string;
 }) {
   return (
-    <PublicProfileCard
-      profile={profile}
-      interactive
-      formSubmitAction={formSubmitAction}
-      className={cn(
-        "min-h-full lg:p-6! lg:rounded-none! lg:shadow-none!",
-        className,
-      )}
-    />
+    <div className="relative flex min-h-full w-full flex-col">
+      <PublicProfileCard
+        profile={profile}
+        interactive
+        formSubmitAction={formSubmitAction}
+        className={cn(
+          "flex-1 !rounded-none !shadow-none",
+          className,
+        )}
+      />
+    </div>
   );
 }

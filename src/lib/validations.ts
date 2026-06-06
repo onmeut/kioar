@@ -510,15 +510,6 @@ export const eventFormSchema = z
     }
   });
 
-export const cardRequestSchema = z.object({
-  fullName: z.string().trim().min(2, "نام دریافت‌کننده را وارد کنید.").max(80),
-  phone: phoneSchema,
-  deliveryInfo: z.string().trim().min(10, "اطلاعات ارسال کافی نیست.").max(500),
-  cardType: z.enum(["physical", "nfc"]),
-  cardDesign: z.enum(["design_1", "design_2", "design_3"]),
-  notes: optionalString.transform((value) => value || ""),
-});
-
 // ---------------------------------------------------------------------------
 // Bookings
 // ---------------------------------------------------------------------------

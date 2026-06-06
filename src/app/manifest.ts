@@ -121,19 +121,6 @@ export default function manifest(): MetadataRoute.Manifest {
           },
         ],
       },
-      {
-        name: "کارت هوشمند",
-        short_name: "کارت هوشمند",
-        description: "کارت هوشمند فیزیکی یا NFC",
-        url: "/premium?source=pwa-shortcut",
-        icons: [
-          {
-            src: "/icons/icon-192x192.png",
-            sizes: "192x192",
-            type: "image/png",
-          },
-        ],
-      },
     ],
     related_applications: [],
   } satisfies MetadataRoute.Manifest;

@@ -8,7 +8,6 @@ const TITLE_MAP: Array<{ match: RegExp; title: string }> = [
   { match: /^\/more(\/|$)/, title: "بیشتر" },
   { match: /^\/bookings(\/|$)/, title: "هماهنگی‌ها" },
   { match: /^\/forms(\/|$)/, title: "پاسخ‌های فرم" },
-  { match: /^\/premium(\/|$)/, title: "کارت هوشمند" },
   { match: /^\/my-events\/[^/]+/, title: "رویداد من" },
   { match: /^\/my-events\/?$/, title: "رویدادهای من" },
   { match: /^\/insights\/?$/, title: "داشبورد" },
@@ -18,7 +17,6 @@ const TITLE_MAP: Array<{ match: RegExp; title: string }> = [
   { match: /^\/admin\/pages\/?$/, title: "صفحه‌ها" },
   { match: /^\/admin\/events\/new/, title: "رویداد جدید" },
   { match: /^\/admin\/events\//, title: "ویرایش رویداد" },
-  { match: /^\/admin\/requests(\/|$)/, title: "درخواست‌های کارت" },
   {
     match: /^\/admin\/affiliates\/applications(\/|$)/,
     title: "درخواست‌های همکاری",

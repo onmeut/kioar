@@ -1264,10 +1264,10 @@ function PhonePreview({
   return (
     <div
       className={cn(
-        "relative flex aspect-[340/690] max-h-full min-h-0 shrink-0 flex-col overflow-hidden rounded-[44px] border-2 border-foreground/15 bg-card shadow-2xl",
+        "relative flex aspect-[340/690] max-h-full min-h-0 shrink-0 flex-col overflow-hidden rounded-[44px] border-2 border-foreground/15 shadow-2xl",
         className,
       )}
-      style={{ transform: "translateZ(0)" }}
+      style={{ ...cssVars, transform: "translateZ(0)" } as CSSProperties}
       aria-label="پیش‌نمایش موبایل"
     >
       <div className="relative h-full w-full overflow-hidden">
@@ -1359,7 +1359,7 @@ function DesktopFrame({
   const custom = isCustomWallpaper(draft.wallpaper, themeBg);
 
   return (
-    <div className={cn("flex w-full flex-col items-center", className)}>
+    <div className={cn("flex w-full flex-col items-center", className)} style={cssVars as CSSProperties}>
       <div
         className="relative w-full overflow-hidden rounded-t-2xl border-[10px] border-b-0 border-neutral-900 bg-neutral-900 shadow-2xl"
         style={{ aspectRatio: "16 / 10" }}
@@ -1412,11 +1412,12 @@ function PreviewSurface({
 }) {
   return (
     <div
-      className="page-theme-root relative h-full w-full overflow-hidden"
+      className="page-theme-root relative min-h-full w-full overflow-hidden"
       style={cssVars}
       data-page-theme={themeId}
       data-wallpaper-kind={wallpaperKind}
       data-custom-wallpaper={custom ? "1" : undefined}
+      data-preview
     >
       <div className="page-wallpaper absolute inset-0" style={layer} aria-hidden />
       {tint ? (
@@ -1430,47 +1431,21 @@ function PreviewSurface({
 
       <div className="page-theme-content no-scrollbar relative z-[2] h-full w-full overflow-y-auto">
         {density === "mobile" ? (
-          <div
-            style={{
-              transform: "scale(0.82)",
-              transformOrigin: "top center",
-              width: "121.95%",
-              marginLeft: "-10.975%",
-            }}
-          >
-            {custom ? (
-              <div className="p-2">
-                <PublicProfileCard
-                  profile={profile}
-                  interactive={false}
-                  className="!rounded-[24px] !p-4 !shadow-none overflow-hidden"
-                />
-              </div>
-            ) : (
-              <PublicProfileCard
-                profile={profile}
-                interactive={false}
-                className="min-h-full !rounded-none !p-5 !shadow-none"
-                flushBottom
-              />
-            )}
+          <div className="relative flex min-h-full w-full flex-col">
+            <PublicProfileCard
+              profile={profile}
+              interactive={false}
+              className="flex-1 !rounded-none !shadow-none"
+              flushBottom
+            />
           </div>
         ) : (
-          <div
-            style={{
-              transform: "scale(0.85)",
-              transformOrigin: "top center",
-              width: "117.65%",
-              marginLeft: "-8.82%",
-            }}
-          >
-            <div className="mx-auto flex min-h-full w-full max-w-[460px] flex-col px-6 py-8">
-              <PublicProfileCard
-                profile={profile}
-                interactive={false}
-                className="!rounded-3xl !p-6 shadow-card"
-              />
-            </div>
+          <div className="mx-auto flex min-h-full w-full max-w-[460px] flex-col px-6 py-8">
+            <PublicProfileCard
+              profile={profile}
+              interactive={false}
+              className="!rounded-3xl !p-6 shadow-card"
+            />
           </div>
         )}
       </div>

@@ -56,25 +56,25 @@ function buildVariants(inviteUrl: string, inviterName: string): Variant[] {
       id: "warm",
       tone: "صمیمی",
       lang: "fa",
-      body: `سلام 👋\nمن ${inviterName} هستم. کی‌یو‌آر یه کارت ویزیت دیجیتال خوشگله که همه‌ی لینک‌ها، رزرو نوبت و فرم‌ها رو یه جا جمع می‌کنه. با لینک من ثبت‌نام کنی، یک ماه پروی رایگان روی صفحه‌ت فعال می‌شه:\n${inviteUrl}`,
+      body: `سلام 👋\nمن ${inviterName} هستم. کی‌یو‌آر یه کارت ویزیت دیجیتال خوشگله که همه‌ی لینک‌ها، رزرو نوبت و فرم‌ها رو یه جا جمع می‌کنه. با لینک من ثبت‌نام کنی و پلن سالانه‌ی پرو رو بگیری، ۳ ماه پروی رایگان روی صفحه‌ت فعال می‌شه:\n${inviteUrl}`,
     },
     {
       id: "short",
       tone: "کوتاه",
       lang: "fa",
-      body: `یه ماه پروی کی‌یو‌آر رایگان مهمون من 🎁\n${inviteUrl}`,
+      body: `۳ ماه پروی کی‌یو‌آر رایگان مهمون من 🎁 (با پلن سالانه)\n${inviteUrl}`,
     },
     {
       id: "business",
       tone: "حرفه‌ای",
       lang: "fa",
-      body: `کی‌یو‌آر رو امتحان کن — کارت ویزیت دیجیتال ایرانی برای کسب‌وکار. با این لینک یک ماه پرو رایگان می‌گیری:\n${inviteUrl}`,
+      body: `کی‌یو‌آر رو امتحان کن — کارت ویزیت دیجیتال ایرانی برای کسب‌وکار. با این لینک و فعال‌کردن پلن سالانه‌ی پرو، ۳ ماه پرو رایگان می‌گیری:\n${inviteUrl}`,
     },
     {
       id: "english",
       tone: "English",
       lang: "en",
-      body: `Hey — I'm using Kioar as my digital business card. Sign up with my link and you'll get one free month of Pro on me:\n${inviteUrl}`,
+      body: `Hey — I'm using Kioar as my digital business card. Sign up with my link and activate the yearly Pro plan to get 3 free months of Pro on me:\n${inviteUrl}`,
     },
   ];
 }
@@ -170,7 +170,7 @@ export function ShareSheet({
                     {inviterName}
                   </div>
                   <div className="mt-3 inline-flex items-center gap-1 rounded-full bg-white/15 px-2.5 py-1 text-[11px] font-bold backdrop-blur">
-                    🎁 یک ماه پرو رایگان
+                    🎁 ۳ ماه پرو رایگان
                   </div>
                 </div>
               </div>
@@ -288,8 +288,8 @@ export function ShareSheet({
         {/* Fixed footer */}
         <SheetFooter className="shrink-0 border-t border-border px-5 py-3 text-center">
           <p className="text-[11px] leading-5 text-muted-foreground">
-            وقتی دوستت با لینک تو ثبت‌نام کنه و پروی رو فعال کنه، یک ماه پرو
-            مهمون شماست — هر دو طرف.
+            وقتی دوستت با لینک تو ثبت‌نام کنه و پلن سالانه‌ی پرو رو فعال کنه، ۳ ماه
+            پرو مهمون شماست — هر دو طرف.
           </p>
         </SheetFooter>
       </SheetContent>

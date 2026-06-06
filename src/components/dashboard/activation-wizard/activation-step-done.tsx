@@ -62,21 +62,7 @@ export function ActivationStepDone({ previewProfile, trialEndsAt, pageId, onClos
 
     import("canvas-confetti").then(({ default: confetti }) => {
       if (cancelled) return;
-
-      confetti({ particleCount: 180, spread: 100, origin: { y: 0.45 }, colors, zIndex: Z, ticks: 300, decay: 0.93 });
-
-      const interval = setInterval(() => {
-        if (cancelled) return;
-        confetti({ particleCount: 55, angle: 60, spread: 70, origin: { x: 0, y: 0.6 }, colors, zIndex: Z, ticks: 260, decay: 0.92 });
-        confetti({ particleCount: 55, angle: 120, spread: 70, origin: { x: 1, y: 0.6 }, colors, zIndex: Z, ticks: 260, decay: 0.92 });
-      }, 220);
-
-      setTimeout(() => {
-        if (cancelled) return;
-        confetti({ particleCount: 140, spread: 120, origin: { y: 0.38, x: 0.5 }, colors, zIndex: Z, ticks: 320, decay: 0.94 });
-      }, 600);
-
-      setTimeout(() => clearInterval(interval), 2600);
+      confetti({ particleCount: 80, spread: 90, origin: { y: 0.45 }, colors, zIndex: Z, ticks: 60, decay: 0.9 });
     });
     return () => { cancelled = true; };
   }, []);

@@ -20,7 +20,8 @@
     "db:seed:plans": "node --env-file=.env --import tsx scripts/seed-plans.ts",
     "db:seed:sms": "node --env-file=.env --import tsx scripts/seed-sms-templates.ts",
     "db:seed:app-settings": "node --env-file=.env --import tsx scripts/seed-app-settings.ts",
-    "db:seed:categories": "node --env-file=.env --import tsx scripts/seed-categories.ts"
+    "db:seed:categories": "node --env-file=.env --import tsx scripts/seed-categories.ts",
+    "cards:batch": "node --env-file=.env --import tsx scripts/generate-card-batch.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1036.0",
