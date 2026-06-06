@@ -1412,7 +1412,7 @@ function PreviewSurface({
 }) {
   return (
     <div
-      className="page-theme-root relative min-h-full w-full overflow-hidden"
+      className="page-theme-root relative h-full w-full overflow-hidden"
       style={cssVars}
       data-page-theme={themeId}
       data-wallpaper-kind={wallpaperKind}

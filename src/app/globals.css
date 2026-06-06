@@ -1018,6 +1018,17 @@
    */
   color: var(--foreground);
 }
+/* Real public page: fill at least the viewport so the card always stretches
+   and the wallpaper never bleeds below short content. */
+.page-theme-root:not([data-preview]) > .page-theme-content {
+  min-height: 100dvh;
+}
+/* Preview (phone mockup / sheet): fill 100% of the frame so the card
+   stretches to the bottom of the phone chrome. height (not min-height)
+   establishes a definite size so children can resolve their own % heights. */
+.page-theme-root[data-preview] > .page-theme-content {
+  height: 100%;
+}
 
 
 /*

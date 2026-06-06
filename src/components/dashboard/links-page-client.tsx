@@ -1388,7 +1388,7 @@ export function LinksPageClient({
               breaks in WebKit). translateZ(0) makes it the containing block
               for position:fixed portaled modals. */}
           <PhoneMockupFrame>
-            <PageThemeProvider appearance={previewAppearance} className="min-h-full" preview>
+            <PageThemeProvider appearance={previewAppearance} className="h-full" preview>
               <ProfilePreviewMock
                 profile={previewProfile}
                 formSubmitAction={publicSubmitFormAction}
@@ -1413,7 +1413,7 @@ export function LinksPageClient({
             <SheetTitle className="text-center">پیش‌نمایش زنده</SheetTitle>
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto h-full">
-            <PageThemeProvider appearance={previewAppearance} className="min-h-full" preview>
+            <PageThemeProvider appearance={previewAppearance} className="h-full" preview>
               <ProfilePreviewMock
                 profile={previewProfile}
                 formSubmitAction={publicSubmitFormAction}
