@@ -506,3 +506,81 @@ export async function getEventStats(
     spotsRemaining,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Global public discovery (/events) — paginated, no full-table scan.
+// ---------------------------------------------------------------------------
+
+export type DiscoveryEventCard = {
+  id: string;
+  slug: string;
+  pageSlug: string;
+  pageName: string | null;
+  title: string;
+  coverUrl: string | null;
+  locationType: "physical" | "online";
+  priceType: "free" | "paid";
+  priceToman: number;
+  startsAt: Date;
+  timezone: string;
+};
+
+export type DiscoveryFilters = {
+  page: number;
+  pageSize: number;
+  q?: string;
+  price?: "free" | "paid" | null;
+  location?: "physical" | "online" | null;
+};
+
+/**
+ * Published, upcoming events across ALL pages, soonest first. Paginated via
+ * LIMIT pageSize+1 / OFFSET (Discover exemplar) so `hasMore` is derived from the
+ * extra row — never a full-table scan. Past events are excluded.
+ */
+export async function listPublicEvents(
+  filters: DiscoveryFilters,
+): Promise<{ items: DiscoveryEventCard[]; hasMore: boolean }> {
+  const db = getDb();
+  const now = new Date();
+  const offset = (filters.page - 1) * filters.pageSize;
+
+  const conditions = [
+    eq(events.status, "published"),
+    eq(events.isActive, true),
+    // Upcoming: start in the future. (endsAt-based "still running" events are
+    // rare for discovery; soonest-upcoming by start is the documented sort.)
+    sql`${events.startsAt} >= ${now}`,
+  ];
+  if (filters.q && filters.q.trim()) {
+    conditions.push(sql`${events.title} ILIKE ${"%" + filters.q.trim() + "%"}`);
+  }
+  if (filters.price) conditions.push(eq(events.priceType, filters.price));
+  if (filters.location) {
+    conditions.push(eq(events.locationType, filters.location));
+  }
+
+  const rows = await db
+    .select({
+      id: events.id,
+      slug: events.slug,
+      pageSlug: profiles.slug,
+      pageName: profiles.fullName,
+      title: events.title,
+      coverUrl: events.coverUrl,
+      locationType: events.locationType,
+      priceType: events.priceType,
+      priceToman: events.priceToman,
+      startsAt: events.startsAt,
+      timezone: events.timezone,
+    })
+    .from(events)
+    .innerJoin(profiles, eq(events.pageId, profiles.id))
+    .where(and(...conditions))
+    .orderBy(asc(events.startsAt))
+    .limit(filters.pageSize + 1)
+    .offset(offset);
+
+  const hasMore = rows.length > filters.pageSize;
+  return { items: rows.slice(0, filters.pageSize), hasMore };
+}
