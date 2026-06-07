@@ -121,6 +121,19 @@ export default function manifest(): MetadataRoute.Manifest {
           },
         ],
       },
+      {
+        name: "رویدادهای من",
+        short_name: "رویدادها",
+        description: "رویدادهای شرکت‌کرده و نمایش کد QR ورود",
+        url: "/my-events?source=pwa-shortcut",
+        icons: [
+          {
+            src: "/icons/icon-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+          },
+        ],
+      },
     ],
     related_applications: [],
   } satisfies MetadataRoute.Manifest;
