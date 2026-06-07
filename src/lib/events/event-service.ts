@@ -150,6 +150,16 @@ export async function saveEvent(
   );
   const { startsAt, endsAt } = resolveInstants(v);
 
+  // Reject a start in the past on CREATE only — editing an event that has
+  // already started (e.g. fixing a typo, re-opening) stays allowed.
+  if (!existing && startsAt.getTime() < Date.now()) {
+    return {
+      ok: false,
+      message: "زمان شروع نمی‌تواند در گذشته باشد.",
+      fieldErrors: { startTime: ["زمان شروع باید در آینده باشد."] },
+    };
+  }
+
   const baseValues = {
     title: v.title,
     description: v.description,
