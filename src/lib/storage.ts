@@ -7,9 +7,11 @@ import path from "node:path";
 
 import {
   DeleteObjectCommand,
+  GetObjectCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import sharp from "sharp";
 
 import { safeFetch } from "@/lib/ssrf";
@@ -406,5 +408,138 @@ export async function deletePublicImage(url: string): Promise<void> {
     } catch {
       // File may already be gone.
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Private uploads (payment receipts)
+// ---------------------------------------------------------------------------
+// Receipts are financial PII. Unlike covers/avatars they are NEVER public:
+//   - S3: uploaded with `ACL: private`, served via short-lived presigned
+//     GetObject URLs minted only inside owner-gated server code.
+//   - Local dev (no S3 configured): written OUTSIDE `public/` so Next never
+//     serves them statically; an owner-gated route handler streams the bytes.
+// Callers store the returned `key` on the registration (never a URL), and
+// resolve it to a viewable URL through `getPrivateObjectSignedUrl` at render.
+
+const PRIVATE_FOLDER = "event-receipts" as const;
+const SIGNED_URL_TTL_SECONDS = 60 * 5;
+
+/** Absolute on-disk dir for local-dev private storage (outside public/). */
+function localPrivateDir(): string {
+  return path.join(process.cwd(), ".private-uploads", PRIVATE_FOLDER);
+}
+
+/**
+ * Upload a payment-receipt image privately. Re-encodes through the same
+ * `normalizeImage` pipeline (strips EXIF/GPS, caps dimensions, neutralizes
+ * polyglot/SVG-XSS) using the generic image profile. Returns the storage
+ * `key` to persist — NOT a public URL.
+ */
+export async function uploadPrivateImage(file: File): Promise<string | null> {
+  if (file.size === 0) return null;
+  if (file.size > MAX_INPUT_BYTES) {
+    throw new Error("حجم تصویر باید کمتر از ۸ مگابایت باشد.");
+  }
+
+  const input = Buffer.from(await file.arrayBuffer());
+  // Use the "events" profile purely for sizing — it routes through the
+  // generic (non-avatar) re-encode path.
+  const normalized = await withImageSlot(() => normalizeImage(input, "events"));
+  const fileName = `${Date.now()}-${randomUUID()}.${normalized.extension}`;
+  const key = `${PRIVATE_FOLDER}/${fileName}`;
+
+  const cfg = getS3Config();
+  if (cfg) {
+    await getS3Client(cfg).send(
+      new PutObjectCommand({
+        Bucket: cfg.bucket,
+        Key: key,
+        Body: normalized.buffer,
+        ContentType: normalized.contentType,
+        ACL: "private",
+        CacheControl: "private, no-store",
+      }),
+    );
+    return key;
+  }
+
+  // Local dev: write outside public/.
+  await mkdir(localPrivateDir(), { recursive: true });
+  await writeFile(path.join(localPrivateDir(), fileName), normalized.buffer);
+  return key;
+}
+
+/**
+ * Resolve a private receipt `key` to a viewable URL. On S3 this is a
+ * short-lived presigned GetObject URL; in local dev it's the owner-gated
+ * route that streams the file. MUST only be called from server code that has
+ * already authorized the viewer (event host or admin).
+ */
+export async function getPrivateObjectSignedUrl(
+  key: string,
+): Promise<string | null> {
+  if (!key) return null;
+  const cfg = getS3Config();
+  if (cfg) {
+    // getSignedUrl's client param is a smithy `Client<...>`; S3Client satisfies
+    // it structurally but TS flags the private `handlers` field across the
+    // smithy type copies. Narrow via the presigner's own parameter type.
+    const url = await getSignedUrl(
+      getS3Client(cfg) as unknown as Parameters<typeof getSignedUrl>[0],
+      new GetObjectCommand({ Bucket: cfg.bucket, Key: key }),
+      { expiresIn: SIGNED_URL_TTL_SECONDS },
+    );
+    return url;
+  }
+  // Local dev: route handler at /api/private/receipt streams it.
+  const fileName = key.startsWith(`${PRIVATE_FOLDER}/`)
+    ? key.slice(PRIVATE_FOLDER.length + 1)
+    : key;
+  return `/api/private/receipt?file=${encodeURIComponent(fileName)}`;
+}
+
+/**
+ * Read a local-dev private receipt's bytes by file name (no path segments).
+ * Returns null if S3 is configured (local path doesn't apply) or missing.
+ * Only called by the owner-gated route handler.
+ */
+export async function readLocalPrivateReceipt(
+  fileName: string,
+): Promise<Buffer | null> {
+  if (getS3Config()) return null;
+  // Defense-in-depth: reject anything that isn't a bare file name.
+  if (!/^[A-Za-z0-9._-]+$/.test(fileName) || fileName.includes("..")) {
+    return null;
+  }
+  try {
+    const { readFile } = await import("node:fs/promises");
+    return await readFile(path.join(localPrivateDir(), fileName));
+  } catch {
+    return null;
+  }
+}
+
+/** Delete a private object by key (S3 or local). Best-effort. */
+export async function deletePrivateObject(key: string): Promise<void> {
+  if (!key) return;
+  const cfg = getS3Config();
+  if (cfg) {
+    try {
+      await getS3Client(cfg).send(
+        new DeleteObjectCommand({ Bucket: cfg.bucket, Key: key }),
+      );
+    } catch {
+      // Non-critical.
+    }
+    return;
+  }
+  const fileName = key.startsWith(`${PRIVATE_FOLDER}/`)
+    ? key.slice(PRIVATE_FOLDER.length + 1)
+    : key;
+  try {
+    await unlink(path.join(localPrivateDir(), fileName));
+  } catch {
+    // Already gone.
   }
 }

@@ -45,3 +45,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 card-batches/
+
+# local-dev private uploads (payment receipts — never served statically)
+.private-uploads/
