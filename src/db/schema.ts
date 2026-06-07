@@ -21,11 +21,37 @@ export const otpPurposeEnum = pgEnum("otp_purpose", ["sign-in"]);
 export const eventStatusEnum = pgEnum("event_status", [
   "draft",
   "published",
-  "closed",
-]);
-export const registrationStatusEnum = pgEnum("registration_status", [
-  "registered",
   "cancelled",
+]);
+export const eventLocationTypeEnum = pgEnum("event_location_type", [
+  "physical",
+  "online",
+]);
+export const eventPriceTypeEnum = pgEnum("event_price_type", ["free", "paid"]);
+// Full registration state machine. See docs/EVENTS_PLAN.md §4 for the legal
+// transitions; enforced server-side in lib/events/registration-service.ts.
+export const eventRegistrationStatusEnum = pgEnum(
+  "event_registration_status",
+  [
+    "pending_approval",
+    "payment_pending",
+    "payment_submitted",
+    "approved",
+    "waitlisted",
+    "rejected",
+    "cancelled",
+    "attended",
+  ],
+);
+export const eventQuestionKindEnum = pgEnum("event_question_kind", [
+  "short_text",
+  "long_text",
+  "single_select",
+  "multi_select",
+]);
+export const eventDiscountTypeEnum = pgEnum("event_discount_type", [
+  "percentage",
+  "fixed",
 ]);
 // ---- NFC/QR physical cards (the `/c/{id}` system) -------------------------
 // A physical card whose printed QR + NFC chip + this DB row all encode the
@@ -384,21 +410,53 @@ export const profileLinks = pgTable(
   ],
 );
 
+// ---------------------------------------------------------------------------
+// Events block
+// ---------------------------------------------------------------------------
+// An "event" is a PAGE-OWNED block (like booking/form/product blocks): it
+// hangs off `profiles.id` and shares the `sort_order` / `is_active` /
+// `spotlight` / `animation_style` axis so it renders intermixed with other
+// blocks on the public page. Money is bigint toman (no fractional). Future
+// events snapshot the host IANA `timezone`. `online_url` is host-only at the
+// app layer — stripped from public payloads unless the viewer's registration
+// is `approved` or `attended`. See docs/EVENTS_PLAN.md.
 export const events = pgTable(
   "events",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    title: text("title").notNull(),
-    slug: text("slug").notNull(),
-    description: text("description").notNull(),
-    coverUrl: text("cover_url"),
-    location: text("location").notNull(),
-    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
-    endsAt: timestamp("ends_at", { withTimezone: true }),
-    status: eventStatusEnum("status").default("draft").notNull(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    // The event belongs to the page, not the user; if the creator is deleted
+    // the event survives under its page. Audit-only attribution.
     createdByUserId: uuid("created_by_user_id").references(() => users.id, {
       onDelete: "set null",
     }),
+    slug: text("slug").notNull(),
+    title: text("title").notNull(),
+    description: text("description"),
+    coverUrl: text("cover_url"),
+    locationType: eventLocationTypeEnum("location_type")
+      .default("physical")
+      .notNull(),
+    locationAddress: text("location_address"),
+    onlineUrl: text("online_url"),
+    timezone: text("timezone").default("Asia/Tehran").notNull(),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }),
+    capacity: integer("capacity"),
+    priceType: eventPriceTypeEnum("price_type").default("free").notNull(),
+    priceToman: bigint("price_toman", { mode: "number" }).default(0).notNull(),
+    approvalRequired: boolean("approval_required").default(false).notNull(),
+    receiptUploadEnabled: boolean("receipt_upload_enabled")
+      .default(false)
+      .notNull(),
+    waitlistEnabled: boolean("waitlist_enabled").default(false).notNull(),
+    status: eventStatusEnum("status").default("draft").notNull(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    spotlight: blockSpotlightEnum("spotlight").default("none").notNull(),
+    animationStyle: blockAnimationEnum("animation_style"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -409,7 +467,28 @@ export const events = pgTable(
   },
   (table) => [
     uniqueIndex("events_slug_idx").on(table.slug),
+    index("events_page_sort_idx").on(table.pageId, table.sortOrder),
     index("events_status_starts_at_idx").on(table.status, table.startsAt),
+  ],
+);
+
+// Custom registration questions. Self-contained — inspired by `form_fields`
+// but deliberately NOT coupled to the form block's internals.
+export const eventQuestions = pgTable(
+  "event_questions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    kind: eventQuestionKindEnum("kind").notNull(),
+    label: text("label").notNull(),
+    required: boolean("required").default(false).notNull(),
+    options: jsonb("options").$type<string[] | null>(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+  },
+  (table) => [
+    index("event_questions_event_sort_idx").on(table.eventId, table.sortOrder),
   ],
 );
 
@@ -423,9 +502,30 @@ export const eventRegistrations = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    status: registrationStatusEnum("status").default("registered").notNull(),
+    status: eventRegistrationStatusEnum("status")
+      .default("pending_approval")
+      .notNull(),
+    // Custom-question answers keyed by question id → string | string[].
+    answers: jsonb("answers")
+      .$type<Record<string, string | string[]>>()
+      .default({})
+      .notNull(),
+    // PRIVATE storage object key (not a public URL). Served to the host/admin
+    // via an owner-gated presigned URL. Null until a receipt is uploaded.
+    receiptKey: text("receipt_key"),
+    discountCode: text("discount_code"),
+    // Amount the attendee owes after any discount (toman snapshot at register).
+    expectedToman: bigint("expected_toman", { mode: "number" })
+      .default(0)
+      .notNull(),
+    decidedAt: timestamp("decided_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
       .notNull(),
   },
   (table) => [
@@ -434,6 +534,68 @@ export const eventRegistrations = pgTable(
       table.userId,
     ),
     index("event_registrations_user_idx").on(table.userId),
+    index("event_registrations_event_status_idx").on(
+      table.eventId,
+      table.status,
+    ),
+  ],
+);
+
+// Per-event discount codes. `value` is percent (1-100) for percentage, or
+// toman for fixed. Validated server-side; no money actually moves.
+export const eventDiscountCodes = pgTable(
+  "event_discount_codes",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    code: text("code").notNull(),
+    type: eventDiscountTypeEnum("type").notNull(),
+    value: bigint("value", { mode: "number" }).notNull(),
+    usageLimit: integer("usage_limit"),
+    usedCount: integer("used_count").default(0).notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    // Case-insensitive uniqueness per event (codes compared lower-cased).
+    uniqueIndex("event_discount_codes_event_code_idx").on(
+      table.eventId,
+      sql`lower(${table.code})`,
+    ),
+  ],
+);
+
+// Auditable, idempotent door check-in. unique(registration_id) makes a
+// double-scan a no-op: the second scan finds the existing row and reports
+// "already checked in at <time>".
+export const eventCheckins = pgTable(
+  "event_checkins",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    registrationId: uuid("registration_id")
+      .notNull()
+      .references(() => eventRegistrations.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    scannedByUserId: uuid("scanned_by_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    checkedInAt: timestamp("checked_in_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("event_checkins_registration_idx").on(table.registrationId),
+    index("event_checkins_event_idx").on(table.eventId),
   ],
 );
 
@@ -506,6 +668,7 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
   statsByDay: many(profileStatsByDay),
   bookingBlocks: many(profileBookingBlocks),
   productBlocks: many(profileProductBlocks),
+  events: many(events),
 }));
 
 export const profileLinksRelations = relations(profileLinks, ({ one }) => ({
@@ -516,11 +679,25 @@ export const profileLinksRelations = relations(profileLinks, ({ one }) => ({
 }));
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
+  page: one(profiles, {
+    fields: [events.pageId],
+    references: [profiles.id],
+  }),
   createdBy: one(users, {
     fields: [events.createdByUserId],
     references: [users.id],
   }),
+  questions: many(eventQuestions),
   registrations: many(eventRegistrations),
+  discountCodes: many(eventDiscountCodes),
+  checkins: many(eventCheckins),
+}));
+
+export const eventQuestionsRelations = relations(eventQuestions, ({ one }) => ({
+  event: one(events, {
+    fields: [eventQuestions.eventId],
+    references: [events.id],
+  }),
 }));
 
 export const eventRegistrationsRelations = relations(
@@ -534,8 +711,37 @@ export const eventRegistrationsRelations = relations(
       fields: [eventRegistrations.userId],
       references: [users.id],
     }),
+    checkin: one(eventCheckins, {
+      fields: [eventRegistrations.id],
+      references: [eventCheckins.registrationId],
+    }),
   }),
 );
+
+export const eventDiscountCodesRelations = relations(
+  eventDiscountCodes,
+  ({ one }) => ({
+    event: one(events, {
+      fields: [eventDiscountCodes.eventId],
+      references: [events.id],
+    }),
+  }),
+);
+
+export const eventCheckinsRelations = relations(eventCheckins, ({ one }) => ({
+  event: one(events, {
+    fields: [eventCheckins.eventId],
+    references: [events.id],
+  }),
+  registration: one(eventRegistrations, {
+    fields: [eventCheckins.registrationId],
+    references: [eventRegistrations.id],
+  }),
+  user: one(users, {
+    fields: [eventCheckins.userId],
+    references: [users.id],
+  }),
+}));
 
 
 // Pre-aggregated daily stats. One row per (profile, date); incremented via

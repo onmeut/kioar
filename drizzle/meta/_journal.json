@@ -379,6 +379,13 @@
       "when": 1778800000000,
       "tag": "0054_drop_card_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1778900000000,
+      "tag": "0055_events_rebuild",
+      "breakpoints": true
     }
   ]
 }
