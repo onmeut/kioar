@@ -6,13 +6,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { getDb } from "@/db";
-import {
-  eventRegistrations,
-  events,
-  profiles,
-  sessions,
-  users,
-} from "@/db/schema";
+import { events, profiles, sessions, users } from "@/db/schema";
 import { createConnection } from "@/lib/connections";
 import { getRequiredEnv } from "@/lib/env";
 import { log } from "@/lib/log";
@@ -446,14 +440,29 @@ export async function isImpersonating() {
   return Boolean(cookieStore.get(IMPERSONATION_RETURN_COOKIE_NAME)?.value);
 }
 
+/**
+ * Pending event-registration handoff. An anonymous visitor taps "register"
+ * on a public event page; we drop `kioar_pending_event=<eventSlug>` and send
+ * them to /auth. After OTP success the caller invokes this helper.
+ *
+ * We do NOT create the registration here — the registration state machine
+ * (capacity / approval / payment / waitlist) lives in
+ * `lib/events/registration-service.ts` and is driven from the public event
+ * page. We resolve the event to its canonical `/{handle}/e/{slug}` URL and
+ * redirect back with `?register=1` so the page completes registration through
+ * the real service with the now-authenticated viewer.
+ *
+ * If there is no pending event slug, returns without doing anything so the
+ * caller can fall through to the next intent.
+ */
 export async function continuePendingEventRegistrationOrRedirect(
-  userId: string,
+  _userId: string,
 ) {
   const db = getDb();
   const pendingEventSlug = await getPendingEventRegistration();
 
   if (!pendingEventSlug) {
-    redirect("/me");
+    return;
   }
 
   const event = await db.query.events.findFirst({
@@ -461,30 +470,22 @@ export async function continuePendingEventRegistrationOrRedirect(
       eq(events.slug, pendingEventSlug),
       eq(events.status, "published"),
     ),
+    with: { page: { columns: { slug: true } } },
   });
 
-  if (!event) {
-    await clearPendingEventRegistration();
+  await clearPendingEventRegistration();
+
+  if (!event || !event.page) {
     redirect("/me");
   }
 
-  const existingRegistration = await db.query.eventRegistrations.findFirst({
-    where: and(
-      eq(eventRegistrations.eventId, event.id),
-      eq(eventRegistrations.userId, userId),
-    ),
-  });
-
-  if (!existingRegistration) {
-    await db.insert(eventRegistrations).values({
-      eventId: event.id,
-      userId,
-      status: "registered",
-    });
-  }
-
-  await clearPendingEventRegistration();
-  redirect(`/events/${event.slug}?registered=1`);
+  // Canonical event URL is rebuilt in the events feature increments; cast
+  // until the typed route exists.
+  redirect(
+    `/${event.page.slug}/e/${event.slug}?register=1` as unknown as Parameters<
+      typeof redirect
+    >[0],
+  );
 }
 
 /**

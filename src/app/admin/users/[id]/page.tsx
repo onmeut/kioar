@@ -32,6 +32,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { requireAdmin } from "@/lib/auth/session";
 import { getAdminUserDetail } from "@/lib/data";
+import { REGISTRATION_STATUS_LABELS } from "@/lib/events/labels";
 import {
   formatPersianDate,
   formatPersianDateTime,
@@ -538,11 +539,11 @@ export default async function AdminUserDetailPage({
                   <p className="truncate font-semibold">{r.title}</p>
                   <p className="text-xs text-muted-foreground">
                     {formatPersianDateTime(r.startsAt)} ·{" "}
-                    {r.status === "registered" ? "ثبت‌نام شده" : "لغو شده"}
+                    {REGISTRATION_STATUS_LABELS[r.status] ?? r.status}
                   </p>
                 </div>
                 <Link
-                  href={`/admin/events/${r.eventId}` as Route}
+                  href={`/admin/events/${r.eventId}` as unknown as Route}
                   className={cn(
                     buttonVariants({
                       size: "sm",

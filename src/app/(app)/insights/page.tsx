@@ -183,11 +183,13 @@ export default async function DashboardPage() {
                     {formatPersianDateTime(event.startsAt)}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {event.location}
+                    {event.locationType === "online"
+                      ? "آنلاین"
+                      : (event.locationAddress ?? "حضوری")}
                   </p>
                 </div>
                 <Link
-                  href={`/my-events/${event.slug}` as Route}
+                  href={"/my-events" as Route}
                   aria-label="مشاهده"
                   className={cn(
                     buttonVariants({
@@ -207,7 +209,10 @@ export default async function DashboardPage() {
             icon={CalendarDaysIcon}
             title="هنوز در رویدادی ثبت‌نام نکرده‌اید"
             description="هر زمان خواستید می‌توانید از صفحه رویدادها ثبت‌نام کنید."
-            cta={{ href: "/events", label: "مشاهده رویدادها" }}
+            cta={{
+              href: "/events" as unknown as Route,
+              label: "مشاهده رویدادها",
+            }}
           />
         )}
       </section>

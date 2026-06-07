@@ -68,7 +68,7 @@ function getDashboardItems(isProUser: boolean): NavItem[] {
 const adminItems: NavItem[] = [
   { href: "/admin", label: "نما", icon: LayoutGridIcon, match: "exact" },
   { href: "/admin/users", label: "کاربران", icon: UsersIcon },
-  { href: "/admin/events/new", label: "رویداد", icon: PlusSquareIcon },
+  { href: "/admin/events/new" as Route, label: "رویداد", icon: PlusSquareIcon },
   { href: "/admin/cards", label: "کارت‌ها", icon: FormInputIcon },
 ];
 

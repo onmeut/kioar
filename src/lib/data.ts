@@ -24,7 +24,6 @@ import {
 } from "@/db/schema";
 import { blockKindToFeatureKey } from "@/lib/block-features";
 import { getPublicActiveBookingBlocks } from "@/lib/booking-data";
-import { withEventsCache } from "@/lib/cache/page-list-cache";
 import { withProfileCache } from "@/lib/cache/profile-cache";
 import { getPageEntitlements } from "@/lib/entitlements";
 import { getPublicActiveFormBlocks } from "@/lib/form-service";
@@ -120,65 +119,53 @@ async function loadPublicProfileBySlug(slug: string) {
   };
 }
 
-export async function getPublishedEvents() {
-  return withEventsCache(() => {
-    const db = getDb();
-    return db
-      .select()
-      .from(events)
-      .where(eq(events.status, "published"))
-      .orderBy(asc(events.startsAt));
-  });
-}
+// Registration statuses that count as "the user is in this event" for
+// dashboard/attending surfaces. Off-path states (rejected/cancelled) are
+// excluded; everything from pending through attended is shown with its own
+// status badge by the caller.
+export const ACTIVE_REGISTRATION_STATUSES = [
+  "pending_approval",
+  "payment_pending",
+  "payment_submitted",
+  "approved",
+  "waitlisted",
+  "attended",
+] as const;
 
-export async function getRegisteredEventIds(userId: string) {
-  const db = getDb();
-  const rows = await db
-    .select({
-      eventId: eventRegistrations.eventId,
-    })
-    .from(eventRegistrations)
-    .where(
-      and(
-        eq(eventRegistrations.userId, userId),
-        eq(eventRegistrations.status, "registered"),
-      ),
-    );
-
-  return new Set(rows.map((item) => item.eventId));
-}
-
-export async function getEventBySlug(slug: string) {
-  const db = getDb();
-
-  return db.query.events.findFirst({
-    where: eq(events.slug, slug),
-  });
-}
-
+/**
+ * Events the user is registered for (any active status), newest event first.
+ * Joins through to the owning page (`profiles`) so callers can build the
+ * canonical `/{handle}/e/{slug}` URL. `locationLabel` is a display string the
+ * caller can show directly (online events never leak their URL here).
+ */
 export async function getDashboardRegistrations(userId: string) {
   const db = getDb();
 
   return db
     .select({
       registrationId: eventRegistrations.id,
+      registrationStatus: eventRegistrations.status,
       registeredAt: eventRegistrations.createdAt,
       eventId: events.id,
       title: events.title,
       slug: events.slug,
       description: events.description,
-      location: events.location,
+      locationType: events.locationType,
+      locationAddress: events.locationAddress,
       startsAt: events.startsAt,
       endsAt: events.endsAt,
+      timezone: events.timezone,
       coverUrl: events.coverUrl,
       status: events.status,
+      pageSlug: profiles.slug,
     })
     .from(eventRegistrations)
     .innerJoin(events, eq(eventRegistrations.eventId, events.id))
+    .innerJoin(profiles, eq(events.pageId, profiles.id))
     .where(
       and(
         eq(eventRegistrations.userId, userId),
-        eq(eventRegistrations.status, "registered"),
+        inArray(eventRegistrations.status, [...ACTIVE_REGISTRATION_STATUSES]),
       ),
     )
     .orderBy(asc(events.startsAt));
@@ -236,119 +223,10 @@ export async function getLinkClickCounts(
   return Object.fromEntries(rows.map((r) => [r.linkId, Number(r.total ?? 0)]));
 }
 
-export async function getAdminEvents() {
-  const db = getDb();
-
-  return db.select().from(events).orderBy(desc(events.createdAt));
-}
-
-export async function getAdminEventsWithCounts() {
-  const db = getDb();
-  const rows = await db
-    .select({
-      id: events.id,
-      title: events.title,
-      slug: events.slug,
-      description: events.description,
-      coverUrl: events.coverUrl,
-      location: events.location,
-      startsAt: events.startsAt,
-      endsAt: events.endsAt,
-      status: events.status,
-      createdAt: events.createdAt,
-    })
-    .from(events)
-    .orderBy(desc(events.createdAt));
-
-  if (rows.length === 0) return [];
-
-  const counts = await db
-    .select({
-      eventId: eventRegistrations.eventId,
-      registered: count(eventRegistrations.id),
-    })
-    .from(eventRegistrations)
-    .where(
-      and(
-        eq(eventRegistrations.status, "registered"),
-        inArray(
-          eventRegistrations.eventId,
-          rows.map((row) => row.id),
-        ),
-      ),
-    )
-    .groupBy(eventRegistrations.eventId);
-
-  const countMap = new Map(
-    counts.map((row) => [row.eventId, Number(row.registered)]),
-  );
-
-  return rows.map((row) => ({
-    ...row,
-    registeredCount: countMap.get(row.id) ?? 0,
-  }));
-}
-
-export async function getAdminEventRegistrations(eventId: string) {
-  const db = getDb();
-
-  return db
-    .select({
-      registrationId: eventRegistrations.id,
-      status: eventRegistrations.status,
-      registeredAt: eventRegistrations.createdAt,
-      userId: users.id,
-      phone: users.phone,
-      role: users.role,
-      profileSlug: profiles.slug,
-      fullName: profiles.fullName,
-      profileTitle: profiles.title,
-      avatarUrl: profiles.avatarUrl,
-      email: profiles.email,
-    })
-    .from(eventRegistrations)
-    .innerJoin(users, eq(eventRegistrations.userId, users.id))
-    .leftJoin(profiles, eq(profiles.userId, users.id))
-    .where(eq(eventRegistrations.eventId, eventId))
-    .orderBy(desc(eventRegistrations.createdAt));
-}
-
-export async function getEventRegisteredCount(eventId: string) {
-  const db = getDb();
-  const [row] = await db
-    .select({ value: count(eventRegistrations.id) })
-    .from(eventRegistrations)
-    .where(
-      and(
-        eq(eventRegistrations.eventId, eventId),
-        eq(eventRegistrations.status, "registered"),
-      ),
-    );
-
-  return Number(row?.value ?? 0);
-}
-
-export async function getEventRecentAttendees(eventId: string, limit = 6) {
-  const db = getDb();
-  return db
-    .select({
-      userId: users.id,
-      fullName: profiles.fullName,
-      avatarUrl: profiles.avatarUrl,
-      profileSlug: profiles.slug,
-    })
-    .from(eventRegistrations)
-    .innerJoin(users, eq(eventRegistrations.userId, users.id))
-    .leftJoin(profiles, eq(profiles.userId, users.id))
-    .where(
-      and(
-        eq(eventRegistrations.eventId, eventId),
-        eq(eventRegistrations.status, "registered"),
-      ),
-    )
-    .orderBy(desc(eventRegistrations.createdAt))
-    .limit(limit);
-}
+// NOTE: Admin/host event-query helpers (list with counts, registrant lists,
+// attendee previews) are rebuilt in the events feature increments
+// (lib/events/queries.ts). The throwaway global-admin versions were removed
+// when the schema became page-owned. See docs/EVENTS_PLAN.md.
 
 // --- Admin user management ----------------------------------------------
 
@@ -617,7 +495,9 @@ export async function listAdminUsers({
       .where(
         and(
           inArray(eventRegistrations.userId, userIds),
-          eq(eventRegistrations.status, "registered"),
+          inArray(eventRegistrations.status, [
+            ...ACTIVE_REGISTRATION_STATUSES,
+          ]),
         ),
       )
       .groupBy(eventRegistrations.userId),

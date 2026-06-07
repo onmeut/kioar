@@ -182,7 +182,7 @@ export default async function DashboardLayout({
       badgeCount: badgeCounts.forms,
     },
     { href: "/connections" as Route, label: "دایره من", icon: "users" },
-    { href: "/my-events", label: "رویدادها", icon: "events" },
+    { href: "/my-events" as Route, label: "رویدادها", icon: "events" },
   ];
 
   // Bottom-of-sidebar utility row. Notifications, profile, help — icon

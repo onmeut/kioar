@@ -451,64 +451,10 @@ export const onboardingProfileSchema = z.object({
     .transform((v) => (v && v.length ? v : null)),
 });
 
-function isValidDateInput(value: string) {
-  if (!value || !value.trim()) return false;
-  return !Number.isNaN(new Date(value).getTime());
-}
-
-export const eventFormSchema = z
-  .object({
-    title: z.string().trim().min(2, "عنوان رویداد را وارد کنید.").max(100),
-    slug: z
-      .string()
-      .trim()
-      .min(3, "اسلاگ رویداد حداقل ۳ کاراکتر لازم دارد.")
-      .transform((value) => normalizeSlug(value))
-      .refine((value) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value), {
-        message: "اسلاگ باید با حروف انگلیسی، عدد و خط تیره باشد.",
-      }),
-    description: z
-      .string()
-      .trim()
-      .min(12, "توضیح رویداد حداقل ۱۲ کاراکتر لازم دارد.")
-      .max(1200, "توضیح رویداد حداکثر ۱۲۰۰ کاراکتر می‌تواند باشد."),
-    location: z
-      .string()
-      .trim()
-      .min(2, "محل برگزاری را وارد کنید.")
-      .max(160, "محل برگزاری طولانی‌تر از حد مجاز است."),
-    startsAt: z
-      .string()
-      .trim()
-      .min(1, "زمان شروع را انتخاب کنید.")
-      .refine(isValidDateInput, "تاریخ و ساعت شروع معتبر نیست."),
-    endsAt: z
-      .string()
-      .optional()
-      .default("")
-      .transform((value) => value?.trim() ?? ""),
-    status: z.enum(["draft", "published", "closed"], {
-      message: "وضعیت انتشار معتبر نیست.",
-    }),
-  })
-  .superRefine((value, ctx) => {
-    if (!value.endsAt) return;
-    if (!isValidDateInput(value.endsAt)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "تاریخ و ساعت پایان معتبر نیست.",
-        path: ["endsAt"],
-      });
-      return;
-    }
-    if (new Date(value.endsAt) < new Date(value.startsAt)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "زمان پایان باید بعد از زمان شروع باشد.",
-        path: ["endsAt"],
-      });
-    }
-  });
+// NOTE: The events validation schema is rebuilt in the events module
+// (Increment 4). The throwaway `eventFormSchema` (and its `isValidDateInput`
+// helper) was removed when events became a page-owned block. See
+// docs/EVENTS_PLAN.md.
 
 // ---------------------------------------------------------------------------
 // Bookings
