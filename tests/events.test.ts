@@ -217,3 +217,53 @@ describe("parseQrTarget (QR check-in resolution)", () => {
     });
   });
 });
+
+describe("calendar builders (.ics + Google)", () => {
+  const base = {
+    title: "میت‌آپ ماهانه",
+    description: "گفتگوی آزاد",
+    location: "تهران، کافه‌ای دنج",
+    // 2025-03-15 18:30 Tehran = 2025-03-15T15:00:00Z (Tehran is +03:30)
+    startsAt: new Date("2025-03-15T15:00:00Z"),
+    endsAt: new Date("2025-03-15T17:00:00Z"),
+    timezone: "Asia/Tehran",
+    uid: "evt-123",
+    url: "https://kioar.com/maryam/e/meetup",
+  };
+
+  it("buildIcs emits a valid VEVENT with TZID-local DTSTART", async () => {
+    const { buildIcs } = await import("@/lib/events/calendar");
+    const ics = buildIcs(base);
+    assert.match(ics, /BEGIN:VCALENDAR/);
+    assert.match(ics, /BEGIN:VEVENT/);
+    assert.match(ics, /UID:evt-123@kioar/);
+    // 18:30 local wall-clock for the +03:30 zone.
+    assert.match(ics, /DTSTART;TZID=Asia\/Tehran:20250315T183000/);
+    assert.match(ics, /DTEND;TZID=Asia\/Tehran:20250315T203000/);
+    assert.match(ics, /END:VCALENDAR/);
+    // CRLF line endings.
+    assert.ok(ics.includes("\r\n"));
+  });
+
+  it("buildIcs escapes commas/semicolons in text", async () => {
+    const { buildIcs } = await import("@/lib/events/calendar");
+    const ics = buildIcs({ ...base, title: "A, B; C" });
+    assert.match(ics, /SUMMARY:A\\, B\\; C/);
+  });
+
+  it("buildIcs defaults a 1h end when endsAt is null", async () => {
+    const { buildIcs } = await import("@/lib/events/calendar");
+    const ics = buildIcs({ ...base, endsAt: null });
+    // start 18:30 → default end 19:30 local.
+    assert.match(ics, /DTEND;TZID=Asia\/Tehran:20250315T193000/);
+  });
+
+  it("buildGoogleCalendarUrl uses UTC instants + ctz", async () => {
+    const { buildGoogleCalendarUrl } = await import("@/lib/events/calendar");
+    const url = buildGoogleCalendarUrl(base);
+    assert.match(url, /calendar\.google\.com/);
+    assert.match(url, /dates=20250315T150000Z%2F20250315T170000Z/);
+    assert.match(url, /ctz=Asia%2FTehran/);
+    assert.match(url, /text=/);
+  });
+});

@@ -182,7 +182,11 @@ export default async function PublicEventPage({
             {toPersianDigits(event.confirmedSpots)} نفر
           </span>
         </div>
-        <PublicEventRegister event={event} isLoggedIn={Boolean(viewer)} />
+        <PublicEventRegister
+          event={event}
+          isLoggedIn={Boolean(viewer)}
+          currentUserId={viewer?.user.id ?? null}
+        />
       </div>
     </main>
   );

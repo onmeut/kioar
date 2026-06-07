@@ -2,12 +2,26 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2Icon, ClockIcon, UploadIcon } from "lucide-react";
+import {
+  CheckCircle2Icon,
+  ClockIcon,
+  QrCodeIcon,
+  UploadIcon,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { QrCard } from "@/components/dashboard/qr-card";
+import { AddToCalendar } from "@/components/events/add-to-calendar";
+import { userShortUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { toPersianDigits } from "@/lib/date/persian";
 import { REGISTRATION_STATUS_LABELS } from "@/lib/events/labels";
@@ -22,9 +36,14 @@ import {
 type Props = {
   event: PublicEventView;
   isLoggedIn: boolean;
+  currentUserId: string | null;
 };
 
-export function PublicEventRegister({ event, isLoggedIn }: Props) {
+export function PublicEventRegister({
+  event,
+  isLoggedIn,
+  currentUserId,
+}: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const reg = event.viewerRegistration;
@@ -32,7 +51,12 @@ export function PublicEventRegister({ event, isLoggedIn }: Props) {
   // Already registered → show the status + next-step affordances.
   if (reg && reg.status !== "cancelled" && reg.status !== "rejected") {
     return (
-      <RegisteredState event={event} status={reg.status} expected={reg.expectedToman} />
+      <RegisteredState
+        event={event}
+        status={reg.status}
+        expected={reg.expectedToman}
+        currentUserId={currentUserId}
+      />
     );
   }
 
@@ -267,14 +291,17 @@ function RegisteredState({
   event,
   status,
   expected,
+  currentUserId,
 }: {
   event: PublicEventView;
   status: string;
   expected: number;
+  currentUserId: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const fileRef = useRef<HTMLInputElement>(null);
+  const [qrOpen, setQrOpen] = useState(false);
 
   const needsReceipt =
     status === "payment_pending" && event.receiptUploadEnabled;
@@ -355,6 +382,55 @@ function RegisteredState({
         >
           لینک ورود به رویداد آنلاین
         </a>
+      ) : null}
+
+      {confirmed && !event.isPast ? (
+        <div className="space-y-2">
+          <AddToCalendar
+            title={event.title}
+            description={event.description}
+            location={
+              event.locationType === "physical"
+                ? event.locationAddress
+                : event.onlineUrl
+            }
+            startsAt={new Date(event.startsAt).toISOString()}
+            endsAt={event.endsAt ? new Date(event.endsAt).toISOString() : null}
+            timezone={event.timezone}
+            uid={event.id}
+            url={`https://kioar.com/${event.pageSlug}/e/${event.slug}`}
+          />
+          {currentUserId ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full"
+              onClick={() => setQrOpen(true)}
+            >
+              <QrCodeIcon className="size-4" />
+              نمایش کد QR برای ورود
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
+
+      {currentUserId ? (
+        <Sheet open={qrOpen} onOpenChange={setQrOpen}>
+          <SheetContent side="bottom">
+            <SheetHeader>
+              <SheetTitle>کد QR شما</SheetTitle>
+            </SheetHeader>
+            <div className="p-4 pt-0">
+              <p className="mb-4 text-center text-sm text-muted-foreground">
+                این کد را در ورودی رویداد به میزبان نشان دهید.
+              </p>
+              <QrCard
+                url={userShortUrl(currentUserId)}
+                title="کد QR کی‌یوآر من"
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       ) : null}
 
       {!event.isPast && status !== "attended" ? (
