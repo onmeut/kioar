@@ -386,6 +386,13 @@
       "when": 1778900000000,
       "tag": "0055_events_rebuild",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1749296400000,
+      "tag": "0056_backfill_business_events_entitlement",
+      "breakpoints": true
     }
   ]
 }
