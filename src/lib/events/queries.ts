@@ -126,6 +126,96 @@ export async function getCheckinForRegistration(registrationId: string) {
   });
 }
 
+export type PublicEventCard = {
+  id: string;
+  slug: string;
+  title: string;
+  coverUrl: string | null;
+  locationType: "physical" | "online";
+  priceType: "free" | "paid";
+  priceToman: number;
+  startsAt: Date;
+  endsAt: Date | null;
+  timezone: string;
+  capacity: number | null;
+  spotsRemaining: number | null;
+  isFull: boolean;
+  sortOrder: number;
+  spotlight: (typeof events.$inferSelect)["spotlight"];
+  animationStyle: (typeof events.$inferSelect)["animationStyle"];
+};
+
+/**
+ * Published, upcoming, active events for a page's public block. Past events are
+ * excluded. Returns Date instances (the profile cache reviver handles ISO).
+ * Caller gates on `business_events` before invoking.
+ */
+export async function getPublicActiveEventBlocks(
+  pageId: string,
+): Promise<PublicEventCard[]> {
+  const db = getDb();
+  const now = new Date();
+  const rows = await db
+    .select()
+    .from(events)
+    .where(
+      and(
+        eq(events.pageId, pageId),
+        eq(events.status, "published"),
+        eq(events.isActive, true),
+      ),
+    )
+    .orderBy(asc(events.startsAt));
+
+  // Upcoming only: end (or start) in the future.
+  const upcoming = rows.filter((ev) => {
+    const ref = ev.endsAt ?? ev.startsAt;
+    return ref.getTime() >= now.getTime();
+  });
+  if (upcoming.length === 0) return [];
+
+  // Confirmed-spot counts for capacity labels.
+  const ids = upcoming.map((e) => e.id);
+  const counts = await db
+    .select({
+      eventId: eventRegistrations.eventId,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(eventRegistrations)
+    .where(
+      and(
+        inArray(eventRegistrations.eventId, ids),
+        inArray(eventRegistrations.status, ["approved", "attended"]),
+      ),
+    )
+    .groupBy(eventRegistrations.eventId);
+  const spotMap = new Map(counts.map((c) => [c.eventId, Number(c.n)]));
+
+  return upcoming.map((ev) => {
+    const spots = spotMap.get(ev.id) ?? 0;
+    const spotsRemaining =
+      ev.capacity != null ? Math.max(0, ev.capacity - spots) : null;
+    return {
+      id: ev.id,
+      slug: ev.slug,
+      title: ev.title,
+      coverUrl: ev.coverUrl,
+      locationType: ev.locationType,
+      priceType: ev.priceType,
+      priceToman: ev.priceToman,
+      startsAt: ev.startsAt,
+      endsAt: ev.endsAt,
+      timezone: ev.timezone,
+      capacity: ev.capacity,
+      spotsRemaining,
+      isFull: ev.capacity != null && spots >= ev.capacity,
+      sortOrder: ev.sortOrder,
+      spotlight: ev.spotlight,
+      animationStyle: ev.animationStyle,
+    };
+  });
+}
+
 export type PublicEventView = {
   id: string;
   slug: string;

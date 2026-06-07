@@ -438,6 +438,24 @@ export default async function PublicProfilePage({
                 sku: it.sku,
               })),
             })),
+            eventBlocks: (profile.eventBlocks ?? []).map((e) => ({
+              id: e.id,
+              slug: e.slug,
+              pageSlug: profile.slug,
+              title: e.title,
+              coverUrl: e.coverUrl,
+              locationType: e.locationType,
+              priceType: e.priceType,
+              priceToman: e.priceToman,
+              startsAt: e.startsAt,
+              endsAt: e.endsAt,
+              timezone: e.timezone,
+              spotsRemaining: e.spotsRemaining,
+              isFull: e.isFull,
+              sortOrder: e.sortOrder,
+              spotlight: e.spotlight,
+              animationStyle: e.animationStyle,
+            })),
           }}
           formSubmitAction={submitFormAction}
         />

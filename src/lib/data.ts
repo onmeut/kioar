@@ -27,6 +27,7 @@ import { getPublicActiveBookingBlocks } from "@/lib/booking-data";
 import { withProfileCache } from "@/lib/cache/profile-cache";
 import { getPageEntitlements } from "@/lib/entitlements";
 import { getPublicActiveFormBlocks } from "@/lib/form-service";
+import { getPublicActiveEventBlocks } from "@/lib/events/queries";
 import { getPublicActiveProductBlocks } from "@/lib/product-service";
 import { isReservedSlug } from "@/lib/slug";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
@@ -75,6 +76,7 @@ async function loadPublicProfileBySlug(slug: string) {
   const bookingKey = blockKindToFeatureKey("booking");
   const formKey = blockKindToFeatureKey("form");
   const productKey = blockKindToFeatureKey("product");
+  const eventKey = blockKindToFeatureKey("event");
 
   // Wave 2 — all queries that only need profile.id run in parallel.
   // getPageEntitlements fetches the full entitlement map for this page in
@@ -100,14 +102,17 @@ async function loadPublicProfileBySlug(slug: string) {
   const bookingsGranted = bookingKey === null || entitlements.has(bookingKey);
   const formsGranted = formKey === null || entitlements.has(formKey);
   const productsGranted = productKey === null || entitlements.has(productKey);
+  const eventsGranted = eventKey === null || entitlements.has(eventKey);
 
-  // Wave 3 — block content is conditional on entitlements. The three
-  // fetches are independent of each other so they run in parallel.
-  const [bookingBlocks, formBlocks, productBlocks] = await Promise.all([
-    bookingsGranted ? getPublicActiveBookingBlocks(profile.id) : [],
-    formsGranted ? getPublicActiveFormBlocks(profile.id) : [],
-    productsGranted ? getPublicActiveProductBlocks(profile.id) : [],
-  ]);
+  // Wave 3 — block content is conditional on entitlements. The fetches are
+  // independent of each other so they run in parallel.
+  const [bookingBlocks, formBlocks, productBlocks, eventBlocks] =
+    await Promise.all([
+      bookingsGranted ? getPublicActiveBookingBlocks(profile.id) : [],
+      formsGranted ? getPublicActiveFormBlocks(profile.id) : [],
+      productsGranted ? getPublicActiveProductBlocks(profile.id) : [],
+      eventsGranted ? getPublicActiveEventBlocks(profile.id) : [],
+    ]);
 
   return {
     ...profile,
@@ -115,6 +120,7 @@ async function loadPublicProfileBySlug(slug: string) {
     bookingBlocks,
     formBlocks,
     productBlocks,
+    eventBlocks,
     owner,
   };
 }

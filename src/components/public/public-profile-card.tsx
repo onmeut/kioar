@@ -1,6 +1,8 @@
 import Image from "next/image";
+import Link from "next/link";
 import {
   AtSignIcon,
+  CalendarDaysIcon,
   CalendarIcon,
   FormInputIcon,
   PhoneIcon,
@@ -35,6 +37,8 @@ import {
   type BlockSpotlight,
 } from "@/lib/block-spotlight";
 import type { IconKey } from "@/lib/link-icons";
+import { toPersianDigits } from "@/lib/date/persian";
+import { formatShamsiDateTimeInZone } from "@/lib/date/timezone";
 import { cn } from "@/lib/utils";
 
 type PublicLink = {
@@ -84,6 +88,27 @@ export type PublicProfileCardData = {
       animationStyle?: BlockAnimationStyle | null;
     }
   >;
+  eventBlocks?: PublicEventCardData[];
+};
+
+/** Public-page render shape for an upcoming event card (one per event). */
+export type PublicEventCardData = {
+  id: string;
+  slug: string;
+  pageSlug: string;
+  title: string;
+  coverUrl: string | null;
+  locationType: "physical" | "online";
+  priceType: "free" | "paid";
+  priceToman: number;
+  startsAt: Date | string;
+  endsAt: Date | string | null;
+  timezone: string;
+  spotsRemaining: number | null;
+  isFull: boolean;
+  sortOrder?: number;
+  spotlight?: BlockSpotlight;
+  animationStyle?: BlockAnimationStyle | null;
 };
 
 /**
@@ -273,10 +298,18 @@ export function PublicProfileCard({
                 block: PublicProductBlockData;
                 spotlight: BlockSpotlight;
                 animationStyle: BlockAnimationStyle | null;
+              }
+            | {
+                kind: "event";
+                sortOrder: number;
+                event: PublicEventCardData;
+                spotlight: BlockSpotlight;
+                animationStyle: BlockAnimationStyle | null;
               };
           const bookingBlocks = profile.bookingBlocks ?? [];
           const formBlocks = profile.formBlocks ?? [];
           const productBlocks = profile.productBlocks ?? [];
+          const eventBlocks = profile.eventBlocks ?? [];
           const items: Item[] = [
             ...profile.links.map((link, i) => {
               const spotlight = link.spotlight ?? "none";
@@ -320,6 +353,17 @@ export function PublicProfileCard({
                 block,
                 spotlight,
                 animationStyle: block.animationStyle ?? null,
+              };
+            }),
+            ...eventBlocks.map((event, i) => {
+              const spotlight = event.spotlight ?? "none";
+              const baseSort = event.sortOrder ?? 4_000_000 + i;
+              return {
+                kind: "event" as const,
+                sortOrder: spotlightSortKey(spotlight, baseSort),
+                event,
+                spotlight,
+                animationStyle: event.animationStyle ?? null,
               };
             }),
           ].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -469,6 +513,84 @@ export function PublicProfileCard({
                   <span className="block w-full truncate px-10 text-center text-[15px] font-bold">
                     {item.block.pillLabel || item.block.name}
                   </span>
+                </span>
+              );
+            }
+            if (item.kind === "event") {
+              const ev = item.event;
+              const dateLabel = formatShamsiDateTimeInZone(
+                ev.startsAt instanceof Date
+                  ? ev.startsAt
+                  : new Date(ev.startsAt),
+                ev.timezone,
+              );
+              const priceLabel =
+                ev.priceType === "free"
+                  ? "رایگان"
+                  : `${toPersianDigits(ev.priceToman.toLocaleString("en-US"))} تومان`;
+              const spotLabel = ev.isFull
+                ? "تکمیل ظرفیت"
+                : ev.spotsRemaining != null
+                  ? `${toPersianDigits(ev.spotsRemaining)} جای باقی‌مانده`
+                  : null;
+              const inner = (
+                <span className="flex items-center gap-3">
+                  <span className="relative inline-flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-primary">
+                    {ev.coverUrl ? (
+                      <Image
+                        src={ev.coverUrl}
+                        alt=""
+                        fill
+                        sizes="56px"
+                        className="object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      <CalendarDaysIcon className="size-6" />
+                    )}
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col text-start">
+                    <span className="truncate text-[15px] font-bold">
+                      {ev.title}
+                    </span>
+                    <span className="truncate text-xs text-muted-foreground">
+                      {dateLabel}
+                    </span>
+                    <span className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                      <span className="rounded-full bg-foreground/6 px-2 py-0.5">
+                        {priceLabel}
+                      </span>
+                      {spotLabel ? <span>{spotLabel}</span> : null}
+                    </span>
+                  </span>
+                </span>
+              );
+              return interactive ? (
+                <PublicAnimatedBlock
+                  key={`e-${ev.id}`}
+                  animClass={animClassOnce}
+                  intervalSec={10}
+                >
+                  <Link
+                    href={`/${ev.pageSlug}/e/${ev.slug}`}
+                    className={cn(
+                      "block w-full rounded-3xl bg-foreground/4 p-3 transition-colors hover:bg-foreground/8",
+                      animClass,
+                    )}
+                  >
+                    {inner}
+                  </Link>
+                </PublicAnimatedBlock>
+              ) : (
+                <span
+                  key={`e-${ev.id}`}
+                  className={cn(
+                    "block w-full rounded-3xl bg-foreground/4 p-3",
+                    animClass,
+                  )}
+                  aria-disabled
+                >
+                  {inner}
                 </span>
               );
             }
