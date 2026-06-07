@@ -9,6 +9,7 @@ import {
   eventQuestions,
   eventRegistrations,
   events,
+  profiles,
 } from "@/db/schema";
 import { ACTIVE_REGISTRATION_STATUSES } from "@/lib/data";
 
@@ -123,4 +124,143 @@ export async function getCheckinForRegistration(registrationId: string) {
   return db.query.eventCheckins.findFirst({
     where: eq(eventCheckins.registrationId, registrationId),
   });
+}
+
+export type PublicEventView = {
+  id: string;
+  slug: string;
+  pageSlug: string;
+  pageName: string | null;
+  pageAvatarUrl: string | null;
+  title: string;
+  description: string | null;
+  coverUrl: string | null;
+  locationType: "physical" | "online";
+  locationAddress: string | null;
+  /** ONLY present when the viewer is approved/attended — otherwise null. */
+  onlineUrl: string | null;
+  timezone: string;
+  startsAt: Date;
+  endsAt: Date | null;
+  capacity: number | null;
+  priceType: "free" | "paid";
+  priceToman: number;
+  approvalRequired: boolean;
+  receiptUploadEnabled: boolean;
+  waitlistEnabled: boolean;
+  status: "draft" | "published" | "cancelled";
+  confirmedSpots: number;
+  spotsRemaining: number | null;
+  isFull: boolean;
+  isPast: boolean;
+  questions: Array<{
+    id: string;
+    kind: "short_text" | "long_text" | "single_select" | "multi_select";
+    label: string;
+    required: boolean;
+    options: string[] | null;
+  }>;
+  viewerRegistration: {
+    status: string;
+    receiptKey: string | null;
+    expectedToman: number;
+  } | null;
+};
+
+/**
+ * Load the public view of an event by page slug + event slug, for an optional
+ * viewer. **Security:** `onlineUrl` is stripped unless the viewer's
+ * registration is `approved` or `attended` — the URL never reaches the client
+ * for anyone else. Returns null if the event isn't published.
+ */
+export async function getPublicEvent(
+  pageSlug: string,
+  eventSlug: string,
+  viewerUserId: string | null,
+): Promise<PublicEventView | null> {
+  const db = getDb();
+  const row = await db
+    .select({
+      event: events,
+      pageSlug: profiles.slug,
+      pageName: profiles.fullName,
+      pageAvatarUrl: profiles.avatarUrl,
+    })
+    .from(events)
+    .innerJoin(profiles, eq(events.pageId, profiles.id))
+    .where(and(eq(events.slug, eventSlug), eq(profiles.slug, pageSlug)))
+    .limit(1);
+
+  const found = row[0];
+  if (!found || found.event.status !== "published") return null;
+  const ev = found.event;
+
+  const [questions, viewerReg, spots] = await Promise.all([
+    db
+      .select()
+      .from(eventQuestions)
+      .where(eq(eventQuestions.eventId, ev.id))
+      .orderBy(asc(eventQuestions.sortOrder)),
+    viewerUserId
+      ? db.query.eventRegistrations.findFirst({
+          where: and(
+            eq(eventRegistrations.eventId, ev.id),
+            eq(eventRegistrations.userId, viewerUserId),
+          ),
+        })
+      : Promise.resolve(null),
+    getApprovedCount(ev.id),
+  ]);
+
+  const viewerStatus = viewerReg?.status ?? null;
+  const canSeeOnlineUrl =
+    viewerStatus === "approved" || viewerStatus === "attended";
+
+  const endRef = ev.endsAt ?? ev.startsAt;
+  const isPast = endRef.getTime() < Date.now();
+  const isFull = ev.capacity != null && spots >= ev.capacity;
+  const spotsRemaining =
+    ev.capacity != null ? Math.max(0, ev.capacity - spots) : null;
+
+  return {
+    id: ev.id,
+    slug: ev.slug,
+    pageSlug: found.pageSlug,
+    pageName: found.pageName,
+    pageAvatarUrl: found.pageAvatarUrl,
+    title: ev.title,
+    description: ev.description,
+    coverUrl: ev.coverUrl,
+    locationType: ev.locationType,
+    locationAddress: ev.locationAddress,
+    onlineUrl: canSeeOnlineUrl ? ev.onlineUrl : null,
+    timezone: ev.timezone,
+    startsAt: ev.startsAt,
+    endsAt: ev.endsAt,
+    capacity: ev.capacity,
+    priceType: ev.priceType,
+    priceToman: ev.priceToman,
+    approvalRequired: ev.approvalRequired,
+    receiptUploadEnabled: ev.receiptUploadEnabled,
+    waitlistEnabled: ev.waitlistEnabled,
+    status: ev.status,
+    confirmedSpots: spots,
+    spotsRemaining,
+    isFull,
+    isPast,
+    questions: questions.map((q) => ({
+      id: q.id,
+      kind: q.kind,
+      label: q.label,
+      required: q.required,
+      options: q.options ?? null,
+    })),
+    viewerRegistration: viewerReg
+      ? {
+          status: viewerReg.status,
+          receiptKey: viewerReg.receiptKey,
+          expectedToman: viewerReg.expectedToman,
+        }
+      : null,
+  };
 }
