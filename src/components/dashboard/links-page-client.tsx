@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import {
   useActionState,
   useCallback,
@@ -220,12 +221,16 @@ type LinksPageClientProps = {
   formsLocked?: boolean;
   /** Phase 5: same idea for product blocks (`products_block`). */
   productsLocked?: boolean;
+  /** Events block gating (`business_events`). When locked, the picker card
+   *  shows a lock badge and opens the upgrade modal instead of navigating. */
+  eventsLocked?: boolean;
   /** Lowest paid plan that currently grants the feature — drives the lock
    * chip colour (Pro=emerald, Business=purple). Sourced from the live
    * `plan_features` matrix, not the seed naming convention. */
   bookingsRequiredPlan?: "pro" | "business";
   formsRequiredPlan?: "pro" | "business";
   productsRequiredPlan?: "pro" | "business";
+  eventsRequiredPlan?: "pro" | "business";
   /** Per-block items cap from the page's entitlement
    * (`products_max_items_per_block`). Falls back to the absolute hard cap
    * (300) when unset. */
@@ -294,9 +299,11 @@ export function LinksPageClient({
   bookingsLocked = false,
   formsLocked = false,
   productsLocked = false,
+  eventsLocked = false,
   bookingsRequiredPlan = "business",
   formsRequiredPlan = "business",
   productsRequiredPlan = "pro",
+  eventsRequiredPlan = "business",
   productItemsCap,
   pinAllowed = false,
   animateAllowed = false,
@@ -1443,12 +1450,21 @@ export function LinksPageClient({
           setProductBuilderFromAdd(true);
           setProductBuilderOpen(true);
         }}
+        onAddEvent={() => {
+          setAddOpen(false);
+          // Events are managed on their own route (richer than an inline
+          // builder): host creation/edit/management + QR check-in live under
+          // /events. The picker navigates there rather than opening a modal.
+          router.push("/events/new" as Route);
+        }}
         bookingsLocked={bookingsLocked}
         bookingsRequiredPlan={bookingsRequiredPlan}
         formsLocked={formsLocked}
         formsRequiredPlan={formsRequiredPlan}
         productsLocked={productsLocked}
         productsRequiredPlan={productsRequiredPlan}
+        eventsLocked={eventsLocked}
+        eventsRequiredPlan={eventsRequiredPlan}
       />
 
       <FormBuilderDialog

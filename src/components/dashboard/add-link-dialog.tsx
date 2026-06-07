@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import {
   ArrowRightIcon,
   CalendarIcon,
+  CalendarDaysIcon,
   FileTextIcon,
   FormInputIcon,
   GlobeIcon,
@@ -213,6 +214,7 @@ const FEATURE_CARDS: Array<{ key: string; label: string; icon: LucideIcon }> = [
   { key: "bookings", label: "هماهنگ", icon: CalendarIcon },
   { key: "product", label: "محصول", icon: TagIcon },
   { key: "form", label: "فرم", icon: FormInputIcon },
+  { key: "event", label: "رویداد", icon: CalendarDaysIcon },
 ];
 
 type AddLinkDialogProps = {
@@ -233,6 +235,9 @@ type AddLinkDialogProps = {
   /** Invoked when the "product" feature card is picked. The dialog closes
    *  itself; the caller is responsible for opening the product builder. */
   onAddProduct?: () => void;
+  /** Invoked when the "event" feature card is picked. The dialog closes
+   *  itself; the caller navigates to the event creation route. */
+  onAddEvent?: () => void;
   /** When true, the bookings card shows a lock badge and opens upgrade modal on click. */
   bookingsLocked?: boolean;
   bookingsRequiredPlan?: UpgradePlanTier;
@@ -242,6 +247,9 @@ type AddLinkDialogProps = {
   /** When true, the product card shows a lock badge and opens upgrade modal on click. */
   productsLocked?: boolean;
   productsRequiredPlan?: UpgradePlanTier;
+  /** When true, the event card shows a lock badge and opens upgrade modal on click. */
+  eventsLocked?: boolean;
+  eventsRequiredPlan?: UpgradePlanTier;
 };
 
 export function AddLinkDialog({
@@ -252,12 +260,15 @@ export function AddLinkDialog({
   onAddBooking,
   onAddForm,
   onAddProduct,
+  onAddEvent,
   bookingsLocked = false,
   bookingsRequiredPlan = "business",
   formsLocked = false,
   formsRequiredPlan = "business",
   productsLocked = false,
   productsRequiredPlan = "pro",
+  eventsLocked = false,
+  eventsRequiredPlan = "business",
 }: AddLinkDialogProps) {
   const isMobile = useIsMobile();
 
@@ -277,12 +288,15 @@ export function AddLinkDialog({
             onAddBooking={onAddBooking}
             onAddForm={onAddForm}
             onAddProduct={onAddProduct}
+            onAddEvent={onAddEvent}
             bookingsLocked={bookingsLocked}
             bookingsRequiredPlan={bookingsRequiredPlan}
             formsLocked={formsLocked}
             formsRequiredPlan={formsRequiredPlan}
             productsLocked={productsLocked}
             productsRequiredPlan={productsRequiredPlan}
+            eventsLocked={eventsLocked}
+            eventsRequiredPlan={eventsRequiredPlan}
           />
         </SheetContent>
       </Sheet>
@@ -303,12 +317,15 @@ export function AddLinkDialog({
           onAddBooking={onAddBooking}
           onAddForm={onAddForm}
           onAddProduct={onAddProduct}
+          onAddEvent={onAddEvent}
           bookingsLocked={bookingsLocked}
           bookingsRequiredPlan={bookingsRequiredPlan}
           formsLocked={formsLocked}
           formsRequiredPlan={formsRequiredPlan}
           productsLocked={productsLocked}
           productsRequiredPlan={productsRequiredPlan}
+          eventsLocked={eventsLocked}
+          eventsRequiredPlan={eventsRequiredPlan}
         />
       </DialogContent>
     </Dialog>
@@ -324,12 +341,15 @@ function AddLinkDialogBody({
   onAddBooking,
   onAddForm,
   onAddProduct,
+  onAddEvent,
   bookingsLocked,
   bookingsRequiredPlan,
   formsLocked,
   formsRequiredPlan,
   productsLocked,
   productsRequiredPlan,
+  eventsLocked,
+  eventsRequiredPlan,
 }: {
   onClose: () => void;
   onSubmit: (link: Omit<EditableLink, "id" | "sortOrder">) => void;
@@ -337,12 +357,15 @@ function AddLinkDialogBody({
   onAddBooking?: () => void;
   onAddForm?: () => void;
   onAddProduct?: () => void;
+  onAddEvent?: () => void;
   bookingsLocked?: boolean;
   bookingsRequiredPlan?: UpgradePlanTier;
   formsLocked?: boolean;
   formsRequiredPlan?: UpgradePlanTier;
   productsLocked?: boolean;
   productsRequiredPlan?: UpgradePlanTier;
+  eventsLocked?: boolean;
+  eventsRequiredPlan?: UpgradePlanTier;
 }) {
   const [step, setStep] = useState<Step>("pick");
   const [activeCategory, setActiveCategory] =
@@ -521,7 +544,8 @@ function AddLinkDialogBody({
                 const isLocked =
                   (card.key === "bookings" && bookingsLocked) ||
                   (card.key === "form" && formsLocked) ||
-                  (card.key === "product" && productsLocked);
+                  (card.key === "product" && productsLocked) ||
+                  (card.key === "event" && eventsLocked);
                 const lockedPlan =
                   card.key === "bookings"
                     ? bookingsRequiredPlan
@@ -529,7 +553,9 @@ function AddLinkDialogBody({
                       ? formsRequiredPlan
                       : card.key === "product"
                         ? productsRequiredPlan
-                        : undefined;
+                        : card.key === "event"
+                          ? eventsRequiredPlan
+                          : undefined;
                 return (
                   <button
                     key={card.key}
@@ -564,6 +590,16 @@ function AddLinkDialogBody({
                         } else {
                           onClose();
                           onAddProduct?.();
+                        }
+                      } else if (card.key === "event") {
+                        if (eventsLocked) {
+                          setUpgradeModal({
+                            plan: eventsRequiredPlan ?? "business",
+                            featureName: "بلاک رویداد",
+                          });
+                        } else {
+                          onClose();
+                          onAddEvent?.();
                         }
                       } else {
                         pickCustom();

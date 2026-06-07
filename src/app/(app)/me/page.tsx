@@ -290,6 +290,7 @@ export default async function DashboardLinksPage() {
   const bookingFeature = blockKindToFeatureKey("booking");
   const formFeature = blockKindToFeatureKey("form");
   const productFeature = blockKindToFeatureKey("product");
+  const eventFeature = blockKindToFeatureKey("event");
   const bookingsLocked =
     pageId && bookingFeature
       ? !(await pageHasFeature(pageId, bookingFeature))
@@ -301,6 +302,10 @@ export default async function DashboardLinksPage() {
   const productsLocked =
     pageId && productFeature
       ? !(await pageHasFeature(pageId, productFeature))
+      : false;
+  const eventsLocked =
+    pageId && eventFeature
+      ? !(await pageHasFeature(pageId, eventFeature))
       : false;
 
   // Phase 5 + admin matrix: each locked block row needs to know which
@@ -321,6 +326,10 @@ export default async function DashboardLinksPage() {
     productsLocked && productFeature
       ? ((await getFeatureLockTier(productFeature)) ?? "pro")
       : "pro";
+  const eventsRequiredPlan =
+    eventsLocked && eventFeature
+      ? ((await getFeatureLockTier(eventFeature)) ?? "business")
+      : "business";
 
   const rawProductBlocks = pageId
     ? await getProductBlocksByUserId(viewer.user.id)
@@ -424,9 +433,11 @@ export default async function DashboardLinksPage() {
       bookingsLocked={bookingsLocked}
       formsLocked={formsLocked}
       productsLocked={productsLocked}
+      eventsLocked={eventsLocked}
       bookingsRequiredPlan={bookingsRequiredPlan}
       formsRequiredPlan={formsRequiredPlan}
       productsRequiredPlan={productsRequiredPlan}
+      eventsRequiredPlan={eventsRequiredPlan}
       productItemsCap={productItemsCap}
       pinAllowed={pinAllowed}
       animateAllowed={animateAllowed}
