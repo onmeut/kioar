@@ -6,7 +6,7 @@ import { pageHasFeature } from "@/lib/entitlements";
 import { toEventFormInitial } from "@/lib/events/event-mapper";
 import { getHostEvent } from "@/lib/events/queries";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
-import { saveEventAction } from "@/app/(app)/events/actions";
+import { saveEventAction } from "@/app/(app)/my-events/actions";
 
 export const dynamic = "force-dynamic";
 

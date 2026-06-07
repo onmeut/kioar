@@ -7,6 +7,7 @@ import {
   decideInitialStatus,
   type EventConfig,
 } from "@/lib/events/state";
+import { parseQrTarget } from "@/lib/events/qr-target";
 
 function cfg(over: Partial<EventConfig> = {}): EventConfig {
   return {
@@ -150,5 +151,69 @@ describe("canTransition", () => {
   });
   it("payment_pending → payment_submitted", () => {
     assert.equal(canTransition("payment_pending", "payment_submitted"), true);
+  });
+});
+
+describe("parseQrTarget (QR check-in resolution)", () => {
+  it("full URL with a plain slug → slug target", () => {
+    assert.deepEqual(parseQrTarget("https://kioar.com/maryam"), {
+      kind: "slug",
+      slug: "maryam",
+    });
+  });
+
+  it("bare slug (no scheme, no slash) → slug target", () => {
+    assert.deepEqual(parseQrTarget("maryam"), { kind: "slug", slug: "maryam" });
+  });
+
+  it("slug is lower-cased", () => {
+    assert.deepEqual(parseQrTarget("https://kioar.com/Maryam"), {
+      kind: "slug",
+      slug: "maryam",
+    });
+  });
+
+  it("/c/{id} card URL → card target, id upper-cased", () => {
+    assert.deepEqual(parseQrTarget("https://kioar.com/c/abc2345"), {
+      kind: "card",
+      cardId: "ABC2345",
+    });
+  });
+
+  it("structurally-invalid card id → null", () => {
+    // contains '1' and 'O' which are not in the card alphabet, wrong length
+    assert.equal(parseQrTarget("https://kioar.com/c/1O"), null);
+  });
+
+  it("/u/{uuid} → user target", () => {
+    const uuid = "11111111-2222-3333-4444-555555555555";
+    assert.deepEqual(parseQrTarget(`https://kioar.com/u/${uuid}`), {
+      kind: "user",
+      userId: uuid,
+    });
+  });
+
+  it("/u/ with a non-uuid → null", () => {
+    assert.equal(parseQrTarget("https://kioar.com/u/not-a-uuid"), null);
+  });
+
+  it("reserved app routes are not identity QRs", () => {
+    assert.equal(parseQrTarget("https://kioar.com/events"), null);
+    assert.equal(parseQrTarget("https://kioar.com/admin"), null);
+    assert.equal(parseQrTarget("https://kioar.com/discover"), null);
+  });
+
+  it("empty / garbage → null", () => {
+    assert.equal(parseQrTarget(""), null);
+    assert.equal(parseQrTarget("   "), null);
+    assert.equal(parseQrTarget("https://"), null);
+  });
+
+  it("foreign (non-Kioar) URL still parses its first segment as a slug", () => {
+    // Resolution (DB lookup) is what rejects it; parsing only extracts shape.
+    assert.deepEqual(parseQrTarget("https://instagram.com/someone"), {
+      kind: "slug",
+      slug: "someone",
+    });
   });
 });

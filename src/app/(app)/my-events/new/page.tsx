@@ -4,7 +4,7 @@ import { EventForm } from "@/components/events/event-form";
 import { requireCompletedProfile } from "@/lib/auth/session";
 import { pageHasFeature } from "@/lib/entitlements";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
-import { saveEventAction } from "@/app/(app)/events/actions";
+import { saveEventAction } from "@/app/(app)/my-events/actions";
 
 export const dynamic = "force-dynamic";
 

@@ -100,9 +100,9 @@ export async function saveEventAction(
     };
   }
 
-  revalidatePath("/events");
+  revalidatePath("/my-events");
   redirect(
-    `/events/${result.eventId}/manage` as unknown as Parameters<
+    `/my-events/${result.eventId}/manage` as unknown as Parameters<
       typeof redirect
     >[0],
   );
@@ -123,8 +123,8 @@ export async function setEventStatusAction(
   if (!result.ok) {
     return { ...idleState, status: "error", message: result.message };
   }
-  revalidatePath("/events");
-  revalidatePath(`/events/${eventId}/manage`);
+  revalidatePath("/my-events");
+  revalidatePath(`/my-events/${eventId}/manage`);
   return { ...idleState, status: "success" };
 }
 
@@ -139,6 +139,6 @@ export async function deleteEventAction(
   if (!result.ok) {
     return { ...idleState, status: "error", message: result.message };
   }
-  revalidatePath("/events");
-  redirect("/events");
+  revalidatePath("/my-events");
+  redirect("/my-events");
 }

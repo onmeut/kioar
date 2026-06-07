@@ -1,23 +1,26 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { PencilIcon } from "lucide-react";
+import { PencilIcon, ScanLineIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { RegistrantTable } from "@/components/events/registrant-table";
 import { requireCompletedProfile } from "@/lib/auth/session";
 import { pageHasFeature } from "@/lib/entitlements";
 import { EVENT_STATUS_LABELS } from "@/lib/events/labels";
-import { getHostEvent } from "@/lib/events/queries";
+import {
+  getEventStats,
+  getHostEvent,
+  listEventRegistrants,
+} from "@/lib/events/queries";
+import { toPersianDigits } from "@/lib/date/persian";
 import { formatShamsiDateTimeInZone } from "@/lib/date/timezone";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-// NOTE: Full registrant management (approvals, receipts, attendance, CSV,
-// stats, QR check-in launch) lands in Increment 8. This is the post-save
-// landing page with the essentials so the create/edit flow is complete.
 export default async function ManageEventPage({
   params,
 }: {
@@ -31,7 +34,28 @@ export default async function ManageEventPage({
 
   const data = await getHostEvent(eventId, page.id);
   if (!data) notFound();
-  const { event } = data;
+  const { event, questions } = data;
+
+  const [registrants, stats] = await Promise.all([
+    listEventRegistrants(eventId, page.id),
+    getEventStats(eventId, page.id),
+  ]);
+
+  // Serialize Dates to ISO for the client table.
+  const rows = (registrants ?? []).map((r) => ({
+    registrationId: r.registrationId,
+    userId: r.userId,
+    name: r.name,
+    phone: r.phone,
+    status: r.status,
+    answers: r.answers,
+    receiptKey: r.receiptKey,
+    discountCode: r.discountCode,
+    expectedToman: r.expectedToman,
+    registeredAt: r.registeredAt.toISOString(),
+    decidedAt: r.decidedAt?.toISOString() ?? null,
+    checkedInAt: r.checkedInAt?.toISOString() ?? null,
+  }));
 
   return (
     <div className="section-shell space-y-6 py-6">
@@ -57,7 +81,7 @@ export default async function ManageEventPage({
           </p>
         </div>
         <Link
-          href={`/events/${event.id}/edit` as Route}
+          href={`/my-events/${event.id}/edit` as Route}
           className={cn(buttonVariants({ variant: "outline" }), "h-11 shrink-0")}
         >
           <PencilIcon className="size-4" />
@@ -65,10 +89,38 @@ export default async function ManageEventPage({
         </Link>
       </div>
 
-      <div className="rounded-4xl border border-dashed border-border/70 bg-muted/20 p-6 text-center text-sm text-muted-foreground">
-        مدیریت کامل شرکت‌کنندگان (تأیید، رسید، حضور و غیاب، خروجی و ورود با
-        QR) به‌زودی در همین صفحه اضافه می‌شود.
-      </div>
+      {/* Stats */}
+      {stats ? (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label="ثبت‌نام" value={stats.total} />
+          <Stat label="تأیید شده" value={stats.approved} />
+          <Stat label="حاضر" value={stats.checkedIn} />
+          <Stat
+            label="ظرفیت باقی"
+            value={
+              stats.spotsRemaining == null ? "نامحدود" : stats.spotsRemaining
+            }
+          />
+        </div>
+      ) : null}
+
+      {/* Check-in launcher */}
+      {event.status === "published" ? (
+        <Link
+          href={`/my-events/${event.id}/checkin` as Route}
+          className={cn(buttonVariants(), "h-12 w-full")}
+        >
+          <ScanLineIcon className="size-5" />
+          حالت ورود با QR
+        </Link>
+      ) : null}
+
+      <RegistrantTable
+        eventId={event.id}
+        timezone={event.timezone}
+        registrants={rows}
+        questions={questions.map((q) => ({ id: q.id, label: q.label }))}
+      />
 
       {event.status === "published" ? (
         <Link
@@ -78,6 +130,17 @@ export default async function ManageEventPage({
           مشاهده صفحهٔ عمومی رویداد
         </Link>
       ) : null}
+    </div>
+  );
+}
+
+function Stat({ label, value }: { label: string; value: number | string }) {
+  return (
+    <div className="rounded-3xl border border-border p-4 text-center">
+      <p className="text-2xl font-bold">
+        {typeof value === "number" ? toPersianDigits(value) : value}
+      </p>
+      <p className="mt-1 text-xs text-muted-foreground">{label}</p>
     </div>
   );
 }

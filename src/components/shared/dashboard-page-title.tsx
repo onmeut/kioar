@@ -27,9 +27,6 @@ const TITLE_MAP: Array<{ match: RegExp; title: string }> = [
   { match: /^\/admin\/affiliates\/[^/]+/, title: "جزئیات همکار" },
   { match: /^\/admin\/affiliates\/?$/, title: "همکاری در فروش" },
   { match: /^\/admin\/?$/, title: "نمای کلی" },
-  // Public-in-shell
-  { match: /^\/events\/[^/]+/, title: "رویداد" },
-  { match: /^\/events\/?$/, title: "رویدادها" },
 ];
 
 export function DashboardPageTitle({ fallback }: { fallback?: string }) {

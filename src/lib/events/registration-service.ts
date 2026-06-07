@@ -4,6 +4,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { getDb, type Database } from "@/db";
 import {
+  eventCheckins,
   eventDiscountCodes,
   eventQuestions,
   eventRegistrations,
@@ -329,6 +330,88 @@ export async function approveRegistration(
 
 /** Reject a registration. Legal from any non-terminal status. */
 export async function rejectRegistration(
+  registrationId: string,
+  pageId: string,
+  pageSlug: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const db = getDb();
+  const reg = await db.query.eventRegistrations.findFirst({
+    where: eq(eventRegistrations.id, registrationId),
+    with: { event: { columns: { pageId: true } } },
+  });
+  if (!reg || reg.event.pageId !== pageId) {
+    return { ok: false, message: "ثبت‌نام پیدا نشد." };
+  }
+  await db
+    .update(eventRegistrations)
+    .set({ status: "rejected", decidedAt: new Date() })
+    .where(eq(eventRegistrations.id, registrationId));
+  await invalidateProfileCacheBySlug(pageSlug);
+  return { ok: true };
+}
+
+/**
+ * Manually mark a registrant attended (host taps "حاضر شد" without scanning).
+ * Approves first if needed (door override), then writes the idempotent check-in
+ * audit row. Race-safe on the event row when an approval is required.
+ */
+export async function markAttendedManually(
+  eventId: string,
+  registrationId: string,
+  pageId: string,
+  hostUserId: string,
+  pageSlug: string,
+): Promise<{ ok: boolean; message?: string }> {
+  const db = getDb();
+  const result = await db.transaction(async (tx) => {
+    const reg = await tx.query.eventRegistrations.findFirst({
+      where: eq(eventRegistrations.id, registrationId),
+      with: { event: { columns: { id: true, pageId: true, capacity: true } } },
+    });
+    if (!reg || reg.event.pageId !== pageId || reg.event.id !== eventId) {
+      return { ok: false, message: "ثبت‌نام پیدا نشد." };
+    }
+    if (reg.status === "rejected" || reg.status === "cancelled") {
+      return { ok: false, message: "این ثبت‌نام لغو یا رد شده است." };
+    }
+
+    // Promote to approved if not already confirmed (capacity recheck inline).
+    if (reg.status !== "approved" && reg.status !== "attended") {
+      await lockEvent(tx, reg.event.id);
+      const spots = await countSpots(tx, reg.event.id);
+      if (reg.event.capacity != null && spots >= reg.event.capacity) {
+        return { ok: false, message: "ظرفیت تکمیل است؛ تأیید ممکن نیست." };
+      }
+    }
+
+    // Idempotent check-in row.
+    const existing = await tx.query.eventCheckins.findFirst({
+      where: eq(eventCheckins.registrationId, registrationId),
+    });
+    if (!existing) {
+      await tx.insert(eventCheckins).values({
+        eventId,
+        registrationId,
+        userId: reg.userId,
+        scannedByUserId: hostUserId,
+      });
+    }
+    await tx
+      .update(eventRegistrations)
+      .set({ status: "attended", decidedAt: reg.decidedAt ?? new Date() })
+      .where(eq(eventRegistrations.id, registrationId));
+    return { ok: true };
+  });
+  if (result.ok) await invalidateProfileCacheBySlug(pageSlug);
+  return result;
+}
+
+/**
+ * Host removes a registrant entirely (frees a spot). Sets status `rejected`,
+ * which is the terminal "not coming" state; the audit row (if any) stays for
+ * history. Legal from any status.
+ */
+export async function removeRegistrant(
   registrationId: string,
   pageId: string,
   pageSlug: string,

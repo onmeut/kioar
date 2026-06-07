@@ -37,7 +37,7 @@ export default async function HostEventsPage() {
           </p>
         </div>
         <Link
-          href={"/events/new" as Route}
+          href={"/my-events/new" as Route}
           className={cn(buttonVariants(), "h-11 shrink-0")}
         >
           <CalendarPlusIcon className="size-4" />
@@ -50,14 +50,14 @@ export default async function HostEventsPage() {
           icon={CalendarPlusIcon}
           title="هنوز رویدادی نساخته‌اید"
           description="اولین رویداد جامعه‌ات را بساز و ثبت‌نام‌ها را جمع کن."
-          cta={{ href: "/events/new" as Route, label: "ساخت رویداد" }}
+          cta={{ href: "/my-events/new" as Route, label: "ساخت رویداد" }}
         />
       ) : (
         <ul className="grid gap-3 sm:grid-cols-2">
           {events.map((ev) => (
             <li key={ev.id}>
               <Link
-                href={`/events/${ev.id}/manage` as Route}
+                href={`/my-events/${ev.id}/manage` as Route}
                 className="group flex h-full flex-col gap-3 rounded-4xl border border-border bg-card p-4 transition-colors hover:bg-muted/40"
               >
                 <div className="flex items-start justify-between gap-2">

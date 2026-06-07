@@ -10,8 +10,10 @@ import {
   eventRegistrations,
   events,
   profiles,
+  users,
 } from "@/db/schema";
 import { ACTIVE_REGISTRATION_STATUSES } from "@/lib/data";
+import type { EventRegistrationStatus } from "@/lib/events/labels";
 
 export type HostEventListItem = {
   id: string;
@@ -352,5 +354,155 @@ export async function getPublicEvent(
           expectedToman: viewerReg.expectedToman,
         }
       : null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Host management view (Increment 8): registrant list + aggregate stats.
+// ---------------------------------------------------------------------------
+
+export type EventRegistrant = {
+  registrationId: string;
+  userId: string;
+  name: string;
+  phone: string;
+  status: EventRegistrationStatus;
+  answers: Record<string, string | string[]>;
+  receiptKey: string | null;
+  discountCode: string | null;
+  expectedToman: number;
+  registeredAt: Date;
+  decidedAt: Date | null;
+  checkedInAt: Date | null;
+};
+
+/**
+ * Full registrant list for an event, host-facing. Joins the user for a display
+ * name + phone and left-joins the check-in audit row for attendance time.
+ * Caller MUST have verified page ownership (pass the event's pageId).
+ */
+export async function listEventRegistrants(
+  eventId: string,
+  pageId: string,
+): Promise<EventRegistrant[] | null> {
+  const db = getDb();
+  // Ownership guard: the event must belong to the page.
+  const owns = await db.query.events.findFirst({
+    where: and(eq(events.id, eventId), eq(events.pageId, pageId)),
+    columns: { id: true },
+  });
+  if (!owns) return null;
+
+  const rows = await db
+    .select({
+      registrationId: eventRegistrations.id,
+      userId: eventRegistrations.userId,
+      firstName: users.firstName,
+      lastName: users.lastName,
+      phone: users.phone,
+      status: eventRegistrations.status,
+      answers: eventRegistrations.answers,
+      receiptKey: eventRegistrations.receiptKey,
+      discountCode: eventRegistrations.discountCode,
+      expectedToman: eventRegistrations.expectedToman,
+      registeredAt: eventRegistrations.createdAt,
+      decidedAt: eventRegistrations.decidedAt,
+      checkedInAt: eventCheckins.checkedInAt,
+    })
+    .from(eventRegistrations)
+    .innerJoin(users, eq(eventRegistrations.userId, users.id))
+    .leftJoin(
+      eventCheckins,
+      eq(eventCheckins.registrationId, eventRegistrations.id),
+    )
+    .where(eq(eventRegistrations.eventId, eventId))
+    .orderBy(desc(eventRegistrations.createdAt));
+
+  return rows.map((r) => {
+    const name = [r.firstName, r.lastName]
+      .filter((p) => p && p.trim())
+      .join(" ")
+      .trim();
+    return {
+      registrationId: r.registrationId,
+      userId: r.userId,
+      name: name || r.phone,
+      phone: r.phone,
+      status: r.status,
+      answers: r.answers ?? {},
+      receiptKey: r.receiptKey,
+      discountCode: r.discountCode,
+      expectedToman: r.expectedToman,
+      registeredAt: r.registeredAt,
+      decidedAt: r.decidedAt,
+      checkedInAt: r.checkedInAt,
+    };
+  });
+}
+
+export type EventStats = {
+  total: number;
+  approved: number;
+  checkedIn: number;
+  pending: number;
+  waitlisted: number;
+  capacity: number | null;
+  spotsRemaining: number | null;
+};
+
+/** Aggregate counts for the management header. */
+export async function getEventStats(
+  eventId: string,
+  pageId: string,
+): Promise<EventStats | null> {
+  const db = getDb();
+  const event = await db.query.events.findFirst({
+    where: and(eq(events.id, eventId), eq(events.pageId, pageId)),
+    columns: { capacity: true },
+  });
+  if (!event) return null;
+
+  const counts = await db
+    .select({
+      status: eventRegistrations.status,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(eventRegistrations)
+    .where(eq(eventRegistrations.eventId, eventId))
+    .groupBy(eventRegistrations.status);
+
+  let total = 0;
+  let approved = 0;
+  let checkedIn = 0;
+  let pending = 0;
+  let waitlisted = 0;
+  for (const c of counts) {
+    const n = Number(c.n);
+    if ((ACTIVE_REGISTRATION_STATUSES as readonly string[]).includes(c.status)) {
+      total += n;
+    }
+    if (c.status === "approved" || c.status === "attended") approved += n;
+    if (c.status === "attended") checkedIn += n;
+    if (
+      c.status === "pending_approval" ||
+      c.status === "payment_pending" ||
+      c.status === "payment_submitted"
+    ) {
+      pending += n;
+    }
+    if (c.status === "waitlisted") waitlisted += n;
+  }
+
+  const spotsRemaining =
+    event.capacity != null ? Math.max(0, event.capacity - approved) : null;
+
+  return {
+    total,
+    approved,
+    checkedIn,
+    pending,
+    waitlisted,
+    capacity: event.capacity,
+    spotsRemaining,
   };
 }

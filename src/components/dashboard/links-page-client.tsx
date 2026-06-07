@@ -1454,8 +1454,8 @@ export function LinksPageClient({
           setAddOpen(false);
           // Events are managed on their own route (richer than an inline
           // builder): host creation/edit/management + QR check-in live under
-          // /events. The picker navigates there rather than opening a modal.
-          router.push("/events/new" as Route);
+          // /my-events. The picker navigates there rather than opening a modal.
+          router.push("/my-events/new" as Route);
         }}
         bookingsLocked={bookingsLocked}
         bookingsRequiredPlan={bookingsRequiredPlan}
