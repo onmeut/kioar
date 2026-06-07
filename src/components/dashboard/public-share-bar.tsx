@@ -108,7 +108,7 @@ export function PublicShareBar({
         )}
         dir={label ? "rtl" : "ltr"}
       >
-        <Image src="/brand/logo.svg" alt="Kioar" width={14} height={16} className="shrink-0" />
+        <Image src="/brand/logo.svg" alt="Kioar" width={14} height={16} className="h-4 w-auto shrink-0" />
         <span
           className="truncate font-semibold text-foreground"
           title={publicUrl}

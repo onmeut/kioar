@@ -80,6 +80,20 @@ export async function sendOtpCode({
     return { provider: "console" as const };
   }
 
+  // DEV ONLY: outside production we never spend SMS credits and never depend on
+  // owning the receiving number. Every code is printed to the terminal so any
+  // phone you type during local testing is verifiable. This branch is hard-
+  // gated on NODE_ENV — production falls straight through to real SMS below and
+  // can NEVER reach console delivery (that path would let log-access = account
+  // takeover). Set OTP_DEV_REAL_SMS=1 to force real Kavenegar sends in dev.
+  if (
+    process.env.NODE_ENV !== "production" &&
+    process.env.OTP_DEV_REAL_SMS !== "1"
+  ) {
+    logDevOtp(phone, code);
+    return { provider: "console" as const };
+  }
+
   const apiKey = process.env.KAVENEGAR_API_KEY?.trim();
 
   if (shouldUseDevFallback(apiKey)) {

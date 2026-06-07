@@ -82,7 +82,7 @@ export function NewPageCelebration({ previewProfile, onComplete }: Props) {
   const mockupHeader = (
     <div className="flex items-center justify-between">
       <div className="inline-flex size-10 items-center justify-center rounded-full bg-foreground/[0.07]">
-        <Image src="/brand/logo.svg" alt="" width={17} height={21} />
+        <Image src="/brand/logo.svg" alt="" width={17} height={19} className="h-[19px] w-auto" />
       </div>
       <div className="inline-flex size-10 items-center justify-center rounded-full bg-foreground/[0.07]">
         <Share2Icon className="size-4.5" />

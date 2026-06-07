@@ -4,6 +4,8 @@ import Image from "next/image";
 import { Wifi } from "lucide-react";
 import { useCallback, useRef } from "react";
 
+import { cn } from "@/lib/utils";
+
 import { QrRenderer } from "@/components/dashboard/share/qr-renderer";
 
 type Material = "colorful" | "metal";
@@ -162,8 +164,8 @@ export function Card3D({
               src="/brand/logo.svg"
               alt="kioar"
               width={80}
-              height={32}
-              className={material === "metal" ? "invert opacity-80" : "opacity-90 mix-blend-multiply"}
+              height={91}
+              className={cn("w-[80px] h-auto", material === "metal" ? "invert opacity-80" : "opacity-90 mix-blend-multiply")}
               priority
             />
           </div>

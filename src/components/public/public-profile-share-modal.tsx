@@ -191,8 +191,8 @@ function ShareModalContent({
           src="/brand/logo.svg"
           alt="Kioar"
           width={14}
-          height={18}
-          className="shrink-0"
+          height={16}
+          className="h-4 w-auto shrink-0"
         />
         <span className="min-w-0 flex-1 truncate text-center text-sm font-medium text-foreground">
           {url}

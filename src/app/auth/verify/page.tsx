@@ -13,7 +13,6 @@ export default async function VerifyPage({
 }: {
   searchParams: Promise<{
     phone?: string;
-    cooldownUntil?: string;
   }>;
 }) {
   const viewer = await getCurrentViewer();
@@ -40,17 +39,9 @@ export default async function VerifyPage({
     redirect("/auth");
   }
 
-  const cooldownUntil = Number(params.cooldownUntil);
-  const initialCooldownUntil = Number.isFinite(cooldownUntil)
-    ? cooldownUntil
-    : undefined;
-
   return (
     <AuthShell>
-      <OtpVerificationForm
-        phone={phone}
-        initialCooldownUntil={initialCooldownUntil}
-      />
+      <OtpVerificationForm phone={phone} />
     </AuthShell>
   );
 }

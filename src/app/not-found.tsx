@@ -128,7 +128,7 @@ export default function NotFound() {
             href="/"
             className="inline-flex items-center gap-2.5 font-bold text-sm text-foreground no-underline"
           >
-            <Image src="/brand/logo.svg" alt="" width={24} height={24} />
+            <Image src="/brand/logo.svg" alt="" width={24} height={28} className="h-7 w-auto" />
             <span>کیوآر</span>
           </Link>
           <Link

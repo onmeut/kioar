@@ -6,6 +6,7 @@ import {
   CameraOffIcon,
   CheckCircle2Icon,
   ClockIcon,
+  FlipHorizontalIcon,
   LoaderCircleIcon,
   ScanLineIcon,
   UserXIcon,
@@ -25,9 +26,8 @@ import {
 } from "@/app/(app)/my-events/[eventId]/checkin/actions";
 import type { CheckinResolution } from "@/lib/events/checkin";
 
-// Re-scanning the same payload within this window is ignored so a QR sitting in
-// frame doesn't fire dozens of server calls.
 const DEDUPE_MS = 2500;
+const LS_KEY = "kioar:checkin-camera-id";
 
 type Phase =
   | { mode: "scanning" }
@@ -36,6 +36,8 @@ type Phase =
   | { mode: "acting" }
   | { mode: "done"; checkedInAt: string; alreadyCheckedIn: boolean; name: string }
   | { mode: "error"; message: string };
+
+type CameraDevice = { deviceId: string; label: string };
 
 /** Detect `BarcodeDetector` support without tripping TS (it's not in lib.dom). */
 type BarcodeDetectorLike = {
@@ -68,12 +70,12 @@ export function CheckinScanner({
   const rafRef = useRef<number | null>(null);
   const detectorRef = useRef<BarcodeDetectorLike | null>(null);
   const lastScanRef = useRef<{ value: string; at: number } | null>(null);
-  // A ref mirror of `phase.mode` so the rAF loop reads the latest without
-  // re-subscribing every frame.
   const activeRef = useRef(true);
 
   const [phase, setPhase] = useState<Phase>({ mode: "scanning" });
   const [cameraError, setCameraError] = useState<string | null>(null);
+  const [cameras, setCameras] = useState<CameraDevice[]>([]);
+  const [activeCameraId, setActiveCameraId] = useState<string | null>(null);
 
   const handleDecoded = useCallback(
     async (value: string) => {
@@ -82,7 +84,7 @@ export function CheckinScanner({
       if (last && last.value === value && now - last.at < DEDUPE_MS) return;
       lastScanRef.current = { value, at: now };
 
-      activeRef.current = false; // pause the decode loop while we resolve
+      activeRef.current = false;
       setPhase({ mode: "resolving" });
       try {
         const res: ScanResult = await scanQrAction(eventId, value);
@@ -101,84 +103,118 @@ export function CheckinScanner({
     [eventId],
   );
 
-  // Camera + decode loop. Runs once; the `activeRef` gate pauses decoding while
-  // a result card is shown without tearing down the camera.
-  useEffect(() => {
-    let cancelled = false;
+  // Start (or restart) the camera stream for a given deviceId.
+  const startStream = useCallback(
+    async (deviceId: string | null) => {
+      // Tear down any existing stream first.
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      setCameraError(null);
 
-    async function start() {
+      const videoConstraint: MediaTrackConstraints = deviceId
+        ? { deviceId: { exact: deviceId } }
+        : { facingMode: { ideal: "environment" } };
+
+      let stream: MediaStream;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: "environment" },
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: videoConstraint,
           audio: false,
         });
-        if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        streamRef.current = stream;
-        const video = videoRef.current;
-        if (!video) return;
-        video.srcObject = stream;
-        await video.play();
-        detectorRef.current = getBarcodeDetector();
-        loop();
       } catch {
-        setCameraError(
-          "دسترسی به دوربین ممکن نشد. اجازهٔ دوربین را بررسی کنید.",
-        );
+        setCameraError("دسترسی به دوربین ممکن نشد. اجازهٔ دوربین را بررسی کنید.");
+        return;
       }
-    }
 
-    async function loop() {
-      if (cancelled) return;
+      streamRef.current = stream;
       const video = videoRef.current;
-      if (video && video.readyState >= 2 && activeRef.current) {
-        const value = await decodeFrame(video);
-        if (value) {
-          await handleDecoded(value);
-        }
+      if (!video) return;
+      video.srcObject = stream;
+      try {
+        await video.play();
+      } catch (e) {
+        // AbortError fires when a new stream replaces this one mid-play (camera
+        // switch). Safe to ignore — the new startStream call handles playback.
+        if (e instanceof DOMException && e.name === "AbortError") return;
+        throw e;
       }
-      rafRef.current = requestAnimationFrame(loop);
-    }
+      detectorRef.current = getBarcodeDetector();
 
-    async function decodeFrame(
-      video: HTMLVideoElement,
-    ): Promise<string | null> {
-      // Prefer the native detector (fast, GPU). Fall back to jsQR on a canvas.
-      const detector = detectorRef.current;
-      if (detector) {
-        try {
-          const codes = await detector.detect(video);
-          return codes[0]?.rawValue ?? null;
-        } catch {
-          // Some browsers throw transiently; fall through to jsQR.
+      // After first successful stream, enumerate devices — labels are now available.
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoInputs = devices
+        .filter((d) => d.kind === "videoinput")
+        .map((d, i) => ({
+          deviceId: d.deviceId,
+          label: d.label || `دوربین ${i + 1}`,
+        }));
+      setCameras(videoInputs);
+
+      // Track which camera is active.
+      const activeTrack = stream.getVideoTracks()[0];
+      const activeId = activeTrack?.getSettings().deviceId ?? null;
+      setActiveCameraId(activeId);
+      if (activeId) localStorage.setItem(LS_KEY, activeId);
+
+      // Decode loop.
+      activeRef.current = true;
+      function loop() {
+        const v = videoRef.current;
+        if (v && v.readyState >= 2 && activeRef.current) {
+          decodeFrame(v).then((val) => {
+            if (val) handleDecoded(val);
+          });
         }
+        rafRef.current = requestAnimationFrame(loop);
       }
-      const canvas = canvasRef.current;
-      if (!canvas) return null;
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      if (!w || !h) return null;
-      canvas.width = w;
-      canvas.height = h;
-      const ctx = canvas.getContext("2d", { willReadFrequently: true });
-      if (!ctx) return null;
-      ctx.drawImage(video, 0, 0, w, h);
-      const imageData = ctx.getImageData(0, 0, w, h);
-      const code = jsQR(imageData.data, w, h, {
-        inversionAttempts: "dontInvert",
-      });
-      return code?.data ?? null;
-    }
+      loop();
+    },
+    [handleDecoded],
+  );
 
-    start();
+  async function decodeFrame(video: HTMLVideoElement): Promise<string | null> {
+    const detector = detectorRef.current;
+    if (detector) {
+      try {
+        const codes = await detector.detect(video);
+        return codes[0]?.rawValue ?? null;
+      } catch {
+        // fall through to jsQR
+      }
+    }
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const w = video.videoWidth;
+    const h = video.videoHeight;
+    if (!w || !h) return null;
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    ctx.drawImage(video, 0, 0, w, h);
+    const imageData = ctx.getImageData(0, 0, w, h);
+    const code = jsQR(imageData.data, w, h, { inversionAttempts: "dontInvert" });
+    return code?.data ?? null;
+  }
+
+  // Initial mount: prefer saved deviceId, fall back to environment-facing.
+  useEffect(() => {
+    const saved = localStorage.getItem(LS_KEY);
+    startStream(saved);
     return () => {
-      cancelled = true;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       streamRef.current?.getTracks().forEach((t) => t.stop());
     };
-  }, [handleDecoded]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const switchCamera = useCallback(
+    (deviceId: string) => {
+      localStorage.setItem(LS_KEY, deviceId);
+      startStream(deviceId);
+    },
+    [startStream],
+  );
 
   const resumeScanning = useCallback(() => {
     lastScanRef.current = null;
@@ -226,7 +262,7 @@ export function CheckinScanner({
 
   return (
     <div className="space-y-4">
-      {/* Camera viewport — always mounted so the stream persists across results. */}
+      {/* Camera viewport */}
       <div className="relative mx-auto aspect-square w-full max-w-sm overflow-hidden rounded-4xl border border-border bg-black">
         <video
           ref={videoRef}
@@ -241,6 +277,32 @@ export function CheckinScanner({
             <ScanLineIcon className="absolute size-6 text-white/90" />
           </div>
         ) : null}
+
+        {/* Camera switcher — only shown when multiple cameras are available */}
+        {cameras.length > 1 ? (
+          <div className="absolute bottom-3 end-3 flex flex-col items-end gap-1">
+            {cameras.map((cam) => (
+              <button
+                key={cam.deviceId}
+                type="button"
+                onClick={() => switchCamera(cam.deviceId)}
+                className={cn(
+                  "rounded-full px-3 py-1.5 text-xs font-medium shadow backdrop-blur-sm transition-colors",
+                  cam.deviceId === activeCameraId
+                    ? "bg-white text-black"
+                    : "bg-black/50 text-white/80 hover:bg-black/70",
+                )}
+              >
+                {cam.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {/* Single-camera flip hint icon when only one camera */}
+        {cameras.length === 1 ? null : cameras.length === 0 ? null : (
+          <FlipHorizontalIcon className="absolute bottom-3 start-3 size-5 text-white/40" />
+        )}
       </div>
 
       <ResultArea

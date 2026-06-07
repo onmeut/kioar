@@ -186,6 +186,7 @@ export default async function PublicEventPage({
           event={event}
           isLoggedIn={Boolean(viewer)}
           currentUserId={viewer?.user.id ?? null}
+          viewerHasPage={Boolean(viewer?.profile?.isComplete)}
         />
       </div>
     </main>

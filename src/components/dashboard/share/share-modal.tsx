@@ -356,8 +356,8 @@ function HomeView({
           src="/brand/logo.svg"
           alt="Kioar"
           width={14}
-          height={18}
-          className="shrink-0"
+          height={16}
+          className="h-4 w-auto shrink-0"
         />
         <span className="min-w-0 flex-1 truncate text-center text-sm font-medium">
           <span className="text-muted-foreground">https://</span>
@@ -380,8 +380,8 @@ function HomeView({
               src="/brand/logo.svg"
               alt=""
               width={20}
-              height={26}
-              className="opacity-90"
+              height={23}
+              className="h-[23px] w-auto opacity-90"
             />
           }
           label="کیوآرِ من"

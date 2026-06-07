@@ -86,7 +86,7 @@ export function KioarBadge({
             : "border-sidebar-border bg-sidebar text-foreground",
         )}
       >
-        <Image src={logoSrc} alt="" width={13} height={16} />
+        <Image src={logoSrc} alt="" width={13} height={15} className="h-[15px] w-auto" />
         <span>لینکِ کی‌یو‌آرِت رو بساز</span>
         <ArrowLeftIcon className="size-3.5 shrink-0" aria-hidden />
       </Link>

@@ -266,7 +266,7 @@ export default async function DiscoverPage({
               aria-label="کیوآر"
               className="tap-target flex items-center gap-2.5"
             >
-              <Image src="/brand/logo.svg" alt="" width={24} height={28} />
+              <Image src="/brand/logo.svg" alt="" width={24} height={28} className="h-7 w-auto" />
               <span className="hidden text-2xl font-bold sm:inline">کیوآر</span>
             </Link>
             <nav className="hidden items-center gap-6 md:flex md:gap-8 text-base text-muted-foreground/90 font-medium">
@@ -635,8 +635,8 @@ function DiscoverCard({
             src="/brand/logo.svg"
             alt=""
             width={18}
-            height={24}
-            className="opacity-100"
+            height={21}
+            className="h-[21px] w-auto opacity-100"
           />
           <span className="mt-0.5 inline-flex items-center">
             <span>kioar.com/</span>

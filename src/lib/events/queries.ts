@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, sql } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
@@ -552,7 +552,7 @@ export async function listPublicEvents(
     eq(events.isActive, true),
     // Upcoming: start in the future. (endsAt-based "still running" events are
     // rare for discovery; soonest-upcoming by start is the documented sort.)
-    sql`${events.startsAt} >= ${now}`,
+    gte(events.startsAt, now),
   ];
   if (filters.q && filters.q.trim()) {
     conditions.push(sql`${events.title} ILIKE ${"%" + filters.q.trim() + "%"}`);

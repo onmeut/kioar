@@ -115,7 +115,7 @@ export default async function EventsDiscoveryPage({
             aria-label="کیوآر"
             className="tap-target flex items-center gap-2.5"
           >
-            <Image src="/brand/logo.svg" alt="" width={24} height={28} />
+            <Image src="/brand/logo.svg" alt="" width={24} height={28} className="h-7 w-auto" />
             <span className="hidden text-2xl font-bold sm:inline">کیوآر</span>
           </Link>
           <div className="flex items-center gap-2">

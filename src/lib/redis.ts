@@ -17,9 +17,15 @@ import { log } from "@/lib/log";
  *
  * Connection behavior:
  *   - `lazyConnect: false` (default): connection happens on construction.
- *   - `enableOfflineQueue: false`: commands fail fast if the socket is down,
- *     so the rate limiter can fall through to Postgres instead of stalling.
- *   - `maxRetriesPerRequest: 1`: cap retry latency for the same reason.
+ *   - `enableOfflineQueue: true`: commands issued before the socket is `ready`
+ *     are briefly buffered and flushed once the handshake completes. Without
+ *     this, the FIRST command after a cold start races the connect handshake
+ *     and throws "Stream isn't writeable" even though Redis is perfectly
+ *     healthy. The buffer is bounded by `connectTimeout` + `maxRetriesPerRequest`
+ *     below, so a genuinely-down Redis still fails fast and lets callers fall
+ *     through to their Postgres fallback (it does NOT block indefinitely).
+ *   - `connectTimeout: 5s`: cap how long a command waits on a dead socket.
+ *   - `maxRetriesPerRequest: 1`: cap per-command retry latency.
  *   - Reconnection is automatic via ioredis' built-in retry strategy.
  */
 
@@ -68,12 +74,15 @@ export function getRedis(): Redis | null {
   }
 
   const client = new Redis(url, {
-    enableOfflineQueue: false,
+    // Buffer commands during the connect handshake so the first command after
+    // a cold start doesn't throw "Stream isn't writeable". Bounded by
+    // connectTimeout + maxRetriesPerRequest, so a dead Redis still fails fast.
+    enableOfflineQueue: true,
+    connectTimeout: 5_000,
     maxRetriesPerRequest: 1,
     lazyConnect: false,
-    // Exponential backoff capped at 2s. Beyond that the rate limiter will
-    // start failing over to Postgres anyway because `enableOfflineQueue`
-    // is false.
+    // Exponential backoff capped at 2s. After the cap, a still-broken socket
+    // surfaces command errors and callers fall through to Postgres.
     retryStrategy: (times) => Math.min(times * 200, 2000),
     reconnectOnError: () => true,
   });

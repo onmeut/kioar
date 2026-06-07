@@ -41,8 +41,11 @@ export type RegisterActionResult =
 
 /**
  * Register the current viewer for an event. Enforces account requirement: a
- * logged-out visitor gets a pending-event cookie + a redirect to /auth, and
- * after OTP they return here with ?register=1 (see session.ts).
+ * logged-out visitor gets a pending-event cookie (carrying their form answers)
+ * + a redirect to /auth. After OTP the auth continuation completes the
+ * registration server-side and lands them back on this page already
+ * registered — no /start detour (see continuePendingEventRegistrationOrRedirect
+ * in session.ts).
  */
 export async function registerAction(
   pageSlug: string,
@@ -59,7 +62,12 @@ export async function registerAction(
 
   const viewer = await getCurrentViewer();
   if (!viewer) {
-    await setPendingEventRegistration(eventSlug);
+    await setPendingEventRegistration({
+      pageSlug: event.pageSlug,
+      eventSlug,
+      answers: payload.answers,
+      discountCode: payload.discountCode ?? null,
+    });
     return { ok: false, redirect: "/auth" };
   }
 

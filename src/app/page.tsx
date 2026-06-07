@@ -366,6 +366,7 @@ export default async function LandingPage() {
                             alt=""
                             width={22}
                             height={25}
+                            className="h-[25px] w-auto"
                           />
                         </span>
                         <span className="tap-target inline-flex size-10 items-center justify-center rounded-full bg-foreground/7 text-foreground">
@@ -383,6 +384,7 @@ export default async function LandingPage() {
                           alt=""
                           width={14}
                           height={16}
+                          className="h-4 w-auto"
                         />
                         <span>ساخته‌شده با کی‌یو‌آر</span>
                       </Link>

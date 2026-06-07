@@ -47,7 +47,7 @@ export function CardActivateLanding({
             alt="کی‌یو‌آر"
             width={28}
             height={32}
-            className="mx-auto"
+            className="mx-auto h-8 w-auto"
           />
           <h1 className="text-2xl font-bold text-foreground">فعال‌سازی کارت</h1>
           <p className="text-sm text-muted-foreground">

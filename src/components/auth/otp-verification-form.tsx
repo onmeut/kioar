@@ -1,10 +1,15 @@
 "use client";
 
 import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { Loader2Icon } from "lucide-react";
 import { useFormStatus } from "react-dom";
 
-import { resendOtpAction, verifyOtpAction } from "@/app/auth/actions";
+import {
+  getResendCooldownAction,
+  resendOtpAction,
+  verifyOtpAction,
+} from "@/app/auth/actions";
 import { idleState } from "@/lib/action-state";
 import { formatPhoneDisplay } from "@/lib/phone";
 import { toPersianDigits } from "@/lib/persian";
@@ -51,13 +56,7 @@ function VerifyButton({ disabled }: { disabled: boolean }) {
   );
 }
 
-export function OtpVerificationForm({
-  phone,
-  initialCooldownUntil,
-}: {
-  phone: string;
-  initialCooldownUntil?: number;
-}) {
+export function OtpVerificationForm({ phone }: { phone: string }) {
   const [verifyState, verifyAction] = useActionState(
     verifyOtpAction,
     idleState,
@@ -67,7 +66,22 @@ export function OtpVerificationForm({
     idleState,
   );
 
-  const cooldownUntil = resendState.cooldownUntil ?? initialCooldownUntil ?? 0;
+  // The cooldown is owned by the server (Redis TTL). We seed the countdown from
+  // a live probe on mount, then let each resend response (which carries a fresh
+  // `cooldownUntil`) take over. We never read a timestamp from the URL — a
+  // refreshed/shared URL must not freeze or fake the countdown.
+  const [probedCooldownUntil, setProbedCooldownUntil] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    getResendCooldownAction(phone).then((res) => {
+      if (!cancelled) setProbedCooldownUntil(res.cooldownUntil);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [phone]);
+
+  const cooldownUntil = resendState.cooldownUntil ?? probedCooldownUntil;
   const now = useNow();
   const remaining = Math.max(0, Math.ceil((cooldownUntil - now) / 1000));
 
@@ -199,12 +213,12 @@ export function OtpVerificationForm({
               </button>
             </form>
             <span className="h-4 w-px bg-border" />
-            <a
+            <Link
               href="/auth"
               className="text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground"
             >
               ویرایش
-            </a>
+            </Link>
           </div>
         </div>
       </div>

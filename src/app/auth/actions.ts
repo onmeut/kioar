@@ -4,7 +4,11 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { idleState, type ActionState } from "@/lib/action-state";
-import { issueSignInOtp, verifySignInOtp } from "@/lib/auth/otp";
+import {
+  cooldownRemainingMs,
+  issueSignInOtp,
+  verifySignInOtp,
+} from "@/lib/auth/otp";
 import {
   clearPendingPageIntent,
   clearPendingSlug,
@@ -109,10 +113,11 @@ export async function requestOtpAction(
     };
   }
 
-  const searchParams = new URLSearchParams({
-    phone: parsed.data.phone,
-    cooldownUntil: String(result.cooldownUntil),
-  });
+  // The cooldown lives server-side (Redis); we deliberately do NOT carry it in
+  // the URL. A URL-embedded timestamp goes stale on refresh and is shareable
+  // nonsense. The verify screen asks the server for the live remaining cooldown
+  // via `getResendCooldownAction` on mount.
+  const searchParams = new URLSearchParams({ phone: parsed.data.phone });
 
   redirect(`/auth/verify?${searchParams.toString()}`);
 }
@@ -158,6 +163,26 @@ export async function resendOtpAction(
     cooldownUntil: result.cooldownUntil,
     message: "کد جدید ارسال شد.",
   };
+}
+
+/**
+ * Live resend-cooldown probe. The verify screen calls this on mount (and the
+ * client refreshes its countdown from the returned value) instead of trusting
+ * a URL-embedded timestamp. Returns `cooldownUntil` as an absolute epoch-ms so
+ * the client can render a countdown; `0` means "resend allowed now".
+ *
+ * Fail-open by construction: `cooldownRemainingMs` returns 0 on any Redis
+ * error, so a Redis hiccup never strands the user on a frozen countdown.
+ */
+export async function getResendCooldownAction(
+  phone: string,
+): Promise<{ cooldownUntil: number }> {
+  const parsed = authRequestSchema.safeParse({ phone });
+  if (!parsed.success) {
+    return { cooldownUntil: 0 };
+  }
+  const remaining = await cooldownRemainingMs(parsed.data.phone);
+  return { cooldownUntil: remaining > 0 ? Date.now() + remaining : 0 };
 }
 
 export async function verifyOtpAction(
@@ -336,13 +361,19 @@ export async function verifyOtpAction(
     redirect("/me?new=1");
   }
 
+  // A pending event registration always wins over the /start onboarding
+  // redirect: an attendee who came to RSVP gets their registration completed
+  // and lands back on the event page — they are never forced through the
+  // page-creation wizard. No-op + returns when no event cookie is set, so the
+  // legacy /start path below still runs for ordinary new signups.
+  await continuePendingEventRegistrationOrRedirect(user.id);
+
   if (!user.profile?.isComplete) {
     // No intent — legacy path. Send them to /start to complete onboarding.
     redirect("/start");
   }
 
   await continuePendingConnectOrNext(user.id);
-  await continuePendingEventRegistrationOrRedirect(user.id);
 
   return idleState;
 }

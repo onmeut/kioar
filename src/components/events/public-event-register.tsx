@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2Icon,
@@ -37,12 +38,16 @@ type Props = {
   event: PublicEventView;
   isLoggedIn: boolean;
   currentUserId: string | null;
+  /** True when the viewer already owns a completed Kioar page. Used to decide
+   *  whether to surface the "create your own page" off-ramp after they RSVP. */
+  viewerHasPage: boolean;
 };
 
 export function PublicEventRegister({
   event,
   isLoggedIn,
   currentUserId,
+  viewerHasPage,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -56,6 +61,7 @@ export function PublicEventRegister({
         status={reg.status}
         expected={reg.expectedToman}
         currentUserId={currentUserId}
+        viewerHasPage={viewerHasPage}
       />
     );
   }
@@ -292,11 +298,13 @@ function RegisteredState({
   status,
   expected,
   currentUserId,
+  viewerHasPage,
 }: {
   event: PublicEventView;
   status: string;
   expected: number;
   currentUserId: string | null;
+  viewerHasPage: boolean;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -409,7 +417,7 @@ function RegisteredState({
         </a>
       ) : null}
 
-      {confirmed && !event.isPast ? (
+      {!event.isPast ? (
         <div className="space-y-2">
           <AddToCalendar
             title={event.title}
@@ -481,6 +489,21 @@ function RegisteredState({
         >
           لغو ثبت‌نام
         </Button>
+      ) : null}
+
+      {/* Off-ramp: an attendee who doesn't yet own a Kioar page can spin one
+          up. Non-blocking — shown only after they've already RSVP'd, so it
+          never competes with finishing the registration they came for. */}
+      {!viewerHasPage ? (
+        <div className="space-y-2 rounded-2xl border border-border p-4 text-center">
+          <p className="text-sm font-semibold">صفحه‌ی خودت رو توی کیوآر بساز</p>
+          <p className="text-xs text-muted-foreground">
+            لینک‌ها، رویدادها و فرم‌هات رو یک‌جا داشته باش.
+          </p>
+          <Button className="h-11 w-full" render={<Link href="/start" />}>
+            ادامه ثبت‌نام
+          </Button>
+        </div>
       ) : null}
     </div>
   );

@@ -173,7 +173,7 @@ export default async function CardResolvePage({
                   aria-label="کی‌یو‌آر"
                   className="tap-target inline-flex size-10 items-center justify-center rounded-full bg-foreground/[0.07] text-foreground transition-colors hover:bg-foreground/12"
                 >
-                  <Image src={headerLogoSrc} alt="" width={17} height={21} />
+                  <Image src={headerLogoSrc} alt="" width={17} height={19} className="h-[19px] w-auto" />
                 </Link>
                 <PublicProfileShareButton
                   url={publicUrl}

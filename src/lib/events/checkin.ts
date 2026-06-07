@@ -26,12 +26,8 @@ export type ResolvedQrUser = { userId: string; displayName: string };
 
 async function displayNameFor(userId: string): Promise<string> {
   const db = getDb();
-  // Prefer the user's first page name; fall back to the user's name/phone.
-  const profile = await db.query.profiles.findFirst({
-    where: eq(profiles.userId, userId),
-    columns: { fullName: true },
-  });
-  if (profile?.fullName?.trim()) return profile.fullName.trim();
+  // Identity is user-level: legal name (نام حقوقی) first, then phone.
+  // Page names (profiles.fullName) are page-specific and must not be used here.
   const user = await db.query.users.findFirst({
     where: eq(users.id, userId),
     columns: { firstName: true, lastName: true, phone: true },
