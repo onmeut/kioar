@@ -17,7 +17,7 @@
  * the right feature key per row.
  */
 
-export type BlockKind = "booking" | "form" | "link" | "product";
+export type BlockKind = "booking" | "form" | "link" | "product" | "event";
 
 /**
  * Feature key required to render / interact with a block of the given
@@ -38,6 +38,10 @@ export function blockKindToFeatureKey(kind: BlockKind): string | null {
       // Products & services block — granted on every plan but with a
       // per-block items cap; see `products_max_items_per_block`.
       return "products_block";
+    case "event":
+      // Events block — Business-only (registration, approval, paid-receipt
+      // flow, QR check-in). business_* → purple Business lock chip.
+      return "business_events";
     case "link":
       // No per-link kind today; the link_url base feature is on every plan.
       return null;

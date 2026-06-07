@@ -609,3 +609,9 @@ No new infra (no BullMQ, no pg_cron, no Redis-as-queue). The existing systemd ti
 ## Seed feature matrix (verbatim from prompt — used by `scripts/seed-plans.ts`)
 
 > See the `Feature matrix` table in the user prompt. The seeder reads this verbatim. Limit rows (`storage_image_uploads`, `form_submissions_unlimited`, `booking_slots_unlimited`) become `plan_features.limit_value`. The "Yes/Hidden" branding row maps to a single key `remove_branding` (Free: absent ⇒ branding shown; Pro/Business: present ⇒ branding hidden).
+
+### Additions beyond the original prompt matrix
+
+| lookup_key        | category         | free | pro | business | notes |
+| ----------------- | ---------------- | ---- | --- | -------- | ----- |
+| `business_events` | `business_tools` | —    | —   | ✓        | Events block: registration, host approval, manual paid-receipt flow, discount codes, QR door check-in. Boolean grant; per-event capacity is host-set, not a plan limit. See `docs/EVENTS_PLAN.md`. |

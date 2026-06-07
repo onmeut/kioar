@@ -96,6 +96,7 @@ export type FeatureKey =
   | "business_booking_calendar_sync"
   | "business_business_hours"
   | "business_booking_sms_confirmation"
+  | "business_events"
   // products & services (universal listing block — menus, shops, services,
   // packages, portfolio). Boolean grant + numeric cap on items per block.
   | "products_block"

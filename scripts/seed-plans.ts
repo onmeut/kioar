@@ -503,6 +503,14 @@ const FEATURES: FeatureSeed[] = [
     pro: false,
     business: true,
   },
+  {
+    key: "business_events",
+    nameFa: "رویدادها",
+    category: "business_tools",
+    free: false,
+    pro: false,
+    business: true,
+  },
 
   // ---- support
   {
