@@ -584,3 +584,81 @@ export async function listPublicEvents(
   const hasMore = rows.length > filters.pageSize;
   return { items: rows.slice(0, filters.pageSize), hasMore };
 }
+
+// ---------------------------------------------------------------------------
+// Admin platform-wide events list (paginated).
+// ---------------------------------------------------------------------------
+
+export type AdminEventRow = {
+  id: string;
+  slug: string;
+  title: string;
+  status: "draft" | "published" | "cancelled";
+  startsAt: Date;
+  timezone: string;
+  pageSlug: string;
+  pageName: string | null;
+  priceType: "free" | "paid";
+  registrantCount: number;
+};
+
+/** All events across the platform, newest start first, paginated. */
+export async function listAdminEvents(
+  page: number,
+  pageSize: number,
+  status?: "draft" | "published" | "cancelled" | null,
+): Promise<{ items: AdminEventRow[]; hasMore: boolean }> {
+  const db = getDb();
+  const offset = (page - 1) * pageSize;
+
+  const conditions = [];
+  if (status) conditions.push(eq(events.status, status));
+
+  const rows = await db
+    .select({
+      id: events.id,
+      slug: events.slug,
+      title: events.title,
+      status: events.status,
+      startsAt: events.startsAt,
+      timezone: events.timezone,
+      pageSlug: profiles.slug,
+      pageName: profiles.fullName,
+      priceType: events.priceType,
+    })
+    .from(events)
+    .innerJoin(profiles, eq(events.pageId, profiles.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(events.startsAt))
+    .limit(pageSize + 1)
+    .offset(offset);
+
+  const hasMore = rows.length > pageSize;
+  const pageRows = rows.slice(0, pageSize);
+
+  if (pageRows.length === 0) return { items: [], hasMore };
+
+  const ids = pageRows.map((r) => r.id);
+  const counts = await db
+    .select({
+      eventId: eventRegistrations.eventId,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(eventRegistrations)
+    .where(
+      and(
+        inArray(eventRegistrations.eventId, ids),
+        inArray(eventRegistrations.status, [...ACTIVE_REGISTRATION_STATUSES]),
+      ),
+    )
+    .groupBy(eventRegistrations.eventId);
+  const countMap = new Map(counts.map((c) => [c.eventId, Number(c.n)]));
+
+  return {
+    items: pageRows.map((r) => ({
+      ...r,
+      registrantCount: countMap.get(r.id) ?? 0,
+    })),
+    hasMore,
+  };
+}

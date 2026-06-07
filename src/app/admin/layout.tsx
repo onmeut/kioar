@@ -60,10 +60,10 @@ const adminNavItems: SidebarNavItem[] = [
     match: "prefix",
   },
   {
-    href: "/admin/events/new" as Route,
-    label: "رویداد جدید",
+    href: "/admin/events" as Route,
+    label: "رویدادها",
     icon: "create",
-    match: "exact",
+    match: "prefix",
   },
   {
     href: "/admin/cards" as Route,
