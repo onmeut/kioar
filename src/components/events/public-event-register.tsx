@@ -327,12 +327,37 @@ function RegisteredState({
         ] ?? status}
       </div>
 
+      {/* Paid + receipt OFF: attendee owes money but uploads no receipt; the
+          host confirms out-of-band. Show amount + how-to-pay so they know
+          where to send it. */}
+      {!confirmed &&
+      !needsReceipt &&
+      event.priceType === "paid" &&
+      expected > 0 ? (
+        <div className="space-y-2 rounded-2xl border border-border p-3">
+          <p className="text-sm">
+            مبلغ قابل پرداخت:{" "}
+            {toPersianDigits(expected.toLocaleString("en-US"))} تومان
+          </p>
+          {event.paymentInstructions ? (
+            <p className="whitespace-pre-line text-xs text-muted-foreground">
+              {event.paymentInstructions}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {needsReceipt ? (
         <div className="space-y-2 rounded-2xl border border-border p-3">
           <p className="text-sm">
             مبلغ قابل پرداخت:{" "}
             {toPersianDigits(expected.toLocaleString("en-US"))} تومان
           </p>
+          {event.paymentInstructions ? (
+            <p className="whitespace-pre-line text-xs text-muted-foreground">
+              {event.paymentInstructions}
+            </p>
+          ) : null}
           <p className="text-xs text-muted-foreground">
             پس از پرداخت، تصویر رسید را آپلود کنید تا میزبان تأیید کند.
           </p>

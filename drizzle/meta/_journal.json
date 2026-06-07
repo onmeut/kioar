@@ -393,6 +393,13 @@
       "when": 1749296400000,
       "tag": "0056_backfill_business_events_entitlement",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1749300000000,
+      "tag": "0057_event_payment_instructions",
+      "breakpoints": true
     }
   ]
 }

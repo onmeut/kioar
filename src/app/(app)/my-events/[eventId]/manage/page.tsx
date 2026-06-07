@@ -5,6 +5,7 @@ import { PencilIcon, ScanLineIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { EventHostActions } from "@/components/events/event-host-actions";
 import { RegistrantTable } from "@/components/events/registrant-table";
 import { requireCompletedProfile } from "@/lib/auth/session";
 import { pageHasFeature } from "@/lib/entitlements";
@@ -130,6 +131,14 @@ export default async function ManageEventPage({
           مشاهده صفحهٔ عمومی رویداد
         </Link>
       ) : null}
+
+      <div className="border-t border-border/60 pt-4">
+        <EventHostActions
+          eventId={event.id}
+          status={event.status}
+          registrantCount={stats?.total ?? 0}
+        />
+      </div>
     </div>
   );
 }

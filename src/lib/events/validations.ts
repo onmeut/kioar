@@ -127,6 +127,13 @@ export const eventFormSchema = z
       .int()
       .nonnegative("قیمت نمی‌تواند منفی باشد.")
       .default(0),
+    paymentInstructions: z
+      .string()
+      .trim()
+      .max(1000, "حداکثر ۱۰۰۰ نویسه.")
+      .nullable()
+      .optional()
+      .default(null),
     approvalRequired: z.boolean().default(false),
     receiptUploadEnabled: z.boolean().default(false),
     waitlistEnabled: z.boolean().default(false),

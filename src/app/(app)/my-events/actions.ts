@@ -60,6 +60,9 @@ function buildInput(formData: FormData): EventFormInput {
       : null,
     priceType: (formData.get("priceType") as "free" | "paid") ?? "free",
     priceToman: Number(formData.get("priceToman") ?? 0),
+    paymentInstructions: formData.get("paymentInstructions")
+      ? String(formData.get("paymentInstructions"))
+      : null,
     approvalRequired: bool("approvalRequired"),
     receiptUploadEnabled: bool("receiptUploadEnabled"),
     waitlistEnabled: bool("waitlistEnabled"),

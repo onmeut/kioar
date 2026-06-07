@@ -46,6 +46,7 @@ export type EventFormInitial = {
   capacity: number | null;
   priceType: "free" | "paid";
   priceToman: number;
+  paymentInstructions: string | null;
   approvalRequired: boolean;
   receiptUploadEnabled: boolean;
   waitlistEnabled: boolean;
@@ -376,25 +377,38 @@ export function EventForm({
           ))}
         </div>
         {priceType === "paid" ? (
-          <div className="space-y-1">
-            <Input
-              name="priceToman"
-              type="number"
-              inputMode="numeric"
-              dir="ltr"
-              defaultValue={initial?.priceToman || ""}
-              placeholder="مبلغ به تومان"
-            />
-            {fieldError("priceToman") ? (
-              <p className="text-xs text-rose-600">
-                {fieldError("priceToman")}
-              </p>
-            ) : (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Input
+                name="priceToman"
+                type="number"
+                inputMode="numeric"
+                dir="ltr"
+                defaultValue={initial?.priceToman || ""}
+                placeholder="مبلغ به تومان"
+              />
+              {fieldError("priceToman") ? (
+                <p className="text-xs text-rose-600">
+                  {fieldError("priceToman")}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  پرداختی واقعی انجام نمی‌شود؛ شرکت‌کننده رسید را آپلود می‌کند و
+                  شما تأیید می‌کنید.
+                </p>
+              )}
+            </div>
+            <div className="space-y-1">
+              <Textarea
+                name="paymentInstructions"
+                rows={3}
+                defaultValue={initial?.paymentInstructions ?? ""}
+                placeholder="نحوهٔ پرداخت را بنویس؛ مثلاً شمارهٔ کارت یا راه تماس."
+              />
               <p className="text-xs text-muted-foreground">
-                پرداختی واقعی انجام نمی‌شود؛ شرکت‌کننده رسید را آپلود می‌کند و
-                شما تأیید می‌کنید.
+                این توضیح روی صفحهٔ رویداد به شرکت‌کننده نشان داده می‌شود.
               </p>
-            )}
+            </div>
           </div>
         ) : (
           <input type="hidden" name="priceToman" value="0" />

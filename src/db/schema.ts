@@ -447,6 +447,10 @@ export const events = pgTable(
     capacity: integer("capacity"),
     priceType: eventPriceTypeEnum("price_type").default("free").notNull(),
     priceToman: bigint("price_toman", { mode: "number" }).default(0).notNull(),
+    // For paid events: free-text instructions telling the attendee HOW to pay
+    // (card number, contact, etc.) — there's no real checkout. Shown on the
+    // public payment block. Null for free events or when the host leaves it blank.
+    paymentInstructions: text("payment_instructions"),
     approvalRequired: boolean("approval_required").default(false).notNull(),
     receiptUploadEnabled: boolean("receipt_upload_enabled")
       .default(false)

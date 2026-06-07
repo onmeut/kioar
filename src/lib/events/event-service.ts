@@ -166,6 +166,8 @@ export async function saveEvent(
     capacity: v.capacity ?? null,
     priceType: v.priceType,
     priceToman: v.priceType === "paid" ? v.priceToman : 0,
+    paymentInstructions:
+      v.priceType === "paid" ? (v.paymentInstructions ?? null) : null,
     approvalRequired: v.approvalRequired,
     receiptUploadEnabled:
       v.priceType === "paid" ? v.receiptUploadEnabled : false,

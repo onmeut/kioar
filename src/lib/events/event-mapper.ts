@@ -37,6 +37,7 @@ export function toEventFormInitial(data: HostEvent): EventFormInitial {
     capacity: event.capacity,
     priceType: event.priceType,
     priceToman: event.priceToman,
+    paymentInstructions: event.paymentInstructions ?? null,
     approvalRequired: event.approvalRequired,
     receiptUploadEnabled: event.receiptUploadEnabled,
     waitlistEnabled: event.waitlistEnabled,

@@ -237,6 +237,7 @@ export type PublicEventView = {
   capacity: number | null;
   priceType: "free" | "paid";
   priceToman: number;
+  paymentInstructions: string | null;
   approvalRequired: boolean;
   receiptUploadEnabled: boolean;
   waitlistEnabled: boolean;
@@ -332,6 +333,7 @@ export async function getPublicEvent(
     capacity: ev.capacity,
     priceType: ev.priceType,
     priceToman: ev.priceToman,
+    paymentInstructions: ev.paymentInstructions,
     approvalRequired: ev.approvalRequired,
     receiptUploadEnabled: ev.receiptUploadEnabled,
     waitlistEnabled: ev.waitlistEnabled,
