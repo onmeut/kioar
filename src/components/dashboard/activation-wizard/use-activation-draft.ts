@@ -59,7 +59,15 @@ export function useActivationDraft(initialDisplayName: string, initialBio: strin
     const saved = readDraft(pageId);
     if (saved) {
       // Never restore avatarUrl from draft — it would leak across profiles.
-      return { ...saved, avatarUrl: null };
+      // Always use the current server-side name/bio: the user may have updated
+      // them via page settings between wizard sessions, and a stale draft
+      // displayName would override the real value (e.g. show "Name 2").
+      return {
+        ...saved,
+        avatarUrl: null,
+        displayName: initialDisplayName || saved.displayName,
+        bio: initialBio || saved.bio,
+      };
     }
     return { ...EMPTY_DRAFT, displayName: initialDisplayName, bio: initialBio };
   });

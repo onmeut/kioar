@@ -1039,9 +1039,20 @@ export function LinksPageClient({
   const canAdd = true;
   // The activation CTA is visible only when the user has zero blocks/links.
   const hasAnyBlocks = blocksOrder.length > 0 || links.length > 0;
-  const activeLinks = links.filter((l) => l.isActive);
-  const previewAppearance = coerceAppearance(profile.appearance);
-  const previewProfile = {
+  const previewAppearance = {
+    ...coerceAppearance(profile.appearance),
+    wallpaper: { type: "fill" as const, color: "var(--card)" },
+  };
+
+  // Build a sortOrder map from blocksOrder so the live preview reflects
+  // drag-reorder immediately (without waiting for the server round-trip).
+  const liveOrderMap = useMemo(() => {
+    const m = new Map<string, number>();
+    blocksOrder.forEach((ref, i) => m.set(`${ref.kind}:${ref.id}`, i));
+    return m;
+  }, [blocksOrder]);
+
+  const previewProfile = useMemo(() => ({
     fullName: profile.fullName,
     title: profile.title,
     bio: profile.bio,
@@ -1050,15 +1061,18 @@ export function LinksPageClient({
     email: profile.showPublicEmail ? profile.email : null,
     avatarUrl: profile.avatarUrl,
     avatarSeed: profile.avatarSeed,
-    links: activeLinks.map((l) => ({
-      id: l.id,
-      label: l.label || "بدون عنوان",
-      iconKey: l.iconKey,
-      iconUrl: l.iconUrl,
-      url: l.url,
-      description: l.description,
-      imageUrl: l.imageUrl,
-    })),
+    links: links
+      .filter((l) => l.isActive)
+      .map((l) => ({
+        id: l.id,
+        label: l.label || "بدون عنوان",
+        iconKey: l.iconKey,
+        iconUrl: l.iconUrl,
+        url: l.url,
+        description: l.description,
+        imageUrl: l.imageUrl,
+        sortOrder: liveOrderMap.get(`link:${l.id}`) ?? l.sortOrder,
+      })),
     bookingBlocks: bookingBlocks
       .filter((b) => b.isActive)
       .map((b) => ({
@@ -1070,7 +1084,7 @@ export function LinksPageClient({
         locationAddress: b.locationAddress,
         meetingLink: b.meetingLink,
         timezone: b.timezone,
-        sortOrder: b.sortOrder,
+        sortOrder: liveOrderMap.get(`booking:${b.id}`) ?? b.sortOrder,
         types: b.types.map((t) => ({
           id: t.id ?? "",
           title: t.title,
@@ -1086,7 +1100,7 @@ export function LinksPageClient({
         name: f.name,
         intro: f.intro,
         outro: f.outro,
-        sortOrder: f.sortOrder,
+        sortOrder: liveOrderMap.get(`form:${f.id}`) ?? f.sortOrder,
         fields: f.fields.map((field) => ({
           id: field.id ?? "",
           kind: field.kind,
@@ -1111,7 +1125,7 @@ export function LinksPageClient({
         iconKey: p.iconKey ?? null,
         iconUrl: p.iconUrl ?? null,
         imageUrl: p.imageUrl ?? null,
-        sortOrder: p.sortOrder,
+        sortOrder: liveOrderMap.get(`product:${p.id}`) ?? p.sortOrder,
         sections: p.sections.map((s) => ({
           id: s.id ?? "",
           title: s.title,
@@ -1131,7 +1145,7 @@ export function LinksPageClient({
           sku: it.sku,
         })),
       })),
-  };
+  }), [profile, links, bookingBlocks, formBlocks, productBlocks, liveOrderMap]);
 
   return (
     <div className="grid w-full min-w-0 min-h-[calc(100dvh-var(--header-h,4rem))] lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
@@ -1419,8 +1433,8 @@ export function LinksPageClient({
           <SheetHeader className="shrink-0 border-b px-4 pt-4 pb-4 text-center">
             <SheetTitle className="text-center">پیش‌نمایش زنده</SheetTitle>
           </SheetHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto h-full">
-            <PageThemeProvider appearance={previewAppearance} className="h-full" preview>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <PageThemeProvider appearance={previewAppearance} preview>
               <ProfilePreviewMock
                 profile={previewProfile}
                 formSubmitAction={publicSubmitFormAction}

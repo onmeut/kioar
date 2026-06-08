@@ -407,7 +407,7 @@ export function ActivationWizard({
       <div
         className="fixed inset-0 z-[200] bg-black/50 sm:flex sm:items-center sm:justify-center"
         aria-hidden="true"
-        onClick={() => { if (!isDoneStep) handleClose(); }}
+        onClick={handleClose}
       />
 
       {/* Card: full-screen mobile, centered on desktop */}
@@ -420,50 +420,48 @@ export function ActivationWizard({
           "inset-x-0 bottom-0 rounded-t-3xl",
           "sm:inset-auto sm:left-1/2 sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-3xl",
           "sm:w-full sm:max-w-md sm:max-h-[88dvh] sm:shadow-2xl",
-          isDoneStep ? "top-0" : "max-h-[92dvh]",
+          "max-h-[92dvh]",
         )}
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Drag handle — bottom sheet indicator, mobile only */}
+        {/* Drag handle — bottom sheet indicator, mobile only (not on done step) */}
         {!isDoneStep && (
           <div className="flex shrink-0 justify-center pt-3 pb-1 sm:hidden" aria-hidden="true">
             <div className="h-1 w-10 rounded-full bg-muted-foreground/25" />
           </div>
         )}
 
-        {/* Header — hidden on done step */}
-        {!isDoneStep && (
-          <div className="flex shrink-0 items-center justify-between border-b px-4 pt-2 pb-3">
-            {draft.step > 0 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleBack}
-                className="rounded-full px-3 text-muted-foreground"
-                aria-label="مرحله قبل"
-              >
-                <ArrowRightIcon className="size-4" />
-              </Button>
-            ) : (
-              <div className="w-10" />
-            )}
-            <span className="text-sm font-semibold" aria-live="polite">
-              {STEP_TITLES[draft.step] ?? ""}
-            </span>
+        {/* Header */}
+        <div className="flex shrink-0 items-center justify-between border-b px-4 pt-2 pb-3">
+          {!isDoneStep && draft.step > 0 ? (
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
-              onClick={handleClose}
-              aria-label="بستن"
-              className="rounded-full text-muted-foreground"
+              size="sm"
+              onClick={handleBack}
+              className="rounded-full px-3 text-muted-foreground"
+              aria-label="مرحله قبل"
             >
-              <XIcon className="size-4" />
+              <ArrowRightIcon className="size-4" />
             </Button>
-          </div>
-        )}
+          ) : (
+            <div className="w-10" />
+          )}
+          <span className="text-sm font-semibold" aria-live="polite">
+            {isDoneStep ? "صفحه‌ات آماده‌ی انتشاره!" : (STEP_TITLES[draft.step] ?? "")}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={handleClose}
+            aria-label="بستن"
+            className="rounded-full text-muted-foreground"
+          >
+            <XIcon className="size-4" />
+          </Button>
+        </div>
 
         {/* Progress bar — hidden on done step */}
         {!isDoneStep && (
@@ -480,10 +478,7 @@ export function ActivationWizard({
         )}
 
         {/* Body */}
-        <div className={cn(
-          "min-h-0 flex-1",
-          isDoneStep ? "flex flex-col px-5 py-6" : "overflow-y-auto px-5 py-6",
-        )}>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-6">
           {draft.step === 0 && (
             <ActivationStepPlatforms
               selected={draft.selectedPlatforms}

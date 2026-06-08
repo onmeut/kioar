@@ -69,6 +69,16 @@ export function NewPageCelebration({ previewProfile, onComplete }: Props) {
       const qs = next.toString();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       router.replace((pathname + (qs ? `?${qs}` : "")) as any, { scroll: false });
+
+      const colors = ["#1ED760", "#ffffff", "#f97316", "#3b82f6", "#facc15", "#a855f7", "#ec4899"];
+      let cancelled = false;
+      const timer = setTimeout(() => {
+        import("canvas-confetti").then(({ default: confetti }) => {
+          if (cancelled) return;
+          confetti({ particleCount: 140, spread: 110, origin: { y: 0.45 }, colors, zIndex: 999999 + 1, ticks: 90, decay: 0.88 });
+        });
+      }, 200);
+      return () => { cancelled = true; clearTimeout(timer); };
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 

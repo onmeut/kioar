@@ -60,31 +60,34 @@ export function ActivationStepDone({ previewProfile, trialEndsAt, pageId, onClos
     const colors = ["#1ED760", "#ffffff", "#f97316", "#3b82f6", "#facc15", "#a855f7", "#ec4899"];
     const Z = 999999;
 
-    import("canvas-confetti").then(({ default: confetti }) => {
-      if (cancelled) return;
-      confetti({ particleCount: 80, spread: 90, origin: { y: 0.45 }, colors, zIndex: Z, ticks: 60, decay: 0.9 });
-    });
-    return () => { cancelled = true; };
+    // Small delay so the modal transition completes before confetti fires
+    const timer = setTimeout(() => {
+      import("canvas-confetti").then(({ default: confetti }) => {
+        if (cancelled) return;
+        confetti({ particleCount: 120, spread: 100, origin: { y: 0.5 }, colors, zIndex: Z, ticks: 80, decay: 0.88 });
+      });
+    }, 150);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {/* Scrollable content */}
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pb-4">
-        {/* Headline */}
+      <div className="flex min-h-0 flex-1 flex-col gap-4 pb-4">
+        {/* Icon + description */}
         <div className="space-y-3 pt-2 text-center">
           <div className="flex justify-center">
             <div className="flex size-16 items-center justify-center rounded-2xl bg-foreground text-background">
               <IconConfettiFilled className="size-8" />
             </div>
           </div>
-          <h2 className="text-2xl font-bold">صفحه‌ات آماده‌ی انتشاره!</h2>
           {isOnTrial ? (
             <p className="text-sm text-muted-foreground leading-relaxed">
               برای دسترسی به امکانات حرفه‌ای می‌تونی اشتراکت رو به پرو ارتقا بدی. فعلا پلن حرفه‌ای تا{" "}
               <span className="font-semibold text-foreground">
                 {toPersianDigits(daysLeft!)} روز دیگه
-              </span>{" "} برات فعال هست.     </p>
+              </span>{" "}برات فعال هست.
+            </p>
           ) : (
             <p className="text-sm text-muted-foreground">
               صفحه‌ات آماده‌ست.
@@ -108,13 +111,14 @@ export function ActivationStepDone({ previewProfile, trialEndsAt, pageId, onClos
           خرید اشتراک
         </Button>
         <div className="flex gap-2">
+          {/* "صفحه من" close button — mobile only */}
           <Button
             type="button"
             variant="outline"
             onClick={onClose}
-            className="h-12 flex-1 rounded-full text-sm font-bold"
+            className="h-12 flex-1 rounded-full text-sm font-bold sm:hidden"
           >
-            بستن
+            صفحه من
           </Button>
           <Button
             type="button"

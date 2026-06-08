@@ -1025,9 +1025,18 @@
 }
 /* Preview (phone mockup / sheet): fill 100% of the frame so the card
    stretches to the bottom of the phone chrome. height (not min-height)
-   establishes a definite size so children can resolve their own % heights. */
+   establishes a definite size so children can resolve their own % heights.
+   overflow:visible lets content taller than the frame reach the scroll
+   container in PhoneMockupFrame / the Sheet scroll div. */
+.page-theme-root[data-preview] {
+  overflow: visible;
+  /* Fill the scroll container's visible area with the theme card color
+     so the gap below short content matches the card background. */
+  background-color: var(--card);
+  min-height: 100%;
+}
 .page-theme-root[data-preview] > .page-theme-content {
-  height: 100%;
+  min-height: 100%;
 }
 
 

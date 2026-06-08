@@ -39,6 +39,7 @@ async function ensureColumns() {
     // Raw DDL — no migration framework, no journal, just ALTER TABLE.
     await sql`ALTER TABLE "profiles" ADD COLUMN IF NOT EXISTS "show_public_phone" boolean DEFAULT false NOT NULL`;
     await sql`ALTER TABLE "profiles" ADD COLUMN IF NOT EXISTS "show_public_email" boolean DEFAULT false NOT NULL`;
+    await sql`ALTER TABLE "events" ADD COLUMN IF NOT EXISTS "payment_instructions" text`;
     console.log("✅ [server-wrapper] ALTER TABLE executed.");
 
     // Verify the column actually exists now
@@ -51,6 +52,17 @@ async function ensureColumns() {
 
     if (cols.length < 2) {
       console.error("❌ [server-wrapper] Columns STILL missing after ALTER TABLE! DB might be read-only or wrong.");
+      process.exit(1);
+    }
+
+    const eventCols = await sql`
+      SELECT column_name FROM information_schema.columns
+      WHERE table_name = 'events'
+      AND column_name = 'payment_instructions'
+    `;
+    console.log("🔍 [server-wrapper] Verified events.payment_instructions:", eventCols.length === 1 ? "present" : "MISSING");
+    if (eventCols.length < 1) {
+      console.error("❌ [server-wrapper] events.payment_instructions STILL missing! DB might be read-only or wrong.");
       process.exit(1);
     }
   } catch (err) {
