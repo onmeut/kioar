@@ -34,6 +34,7 @@ type StudioSettings = {
   materialEnabled: Record<Material, boolean>;
   copyCardIncludesPlan: string;
   purchaseGrantsPlan: "free" | "pro" | "business";
+  offerCardGrantsPlan: boolean;
   shippingCost: number;
 };
 
@@ -113,7 +114,7 @@ export function CardStudio({
   const cardGrantsPlanKey = isFree
     ? (entitlementSourcePlan ?? settings.purchaseGrantsPlan)
     : settings.purchaseGrantsPlan;
-  const showPlanGift = cardGrantsPlanKey !== "free";
+  const showPlanGift = settings.offerCardGrantsPlan && cardGrantsPlanKey !== "free";
   const planColors = PLAN_COLORS[cardGrantsPlanKey] ?? PLAN_COLORS.pro;
 
   function onMaterialChange(m: Material) {

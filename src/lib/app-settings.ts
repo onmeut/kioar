@@ -124,12 +124,12 @@ export const APP_SETTING_DEFINITIONS = {
   // Gift offers (plan→card and card→plan) master toggles.
   "cards.offer_plan_grants_card_enabled": {
     schema: z.boolean(),
-    fallback: true,
+    fallback: false, // offer disabled — was true when active
     descriptionFa: "فعال بودن هدیهٔ کارت رایگان هنگام خرید پلن سالانه.",
   },
   "cards.offer_card_grants_plan_enabled": {
     schema: z.boolean(),
-    fallback: true,
+    fallback: false, // offer disabled — was true when active
     descriptionFa: "فعال بودن هدیهٔ یک سال پلن هنگام خرید کارت.",
   },
   // Cross-promo copy (Farsi) shown on the plans page and in the card flow.
