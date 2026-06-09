@@ -13,6 +13,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  varchar,
   type AnyPgColumn,
 } from "drizzle-orm/pg-core";
 
@@ -870,6 +871,9 @@ export const profileBookingBlocks = pgTable(
     bufferBeforeMin: integer("buffer_before_min").default(15).notNull(),
     bufferAfterMin: integer("buffer_after_min").default(15).notNull(),
     calendarEmail: text("calendar_email"),
+    /** Per-profile slug for a dedicated public page (`/USERNAME/{slug}`).
+     * NULL = inline-only (no standalone page). Unique per profile, not global. */
+    slug: varchar("slug", { length: 60 }),
     sortOrder: integer("sort_order").default(0).notNull(),
     isActive: boolean("is_active").default(true).notNull(),
     spotlight: blockSpotlightEnum("spotlight").default("none").notNull(),
@@ -887,6 +891,10 @@ export const profileBookingBlocks = pgTable(
       table.profileId,
       table.sortOrder,
     ),
+    // One slug per profile. NULL slugs (inline-only blocks) are excluded.
+    uniqueIndex("profile_booking_blocks_profile_slug_idx")
+      .on(table.profileId, table.slug)
+      .where(sql`${table.slug} IS NOT NULL`),
   ],
 );
 
@@ -1158,6 +1166,9 @@ export const profileProductBlocks = pgTable(
       .notNull(),
     /** Custom pill label. Falls back to `name`. */
     pillLabel: text("pill_label"),
+    /** Per-profile slug for a dedicated public page (`/USERNAME/{slug}`).
+     * NULL = inline-only (no standalone page). Unique per profile, not global. */
+    slug: varchar("slug", { length: 60 }),
     /** Custom icon / cover — same semantics as profile_links icon fields. */
     iconKey: text("icon_key"),
     iconUrl: text("icon_url"),
@@ -1179,6 +1190,10 @@ export const profileProductBlocks = pgTable(
       table.profileId,
       table.sortOrder,
     ),
+    // One slug per profile. NULL slugs (inline-only blocks) are excluded.
+    uniqueIndex("profile_product_blocks_profile_slug_idx")
+      .on(table.profileId, table.slug)
+      .where(sql`${table.slug} IS NOT NULL`),
   ],
 );
 
@@ -1228,6 +1243,8 @@ export const productItems = pgTable(
     externalUrl: text("external_url"),
     /** Free-text marketing badge: "تازه", "پرفروش", "تخفیف ۲۰٪" — host-defined. */
     badge: text("badge"),
+    /** Highlight as a recommended item (renders «پیشنهاد ما» on the public page). */
+    isFeatured: boolean("is_featured").default(false).notNull(),
     sku: text("sku"),
     clickCount: integer("click_count").default(0).notNull(),
     sortOrder: integer("sort_order").default(0).notNull(),
