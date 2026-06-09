@@ -358,6 +358,19 @@ export const profiles = pgTable(
      */
     appearance:
       jsonb("appearance").$type<import("@/lib/appearance/types").PageAppearance>(),
+    /**
+     * Extensible bag for page-level settings. This is the DEFAULT home for
+     * new profile-level settings that are only read & displayed (toggles,
+     * labels, preferences) — never filtered, joined, or indexed. Adding a
+     * key here needs NO migration, which is what stops this table from
+     * growing a new column per feature. A setting that needs a
+     * WHERE/JOIN/index/FK or bulk filtering does NOT belong here — promote
+     * it to a real column or a side table. Null falls back to
+     * `DEFAULT_PAGE_SETTINGS`; reads go through `coercePageSettings`, writes
+     * through `pageSettingsSchema`. See `src/lib/page-settings/`.
+     */
+    settings:
+      jsonb("settings").$type<import("@/lib/page-settings/types").PageSettings>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()
       .notNull(),

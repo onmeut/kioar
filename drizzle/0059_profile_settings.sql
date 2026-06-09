@@ -1,0 +1,16 @@
+-- Page-level settings bag. A single nullable jsonb column that becomes the
+-- DEFAULT home for new profile-level settings (toggles, labels, preferences)
+-- that are only read & displayed — never filtered, joined, or indexed.
+-- Adding a key to this blob needs NO migration, which is what stops the
+-- `profiles` god table from growing a new column per feature.
+--
+-- Nullable, no default, no backfill: existing rows stay NULL and reads fall
+-- back to DEFAULT_PAGE_SETTINGS (`coercePageSettings`), so behavior is
+-- unchanged for everyone until a key is added and a page owner sets it. This
+-- is a metadata-only ADD COLUMN on Postgres — no table rewrite, no row
+-- backfill, sub-millisecond catalog lock even on a large live table.
+--
+-- Hand-written (not drizzle-kit generated) because the meta snapshots are out
+-- of sync past 0044; generating would diff against a stale snapshot. Mirrors
+-- the 0051 appearance migration exactly. IF NOT EXISTS makes re-runs safe.
+ALTER TABLE "profiles" ADD COLUMN IF NOT EXISTS "settings" jsonb;
