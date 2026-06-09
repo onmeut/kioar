@@ -8,20 +8,17 @@
  * The real Next.js server is renamed to `_server.js` during build.
  *
  * Flow (every phase is timed + greppable):
- *   1. Acquire a Postgres ADVISORY LOCK so exactly one replica migrates.
- *   2. Run raw ALTER TABLE directly (bounded retry, no migration framework).
- *   3. Verify the columns actually exist.
- *   4. Run Drizzle migrations for everything else (hard execSync timeout).
- *   5. Release the advisory lock, then load the real Next.js server.
+ *   1. Run raw ALTER TABLE directly (bounded retry, no migration framework).
+ *   2. Verify the columns actually exist.
+ *   3. Run Drizzle migrations for everything else (hard execSync timeout).
+ *   4. Load the real Next.js server.
  *
  * Why a wrapper: Hamravesh/Darkube PaaS overrides Dockerfile ENTRYPOINT/CMD and
  * runs `node server.js` directly. This file IS `server.js` at runtime.
  *
- * Why the advisory lock: with N replicas, every pod boots and races to run the
- * same migrations against one DB. Lock contention can hang a pod past its
- * readiness probe; the PaaS kills it mid-boot and the proxy serves a plain 404.
- * The advisory lock makes startup safe at any replica count: one pod migrates,
- * the rest wait for the lock, then start (migrations already applied).
+ * Single replica only — no migration coordination needed. If this ever scales
+ * past one replica, reintroduce a Postgres advisory lock around the DDL +
+ * migrate phases so exactly one pod migrates.
  */
 
 const { execSync } = require("node:child_process");
@@ -45,12 +42,6 @@ const IDLE_TIMEOUT_SEC = Number(process.env.WRAPPER_IDLE_TIMEOUT_SEC || 20);
 const DDL_MAX_ATTEMPTS = Number(process.env.WRAPPER_DDL_MAX_ATTEMPTS || 3);
 const DDL_BACKOFF_MS = Number(process.env.WRAPPER_DDL_BACKOFF_MS || 1500);
 const MIGRATE_TIMEOUT_MS = Number(process.env.WRAPPER_MIGRATE_TIMEOUT_MS || 60_000);
-// Wall-clock upper bound for waiting on the migration advisory lock.
-const LOCK_WAIT_TIMEOUT_MS = Number(process.env.WRAPPER_LOCK_WAIT_TIMEOUT_MS || 120_000);
-const LOCK_POLL_INTERVAL_MS = Number(process.env.WRAPPER_LOCK_POLL_INTERVAL_MS || 1000);
-// Constant 64-bit key for pg_advisory_lock. Arbitrary but STABLE forever —
-// every replica must use the same number to serialize on the same lock.
-const MIGRATION_LOCK_KEY = BigInt(process.env.WRAPPER_MIGRATION_LOCK_KEY || "778899112233");
 
 const bootStartedAt = Date.now();
 
@@ -125,77 +116,6 @@ function makeClient() {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// ---------- Advisory lock: acquire (dedicated connection) ----------
-// Uses pg_try_advisory_lock in a wall-clock-bounded poll loop. A blocking
-// pg_advisory_lock could itself hang forever if the holder is wedged; try-lock
-// + bounded wait guarantees we either get the lock or give up loudly.
-async function acquireMigrationLock() {
-  const lockSql = makeClient();
-  const start = Date.now();
-  let acquired = false;
-  try {
-    // Fail fast if the DB itself is unreachable.
-    await timedPhase("lock:connect", async () => {
-      await lockSql`SELECT 1`;
-    });
-
-    await timedPhase("lock:acquire", async () => {
-      let attempt = 0;
-      for (;;) {
-        attempt += 1;
-        const [{ locked }] = await lockSql`
-          SELECT pg_try_advisory_lock(${MIGRATION_LOCK_KEY}) AS locked
-        `;
-        if (locked) {
-          acquired = true;
-          logPhase("🔒", "lock:acquire", `got migration lock on attempt ${attempt}`);
-          return;
-        }
-        const waited = Date.now() - start;
-        if (waited >= LOCK_WAIT_TIMEOUT_MS) {
-          throw new Error(
-            `could not acquire migration advisory lock within ${LOCK_WAIT_TIMEOUT_MS}ms ` +
-              `(${attempt} attempts) — another pod may be stuck mid-migration`
-          );
-        }
-        logPhase("⌛", "lock:acquire", `another pod holds the lock; waited ${waited}ms, retrying`);
-        await sleep(LOCK_POLL_INTERVAL_MS);
-      }
-    });
-
-    return { sql: lockSql, acquired: true };
-  } catch (err) {
-    // On failure, drop the connection (releasing any session lock) and rethrow.
-    try {
-      await lockSql.end({ timeout: 5 });
-    } catch {
-      /* ignore */
-    }
-    throw err;
-  }
-}
-
-// ---------- Advisory lock: release ----------
-async function releaseMigrationLock(handle) {
-  if (!handle) return;
-  const { sql, acquired } = handle;
-  try {
-    if (acquired) {
-      await sql`SELECT pg_advisory_unlock(${MIGRATION_LOCK_KEY})`;
-      logPhase("🔓", "lock:release", "released migration lock");
-    }
-  } catch (err) {
-    logPhase("⚠️", "lock:release", "unlock query failed (connection close will release it anyway)");
-    console.error(err && err.stack ? err.stack : err);
-  } finally {
-    try {
-      await sql.end({ timeout: 5 });
-    } catch {
-      /* ignore */
-    }
-  }
-}
 
 // ---------- Direct ALTER TABLE + verification (bounded retry) ----------
 // Raw DDL — no migration framework, no journal, just idempotent ALTER TABLE.
@@ -296,18 +216,8 @@ function runDrizzleMigrations() {
 async function boot() {
   logPhase("🚀", "boot", `wrapper starting (pid ${process.pid})`);
 
-  let lockHandle;
-  try {
-    lockHandle = await acquireMigrationLock();
-    // Only the lock holder runs DDL + migrations. Other replicas were blocked
-    // in lock:acquire above; by the time they get here, migrations are done.
-    await ensureColumns();
-    runDrizzleMigrations();
-  } finally {
-    // Always release the lock + its connection, even on error, so a failed
-    // migrator never wedges every other replica.
-    await releaseMigrationLock(lockHandle);
-  }
+  await ensureColumns();
+  runDrizzleMigrations();
 
   // SUCCESS PATH ONLY: hand off to the real Next.js server.
   logPhase("🟢", "handoff", `migrations complete; loading _server.js (+${sinceBoot()})`);
