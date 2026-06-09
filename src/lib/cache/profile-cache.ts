@@ -39,7 +39,12 @@ import { getRedis } from "@/lib/redis";
  *     never accidentally hydrate as Dates.
  */
 
-const KEY_PREFIX = "kioar:page:v1:";
+// v2: the public loader now selects an explicit column allow-list
+// (PUBLIC_PROFILE_COLUMNS in lib/data.ts) instead of SELECT *, so the cached
+// payload shape changed. Bumping the version abandons any in-flight v1 entries
+// (which carried the full row) rather than reviving them into a renderer that
+// expects the narrowed shape. Old keys expire on their own TTL.
+const KEY_PREFIX = "kioar:page:v2:";
 const METRICS_PREFIX = "kioar:metrics:profile_cache:";
 
 const TTL_HIT_SECONDS = 300;

@@ -61,12 +61,63 @@ export async function getPublicProfileBySlug(slug: string) {
   return withProfileCache(slug, () => loadPublicProfileBySlug(slug));
 }
 
+/**
+ * Explicit allow-list of `profiles` columns the public read path selects.
+ *
+ * This projection is what decouples the size/shape of the cached payload
+ * (`kioar:page:v1+` in profile-cache.ts) from the column count of the
+ * `profiles` table. Without it, `findFirst` returns `SELECT *`, so every
+ * column added to `profiles` silently lands in the hot read path AND the
+ * Redis payload — the exact coupling that made the god table hard to cache.
+ *
+ * Discipline: a new `profiles` column is INVISIBLE to the public page until
+ * it is added here. Only add a key when a public consumer actually reads it.
+ * The set below is the union of `profile.*` fields read across every caller
+ * of `getPublicProfileBySlug` (the `[slug]` page, `c/[id]`, `ig/[slug]`, the
+ * OG/manifest/vcf routes, and profile-icon-render). `userId` is needed by
+ * the loader itself to fetch the owner; `settings` carries the page-settings
+ * blob so future settings reach the renderer without re-touching this list.
+ */
+const PUBLIC_PROFILE_COLUMNS = {
+  id: true,
+  userId: true,
+  slug: true,
+  fullName: true,
+  title: true,
+  bio: true,
+  avatarUrl: true,
+  avatarSeed: true,
+  publicPhone: true,
+  showPublicPhone: true,
+  email: true,
+  showPublicEmail: true,
+  domain: true,
+  seoTitle: true,
+  seoDescription: true,
+  ogImageUrl: true,
+  indexEnabled: true,
+  appIconKey: true,
+  appIconColor: true,
+  isComplete: true,
+  adminDisabledAt: true,
+  city: true,
+  qrStyle: true,
+  appearance: true,
+  settings: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 async function loadPublicProfileBySlug(slug: string) {
   const db = getDb();
 
   // Wave 1 — profile must exist and be complete before anything else proceeds.
+  // Explicit column projection (PUBLIC_PROFILE_COLUMNS) keeps the cached
+  // payload independent of the table's total column count — see the comment
+  // on that constant.
   const profile = await db.query.profiles.findFirst({
     where: and(eq(profiles.slug, slug), eq(profiles.isComplete, true)),
+    columns: PUBLIC_PROFILE_COLUMNS,
   });
 
   if (!profile) {
