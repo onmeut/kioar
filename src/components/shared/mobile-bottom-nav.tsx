@@ -108,6 +108,7 @@ export function MobileBottomNav({
                 <Link
                   key={item.href}
                   href={item.href}
+                  prefetch={false}
                   aria-label={item.label}
                   aria-current={active ? "page" : undefined}
                   className="tap-target relative flex flex-col items-center justify-center gap-0.5 rounded-2xl bg-violet-50 px-1 py-1.5 text-[10.5px] font-semibold text-violet-600 ring-1 ring-violet-200 transition-colors hover:bg-violet-100"
@@ -122,6 +123,7 @@ export function MobileBottomNav({
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch={false}
                 aria-label={item.label}
                 aria-current={active ? "page" : undefined}
                 className={cn(
@@ -141,6 +143,7 @@ export function MobileBottomNav({
               pattern, replaces the previous sidebar Sheet on mobile). */}
           <Link
             href={"/more" as Route}
+            prefetch={false}
             aria-label="بیشتر"
             aria-current={moreActive ? "page" : undefined}
             className={cn(

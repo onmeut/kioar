@@ -28,6 +28,7 @@ import {
   TrashIcon,
   XIcon,
 } from "lucide-react";
+import { BlockEmptyState } from "@/components/shared/block-empty-state";
 import {
   DndContext,
   closestCenter,
@@ -781,14 +782,7 @@ export function ProductBuilderDialog({
                   </span>
                 </div>
                 {draft.items.length === 0 ? (
-                  <div className="flex flex-col items-center gap-2 rounded-2xl bg-muted/40 px-4 py-10 text-center">
-                    <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-                      <ShoppingBagIcon className="size-5 text-muted-foreground" />
-                    </div>
-                    <p className="text-sm text-muted-foreground">
-                      هنوز موردی اضافه نشده
-                    </p>
-                  </div>
+                  <BlockEmptyState icon={ShoppingBagIcon} label="هنوز موردی اضافه نشده" />
                 ) : (
                   <DndContext
                     sensors={sensors}
@@ -1338,14 +1332,7 @@ function CategoriesPane({
       ) : null}
 
       {sections.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-2xl bg-muted/40 px-4 py-10 text-center">
-          <div className="flex size-10 items-center justify-center rounded-full bg-muted">
-            <TagIcon className="size-5 text-muted-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">
-            هنوز دسته‌بندی‌ای ندارید
-          </p>
-        </div>
+        <BlockEmptyState icon={TagIcon} label="هنوز دسته‌بندی‌ای ندارید" />
       ) : (
         <DndContext
           sensors={sensors}

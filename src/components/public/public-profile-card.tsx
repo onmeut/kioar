@@ -30,7 +30,6 @@ import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import type { ActionState } from "@/lib/action-state";
 
 import {
-  spotlightAnimationClass,
   spotlightAnimationClassOnce,
   spotlightSortKey,
   type BlockAnimationStyle,
@@ -410,11 +409,7 @@ export function PublicProfileCard({
             );
           }
 
-          return items.map((item) => {
-            const animClass = spotlightAnimationClass(
-              item.spotlight,
-              item.animationStyle,
-            );
+          return items.map((item, idx) => {
             const animClassOnce = spotlightAnimationClassOnce(
               item.spotlight,
               item.animationStyle,
@@ -426,6 +421,7 @@ export function PublicProfileCard({
                   key={`b-${item.block.id}`}
                   animClass={animClassOnce}
                   intervalSec={10}
+                  index={idx}
                 >
                   <PublicBookingPill
                     block={item.block}
@@ -437,10 +433,7 @@ export function PublicProfileCard({
               ) : (
                 <span
                   key={`b-${item.block.id}`}
-                  className={cn(
-                    "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4",
-                    animClass,
-                  )}
+                  className="relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4"
                   aria-disabled
                 >
                   <span className="absolute inset-s-3 inline-flex size-9 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -469,6 +462,7 @@ export function PublicProfileCard({
                   key={`f-${item.block.id}`}
                   animClass={animClassOnce}
                   intervalSec={10}
+                  index={idx}
                 >
                   <PublicFormPill
                     block={item.block}
@@ -479,10 +473,7 @@ export function PublicProfileCard({
               ) : (
                 <span
                   key={`f-${item.block.id}`}
-                  className={cn(
-                    "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4",
-                    animClass,
-                  )}
+                  className="relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4"
                   aria-disabled
                 >
                   <span className="absolute inset-s-3 inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -501,6 +492,7 @@ export function PublicProfileCard({
                     key={`p-${item.block.id}`}
                     animClass={animClassOnce}
                     intervalSec={10}
+                    index={idx}
                   >
                     <PublicProductInline
                       block={item.block}
@@ -514,6 +506,7 @@ export function PublicProfileCard({
                   key={`p-${item.block.id}`}
                   animClass={animClassOnce}
                   intervalSec={10}
+                  index={idx}
                 >
                   <PublicProductPill
                     block={item.block}
@@ -523,10 +516,7 @@ export function PublicProfileCard({
               ) : (
                 <span
                   key={`p-${item.block.id}`}
-                  className={cn(
-                    "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4",
-                    animClass,
-                  )}
+                  className="relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4"
                   aria-disabled
                 >
                   <span className="absolute inset-s-3 inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
@@ -609,13 +599,11 @@ export function PublicProfileCard({
                   key={`e-${ev.id}`}
                   animClass={animClassOnce}
                   intervalSec={10}
+                  index={idx}
                 >
                   <Link
                     href={`/${ev.pageSlug}/e/${ev.slug}`}
-                    className={cn(
-                      "block w-full rounded-3xl bg-foreground/4 p-3 transition-colors hover:bg-foreground/8",
-                      animClass,
-                    )}
+                    className="block w-full rounded-3xl bg-foreground/4 p-3 transition-colors hover:bg-foreground/8"
                   >
                     {inner}
                   </Link>
@@ -623,10 +611,7 @@ export function PublicProfileCard({
               ) : (
                 <span
                   key={`e-${ev.id}`}
-                  className={cn(
-                    "block w-full rounded-3xl bg-foreground/4 p-3",
-                    animClass,
-                  )}
+                  className="block w-full rounded-3xl bg-foreground/4 p-3"
                   aria-disabled
                 >
                   {inner}
@@ -641,13 +626,9 @@ export function PublicProfileCard({
                   key={`t-${tb.id}`}
                   animClass={animClassOnce}
                   intervalSec={10}
+                  index={idx}
                 >
-                  <div
-                    className={cn(
-                      "w-full space-y-3 rounded-2xl bg-foreground/4 px-4 py-3 text-start",
-                      animClass,
-                    )}
-                  >
+                  <div className="w-full space-y-3 rounded-2xl bg-foreground/4 px-4 py-3 text-start">
                     {/* Icon + title row (either may be absent) */}
                     {hasIcon || tb.title ? (
                       <div className="flex items-center gap-2.5">
@@ -732,6 +713,7 @@ export function PublicProfileCard({
                 key={link.id}
                 animClass={animClassOnce}
                 intervalSec={10}
+                index={idx}
               >
                 {interactive ? (
                   <a

@@ -20,6 +20,7 @@ import {
   CircleIcon,
   CircleDotIcon,
   FlagIcon,
+  FormInputIcon,
   GripVerticalIcon,
   ListIcon,
   MailIcon,
@@ -34,6 +35,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { BlockEmptyState } from "@/components/shared/block-empty-state";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -472,10 +474,8 @@ function MainScreen({
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-6 pb-4">
         {/* Fields section — primary action, shown first */}
         {draft.fields.length === 0 ? (
-          <div className="mb-5 flex flex-col items-center gap-4">
-            <p className="text-sm text-muted-foreground">
-              اولین فیلد خود را اضافه کنید
-            </p>
+          <div className="mb-5 flex flex-col gap-3">
+            <BlockEmptyState icon={FormInputIcon} label="اولین فیلد خود را اضافه کنید" />
             <Button
               type="button"
               onClick={onAddField}

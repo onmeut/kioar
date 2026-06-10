@@ -871,19 +871,27 @@
   .anim-block-buzz {
     animation: block-buzz 1.6s ease-in-out infinite;
     animation-delay: 0.6s;
+    will-change: transform;
+    isolation: isolate;
   }
   .anim-block-wobble {
     animation: block-wobble 2s ease-in-out infinite;
     animation-delay: 0.6s;
     transform-origin: 50% 50%;
+    will-change: transform;
+    isolation: isolate;
   }
   .anim-block-pop {
     animation: block-pop 1.8s ease-in-out infinite;
     animation-delay: 0.6s;
+    will-change: transform;
+    isolation: isolate;
   }
   .anim-block-swipe {
     animation: block-swipe 2.2s ease-in-out infinite;
     animation-delay: 0.6s;
+    will-change: transform;
+    isolation: isolate;
   }
   /* One-shot variants — play once, then stop. Used for JS-controlled   */
   /* periodic triggers (public page blocks every 10 s, sidebar every    */
@@ -891,19 +899,27 @@
   .anim-block-buzz-once {
     animation: block-buzz 1.6s ease-in-out 1;
     animation-delay: 0.4s;
+    will-change: transform;
+    isolation: isolate;
   }
   .anim-block-wobble-once {
     animation: block-wobble 2s ease-in-out 1;
     animation-delay: 0.4s;
     transform-origin: 50% 50%;
+    will-change: transform;
+    isolation: isolate;
   }
   .anim-block-pop-once {
     animation: block-pop 1.8s ease-in-out 1;
     animation-delay: 0.4s;
+    will-change: transform;
+    isolation: isolate;
   }
   .anim-block-swipe-once {
     animation: block-swipe 2.2s ease-in-out 1;
     animation-delay: 0.4s;
+    will-change: transform;
+    isolation: isolate;
   }
   [dir="rtl"] .anim-block-swipe-once {
     animation-name: block-swipe-rtl;

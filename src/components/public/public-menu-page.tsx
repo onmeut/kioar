@@ -12,9 +12,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { LayoutGridIcon, XIcon } from "lucide-react";
-
-import { LinkIconBubble } from "@/components/dashboard/link-icon-picker";
+import { LayoutGridIcon, UtensilsCrossedIcon, XIcon } from "lucide-react";
 import { formatPriceDisplay } from "@/lib/money";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
@@ -137,11 +135,6 @@ export function SharedMenuContent({
   const [catPanelOpen, setCatPanelOpen] = useState(false);
   const navRef = useRef<HTMLDivElement>(null);
 
-  const iconBySectionId = useMemo(() => {
-    const map = new Map<string, string | null>();
-    for (const s of block.sections) map.set(s.id, s.iconKey);
-    return map;
-  }, [block.sections]);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
   const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const rootRef = useRef<HTMLDivElement>(null);
@@ -197,9 +190,15 @@ export function SharedMenuContent({
       if (scrollContainerRef) {
         const container = scrollContainerRef.current;
         if (!container) return;
+        // Use offsetTop relative to the scroll container (stable regardless of panel open state)
         const navHeight = navRef.current?.offsetHeight ?? 48;
-        const delta = el.getBoundingClientRect().top - container.getBoundingClientRect().top - navHeight - 8;
-        container.scrollBy({ top: delta, behavior: "smooth" });
+        let offsetTop = 0;
+        let node: HTMLElement | null = el;
+        while (node && node !== container) {
+          offsetTop += node.offsetTop;
+          node = node.offsetParent as HTMLElement | null;
+        }
+        container.scrollTo({ top: offsetTop - navHeight - 8, behavior: "smooth" });
       } else {
         const top = el.getBoundingClientRect().top + window.scrollY - 80;
         window.scrollTo({ top, behavior: "smooth" });
@@ -229,7 +228,14 @@ export function SharedMenuContent({
           <div className="no-scrollbar flex items-center gap-2 px-4 py-2.5 touch-pan-x overflow-x-auto">
             <button
               type="button"
-              onClick={() => setCatPanelOpen((v) => !v)}
+              onClick={() => {
+                setCatPanelOpen((v) => {
+                  if (!v && scrollContainerRef?.current) {
+                    scrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                  return !v;
+                });
+              }}
               className={cn(
                 "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors whitespace-nowrap",
                 catPanelOpen
@@ -273,16 +279,16 @@ export function SharedMenuContent({
           {catPanelOpen ? (
             <div className="border-t border-border/40 bg-card px-4 pb-4 pt-3">
               <div className="mb-3 flex items-center justify-between">
+                <div className="size-8" />
+                <p className="flex-1 text-center text-sm font-bold">دسته‌بندی‌ها</p>
                 <button
                   type="button"
                   onClick={() => setCatPanelOpen(false)}
-                  className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-foreground/4"
+                  className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-foreground/4"
                   aria-label="بستن"
                 >
                   <XIcon className="size-4" />
                 </button>
-                <p className="flex-1 text-center text-sm font-bold">دسته‌بندی‌ها</p>
-                <div className="size-7" />
               </div>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {navGroups.map((g) => (
@@ -292,14 +298,10 @@ export function SharedMenuContent({
                     onClick={() => scrollToGroup(g.id)}
                     className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
                   >
-                    <LinkIconBubble
-                      iconKey={iconBySectionId.get(g.id) ?? null}
-                      iconUrl={null}
-                      imageUrl={null}
-                      url=""
-                      size={56}
-                    />
-                    <span className="line-clamp-2 text-xs font-medium leading-snug">
+                    <span className="flex size-14 items-center justify-center rounded-2xl border border-border bg-white text-muted-foreground">
+                      <UtensilsCrossedIcon className="size-5" />
+                    </span>
+                    <span className="line-clamp-2 text-xs font-bold leading-snug">
                       {g.title}
                     </span>
                   </button>
@@ -322,18 +324,7 @@ export function SharedMenuContent({
             className="scroll-mt-14 pt-5"
           >
             {group.title ? (
-              <h4 className="mb-3 flex items-center gap-2 text-sm font-bold">
-                {iconBySectionId.get(group.id) ? (
-                  <LinkIconBubble
-                    iconKey={iconBySectionId.get(group.id) ?? null}
-                    iconUrl={null}
-                    imageUrl={null}
-                    url=""
-                    size={24}
-                  />
-                ) : null}
-                {group.title}
-              </h4>
+              <h4 className="mb-3 text-sm font-bold">{group.title}</h4>
             ) : null}
             <ul className="divide-y divide-border/70">
               {group.items.map((item) => (

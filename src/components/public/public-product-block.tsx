@@ -12,7 +12,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from "react";
 import Image from "next/image";
-import { LayoutGridIcon, TagIcon, XIcon } from "lucide-react";
+import { LayoutGridIcon, TagIcon, UtensilsCrossedIcon, XIcon } from "lucide-react";
 
 import { LinkIconBubble } from "@/components/dashboard/link-icon-picker";
 import type { IconKey } from "@/lib/link-icons";
@@ -322,10 +322,13 @@ function ProductItemsList({
       isScrollingProgrammatically.current = true;
 
       const navHeight = navRef.current?.offsetHeight ?? 48;
-      const containerRect = container.getBoundingClientRect();
-      const elRect = el.getBoundingClientRect();
-      const delta = elRect.top - containerRect.top - navHeight - 8;
-      container.scrollBy({ top: delta, behavior: "smooth" });
+      let offsetTop = 0;
+      let node: HTMLElement | null = el;
+      while (node && node !== container) {
+        offsetTop += node.offsetTop;
+        node = node.offsetParent as HTMLElement | null;
+      }
+      container.scrollTo({ top: offsetTop - navHeight - 8, behavior: "smooth" });
 
       setTimeout(() => {
         isScrollingProgrammatically.current = false;
@@ -365,7 +368,14 @@ function ProductItemsList({
         >
           <button
             type="button"
-            onClick={() => setCatPanelOpen((v) => !v)}
+            onClick={() => {
+              setCatPanelOpen((v) => {
+                if (!v && scrollContainerRef?.current) {
+                  scrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+                }
+                return !v;
+              });
+            }}
             className={cn(
               "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors whitespace-nowrap",
               catPanelOpen
@@ -397,16 +407,16 @@ function ProductItemsList({
         {catPanelOpen ? (
           <div className="border-t border-border/40 bg-card px-4 pb-4 pt-3">
             <div className="mb-3 flex items-center justify-between">
+              <div className="size-8" />
+              <p className="flex-1 text-center text-sm font-bold">دسته‌بندی‌ها</p>
               <button
                 type="button"
                 onClick={() => setCatPanelOpen(false)}
-                className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-foreground/4"
+                className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-foreground/4"
                 aria-label="بستن"
               >
                 <XIcon className="size-4" />
               </button>
-              <p className="flex-1 text-center text-sm font-bold">دسته‌بندی‌ها</p>
-              <div className="size-7" />
             </div>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
               {orderedActiveSections.map((s) => (
@@ -416,10 +426,10 @@ function ProductItemsList({
                   onClick={() => scrollToSection(s.id)}
                   className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
                 >
-                  <span className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
-                    <TagIcon className="size-5" />
+                  <span className="flex size-14 items-center justify-center rounded-2xl border border-border bg-white text-muted-foreground">
+                    <UtensilsCrossedIcon className="size-5" />
                   </span>
-                  <span className="line-clamp-2 text-xs font-medium leading-snug">
+                  <span className="line-clamp-2 text-xs font-bold leading-snug">
                     {s.title}
                   </span>
                 </button>

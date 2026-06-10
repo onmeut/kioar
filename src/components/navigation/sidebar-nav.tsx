@@ -194,7 +194,7 @@ export function SidebarNav({ items }: { items: SidebarNavItem[] }) {
         return (
           <SidebarMenuItem key={item.href}>
             <SidebarMenuButton
-              render={<Link href={item.href} />}
+              render={<Link href={item.href} prefetch={false} />}
               isActive={active}
               tooltip={item.label}
               className={cn(
@@ -271,6 +271,7 @@ export function SidebarIconRow({ items }: { items: SidebarIconRowItem[] }) {
                 render={
                   <Link
                     href={item.href}
+                    prefetch={false}
                     aria-label={item.label}
                     className={cn(
                       "tap-target relative inline-flex flex-1 items-center justify-center",
@@ -343,6 +344,7 @@ export function SidebarReferralCTA({
   return (
     <Link
       href={href}
+      prefetch={false}
       aria-label={
         hasCredit
           ? `${availableMonths} ماه پروی رایگان آماده‌ی استفاده`
@@ -390,6 +392,7 @@ export function SidebarCardCTA({ href }: { href: Route }) {
     <div className="sidebar-card-ring w-full">
       <Link
         href={href}
+        prefetch={false}
         className={cn(
           "relative inline-flex h-10 w-full items-center justify-center gap-2",
           "rounded-full bg-background px-3 text-sm font-bold transition-colors",

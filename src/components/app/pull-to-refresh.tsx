@@ -2,35 +2,31 @@
 
 import { RefreshCwIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 const TRIGGER_DISTANCE = 72; // px before refresh fires
 const MAX_PULL = 120; // visual cap
 
-/**
- * Pull-to-refresh wrapper. Works inside a nested scroll container
- * (which is what the dashboard's `<main>` is) since the browser's
- * native PTR only fires on the document scroller.
- *
- * Behavior:
- *  - Listens for `touchstart` on the wrapped scroll container.
- *  - When the user starts a downward drag while `scrollTop === 0`,
- *    we track the delta and apply a translateY to the children plus
- *    show a refresh indicator.
- *  - On release past the threshold, calls `router.refresh()`.
- *  - Disabled on non-touch / non-mobile devices.
- *
- * Mounted as a sibling — wraps its `children`.
- */
 export function PullToRefresh({ children }: { children: React.ReactNode }) {
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const startY = useRef<number | null>(null);
   const pulling = useRef(false);
   const pullRef = useRef(0);
   const [pull, setPull] = useState(0);
-  const [refreshing, setRefreshing] = useState(false);
+
+  // isPending from useTransition is the authoritative "refresh in flight"
+  // signal — no fixed timeout needed. refreshingRef mirrors it so touch
+  // handlers (which close over the ref, not state) can read it synchronously.
   const refreshingRef = useRef(false);
+  useEffect(() => {
+    refreshingRef.current = isPending;
+    if (!isPending) {
+      pullRef.current = 0;
+      setPull(0);
+    }
+  }, [isPending]);
 
   useEffect(() => {
     const el = wrapRef.current;
@@ -44,9 +40,6 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Find the nearest scrollable ancestor — that's the container the
-    // user is actually scrolling. We attach to it, not to `el`, so we
-    // can read its scrollTop.
     let scroller: HTMLElement | Window = window;
     let node: HTMLElement | null = el.parentElement;
     while (node) {
@@ -77,20 +70,13 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
     function onTouchMove(e: TouchEvent) {
       if (refreshingRef.current || startY.current === null) return;
       const delta = e.touches[0].clientY - startY.current;
-      if (delta <= 0) {
-        pulling.current = false;
-        pullRef.current = 0;
-        setPull(0);
-        return;
-      }
-      if (getScrollTop() > 0) {
+      if (delta <= 0 || getScrollTop() > 0) {
         pulling.current = false;
         pullRef.current = 0;
         setPull(0);
         return;
       }
       pulling.current = true;
-      // Resistance — feels native.
       const damped = Math.min(MAX_PULL, delta * 0.5);
       pullRef.current = damped;
       setPull(damped);
@@ -105,18 +91,12 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
       }
       if (pullRef.current >= TRIGGER_DISTANCE) {
         refreshingRef.current = true;
-        setRefreshing(true);
         pullRef.current = TRIGGER_DISTANCE;
         setPull(TRIGGER_DISTANCE);
-        router.refresh();
-        // Hide indicator after a short delay; `router.refresh()` doesn't
-        // expose a completion signal but is generally fast.
-        window.setTimeout(() => {
-          refreshingRef.current = false;
-          setRefreshing(false);
-          pullRef.current = 0;
-          setPull(0);
-        }, 800);
+        // startTransition wraps router.refresh() so isPending tracks the
+        // actual completion — spinner stays until RSC data is back, and
+        // the guard can't re-fire until isPending flips back to false.
+        startTransition(() => router.refresh());
       } else {
         pullRef.current = 0;
         setPull(0);
@@ -140,15 +120,13 @@ export function PullToRefresh({ children }: { children: React.ReactNode }) {
       target.removeEventListener("touchmove", onTouchMove as EventListener);
       target.removeEventListener("touchend", onTouchEnd as EventListener);
     };
-    // Empty deps is correct: all mutable values are read via refs
-    // (pullRef, refreshingRef, pulling, startY) so handlers never go stale.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const refreshing = isPending;
+
   return (
     <div ref={wrapRef} className="contents">
-      {/* Indicator pinned to the top of the viewport — slides down with
-          the pull distance. Doesn't push the page content. */}
       <div
         aria-hidden
         className="pointer-events-none fixed inset-x-0 top-0 z-30 flex justify-center pt-[env(safe-area-inset-top)]"
