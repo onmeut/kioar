@@ -63,7 +63,9 @@ export default async function PublicEventPage({
 
   const appearance = coerceAppearance(event.pageAppearance);
   const isDarkTheme = appearance.theme === "dark";
-  const headerLogoSrc = isDarkTheme ? "/brand/logo-white.svg" : "/brand/logo.svg";
+  const headerLogoSrc = isDarkTheme
+    ? "/brand/logo-white.svg"
+    : "/brand/logo.svg";
   const publicUrl = absoluteUrl(`/${slug}`);
   const displayName = event.pageName || "کی‌یو‌آر";
 
@@ -79,7 +81,7 @@ export default async function PublicEventPage({
         <div className="relative mx-auto flex min-h-dvh w-full max-w-145 flex-col pt-[env(safe-area-inset-top)] lg:pt-10">
           <div className="relative flex flex-1 flex-col overflow-hidden bg-card pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1.5rem))] lg:rounded-t-[2rem] lg:shadow-card">
             {/* Header */}
-            <div className="relative border-b border-border/40 px-6 pt-6 pb-4 lg:px-8 lg:pt-8">
+            <div className="relative border-b border-border/40 px-6 pt-6 pb-4 lg:px-8">
               <div className="relative flex items-center justify-between">
                 <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <span className="max-w-[55%] truncate text-center text-base font-bold">
@@ -91,7 +93,13 @@ export default async function PublicEventPage({
                   aria-label="بازگشت به پروفایل"
                   className="tap-target inline-flex size-10 items-center justify-center rounded-full bg-foreground/[0.07] text-foreground transition-colors hover:bg-foreground/12"
                 >
-                  <Image src={headerLogoSrc} alt="" width={17} height={19} className="h-[19px] w-auto" />
+                  <Image
+                    src={headerLogoSrc}
+                    alt=""
+                    width={17}
+                    height={19}
+                    className="h-[19px] w-auto"
+                  />
                 </a>
                 <PublicProfileShareButton
                   url={absoluteUrl(`/${slug}/e/${eventSlug}`)}
@@ -167,11 +175,18 @@ export default async function PublicEventPage({
                   </span>
                   <div className="min-w-0">
                     <p className="font-semibold">
-                      {formatShamsiDateTimeInZone(event.startsAt, event.timezone)}
+                      {formatShamsiDateTimeInZone(
+                        event.startsAt,
+                        event.timezone,
+                      )}
                     </p>
                     {event.endsAt ? (
                       <p className="text-sm text-muted-foreground">
-                        تا {formatShamsiDateTimeInZone(event.endsAt, event.timezone)}
+                        تا{" "}
+                        {formatShamsiDateTimeInZone(
+                          event.endsAt,
+                          event.timezone,
+                        )}
                       </p>
                     ) : null}
                   </div>
@@ -208,7 +223,9 @@ export default async function PublicEventPage({
                       </p>
                     )}
                     <p className="text-sm text-muted-foreground">
-                      {event.locationType === "online" ? "رویداد آنلاین" : "حضوری"}
+                      {event.locationType === "online"
+                        ? "رویداد آنلاین"
+                        : "حضوری"}
                     </p>
                   </div>
                 </div>
