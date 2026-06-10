@@ -59,6 +59,14 @@ import {
   ProductBlockRow,
   type EditableProductBlockWithId,
 } from "@/components/dashboard/product-block-row";
+import {
+  TextBlockDialog,
+  type TextBlockDraft,
+} from "@/components/dashboard/text-block-dialog";
+import {
+  TextBlockRow,
+  type EditableTextBlockWithId,
+} from "@/components/dashboard/text-block-row";
 import { type LinkIconPickerValue } from "@/components/dashboard/link-icon-picker";
 import { LinkIconPickerButton } from "@/components/dashboard/link-icon-picker-button";
 import { SpotlightStarButton } from "@/components/dashboard/spotlight-star-button";
@@ -130,6 +138,7 @@ type LinksPageClientProps = {
   initialBookingBlocks: EditableBookingBlockWithId[];
   initialFormBlocks: EditableFormBlockWithId[];
   initialProductBlocks: EditableProductBlockWithId[];
+  initialTextBlocks: EditableTextBlockWithId[];
   /** All-time click counts keyed by link id. */
   linkClickCounts: Record<string, number>;
   publicUrl: string;
@@ -214,6 +223,26 @@ type LinksPageClientProps = {
     state: ActionState & { url?: string | null },
     formData: FormData,
   ) => Promise<ActionState & { url?: string | null }>;
+  createTextBlockAction: (
+    state: ActionState & { id?: string },
+    formData: FormData,
+  ) => Promise<ActionState & { id?: string }>;
+  updateTextBlockAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  deleteTextBlockAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  toggleTextBlockActiveAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  uploadTextBlockImageAction: (
+    state: ActionState & { url?: string | null },
+    formData: FormData,
+  ) => Promise<ActionState & { url?: string | null }>;
   /** Phase 5: when the page lacks the booking entitlement, render existing
    * booking blocks read-only with an upgrade CTA instead of editable rows. */
   bookingsLocked?: boolean;
@@ -224,6 +253,9 @@ type LinksPageClientProps = {
   /** Events block gating (`business_events`). When locked, the picker card
    *  shows a lock badge and opens the upgrade modal instead of navigating. */
   eventsLocked?: boolean;
+  /** Text block gating (`link_text_block`, Pro+). */
+  textLocked?: boolean;
+  textRequiredPlan?: "pro" | "business";
   /** Lowest paid plan that currently grants the feature — drives the lock
    * chip colour (Pro=emerald, Business=purple). Sourced from the live
    * `plan_features` matrix, not the seed naming convention. */
@@ -274,6 +306,7 @@ export function LinksPageClient({
   initialBookingBlocks,
   initialFormBlocks,
   initialProductBlocks,
+  initialTextBlocks,
   linkClickCounts,
   publicUrl,
   fetchMetadataAction,
@@ -296,14 +329,21 @@ export function LinksPageClient({
   deleteProductBlockAction,
   toggleProductBlockActiveAction,
   uploadProductItemImageAction,
+  createTextBlockAction,
+  updateTextBlockAction,
+  deleteTextBlockAction,
+  toggleTextBlockActiveAction,
+  uploadTextBlockImageAction,
   bookingsLocked = false,
   formsLocked = false,
   productsLocked = false,
   eventsLocked = false,
+  textLocked = false,
   bookingsRequiredPlan = "business",
   formsRequiredPlan = "business",
   productsRequiredPlan = "pro",
   eventsRequiredPlan = "business",
+  textRequiredPlan = "pro",
   productItemsCap,
   pinAllowed = false,
   animateAllowed = false,
@@ -326,6 +366,8 @@ export function LinksPageClient({
     useState<EditableFormBlockWithId[]>(initialFormBlocks);
   const [productBlocks, setProductBlocks] =
     useState<EditableProductBlockWithId[]>(initialProductBlocks);
+  const [textBlocks, setTextBlocks] =
+    useState<EditableTextBlockWithId[]>(initialTextBlocks);
 
   // Re-sync from the server when the parent route revalidates (e.g. after
   // creating a booking block). Without this the UI keeps showing the stale
@@ -339,6 +381,9 @@ export function LinksPageClient({
   useEffect(() => {
     setProductBlocks(initialProductBlocks);
   }, [initialProductBlocks]);
+  useEffect(() => {
+    setTextBlocks(initialTextBlocks);
+  }, [initialTextBlocks]);
   const [wizardOpen, setWizardOpen] = useState(false);
   // Ref to wizard's resetDraft so we can reset its in-memory state without remounting
   const wizardResetDraftRef = useRef<(() => void) | null>(null);
@@ -363,6 +408,10 @@ export function LinksPageClient({
     useState<ProductBlockPreset>("shop");
   const [editingProductBlock, setEditingProductBlock] =
     useState<EditableProductBlockWithId | null>(null);
+  const [textDialogOpen, setTextDialogOpen] = useState(false);
+  const [editingTextBlock, setEditingTextBlock] =
+    useState<EditableTextBlockWithId | null>(null);
+  const [savingText, setSavingText] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -395,6 +444,9 @@ export function LinksPageClient({
     } else if (action === "add-product") {
       setEditingProductBlock(null);
       setProductBuilderOpen(true);
+    } else if (action === "add-text") {
+      setEditingTextBlock(null);
+      setTextDialogOpen(true);
     }
   }, []);
 
@@ -492,9 +544,9 @@ export function LinksPageClient({
     }
   }, [linksState.status, linksState.message]);
 
-  /* ---------- Unified blocks order (links + bookings + forms + products) ---------- */
+  /* ---------- Unified blocks order (links + bookings + forms + products + text) ---------- */
   type BlockRef = {
-    kind: "link" | "booking" | "form" | "product";
+    kind: "link" | "booking" | "form" | "product" | "text";
     id: string;
   };
 
@@ -522,6 +574,11 @@ export function LinksPageClient({
         id: p.id,
         sortOrder: p.sortOrder ?? 3_000_000 + i,
       })),
+      ...textBlocks.map((t, i) => ({
+        kind: "text" as const,
+        id: t.id,
+        sortOrder: t.sortOrder ?? 5_000_000 + i,
+      })),
     ];
     all.sort((a, b) => a.sortOrder - b.sortOrder);
     return all.map(({ kind, id }) => ({ kind, id }));
@@ -537,6 +594,7 @@ export function LinksPageClient({
       const bookingIds = new Set(bookingBlocks.map((b) => b.id));
       const formIds = new Set(formBlocks.map((f) => f.id));
       const productIds = new Set(productBlocks.map((p) => p.id));
+      const textIds = new Set(textBlocks.map((t) => t.id));
 
       const seen = new Set<string>();
       const kept: BlockRef[] = [];
@@ -545,7 +603,8 @@ export function LinksPageClient({
           (ref.kind === "link" && linkIds.has(ref.id)) ||
           (ref.kind === "booking" && bookingIds.has(ref.id)) ||
           (ref.kind === "form" && formIds.has(ref.id)) ||
-          (ref.kind === "product" && productIds.has(ref.id));
+          (ref.kind === "product" && productIds.has(ref.id)) ||
+          (ref.kind === "text" && textIds.has(ref.id));
         if (owns) {
           kept.push(ref);
           seen.add(`${ref.kind}:${ref.id}`);
@@ -558,9 +617,10 @@ export function LinksPageClient({
       for (const b of bookingBlocks) append("booking", b.id);
       for (const f of formBlocks) append("form", f.id);
       for (const p of productBlocks) append("product", p.id);
+      for (const t of textBlocks) append("text", t.id);
       return kept;
     });
-  }, [links, bookingBlocks, formBlocks, productBlocks]);
+  }, [links, bookingBlocks, formBlocks, productBlocks, textBlocks]);
 
   // Persist global order (debounced). Skip on first run.
   const [, startReorderTransition] = useTransition();
@@ -629,9 +689,9 @@ export function LinksPageClient({
     }
   }
 
-  // -------- Spotlight handler (links + bookings + forms + products) --------
+  // -------- Spotlight handler (links + bookings + forms + products + text) --------
   async function handleSpotlightChange(
-    blockKind: "link" | "form" | "booking" | "product",
+    blockKind: "link" | "form" | "booking" | "product" | "text",
     blockId: string,
     next: {
       spotlight: import("@/lib/block-spotlight").BlockSpotlight;
@@ -675,6 +735,18 @@ export function LinksPageClient({
                 animationStyle: next.animationStyle,
               }
             : p,
+        ),
+      );
+    } else if (blockKind === "text") {
+      setTextBlocks((curr) =>
+        curr.map((t) =>
+          t.id === blockId
+            ? {
+                ...t,
+                spotlight: next.spotlight,
+                animationStyle: next.animationStyle,
+              }
+            : t,
         ),
       );
     } else {
@@ -933,6 +1005,91 @@ export function LinksPageClient({
     return result.url;
   }
 
+  // -------- Text block handlers --------
+  async function handleSaveText(draft: TextBlockDraft) {
+    setSavingText(true);
+    try {
+      const payload = {
+        title: draft.title,
+        iconKey: draft.iconKey,
+        iconUrl: draft.iconUrl,
+        body: draft.body,
+        photoUrl: draft.photoUrl,
+        // Preserve spotlight/animation on edit; default to none on create.
+        spotlight: editingTextBlock?.spotlight ?? "none",
+        animationStyle: editingTextBlock?.animationStyle ?? null,
+      };
+      const fd = new FormData();
+      fd.set("payload", JSON.stringify(payload));
+      if (draft.id) {
+        fd.set("blockId", draft.id);
+        const result = await updateTextBlockAction(idleState, fd);
+        if (result.status === "error") {
+          toast.error(result.message ?? "ذخیره نشد.");
+          return;
+        }
+        toast.success("ذخیره شد.");
+      } else {
+        const result = await createTextBlockAction(
+          { status: "idle" as const },
+          fd,
+        );
+        if (result.status === "error" || !result.id) {
+          toast.error(result.message ?? "ساخت بلوک با خطا مواجه شد.");
+          return;
+        }
+        toast.success("بلوک متن ساخته شد.");
+      }
+      setTextDialogOpen(false);
+      setEditingTextBlock(null);
+      router.refresh();
+    } finally {
+      setSavingText(false);
+    }
+  }
+
+  async function handleDeleteTextBlock(id: string) {
+    const prev = textBlocks;
+    setTextBlocks((curr) => curr.filter((b) => b.id !== id));
+    const fd = new FormData();
+    fd.set("blockId", id);
+    const result = await deleteTextBlockAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "حذف نشد.");
+      setTextBlocks(prev);
+    } else {
+      toast.success("حذف شد");
+    }
+  }
+
+  async function handleToggleTextActive(id: string, isActive: boolean) {
+    setTextBlocks((curr) =>
+      curr.map((b) => (b.id === id ? { ...b, isActive } : b)),
+    );
+    const fd = new FormData();
+    fd.set("blockId", id);
+    fd.set("isActive", String(isActive));
+    const result = await toggleTextBlockActiveAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "تغییر وضعیت ناموفق بود.");
+      router.refresh();
+    }
+  }
+
+  async function handleUploadTextImage(file: File): Promise<string | null> {
+    const fd = new FormData();
+    fd.set("file", file);
+    const result = await uploadTextBlockImageAction(
+      { status: "idle" as const, url: null },
+      fd,
+    );
+    if (result.status === "error" || !result.url) {
+      toast.error(result.message ?? "آپلود ناموفق بود.");
+      return null;
+    }
+    return result.url;
+  }
+
   async function handleAvatarSave(file: File) {
     const fd = new FormData();
     fd.set("avatar", file);
@@ -1151,7 +1308,20 @@ export function LinksPageClient({
           sku: it.sku,
         })),
       })),
-  }), [profile, links, bookingBlocks, formBlocks, productBlocks, liveOrderMap]);
+    textBlocks: textBlocks
+      .filter((t) => t.isActive)
+      .map((t) => ({
+        id: t.id,
+        title: t.title,
+        iconKey: t.iconKey,
+        iconUrl: t.iconUrl,
+        body: t.body,
+        photoUrl: t.photoUrl,
+        sortOrder: liveOrderMap.get(`text:${t.id}`) ?? t.sortOrder,
+        spotlight: t.spotlight,
+        animationStyle: t.animationStyle,
+      })),
+  }), [profile, links, bookingBlocks, formBlocks, productBlocks, textBlocks, liveOrderMap]);
 
   return (
     <div className="grid w-full min-w-0 min-h-[calc(100dvh-var(--header-h,4rem))] lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
@@ -1342,27 +1512,55 @@ export function LinksPageClient({
                         />
                       );
                     }
-                    const product = productBlocks.find((p) => p.id === ref.id);
-                    if (!product) return null;
+                    if (ref.kind === "product") {
+                      const product = productBlocks.find(
+                        (p) => p.id === ref.id,
+                      );
+                      if (!product) return null;
+                      return (
+                        <SortableProductBlock
+                          key={itemKey(ref)}
+                          itemId={itemKey(ref)}
+                          block={product}
+                          onEdit={() => {
+                            setEditingProductBlock(product);
+                            setProductBuilderOpen(true);
+                          }}
+                          onDelete={() => handleDeleteProductBlock(product.id)}
+                          onToggleActive={(v) =>
+                            handleToggleProductActive(product.id, v)
+                          }
+                          locked={productsLocked}
+                          lockedPlan={productsRequiredPlan}
+                          pinAllowed={pinAllowed}
+                          animateAllowed={animateAllowed}
+                          onSpotlightChange={(next) =>
+                            handleSpotlightChange("product", product.id, next)
+                          }
+                        />
+                      );
+                    }
+                    const text = textBlocks.find((t) => t.id === ref.id);
+                    if (!text) return null;
                     return (
-                      <SortableProductBlock
+                      <SortableTextBlock
                         key={itemKey(ref)}
                         itemId={itemKey(ref)}
-                        block={product}
+                        block={text}
                         onEdit={() => {
-                          setEditingProductBlock(product);
-                          setProductBuilderOpen(true);
+                          setEditingTextBlock(text);
+                          setTextDialogOpen(true);
                         }}
-                        onDelete={() => handleDeleteProductBlock(product.id)}
+                        onDelete={() => handleDeleteTextBlock(text.id)}
                         onToggleActive={(v) =>
-                          handleToggleProductActive(product.id, v)
+                          handleToggleTextActive(text.id, v)
                         }
-                        locked={productsLocked}
-                        lockedPlan={productsRequiredPlan}
+                        locked={textLocked}
+                        lockedPlan={textRequiredPlan}
                         pinAllowed={pinAllowed}
                         animateAllowed={animateAllowed}
                         onSpotlightChange={(next) =>
-                          handleSpotlightChange("product", product.id, next)
+                          handleSpotlightChange("text", text.id, next)
                         }
                       />
                     );
@@ -1478,6 +1676,11 @@ export function LinksPageClient({
           // /my-events. The picker navigates there rather than opening a modal.
           router.push("/my-events/new" as Route);
         }}
+        onAddText={() => {
+          setAddOpen(false);
+          setEditingTextBlock(null);
+          setTextDialogOpen(true);
+        }}
         bookingsLocked={bookingsLocked}
         bookingsRequiredPlan={bookingsRequiredPlan}
         formsLocked={formsLocked}
@@ -1486,6 +1689,31 @@ export function LinksPageClient({
         productsRequiredPlan={productsRequiredPlan}
         eventsLocked={eventsLocked}
         eventsRequiredPlan={eventsRequiredPlan}
+        textLocked={textLocked}
+        textRequiredPlan={textRequiredPlan}
+      />
+
+      <TextBlockDialog
+        open={textDialogOpen}
+        onOpenChange={(o) => {
+          setTextDialogOpen(o);
+          if (!o) setEditingTextBlock(null);
+        }}
+        initial={
+          editingTextBlock
+            ? {
+                id: editingTextBlock.id,
+                title: editingTextBlock.title,
+                iconKey: editingTextBlock.iconKey,
+                iconUrl: editingTextBlock.iconUrl,
+                body: editingTextBlock.body,
+                photoUrl: editingTextBlock.photoUrl,
+              }
+            : null
+        }
+        onSubmit={handleSaveText}
+        onUploadImage={handleUploadTextImage}
+        submitting={savingText}
       />
 
       <FormBuilderDialog
@@ -1953,6 +2181,67 @@ function SortableProductBlock({
       className="min-w-0"
     >
       <ProductBlockRow
+        block={block}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleActive={onToggleActive}
+        dragProps={dragProps}
+        isDragging={isDragging}
+        locked={locked}
+        lockedPlan={lockedPlan}
+        pinAllowed={pinAllowed}
+        animateAllowed={animateAllowed}
+        onSpotlightChange={onSpotlightChange}
+      />
+    </li>
+  );
+}
+
+function SortableTextBlock({
+  itemId,
+  block,
+  onEdit,
+  onDelete,
+  onToggleActive,
+  locked,
+  lockedPlan,
+  pinAllowed,
+  animateAllowed,
+  onSpotlightChange,
+}: {
+  itemId: string;
+  block: EditableTextBlockWithId;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleActive: (next: boolean) => void;
+  locked?: boolean;
+  lockedPlan?: "pro" | "business";
+  pinAllowed: boolean;
+  animateAllowed: boolean;
+  onSpotlightChange: (next: {
+    spotlight: BlockSpotlight;
+    animationStyle: BlockAnimationStyle | null;
+  }) => Promise<void> | void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: itemId });
+  const dragProps = {
+    ...attributes,
+    ...listeners,
+  } as React.HTMLAttributes<HTMLButtonElement>;
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className="min-w-0"
+    >
+      <TextBlockRow
         block={block}
         onEdit={onEdit}
         onDelete={onDelete}

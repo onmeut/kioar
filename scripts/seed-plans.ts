@@ -302,6 +302,14 @@ const FEATURES: FeatureSeed[] = [
     pro: true,
     business: true,
   },
+  {
+    key: "link_text_block",
+    nameFa: "بلوک متن",
+    category: "link_types",
+    free: false,
+    pro: true,
+    business: true,
+  },
 
   // ---- analytics
   {

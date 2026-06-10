@@ -44,6 +44,19 @@ import {
   updateProductBlockAction,
   uploadProductItemImageAction,
 } from "@/app/(app)/products/actions";
+import {
+  createTextBlockAction,
+  deleteTextBlockAction,
+  toggleTextBlockActiveAction,
+  updateTextBlockAction,
+  uploadTextBlockImageAction,
+} from "@/app/(app)/text-blocks/actions";
+import {
+  getTextBlocksByUserId,
+  type TextBlockRow,
+} from "@/lib/text-block-service";
+import type { EditableTextBlockWithId } from "@/components/dashboard/text-block-row";
+import type { IconKey } from "@/lib/link-icons";
 import { getDb } from "@/db";
 import { bookings, formSubmissions } from "@/db/schema";
 import { inArray, sql } from "drizzle-orm";
@@ -83,13 +96,29 @@ function minorToMajorString(
   currency: ProductBlockCurrency,
 ): string {
   if (minor === null || minor === undefined || minor === 0) return "";
-  return String(minor / MAJOR_DIVISOR[currency]);
+  const digits = String(minor / MAJOR_DIVISOR[currency]);
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 /** Map a server `FullProductBlock` to the editable client shape used by
  * `LinksPageClient`. Accepts the raw row currency/preset/etc. as `string`
  * and narrows to the validated unions; unknown values fall back to safe
  * defaults so a malformed row never crashes the editor. */
+function toEditableTextBlock(b: TextBlockRow): EditableTextBlockWithId {
+  return {
+    id: b.id,
+    title: b.title,
+    iconKey: (b.iconKey as IconKey | null) ?? null,
+    iconUrl: b.iconUrl,
+    body: b.body,
+    photoUrl: b.photoUrl,
+    isActive: b.isActive,
+    sortOrder: b.sortOrder,
+    spotlight: b.spotlight,
+    animationStyle: b.animationStyle,
+  };
+}
+
 function toEditableProductBlock(b: FullProductBlock) {
   const currency: ProductBlockCurrency = (
     PRODUCT_BLOCK_CURRENCIES as readonly string[]
@@ -293,6 +322,7 @@ export default async function DashboardLinksPage() {
   const formFeature = blockKindToFeatureKey("form");
   const productFeature = blockKindToFeatureKey("product");
   const eventFeature = blockKindToFeatureKey("event");
+  const textFeature = blockKindToFeatureKey("text");
   const bookingsLocked =
     pageId && bookingFeature
       ? !(await pageHasFeature(pageId, bookingFeature))
@@ -308,6 +338,10 @@ export default async function DashboardLinksPage() {
   const eventsLocked =
     pageId && eventFeature
       ? !(await pageHasFeature(pageId, eventFeature))
+      : false;
+  const textLocked =
+    pageId && textFeature
+      ? !(await pageHasFeature(pageId, textFeature))
       : false;
 
   // Phase 5 + admin matrix: each locked block row needs to know which
@@ -332,11 +366,21 @@ export default async function DashboardLinksPage() {
     eventsLocked && eventFeature
       ? ((await getFeatureLockTier(eventFeature)) ?? "business")
       : "business";
+  const textRequiredPlan =
+    textLocked && textFeature
+      ? ((await getFeatureLockTier(textFeature)) ?? "pro")
+      : "pro";
 
   const rawProductBlocks = pageId
     ? await getProductBlocksByUserId(viewer.user.id)
     : [];
   const productBlocks = rawProductBlocks.map(toEditableProductBlock);
+
+  const rawTextBlocks = pageId
+    ? await getTextBlocksByUserId(viewer.user.id)
+    : [];
+  const textBlocks: EditableTextBlockWithId[] =
+    rawTextBlocks.map(toEditableTextBlock);
 
   const productItemsLimit = pageId
     ? await getPageEntitlementLimit(pageId, "products_max_items_per_block")
@@ -410,6 +454,7 @@ export default async function DashboardLinksPage() {
       initialBookingBlocks={bookingBlocks}
       initialFormBlocks={formBlocks}
       initialProductBlocks={productBlocks}
+      initialTextBlocks={textBlocks}
       linkClickCounts={clickCounts}
       publicUrl={publicUrl}
       fetchMetadataAction={fetchLinkMetadataAction}
@@ -432,14 +477,21 @@ export default async function DashboardLinksPage() {
       deleteProductBlockAction={deleteProductBlockAction}
       toggleProductBlockActiveAction={toggleProductBlockActiveAction}
       uploadProductItemImageAction={uploadProductItemImageAction}
+      createTextBlockAction={createTextBlockAction}
+      updateTextBlockAction={updateTextBlockAction}
+      deleteTextBlockAction={deleteTextBlockAction}
+      toggleTextBlockActiveAction={toggleTextBlockActiveAction}
+      uploadTextBlockImageAction={uploadTextBlockImageAction}
       bookingsLocked={bookingsLocked}
       formsLocked={formsLocked}
       productsLocked={productsLocked}
       eventsLocked={eventsLocked}
+      textLocked={textLocked}
       bookingsRequiredPlan={bookingsRequiredPlan}
       formsRequiredPlan={formsRequiredPlan}
       productsRequiredPlan={productsRequiredPlan}
       eventsRequiredPlan={eventsRequiredPlan}
+      textRequiredPlan={textRequiredPlan}
       productItemsCap={productItemsCap}
       pinAllowed={pinAllowed}
       animateAllowed={animateAllowed}

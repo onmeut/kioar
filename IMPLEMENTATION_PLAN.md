@@ -615,3 +615,4 @@ No new infra (no BullMQ, no pg_cron, no Redis-as-queue). The existing systemd ti
 | lookup_key        | category         | free | pro | business | notes |
 | ----------------- | ---------------- | ---- | --- | -------- | ----- |
 | `business_events` | `business_tools` | —    | —   | ✓        | Events block: registration, host approval, manual paid-receipt flow, discount codes, QR door check-in. Boolean grant; per-event capacity is host-set, not a plan limit. See `docs/EVENTS_PLAN.md`. |
+| `link_text_block` | `link_types`     | —    | ✓   | ✓        | Text block: Notion-style free text with optional title, optional icon (link icon vocabulary), and optional full-width photo. `body` required (~500 chars). Boolean grant; non-`business_` prefix ⇒ green Pro lock chip. Table `profile_text_blocks`. |

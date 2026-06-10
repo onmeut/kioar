@@ -89,6 +89,20 @@ export type PublicProfileCardData = {
     }
   >;
   eventBlocks?: PublicEventCardData[];
+  textBlocks?: PublicTextBlockData[];
+};
+
+/** Public-page render shape for a text block. */
+export type PublicTextBlockData = {
+  id: string;
+  title: string | null;
+  iconKey: IconKey | null;
+  iconUrl: string | null;
+  body: string;
+  photoUrl: string | null;
+  sortOrder?: number;
+  spotlight?: BlockSpotlight;
+  animationStyle?: BlockAnimationStyle | null;
 };
 
 /** Public-page render shape for an upcoming event card (one per event). */
@@ -305,11 +319,19 @@ export function PublicProfileCard({
                 event: PublicEventCardData;
                 spotlight: BlockSpotlight;
                 animationStyle: BlockAnimationStyle | null;
+              }
+            | {
+                kind: "text";
+                sortOrder: number;
+                block: PublicTextBlockData;
+                spotlight: BlockSpotlight;
+                animationStyle: BlockAnimationStyle | null;
               };
           const bookingBlocks = profile.bookingBlocks ?? [];
           const formBlocks = profile.formBlocks ?? [];
           const productBlocks = profile.productBlocks ?? [];
           const eventBlocks = profile.eventBlocks ?? [];
+          const textBlocks = profile.textBlocks ?? [];
           const items: Item[] = [
             ...profile.links.map((link, i) => {
               const spotlight = link.spotlight ?? "none";
@@ -364,6 +386,17 @@ export function PublicProfileCard({
                 event,
                 spotlight,
                 animationStyle: event.animationStyle ?? null,
+              };
+            }),
+            ...textBlocks.map((block, i) => {
+              const spotlight = block.spotlight ?? "none";
+              const baseSort = block.sortOrder ?? 5_000_000 + i;
+              return {
+                kind: "text" as const,
+                sortOrder: spotlightSortKey(spotlight, baseSort),
+                block,
+                spotlight,
+                animationStyle: block.animationStyle ?? null,
               };
             }),
           ].sort((a, b) => a.sortOrder - b.sortOrder);
@@ -598,6 +631,65 @@ export function PublicProfileCard({
                 >
                   {inner}
                 </span>
+              );
+            }
+            if (item.kind === "text") {
+              const tb = item.block;
+              const hasIcon = Boolean(tb.iconKey || tb.iconUrl);
+              return (
+                <PublicAnimatedBlock
+                  key={`t-${tb.id}`}
+                  animClass={animClassOnce}
+                  intervalSec={10}
+                >
+                  <div
+                    className={cn(
+                      "w-full space-y-3 rounded-2xl bg-foreground/4 px-4 py-3 text-start",
+                      animClass,
+                    )}
+                  >
+                    {/* Icon + title row (either may be absent) */}
+                    {hasIcon || tb.title ? (
+                      <div className="flex items-center gap-2.5">
+                        {hasIcon ? (
+                          <LinkIconBubble
+                            iconKey={tb.iconKey ?? "auto"}
+                            iconUrl={tb.iconUrl ?? null}
+                            imageUrl={null}
+                            url=""
+                            size={36}
+                            className="rounded-2xl"
+                          />
+                        ) : null}
+                        {tb.title ? (
+                          <h3 className="min-w-0 flex-1 truncate text-[15px] font-bold text-foreground">
+                            {tb.title}
+                          </h3>
+                        ) : null}
+                      </div>
+                    ) : null}
+
+                    {/* Body */}
+                    <p className="whitespace-pre-wrap break-words text-[14px] leading-7 text-foreground">
+                      {tb.body}
+                    </p>
+
+                    {/* Photo — full width of the block, below the text */}
+                    {tb.photoUrl ? (
+                      <span className="block w-full overflow-hidden rounded-2xl bg-muted">
+                        <Image
+                          src={tb.photoUrl}
+                          alt=""
+                          width={640}
+                          height={360}
+                          sizes="(max-width: 640px) 100vw, 640px"
+                          className="h-auto w-full object-cover"
+                          unoptimized
+                        />
+                      </span>
+                    ) : null}
+                  </div>
+                </PublicAnimatedBlock>
               );
             }
             const link = item.link;

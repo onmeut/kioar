@@ -9,6 +9,7 @@ import {
   profileBookingBlocks,
   profileFormBlocks,
   profileLinks,
+  profileTextBlocks,
 } from "@/db/schema";
 import {
   type BlockAnimationStyle,
@@ -18,7 +19,7 @@ import { invalidateProfileCacheBySlug } from "@/lib/cache/profile-cache";
 import { pageHasFeature } from "@/lib/entitlements";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
-export type SpotlightBlockKind = "link" | "form" | "booking";
+export type SpotlightBlockKind = "link" | "form" | "booking" | "text";
 
 export type SpotlightWriteInput = {
   userId: string;
@@ -88,6 +89,18 @@ export async function setBlockSpotlightForUser(
           and(
             eq(profileBookingBlocks.id, input.blockId),
             eq(profileBookingBlocks.profileId, profile.id),
+          ),
+        );
+      await invalidateProfileCacheBySlug(profile.slug);
+      return { ok: true };
+    case "text":
+      await db
+        .update(profileTextBlocks)
+        .set({ spotlight: input.spotlight, animationStyle })
+        .where(
+          and(
+            eq(profileTextBlocks.id, input.blockId),
+            eq(profileTextBlocks.profileId, profile.id),
           ),
         );
       await invalidateProfileCacheBySlug(profile.slug);

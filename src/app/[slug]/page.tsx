@@ -458,6 +458,17 @@ export default async function PublicProfilePage({
               spotlight: e.spotlight,
               animationStyle: e.animationStyle,
             })),
+            textBlocks: (profile.textBlocks ?? []).map((t) => ({
+              id: t.id,
+              title: t.title,
+              iconKey: isIconKey(t.iconKey) ? t.iconKey : null,
+              iconUrl: t.iconUrl ?? null,
+              body: t.body,
+              photoUrl: t.photoUrl ?? null,
+              sortOrder: t.sortOrder,
+              spotlight: t.spotlight,
+              animationStyle: t.animationStyle,
+            })),
           }}
           formSubmitAction={submitFormAction}
         />

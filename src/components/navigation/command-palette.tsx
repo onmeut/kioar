@@ -325,7 +325,7 @@ export function CommandPalette({
               onSelect={() => triggerEditorAction("add-block")}
             >
               <LinkIcon />
-              <span>افزودن لینک / بلاک جدید</span>
+              <span>افزودن بلاک جدید</span>
             </CommandItem>
             <CommandItem
               value="action-add-booking"

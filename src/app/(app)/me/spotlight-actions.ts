@@ -8,7 +8,7 @@ import { requireCompletedProfile } from "@/lib/auth/session";
 import { setBlockSpotlightForUser } from "@/lib/block-spotlight-service";
 
 const inputSchema = z.object({
-  blockKind: z.enum(["link", "form", "booking"]),
+  blockKind: z.enum(["link", "form", "booking", "text"]),
   blockId: z.string().uuid(),
   spotlight: z.enum(["none", "pin", "animate"]),
   animationStyle: z

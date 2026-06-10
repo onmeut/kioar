@@ -821,3 +821,42 @@ export const productBlockInputSchema = z.object({
 export type ProductBlockInput = z.infer<typeof productBlockInputSchema>;
 export type ProductSectionInput = z.infer<typeof productSectionInputSchema>;
 export type ProductItemInput = z.infer<typeof productItemInputSchema>;
+
+// ---------------------------------------------------------------------------
+// Text blocks
+// ---------------------------------------------------------------------------
+// Notion-style content block: required free text + optional title, icon, and
+// photo. Icon vocabulary mirrors links (named key OR uploaded/remote url).
+
+/** Plain-text body cap. ~500 chars per the product spec. */
+export const TEXT_BLOCK_BODY_MAX = 500;
+
+export const textBlockInputSchema = z.object({
+  title: z
+    .string()
+    .trim()
+    .max(80, "عنوان طولانی‌تر از حد مجاز است.")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  iconKey: z
+    .union([z.literal(""), z.string().trim().max(32)])
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  iconUrl: optionalHttpUrlSchema,
+  body: z
+    .string()
+    .trim()
+    .min(1, "متن بلوک لازم است.")
+    .max(TEXT_BLOCK_BODY_MAX, "متن طولانی‌تر از حد مجاز است."),
+  photoUrl: optionalHttpUrlSchema,
+  spotlight: z.enum(["none", "pin", "animate"]).optional().default("none"),
+  animationStyle: z
+    .enum(["buzz", "wobble", "pop", "swipe"])
+    .optional()
+    .nullable()
+    .transform((v) => (v ? v : null)),
+});
+
+export type TextBlockInput = z.infer<typeof textBlockInputSchema>;

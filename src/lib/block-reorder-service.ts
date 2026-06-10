@@ -21,11 +21,12 @@ import {
   profileFormBlocks,
   profileLinks,
   profileProductBlocks,
+  profileTextBlocks,
 } from "@/db/schema";
 import { invalidateProfileCacheBySlug } from "@/lib/cache/profile-cache";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
-export type BlockKind = "link" | "booking" | "form" | "product";
+export type BlockKind = "link" | "booking" | "form" | "product" | "text";
 
 export type ReorderItem = { kind: BlockKind; id: string };
 
@@ -62,8 +63,10 @@ export async function reorderBlocksForUser(
   const bookingIds = items.filter((i) => i.kind === "booking").map((i) => i.id);
   const formIds = items.filter((i) => i.kind === "form").map((i) => i.id);
   const productIds = items.filter((i) => i.kind === "product").map((i) => i.id);
+  const textIds = items.filter((i) => i.kind === "text").map((i) => i.id);
 
-  const [ownLinks, ownBookings, ownForms, ownProducts] = await Promise.all([
+  const [ownLinks, ownBookings, ownForms, ownProducts, ownTexts] =
+    await Promise.all([
     linkIds.length
       ? db
           .select({ id: profileLinks.id })
@@ -108,12 +111,24 @@ export async function reorderBlocksForUser(
             ),
           )
       : Promise.resolve([] as { id: string }[]),
+    textIds.length
+      ? db
+          .select({ id: profileTextBlocks.id })
+          .from(profileTextBlocks)
+          .where(
+            and(
+              eq(profileTextBlocks.profileId, profile.id),
+              inArray(profileTextBlocks.id, textIds),
+            ),
+          )
+      : Promise.resolve([] as { id: string }[]),
   ]);
 
   const ownedLinks = new Set(ownLinks.map((r) => r.id));
   const ownedBookings = new Set(ownBookings.map((r) => r.id));
   const ownedForms = new Set(ownForms.map((r) => r.id));
   const ownedProducts = new Set(ownProducts.map((r) => r.id));
+  const ownedTexts = new Set(ownTexts.map((r) => r.id));
 
   await db.transaction(async (tx) => {
     let order = 0;
@@ -156,6 +171,16 @@ export async function reorderBlocksForUser(
             and(
               eq(profileProductBlocks.profileId, profile.id),
               eq(profileProductBlocks.id, item.id),
+            ),
+          );
+      } else if (item.kind === "text" && ownedTexts.has(item.id)) {
+        await tx
+          .update(profileTextBlocks)
+          .set({ sortOrder: order })
+          .where(
+            and(
+              eq(profileTextBlocks.profileId, profile.id),
+              eq(profileTextBlocks.id, item.id),
             ),
           );
       } else {

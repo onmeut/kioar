@@ -81,7 +81,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { normalizeBlockSlug } from "@/lib/slug";
-import { toPersianDigits } from "@/lib/persian";
+import { toPersianDigits, toEnglishDigits } from "@/lib/persian";
 import { formatPriceDisplay } from "@/lib/money";
 import type { IconKey } from "@/lib/link-icons";
 import { LinkIconPickerButton } from "@/components/dashboard/link-icon-picker-button";
@@ -293,17 +293,29 @@ function minorToMajorString(
 ): string {
   if (minor === null || minor === undefined || minor === 0) return "";
   const major = minor / MAJOR_TO_MINOR[currency];
-  return String(major);
+  return formatWithCommas(String(major));
 }
 
 function majorStringToMinor(
   raw: string,
   currency: ProductBlockCurrency,
 ): number {
-  const cleaned = raw.replace(/[,،\s]/g, "");
+  const cleaned = toEnglishDigits(raw).replace(/[,،\s]/g, "");
   const num = Number(cleaned);
   if (!Number.isFinite(num) || num < 0) return 0;
   return Math.round(num * MAJOR_TO_MINOR[currency]);
+}
+
+/** Format a raw digit string with thousand-separator commas: "3500000" → "3,500,000" */
+function formatWithCommas(digits: string): string {
+  if (!digits) return "";
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+/** Accept user price input: normalize Persian digits, strip non-digits, re-format with commas. */
+function filterPriceInput(value: string): string {
+  const digits = toEnglishDigits(value).replace(/[^\d]/g, "");
+  return formatWithCommas(digits);
 }
 
 function buildPayload(d: ProductBlockDraft): ProductBlockSubmit {
@@ -420,6 +432,12 @@ export function ProductBuilderDialog({
     null,
   );
   const [tab, setTab] = useState<"items" | "categories" | "settings">("items");
+  /** Local working copy for the settings tab — only flushed to `draft` on
+   * explicit "ذخیره" press. Items/categories still auto-save separately. */
+  const [settingsDraft, setSettingsDraft] = useState<ProductBlockDraft>(
+    () => initial ?? defaultDraft(newPreset),
+  );
+  const [settingsSaving, setSettingsSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   /** Index of a category pending delete confirmation. Separate from item
    * delete so the two dialogs never collide. */
@@ -440,7 +458,9 @@ export function ProductBuilderDialog({
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
-      setDraft(initial ?? defaultDraft(newPreset));
+      const seed = initial ?? defaultDraft(newPreset);
+      setDraft(seed);
+      setSettingsDraft(seed);
       setEditingIndex(null);
       setPendingItem(null);
       setTab("items");
@@ -933,97 +953,121 @@ export function ProductBuilderDialog({
 
               <TabsContent
                 value="settings"
-                className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4"
+                className="flex min-h-0 flex-1 flex-col"
               >
-                <SettingsPane
-                  draft={draft}
-                  setDraft={setDraft}
-                  onCommit={(d) => void autoSave(d)}
-                />
+                <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
+                  <SettingsPane
+                    draft={settingsDraft}
+                    setDraft={setSettingsDraft}
+                  />
 
-                <div className="grid gap-1.5">
-                  <Label htmlFor="prod-slug">نشانی صفحه اختصاصی</Label>
-                  <div
-                    dir="ltr"
-                    className="flex items-center gap-1 rounded-xl border bg-muted/30 px-3 has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-ring"
-                  >
-                    <span className="shrink-0 text-sm text-muted-foreground">
-                      {profileSlug ? `${profileSlug}/` : "/"}
-                    </span>
-                    <Input
-                      id="prod-slug"
-                      value={draft.slug ?? ""}
-                      placeholder="menu"
-                      maxLength={60}
-                      dir="ltr"
-                      inputMode="url"
-                      autoCapitalize="none"
-                      autoCorrect="off"
-                      spellCheck={false}
-                      enterKeyHint="done"
-                      className="border-0 bg-transparent px-0 focus-visible:ring-0"
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, slug: e.target.value }))
-                      }
-                      onBlur={() => {
-                        const normalized = normalizeBlockSlug(draft.slug);
-                        const next = { ...draft, slug: normalized };
-                        setDraft(next);
-                        void autoSave(next);
-                      }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {draft.slug
-                      ? "این بلوک یک صفحه‌ی جدا با این نشانی خواهد داشت."
-                      : "خالی بگذارید تا این بلوک فقط داخل پروفایل نمایش داده شود."}
-                  </p>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>نمای محصولات</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {PRODUCT_BLOCK_LAYOUTS.map((l) => (
-                      <LayoutTile
-                        key={l}
-                        layout={l}
-                        selected={draft.layout === l}
-                        onSelect={() => commit({ ...draft, layout: l })}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label>نحوه نمایش در صفحه</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {PRODUCT_BLOCK_DISPLAY_MODES.map((m) => (
-                      <DisplayModeTile
-                        key={m}
-                        mode={m}
-                        selected={draft.displayMode === m}
-                        onSelect={() => commit({ ...draft, displayMode: m })}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                {draft.displayMode === "pill" ? (
                   <div className="grid gap-1.5">
-                    <Label htmlFor="prod-pill">متن دکمه</Label>
-                    <Input
-                      id="prod-pill"
-                      value={draft.pillLabel ?? ""}
-                      placeholder="مثلاً: مشاهده منو"
-                      maxLength={40}
-                      enterKeyHint="done"
-                      onChange={(e) =>
-                        setDraft((d) => ({ ...d, pillLabel: e.target.value }))
-                      }
-                      onBlur={() => void autoSave(draft)}
-                    />
+                    <Label htmlFor="prod-slug">نشانی صفحه اختصاصی</Label>
+                    <div
+                      dir="ltr"
+                      className="flex items-center gap-1 rounded-xl border bg-muted/30 px-3 has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-ring"
+                    >
+                      <span className="shrink-0 text-sm text-muted-foreground">
+                        {profileSlug ? `${profileSlug}/` : "/"}
+                      </span>
+                      <Input
+                        id="prod-slug"
+                        value={settingsDraft.slug ?? ""}
+                        placeholder="menu"
+                        maxLength={60}
+                        dir="ltr"
+                        inputMode="url"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        spellCheck={false}
+                        enterKeyHint="done"
+                        className="border-0 bg-transparent px-0 focus-visible:ring-0"
+                        onChange={(e) =>
+                          setSettingsDraft((d) => ({ ...d, slug: e.target.value }))
+                        }
+                        onBlur={() => {
+                          const normalized = normalizeBlockSlug(settingsDraft.slug);
+                          setSettingsDraft((d) => ({ ...d, slug: normalized }));
+                        }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {settingsDraft.slug
+                        ? "این بلوک یک صفحه‌ی جدا با این نشانی خواهد داشت."
+                        : "خالی بگذارید تا این بلوک فقط داخل پروفایل نمایش داده شود."}
+                    </p>
                   </div>
-                ) : null}
+
+                  <div className="grid gap-2">
+                    <Label>نمای محصولات</Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {PRODUCT_BLOCK_LAYOUTS.map((l) => (
+                        <LayoutTile
+                          key={l}
+                          layout={l}
+                          selected={settingsDraft.layout === l}
+                          onSelect={() =>
+                            setSettingsDraft((d) => ({ ...d, layout: l }))
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="grid gap-2">
+                    <Label>نحوه نمایش در صفحه</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {PRODUCT_BLOCK_DISPLAY_MODES.map((m) => (
+                        <DisplayModeTile
+                          key={m}
+                          mode={m}
+                          selected={settingsDraft.displayMode === m}
+                          onSelect={() =>
+                            setSettingsDraft((d) => ({ ...d, displayMode: m }))
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="shrink-0 border-t bg-background px-4 pt-3 safe-pb">
+                  <Button
+                    type="button"
+                    onClick={async () => {
+                      const normalized = normalizeBlockSlug(settingsDraft.slug);
+                      const merged = {
+                        ...draft,
+                        name: settingsDraft.name,
+                        description: settingsDraft.description,
+                        currency: settingsDraft.currency,
+                        slug: normalized,
+                        layout: settingsDraft.layout,
+                        displayMode: settingsDraft.displayMode,
+                        pillLabel: settingsDraft.pillLabel,
+                        iconKey: settingsDraft.iconKey,
+                        iconUrl: settingsDraft.iconUrl,
+                        imageUrl: settingsDraft.imageUrl,
+                      };
+                      setSettingsDraft((d) => ({ ...d, slug: normalized }));
+                      setSettingsSaving(true);
+                      try {
+                        const saved = await autoSave(merged);
+                        setDraft(saved);
+                      } finally {
+                        setSettingsSaving(false);
+                      }
+                    }}
+                    disabled={settingsSaving}
+                    className="h-12 w-full rounded-full text-base"
+                  >
+                    {settingsSaving ? (
+                      <Loader2Icon className="size-4 animate-spin" />
+                    ) : null}
+                    ذخیره
+                  </Button>
+                </div>
               </TabsContent>
             </Tabs>
           </div>
@@ -1469,13 +1513,13 @@ function SortableBatchRow({
         />
         <Input
           id={`batch-price-${row._key}`}
-          inputMode="decimal"
+          inputMode="numeric"
           dir="ltr"
           placeholder={`قیمت (${CURRENCY_LABEL[currency]})`}
           value={row.priceMajor}
           enterKeyHint="next"
           aria-label={`قیمت (${CURRENCY_LABEL[currency]})`}
-          onChange={(e) => onUpdate({ priceMajor: e.target.value })}
+          onChange={(e) => onUpdate({ priceMajor: filterPriceInput(e.target.value) })}
         />
       </div>
 
@@ -1519,11 +1563,9 @@ function SortableBatchRow({
 function SettingsPane({
   draft,
   setDraft,
-  onCommit,
 }: {
   draft: ProductBlockDraft;
   setDraft: React.Dispatch<React.SetStateAction<ProductBlockDraft>>;
-  onCommit: (d: ProductBlockDraft) => void;
 }) {
   return (
     <>
@@ -1535,14 +1577,12 @@ function SettingsPane({
           imageUrl={draft.imageUrl}
           size={52}
           onChange={(next) => {
-            const updated = {
-              ...draft,
+            setDraft((d) => ({
+              ...d,
               iconKey: next.iconKey,
               iconUrl: next.iconUrl,
               imageUrl: next.imageUrl,
-            };
-            setDraft(updated);
-            onCommit(updated);
+            }));
           }}
         />
         <div className="grid min-w-0 flex-1 gap-1.5">
@@ -1554,7 +1594,6 @@ function SettingsPane({
             placeholder="مثلاً: منوی کافه / خدمات طراحی"
             enterKeyHint="done"
             onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
-            onBlur={() => onCommit(draft)}
           />
         </div>
       </div>
@@ -1569,7 +1608,6 @@ function SettingsPane({
           onChange={(e) =>
             setDraft((d) => ({ ...d, description: e.target.value }))
           }
-          onBlur={() => onCommit(draft)}
           rows={2}
         />
       </div>
@@ -1579,12 +1617,7 @@ function SettingsPane({
         <Select
           value={draft.currency}
           onValueChange={(v) => {
-            const updated = {
-              ...draft,
-              currency: v as ProductBlockCurrency,
-            };
-            setDraft(updated);
-            onCommit(updated);
+            setDraft((d) => ({ ...d, currency: v as ProductBlockCurrency }));
           }}
         >
           <SelectTrigger className="w-full">
@@ -1664,6 +1697,58 @@ function ItemEditor({
           />
         </div>
 
+        <div className="grid gap-1.5">
+          <Label htmlFor="item-desc-main">توضیح (اختیاری)</Label>
+          <Textarea
+            id="item-desc-main"
+            value={item.description ?? ""}
+            maxLength={280}
+            rows={2}
+            placeholder="جزئیات کوتاه — مثلاً «اسپرسو + شیر بخارپز» یا «لوگوی برند با ۳ بازنگری»."
+            onChange={(e) =>
+              onChange({ ...item, description: e.target.value })
+            }
+          />
+        </div>
+
+        {!isFreeOrOnRequest ? (
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            <div className="grid gap-1.5">
+              <Label htmlFor="price-amount">
+                {item.priceType === "range" ? "از" : "قیمت"} (
+                {CURRENCY_LABEL[currency]})
+              </Label>
+              <Input
+                id="price-amount"
+                inputMode="numeric"
+                dir="ltr"
+                placeholder="مثلاً: 85,000"
+                value={item.priceMajor}
+                enterKeyHint="done"
+                onChange={(e) =>
+                  onChange({ ...item, priceMajor: filterPriceInput(e.target.value) })
+                }
+              />
+            </div>
+            {item.priceType === "range" ? (
+              <div className="grid w-32 gap-1.5">
+                <Label htmlFor="price-max">تا</Label>
+                <Input
+                  id="price-max"
+                  inputMode="numeric"
+                  dir="ltr"
+                  placeholder="مثلاً: 200,000"
+                  value={item.priceMaxMajor}
+                  enterKeyHint="done"
+                  onChange={(e) =>
+                    onChange({ ...item, priceMaxMajor: filterPriceInput(e.target.value) })
+                  }
+                />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {sections.length > 0 ? (
           <div className="grid gap-1.5">
             <Label htmlFor="item-section">دسته‌بندی (اختیاری)</Label>
@@ -1698,42 +1783,6 @@ function ItemEditor({
           </div>
         ) : null}
 
-        {!isFreeOrOnRequest ? (
-          <div className="grid grid-cols-[1fr_auto] gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="price-amount">
-                {item.priceType === "range" ? "از" : "قیمت"} (
-                {CURRENCY_LABEL[currency]})
-              </Label>
-              <Input
-                id="price-amount"
-                inputMode="decimal"
-                placeholder="مثلاً: ۸۵۰۰۰"
-                value={item.priceMajor}
-                enterKeyHint="done"
-                onChange={(e) =>
-                  onChange({ ...item, priceMajor: e.target.value })
-                }
-              />
-            </div>
-            {item.priceType === "range" ? (
-              <div className="grid w-32 gap-1.5">
-                <Label htmlFor="price-max">تا</Label>
-                <Input
-                  id="price-max"
-                  inputMode="decimal"
-                  placeholder="مثلاً: ۲۰۰۰۰۰"
-                  value={item.priceMaxMajor}
-                  enterKeyHint="done"
-                  onChange={(e) =>
-                    onChange({ ...item, priceMaxMajor: e.target.value })
-                  }
-                />
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
         {/* Image upload */}
         <ProductImageField
           imageUrl={item.imageUrl}
@@ -1759,20 +1808,6 @@ function ItemEditor({
           </button>
           {advancedOpen ? (
             <div className="flex flex-col gap-4 px-4 pt-1 pb-4">
-              <div className="grid gap-1.5">
-                <Label htmlFor="item-desc">توضیح</Label>
-                <Textarea
-                  id="item-desc"
-                  value={item.description ?? ""}
-                  maxLength={280}
-                  rows={3}
-                  placeholder="جزئیات کوتاه — مثلاً «اسپرسو + شیر بخارپز» یا «لوگوی برند با ۳ بازنگری»."
-                  onChange={(e) =>
-                    onChange({ ...item, description: e.target.value })
-                  }
-                />
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label>نوع قیمت</Label>
@@ -1924,10 +1959,10 @@ function ItemEditor({
         >
           {submitting ? (
             <Loader2Icon className="size-4 animate-spin" />
-          ) : (
+          ) : mode === "add" ? (
             <PlusIcon className="size-4" />
-          )}
-          {mode === "add" ? "اضافه کن" : "به‌روزرسانی"}
+          ) : null}
+          {mode === "add" ? "اضافه کن" : "ذخیره تغییرات"}
         </Button>
       </div>
     </div>
@@ -2394,53 +2429,19 @@ function DisplayModeTile({
       onClick={onSelect}
       aria-pressed={selected}
       className={cn(
-        "flex flex-col gap-2 rounded-2xl border bg-card p-2.5 text-start transition",
+        "flex flex-col gap-1 rounded-2xl border bg-card p-3 text-start transition",
         selected
           ? "border-foreground bg-foreground/5 ring-2 ring-foreground/10"
           : "hover:border-foreground/20",
       )}
     >
-      <div className="grid h-16 w-full place-items-center overflow-hidden rounded-xl bg-muted/50">
-        {isPill ? <DisplaySketchPill active={selected} /> : <DisplaySketchInline active={selected} />}
-      </div>
-      <div>
-        <p className={cn("text-xs font-bold leading-tight", selected ? "text-foreground" : "text-foreground/80")}>
-          {isPill ? "دکمه محصولات" : "مستقیم داخل صفحه"}
-        </p>
-        <p className="mt-0.5 text-[10px] leading-tight text-muted-foreground">
-          {isPill ? "بعد از کلیک روی دکمه باز می‌شه" : "مستقیم تو پروفایل نمایش داده می‌شه"}
-        </p>
-      </div>
+      <p className={cn("text-xs font-bold leading-tight", selected ? "text-foreground" : "text-foreground/80")}>
+        {isPill ? "دکمه محصولات" : "مستقیم داخل صفحه"}
+      </p>
+      <p className="text-[10px] leading-tight text-muted-foreground">
+        {isPill ? "بعد از کلیک روی دکمه باز می‌شه" : "مستقیم تو پروفایل نمایش داده می‌شه"}
+      </p>
     </button>
-  );
-}
-
-function DisplaySketchPill({ active }: { active: boolean }) {
-  const bar = active ? "bg-foreground/20" : "bg-foreground/12";
-  const btn = active ? "bg-foreground/70" : "bg-foreground/40";
-  return (
-    <div className="flex w-full flex-col items-center gap-1.5 px-4">
-      <div className={cn("h-1.5 w-full rounded-full", bar)} />
-      <div className={cn("h-1.5 w-4/5 rounded-full", bar)} />
-      <div className={cn("mt-1 h-5 w-20 rounded-full", btn)} />
-    </div>
-  );
-}
-
-function DisplaySketchInline({ active }: { active: boolean }) {
-  const bar = active ? "bg-foreground/20" : "bg-foreground/12";
-  const thumb = active ? "bg-foreground/30" : "bg-foreground/18";
-  const price = active ? "bg-foreground/50" : "bg-foreground/28";
-  return (
-    <div className="flex w-full flex-col gap-1 px-3">
-      {[0, 1, 2].map((i) => (
-        <div key={i} className="flex items-center gap-1.5">
-          <div className={cn("size-4 shrink-0 rounded", thumb)} />
-          <div className={cn("h-1.5 flex-1 rounded-full", bar)} />
-          <div className={cn("h-1.5 w-4 shrink-0 rounded-full", price)} />
-        </div>
-      ))}
-    </div>
   );
 }
 

@@ -425,6 +425,52 @@ export const profileLinks = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// Text block
+// ---------------------------------------------------------------------------
+// A simple, Notion-style content block: free text with an optional title,
+// optional icon (same icon vocabulary as link blocks), and optional photo.
+// Page-owned like every other block — shares the `sort_order` / `is_active` /
+// `spotlight` / `animation_style` axis so it renders intermixed on the public
+// page. `body` is the only required field. Gated behind `link_text_block`
+// (Pro+) via `blockKindToFeatureKey("text")`.
+export const profileTextBlocks = pgTable(
+  "profile_text_blocks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    // Optional heading shown on the same row as the icon. NULL = no title.
+    title: text("title"),
+    // Icon vocabulary mirrors links: `icon_key` is a named icon, `icon_url`
+    // an uploaded/remote image. Both NULL = no icon.
+    iconKey: text("icon_key"),
+    iconUrl: text("icon_url"),
+    // Required free text (RTL, plain). Capped at ~500 chars at the app layer.
+    body: text("body").notNull(),
+    // Optional full-width photo rendered below the text.
+    photoUrl: text("photo_url"),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    spotlight: blockSpotlightEnum("spotlight").default("none").notNull(),
+    animationStyle: blockAnimationEnum("animation_style"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("profile_text_blocks_profile_sort_idx").on(
+      table.profileId,
+      table.sortOrder,
+    ),
+  ],
+);
+
+// ---------------------------------------------------------------------------
 // Events block
 // ---------------------------------------------------------------------------
 // An "event" is a PAGE-OWNED block (like booking/form/product blocks): it
@@ -686,6 +732,7 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
   statsByDay: many(profileStatsByDay),
   bookingBlocks: many(profileBookingBlocks),
   productBlocks: many(profileProductBlocks),
+  textBlocks: many(profileTextBlocks),
   events: many(events),
 }));
 
@@ -695,6 +742,16 @@ export const profileLinksRelations = relations(profileLinks, ({ one }) => ({
     references: [profiles.id],
   }),
 }));
+
+export const profileTextBlocksRelations = relations(
+  profileTextBlocks,
+  ({ one }) => ({
+    profile: one(profiles, {
+      fields: [profileTextBlocks.profileId],
+      references: [profiles.id],
+    }),
+  }),
+);
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
   page: one(profiles, {

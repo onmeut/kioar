@@ -29,6 +29,7 @@ import { getPageEntitlements } from "@/lib/entitlements";
 import { getPublicActiveFormBlocks } from "@/lib/form-service";
 import { getPublicActiveEventBlocks } from "@/lib/events/queries";
 import { getPublicActiveProductBlocks } from "@/lib/product-service";
+import { getPublicActiveTextBlocks } from "@/lib/text-block-service";
 import { isReservedSlug } from "@/lib/slug";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
@@ -128,6 +129,7 @@ async function loadPublicProfileBySlug(slug: string) {
   const formKey = blockKindToFeatureKey("form");
   const productKey = blockKindToFeatureKey("product");
   const eventKey = blockKindToFeatureKey("event");
+  const textKey = blockKindToFeatureKey("text");
 
   // Wave 2 — all queries that only need profile.id run in parallel.
   // getPageEntitlements fetches the full entitlement map for this page in
@@ -154,15 +156,17 @@ async function loadPublicProfileBySlug(slug: string) {
   const formsGranted = formKey === null || entitlements.has(formKey);
   const productsGranted = productKey === null || entitlements.has(productKey);
   const eventsGranted = eventKey === null || entitlements.has(eventKey);
+  const textGranted = textKey === null || entitlements.has(textKey);
 
   // Wave 3 — block content is conditional on entitlements. The fetches are
   // independent of each other so they run in parallel.
-  const [bookingBlocks, formBlocks, productBlocks, eventBlocks] =
+  const [bookingBlocks, formBlocks, productBlocks, eventBlocks, textBlocks] =
     await Promise.all([
       bookingsGranted ? getPublicActiveBookingBlocks(profile.id) : [],
       formsGranted ? getPublicActiveFormBlocks(profile.id) : [],
       productsGranted ? getPublicActiveProductBlocks(profile.id) : [],
       eventsGranted ? getPublicActiveEventBlocks(profile.id) : [],
+      textGranted ? getPublicActiveTextBlocks(profile.id) : [],
     ]);
 
   return {
@@ -172,6 +176,7 @@ async function loadPublicProfileBySlug(slug: string) {
     formBlocks,
     productBlocks,
     eventBlocks,
+    textBlocks,
     owner,
   };
 }

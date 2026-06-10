@@ -421,6 +421,20 @@
 			"when": 1778901200000,
 			"tag": "0060_block_slugs_and_featured",
 			"breakpoints": true
+		},
+		{
+			"idx": 61,
+			"version": "7",
+			"when": 1778901300000,
+			"tag": "0061_profile_text_blocks",
+			"breakpoints": true
+		},
+		{
+			"idx": 62,
+			"version": "7",
+			"when": 1778901400000,
+			"tag": "0062_seed_link_text_block_feature",
+			"breakpoints": true
 		}
 	]
 }

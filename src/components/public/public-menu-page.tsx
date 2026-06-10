@@ -77,23 +77,34 @@ export function MenuItemRow({
           />
         </div>
       ) : null}
-      <div className="min-w-0 flex-1">
-        <p className="text-base font-semibold leading-snug">{item.title}</p>
-        {item.isFeatured && !soldOut ? (
-          <span className="mt-1 inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-            پیشنهاد ما
-          </span>
-        ) : null}
-        {soldOut ? (
-          <span className="mt-1 inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-            ناموجود
-          </span>
-        ) : null}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Title row + inline badges */}
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <p className="text-base font-semibold leading-snug">{item.title}</p>
+          {item.isFeatured && !soldOut ? (
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              پیشنهاد ما
+            </span>
+          ) : null}
+          {item.badge && !soldOut ? (
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+              {item.badge}
+            </span>
+          ) : null}
+          {soldOut ? (
+            <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+              ناموجود
+            </span>
+          ) : null}
+        </div>
+        {/* Description */}
         {item.description ? (
           <p className="mt-1 text-xs leading-relaxed text-foreground">
             {item.description}
           </p>
         ) : null}
+        {/* Price pinned to bottom */}
+        <div className="flex-1" />
         {price ? (
           <p className="mt-2 text-sm font-semibold tabular-nums text-foreground">
             {toPersianDigits(price)}

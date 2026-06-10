@@ -19,6 +19,7 @@ import {
   ShoppingBagIcon,
   SparklesIcon,
   TagIcon,
+  TypeIcon,
   UsersIcon,
   UtensilsIcon,
   WrenchIcon,
@@ -223,6 +224,7 @@ const FEATURE_CARDS: Array<{ key: string; label: string; icon: LucideIcon }> = [
   { key: "services", label: "خدمات", icon: WrenchIcon },
   { key: "form", label: "فرم", icon: FormInputIcon },
   { key: "event", label: "رویداد", icon: CalendarDaysIcon },
+  { key: "text", label: "متن", icon: TypeIcon },
 ];
 
 /** The "menu" and "services" cards are product blocks pre-set to a preset.
@@ -268,6 +270,12 @@ type AddLinkDialogProps = {
   /** When true, the event card shows a lock badge and opens upgrade modal on click. */
   eventsLocked?: boolean;
   eventsRequiredPlan?: UpgradePlanTier;
+  /** Invoked when the "text" feature card is picked. The dialog closes
+   *  itself; the caller opens the text block editor. */
+  onAddText?: () => void;
+  /** When true, the text card shows a lock badge and opens upgrade modal on click. */
+  textLocked?: boolean;
+  textRequiredPlan?: UpgradePlanTier;
 };
 
 export function AddLinkDialog({
@@ -287,6 +295,9 @@ export function AddLinkDialog({
   productsRequiredPlan = "pro",
   eventsLocked = false,
   eventsRequiredPlan = "business",
+  onAddText,
+  textLocked = false,
+  textRequiredPlan = "pro",
 }: AddLinkDialogProps) {
   const isMobile = useIsMobile();
 
@@ -298,7 +309,7 @@ export function AddLinkDialog({
           className="max-h-[92dvh] overflow-hidden rounded-t-3xl p-0"
           showCloseButton={false}
         >
-          <SheetTitle className="sr-only">افزودن لینک</SheetTitle>
+          <SheetTitle className="sr-only">افزودن بلوک</SheetTitle>
           <AddLinkDialogBody
             onClose={() => onOpenChange(false)}
             onSubmit={onSubmit}
@@ -315,6 +326,9 @@ export function AddLinkDialog({
             productsRequiredPlan={productsRequiredPlan}
             eventsLocked={eventsLocked}
             eventsRequiredPlan={eventsRequiredPlan}
+            onAddText={onAddText}
+            textLocked={textLocked}
+            textRequiredPlan={textRequiredPlan}
           />
         </SheetContent>
       </Sheet>
@@ -344,6 +358,9 @@ export function AddLinkDialog({
           productsRequiredPlan={productsRequiredPlan}
           eventsLocked={eventsLocked}
           eventsRequiredPlan={eventsRequiredPlan}
+          onAddText={onAddText}
+          textLocked={textLocked}
+          textRequiredPlan={textRequiredPlan}
         />
       </DialogContent>
     </Dialog>
@@ -368,6 +385,9 @@ function AddLinkDialogBody({
   productsRequiredPlan,
   eventsLocked,
   eventsRequiredPlan,
+  onAddText,
+  textLocked,
+  textRequiredPlan,
 }: {
   onClose: () => void;
   onSubmit: (link: Omit<EditableLink, "id" | "sortOrder">) => void;
@@ -384,6 +404,9 @@ function AddLinkDialogBody({
   productsRequiredPlan?: UpgradePlanTier;
   eventsLocked?: boolean;
   eventsRequiredPlan?: UpgradePlanTier;
+  onAddText?: () => void;
+  textLocked?: boolean;
+  textRequiredPlan?: UpgradePlanTier;
 }) {
   const [step, setStep] = useState<Step>("pick");
   const [activeCategory, setActiveCategory] =
@@ -564,7 +587,8 @@ function AddLinkDialogBody({
                   (card.key === "bookings" && bookingsLocked) ||
                   (card.key === "form" && formsLocked) ||
                   (isProductCard && productsLocked) ||
-                  (card.key === "event" && eventsLocked);
+                  (card.key === "event" && eventsLocked) ||
+                  (card.key === "text" && textLocked);
                 const lockedPlan =
                   card.key === "bookings"
                     ? bookingsRequiredPlan
@@ -574,7 +598,9 @@ function AddLinkDialogBody({
                         ? productsRequiredPlan
                         : card.key === "event"
                           ? eventsRequiredPlan
-                          : undefined;
+                          : card.key === "text"
+                            ? textRequiredPlan
+                            : undefined;
                 return (
                   <button
                     key={card.key}
@@ -624,6 +650,16 @@ function AddLinkDialogBody({
                         } else {
                           onClose();
                           onAddEvent?.();
+                        }
+                      } else if (card.key === "text") {
+                        if (textLocked) {
+                          setUpgradeModal({
+                            plan: textRequiredPlan ?? "pro",
+                            featureName: "بلاک متن",
+                          });
+                        } else {
+                          onClose();
+                          onAddText?.();
                         }
                       } else {
                         pickCustom();

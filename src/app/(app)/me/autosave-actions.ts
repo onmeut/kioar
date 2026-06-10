@@ -326,13 +326,14 @@ export async function reorderBlocksAction(
     (
       it,
     ): it is {
-      kind: "link" | "booking" | "form" | "product";
+      kind: "link" | "booking" | "form" | "product" | "text";
       id: string;
     } =>
       it.kind === "link" ||
       it.kind === "booking" ||
       it.kind === "form" ||
-      it.kind === "product",
+      it.kind === "product" ||
+      it.kind === "text",
   );
 
   const { reorderBlocksForUser } = await import("@/lib/block-reorder-service");
