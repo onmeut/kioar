@@ -83,11 +83,17 @@ export function KioarBadge({
           "inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70",
           isDark
             ? "border-white/10 bg-[#111111] text-white"
-            : "border-sidebar-border bg-sidebar text-foreground",
+            : "border-border bg-background text-foreground",
         )}
       >
-        <Image src={logoSrc} alt="" width={13} height={15} className="h-[15px] w-auto" />
-        <span>لینکِ کی‌یو‌آرِت رو بساز</span>
+        <Image
+          src={logoSrc}
+          alt=""
+          width={13}
+          height={15}
+          className="h-[15px] w-auto"
+        />
+        <span>پیوستن به کیوآر</span>
         <ArrowLeftIcon className="size-3.5 shrink-0" aria-hidden />
       </Link>
     </motion.div>

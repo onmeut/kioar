@@ -92,7 +92,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { idleState, type ActionState } from "@/lib/action-state";
 import type { LinkMetadata } from "@/lib/link-metadata";
 import { submitFormAction as publicSubmitFormAction } from "@/lib/public-form-actions";
-import { isSafeLinkUrl } from "@/lib/validations";
+import { isSafeLinkUrl, type ProductBlockPreset } from "@/lib/validations";
 import { ActivationWizard } from "@/components/dashboard/activation-wizard/activation-wizard";
 import { hasSavedDraft, clearActivationDraft } from "@/components/dashboard/activation-wizard/use-activation-draft";
 import { NewPageCelebration } from "@/components/dashboard/new-page-celebration";
@@ -357,6 +357,10 @@ export function LinksPageClient({
   const [savingForm, setSavingForm] = useState(false);
   const [productBuilderOpen, setProductBuilderOpen] = useState(false);
   const [productBuilderFromAdd, setProductBuilderFromAdd] = useState(false);
+  // Preset chosen from the add-link tile (محصول → shop, منو → menu, سرویس‌ها →
+  // services). Seeds the new block's preset, default name, and default slug.
+  const [productBuilderPreset, setProductBuilderPreset] =
+    useState<ProductBlockPreset>("shop");
   const [editingProductBlock, setEditingProductBlock] =
     useState<EditableProductBlockWithId | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1116,6 +1120,7 @@ export function LinksPageClient({
         name: p.name,
         description: p.description,
         preset: p.preset,
+        slug: p.slug ?? null,
         layout: p.layout,
         itemLabel: p.itemLabel,
         currency: p.currency,
@@ -1140,6 +1145,7 @@ export function LinksPageClient({
           priceAmount: 0,
           priceAmountMax: null,
           availability: it.availability,
+          isFeatured: it.isFeatured,
           externalUrl: it.externalUrl,
           badge: it.badge,
           sku: it.sku,
@@ -1458,9 +1464,10 @@ export function LinksPageClient({
           setEditingFormBlock(null);
           setFormBuilderOpen(true);
         }}
-        onAddProduct={() => {
+        onAddProduct={(preset) => {
           setAddOpen(false);
           setEditingProductBlock(null);
+          setProductBuilderPreset(preset);
           setProductBuilderFromAdd(true);
           setProductBuilderOpen(true);
         }}
@@ -1523,6 +1530,8 @@ export function LinksPageClient({
           }
         }}
         initial={editingProductBlock}
+        newPreset={productBuilderPreset}
+        profileSlug={profile.slug}
         itemsCap={productItemsCap}
         onBack={
           productBuilderFromAdd

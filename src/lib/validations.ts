@@ -5,7 +5,7 @@ import { toEnglishDigits } from "@/lib/persian";
 import { isIconKey } from "@/lib/link-icons";
 import { isPageTypeSlug } from "@/lib/page-type";
 import { DEFAULT_PROFILE_DOMAIN, isProfileDomain } from "@/lib/profile-domains";
-import { isReservedSlug, normalizeSlug } from "@/lib/slug";
+import { isReservedSlug, normalizeBlockSlug, normalizeSlug } from "@/lib/slug";
 
 const optionalString = z.string().trim().optional().default("");
 
@@ -706,6 +706,7 @@ export const productItemInputSchema = z
       .optional()
       .nullable(),
     availability: z.enum(PRODUCT_ITEM_AVAILABILITY).default("available"),
+    isFeatured: z.boolean().default(false),
     externalUrl: optionalHttpUrlSchema,
     badge: z
       .string()
@@ -769,6 +770,16 @@ export const productBlockInputSchema = z.object({
     .optional()
     .nullable()
     .transform((v) => (v ? v : null)),
+  /** Dedicated public-page path (`/USERNAME/{slug}`). Null = inline-only.
+   * Normalized to canonical form; reserved-word + per-profile uniqueness are
+   * enforced in the save action (they need live data). */
+  slug: z
+    .string()
+    .trim()
+    .max(60)
+    .optional()
+    .nullable()
+    .transform((v) => normalizeBlockSlug(v)),
   layout: z.enum(PRODUCT_BLOCK_LAYOUTS).default("list"),
   itemLabel: z
     .string()

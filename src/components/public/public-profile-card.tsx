@@ -469,7 +469,10 @@ export function PublicProfileCard({
                     animClass={animClassOnce}
                     intervalSec={10}
                   >
-                    <PublicProductInline block={item.block} />
+                    <PublicProductInline
+                      block={item.block}
+                      profileSlug={profile.slug}
+                    />
                   </PublicAnimatedBlock>
                 );
               }
@@ -479,7 +482,10 @@ export function PublicProfileCard({
                   animClass={animClassOnce}
                   intervalSec={10}
                 >
-                  <PublicProductPill block={item.block} />
+                  <PublicProductPill
+                    block={item.block}
+                    profileSlug={profile.slug}
+                  />
                 </PublicAnimatedBlock>
               ) : (
                 <span

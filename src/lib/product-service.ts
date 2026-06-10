@@ -16,9 +16,11 @@ import { getDb } from "@/db";
 import {
   productItems,
   productSections,
+  profileBookingBlocks,
   profileProductBlocks,
 } from "@/db/schema";
 import { invalidateProfileCacheById } from "@/lib/cache/profile-cache";
+import { validateBlockSlug } from "@/lib/blocks/slug";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 import {
   PRODUCT_ITEMS_HARD_CAP,
@@ -80,6 +82,57 @@ export const PRODUCT_PRESETS: Record<string, ProductPresetDefaults> = {
 async function getProfileIdForUser(userId: string): Promise<string | null> {
   const page = await resolveCurrentPageForOwner(userId);
   return page?.id ?? null;
+}
+
+/**
+ * Resolve a requested block slug to a unique, valid stored value for a profile.
+ *
+ * - `null`/blank → `null` (inline-only block, no dedicated page).
+ * - Reserved or malformed → `null` (silently dropped; the editor auto-saves
+ *   with no blocking UI, so we degrade to "no page" rather than throw).
+ * - Collides with another product OR booking block on the same profile →
+ *   auto-suffixed (`menu`, `menu-2`, `menu-3`, …). Per-profile uniqueness is
+ *   also enforced by partial unique indexes; this avoids the insert failing.
+ *
+ * `excludeBlockId` lets an update keep its own slug without colliding with
+ * itself.
+ */
+async function resolveUniqueBlockSlug(
+  profileId: string,
+  requested: string | null | undefined,
+  excludeBlockId: string | null,
+): Promise<string | null> {
+  const validation = validateBlockSlug(requested);
+  if (!validation.ok) return null;
+  const base = validation.slug;
+
+  const db = getDb();
+  const [products, bookings] = await Promise.all([
+    db
+      .select({ id: profileProductBlocks.id, slug: profileProductBlocks.slug })
+      .from(profileProductBlocks)
+      .where(eq(profileProductBlocks.profileId, profileId)),
+    db
+      .select({ slug: profileBookingBlocks.slug })
+      .from(profileBookingBlocks)
+      .where(eq(profileBookingBlocks.profileId, profileId)),
+  ]);
+
+  const taken = new Set<string>();
+  for (const p of products) {
+    if (p.slug && p.id !== excludeBlockId) taken.add(p.slug);
+  }
+  for (const b of bookings) {
+    if (b.slug) taken.add(b.slug);
+  }
+
+  if (!taken.has(base)) return base;
+  for (let n = 2; n < 1000; n++) {
+    const candidate = `${base}-${n}`;
+    if (!taken.has(candidate)) return candidate;
+  }
+  // Astronomically unlikely; fall back to inline-only rather than loop forever.
+  return null;
 }
 
 export async function getProductBlocksByProfileId(
@@ -156,6 +209,7 @@ function buildItemRow(
     priceAmount: item.priceAmount,
     priceAmountMax: item.priceAmountMax ?? null,
     availability: item.availability,
+    isFeatured: item.isFeatured ?? false,
     externalUrl: item.externalUrl ?? null,
     badge: item.badge ?? null,
     sku: item.sku ?? null,
@@ -197,6 +251,8 @@ export async function createProductBlockForUser(
     .from(profileProductBlocks)
     .where(eq(profileProductBlocks.profileId, profileId));
 
+  const slug = await resolveUniqueBlockSlug(profileId, parsed.data.slug, null);
+
   const id = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(profileProductBlocks)
@@ -205,6 +261,7 @@ export async function createProductBlockForUser(
         name: parsed.data.name,
         description: parsed.data.description,
         preset: parsed.data.preset,
+        slug,
         layout: parsed.data.layout,
         itemLabel: parsed.data.itemLabel,
         currency: parsed.data.currency,
@@ -289,6 +346,12 @@ export async function updateProductBlockForUser(
   });
   if (!existing) return { ok: false, message: "بلوک یافت نشد." };
 
+  const slug = await resolveUniqueBlockSlug(
+    profileId,
+    parsed.data.slug,
+    blockId,
+  );
+
   await db.transaction(async (tx) => {
     await tx
       .update(profileProductBlocks)
@@ -296,6 +359,7 @@ export async function updateProductBlockForUser(
         name: parsed.data.name,
         description: parsed.data.description,
         preset: parsed.data.preset,
+        slug,
         layout: parsed.data.layout,
         itemLabel: parsed.data.itemLabel,
         currency: parsed.data.currency,
@@ -385,6 +449,7 @@ export async function updateProductBlockForUser(
             priceAmount: row.priceAmount,
             priceAmountMax: row.priceAmountMax,
             availability: row.availability,
+            isFeatured: row.isFeatured,
             externalUrl: row.externalUrl,
             badge: row.badge,
             sku: row.sku,

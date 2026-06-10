@@ -23,6 +23,7 @@ import { useIsInMockup } from "@/components/dashboard/mockup-portal-context";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { formatPriceDisplay } from "@/lib/money";
 import { toPersianDigits } from "@/lib/persian";
+import { SharedMenuContent } from "@/components/public/public-menu-page";
 import type {
   ProductBlockCurrency,
   ProductBlockDisplayMode,
@@ -47,6 +48,7 @@ export type PublicProductItem = {
   priceAmount: number;
   priceAmountMax: number | null;
   availability: ProductItemAvailability;
+  isFeatured: boolean;
   externalUrl: string | null;
   badge: string | null;
   sku: string | null;
@@ -57,6 +59,7 @@ export type PublicProductBlockData = {
   name: string;
   description: string | null;
   preset: string | null;
+  slug: string | null;
   layout: ProductBlockLayout;
   itemLabel: string | null;
   currency: ProductBlockCurrency;
@@ -76,37 +79,44 @@ export function PublicProductPill({
   className,
 }: {
   block: PublicProductBlockData;
+  /** @deprecated Kept for callers that still pass profileSlug; no longer used
+   *  for navigation. All pills now open the in-place modal. */
+  profileSlug?: string;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
   const label = block.pillLabel || block.name || "مشاهده";
+
+  const pillClass = cn(
+    "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4 transition-colors hover:bg-primary/8 active:bg-primary/12",
+    className,
+  );
+  const inner = (
+    <>
+      <span className="absolute inset-s-3 inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        {block.iconKey || block.iconUrl || block.imageUrl ? (
+          <LinkIconBubble
+            iconKey={(block.iconKey as IconKey | null) ?? "auto"}
+            iconUrl={block.iconUrl ?? null}
+            imageUrl={block.imageUrl ?? null}
+            url=""
+            size={36}
+            className="rounded-2xl"
+          />
+        ) : (
+          <TagIcon className="size-5" />
+        )}
+      </span>
+      <span className="block w-full truncate px-10 text-center text-[15px] font-bold">
+        {label}
+      </span>
+    </>
+  );
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={cn(
-          "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4 transition-colors hover:bg-primary/8 active:bg-primary/12",
-          className,
-        )}
-      >
-        <span className="absolute inset-s-3 inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-          {block.iconKey || block.iconUrl || block.imageUrl ? (
-            <LinkIconBubble
-              iconKey={(block.iconKey as IconKey | null) ?? "auto"}
-              iconUrl={block.iconUrl ?? null}
-              imageUrl={block.imageUrl ?? null}
-              url=""
-              size={36}
-              className="rounded-2xl"
-            />
-          ) : (
-            <TagIcon className="size-5" />
-          )}
-        </span>
-        <span className="block w-full truncate px-10 text-center text-[15px] font-bold">
-          {label}
-        </span>
+      <button type="button" onClick={() => setOpen(true)} className={pillClass}>
+        {inner}
       </button>
       <PublicProductModal open={open} onOpenChange={setOpen} block={block} />
     </>
@@ -115,11 +125,17 @@ export function PublicProductPill({
 
 export function PublicProductInline({
   block,
+  profileSlug,
   className,
 }: {
   block: PublicProductBlockData;
+  /** Owner's profile slug — enables the "view full page" link when the block
+   * has its own dedicated-page slug. */
+  profileSlug?: string;
   className?: string;
 }) {
+  const fullPageHref =
+    profileSlug && block.slug ? `/${profileSlug}/${block.slug}` : null;
   return (
     <section className={cn("w-full", className)}>
       <header className="mb-3 px-1">
@@ -131,6 +147,14 @@ export function PublicProductInline({
         ) : null}
       </header>
       <ProductItemsList block={block} />
+      {fullPageHref ? (
+        <a
+          href={fullPageHref}
+          className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full border border-border bg-muted/30 px-4 py-3 text-sm font-medium transition-colors hover:bg-muted"
+        >
+          {block.pillLabel || "مشاهده صفحه کامل"}
+        </a>
+      ) : null}
     </section>
   );
 }
@@ -191,10 +215,15 @@ function ProductItemsScroller({ block }: { block: PublicProductBlockData }) {
       {block.description ? (
         <p className="px-4 pt-4 mb-4 text-sm text-foreground">{block.description}</p>
       ) : null}
-      <ProductItemsList block={block} scrollContainerRef={scrollRef} />
+      {block.preset === "menu" ? (
+        <SharedMenuContent block={block} scrollContainerRef={scrollRef} />
+      ) : (
+        <ProductItemsList block={block} scrollContainerRef={scrollRef} />
+      )}
     </div>
   );
 }
+
 
 function ProductItemsList({
   block,

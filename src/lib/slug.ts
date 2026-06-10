@@ -73,6 +73,20 @@ export function isReservedSlug(slug: string) {
   return RESERVED_SLUGS.has(normalized);
 }
 
+/**
+ * Normalize a raw block-slug input to canonical stored form, or `null` when
+ * cleared. Block slugs (`/USERNAME/{slug}`) share character rules with username
+ * slugs so the two never diverge. Lives here (not in `blocks/slug.ts`) because
+ * the editor is a client component and `blocks/slug.ts` is server-only.
+ */
+export function normalizeBlockSlug(
+  input: string | null | undefined,
+): string | null {
+  if (!input) return null;
+  const normalized = normalizeSlug(input);
+  return normalized.length ? normalized : null;
+}
+
 export function generateSlugSuggestion(source: string) {
   const base = normalizeSlug(source);
 

@@ -160,6 +160,7 @@ export function parseBulkItems(
       priceAmount: price?.priceAmount ?? 0,
       priceAmountMax: price?.priceAmountMax ?? null,
       availability: "available",
+      isFeatured: false,
       externalUrl: null,
       badge: null,
       sku: null,

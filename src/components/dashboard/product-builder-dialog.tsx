@@ -58,6 +58,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import {
   AlertDialog,
@@ -79,6 +80,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { normalizeBlockSlug } from "@/lib/slug";
 import { toPersianDigits } from "@/lib/persian";
 import { formatPriceDisplay } from "@/lib/money";
 import type { IconKey } from "@/lib/link-icons";
@@ -113,6 +115,7 @@ export type ProductItemDraft = {
   priceMajor: string;
   priceMaxMajor: string;
   availability: ProductItemAvailability;
+  isFeatured: boolean;
   externalUrl: string | null;
   badge: string | null;
   sku: string | null;
@@ -129,6 +132,8 @@ export type ProductBlockDraft = {
   name: string;
   description: string | null;
   preset: ProductBlockPreset | null;
+  /** Dedicated public-page path (`/USERNAME/{slug}`). Null = inline-only. */
+  slug: string | null;
   layout: ProductBlockLayout;
   itemLabel: string | null;
   currency: ProductBlockCurrency;
@@ -148,6 +153,7 @@ export type ProductBlockSubmit = {
   name: string;
   description: string | null;
   preset: ProductBlockPreset | null;
+  slug: string | null;
   layout: ProductBlockLayout;
   itemLabel: string | null;
   currency: ProductBlockCurrency;
@@ -168,6 +174,7 @@ export type ProductBlockSubmit = {
     priceAmount: number;
     priceAmountMax: number | null;
     availability: ProductItemAvailability;
+    isFeatured: boolean;
     externalUrl: string | null;
     badge: string | null;
     sku: string | null;
@@ -185,6 +192,28 @@ const LAYOUT_SUBLABEL: Record<ProductBlockLayout, string> = {
   grid: "فروشگاه / گالری",
   cards: "پکیج / خدمات",
 };
+
+/** Per-preset defaults applied when a brand-new block is created from the
+ * add-link tile. `name` is what shows in the UI; `slug` is the dedicated
+ * public-page path (`/USERNAME/{slug}`) — null for the generic shop/product
+ * block, which renders inline only. `layout` picks a sensible default view. */
+const PRESET_DEFAULTS: Record<
+  ProductBlockPreset,
+  { name: string; slug: string | null; layout: ProductBlockLayout }
+> = {
+  shop: { name: "محصولات", slug: null, layout: "grid" },
+  menu: { name: "منو", slug: "menu", layout: "list" },
+  services: { name: "خدمات", slug: "services", layout: "cards" },
+  packages: { name: "پکیج‌ها", slug: null, layout: "cards" },
+  portfolio: { name: "نمونه‌کارها", slug: null, layout: "grid" },
+  custom: { name: "محصولات", slug: null, layout: "list" },
+};
+
+/** Block name shown in the editor + public page, derived from the saved
+ * preset when the user hasn't typed a custom name. */
+export function presetBlockName(preset: ProductBlockPreset | null): string {
+  return PRESET_DEFAULTS[preset ?? "shop"]?.name ?? "محصولات";
+}
 
 const PRICE_TYPE_LABEL: Record<ProductItemPriceType, string> = {
   fixed: "ثابت",
@@ -228,6 +257,7 @@ function emptyItem(): ProductItemDraft {
     priceMajor: "",
     priceMaxMajor: "",
     availability: "available",
+    isFeatured: false,
     externalUrl: null,
     badge: null,
     sku: null,
@@ -235,12 +265,14 @@ function emptyItem(): ProductItemDraft {
 }
 
 function defaultDraft(preset: ProductBlockPreset = "shop"): ProductBlockDraft {
+  const d = PRESET_DEFAULTS[preset] ?? PRESET_DEFAULTS.shop;
   return {
     id: null,
-    name: "محصولات",
+    name: d.name,
     description: null,
     preset,
-    layout: "list",
+    slug: d.slug,
+    layout: d.layout,
     itemLabel: null,
     currency: "IRT",
     showPrices: true,
@@ -288,9 +320,10 @@ function buildPayload(d: ProductBlockDraft): ProductBlockSubmit {
 
   return {
     id: d.id ?? null,
-    name: d.name.trim() || "محصولات",
+    name: d.name.trim() || presetBlockName(d.preset),
     description: d.description?.trim() ? d.description.trim() : null,
     preset: d.preset,
+    slug: normalizeBlockSlug(d.slug),
     layout: d.layout,
     itemLabel: d.itemLabel?.trim() ? d.itemLabel.trim() : null,
     currency: d.currency,
@@ -320,6 +353,7 @@ function buildPayload(d: ProductBlockDraft): ProductBlockSubmit {
           ? majorStringToMinor(it.priceMaxMajor, d.currency)
           : null,
       availability: it.availability,
+      isFeatured: it.isFeatured,
       externalUrl: it.externalUrl,
       badge: it.badge?.trim() ? it.badge.trim() : null,
       sku: it.sku?.trim() ? it.sku.trim() : null,
@@ -331,6 +365,12 @@ export type ProductBuilderDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initial?: ProductBlockDraft | null;
+  /** Preset to seed a NEW block with (ignored when `initial` is provided).
+   * Drives default name + default slug. From the add-link tile. */
+  newPreset?: ProductBlockPreset;
+  /** The owner's profile slug — used to preview the dedicated page URL
+   * (`{profileSlug}/{blockSlug}`) in the slug field. */
+  profileSlug?: string;
   itemsCap?: number;
   /** Called when the user presses the back arrow on the main (non-editing) view.
    * If provided, the arrow navigates back (e.g. re-opens the add-links modal).
@@ -350,6 +390,8 @@ export function ProductBuilderDialog({
   open,
   onOpenChange,
   initial,
+  newPreset = "shop",
+  profileSlug,
   itemsCap = PRODUCT_ITEMS_HARD_CAP,
   onBack,
   onAutoSave,
@@ -360,7 +402,7 @@ export function ProductBuilderDialog({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
   const [draft, setDraft] = useState<ProductBlockDraft>(
-    () => initial ?? defaultDraft(),
+    () => initial ?? defaultDraft(newPreset),
   );
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   /** Draft for a brand-new item that hasn't been committed to the list
@@ -398,7 +440,7 @@ export function ProductBuilderDialog({
   if (open !== prevOpen) {
     setPrevOpen(open);
     if (open) {
-      setDraft(initial ?? defaultDraft());
+      setDraft(initial ?? defaultDraft(newPreset));
       setEditingIndex(null);
       setPendingItem(null);
       setTab("items");
@@ -469,7 +511,7 @@ export function ProductBuilderDialog({
           ? "افزودن چندتایی"
           : groupEditRows !== null
             ? "ویرایش گروهی"
-            : "افزودن محصول / سرویس";
+            : `افزودن ${presetBlockName(draft.preset)}`;
 
   function handleOpenChange(next: boolean) {
     if (!next) {
@@ -898,6 +940,45 @@ export function ProductBuilderDialog({
                   setDraft={setDraft}
                   onCommit={(d) => void autoSave(d)}
                 />
+
+                <div className="grid gap-1.5">
+                  <Label htmlFor="prod-slug">نشانی صفحه اختصاصی</Label>
+                  <div
+                    dir="ltr"
+                    className="flex items-center gap-1 rounded-xl border bg-muted/30 px-3 has-[input:focus-visible]:ring-2 has-[input:focus-visible]:ring-ring"
+                  >
+                    <span className="shrink-0 text-sm text-muted-foreground">
+                      {profileSlug ? `${profileSlug}/` : "/"}
+                    </span>
+                    <Input
+                      id="prod-slug"
+                      value={draft.slug ?? ""}
+                      placeholder="menu"
+                      maxLength={60}
+                      dir="ltr"
+                      inputMode="url"
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      enterKeyHint="done"
+                      className="border-0 bg-transparent px-0 focus-visible:ring-0"
+                      onChange={(e) =>
+                        setDraft((d) => ({ ...d, slug: e.target.value }))
+                      }
+                      onBlur={() => {
+                        const normalized = normalizeBlockSlug(draft.slug);
+                        const next = { ...draft, slug: normalized };
+                        setDraft(next);
+                        void autoSave(next);
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {draft.slug
+                      ? "این بلوک یک صفحه‌ی جدا با این نشانی خواهد داشت."
+                      : "خالی بگذارید تا این بلوک فقط داخل پروفایل نمایش داده شود."}
+                  </p>
+                </div>
 
                 <div className="grid gap-2">
                   <Label>نمای محصولات</Label>
@@ -1809,6 +1890,25 @@ function ItemEditor({
                   />
                 </div>
               </div>
+
+              <label
+                htmlFor="item-featured"
+                className="flex items-center justify-between gap-3 rounded-xl border bg-muted/30 px-3 py-2.5"
+              >
+                <span className="grid gap-0.5">
+                  <span className="text-sm font-medium">پیشنهاد ویژه</span>
+                  <span className="text-xs text-muted-foreground">
+                    با نشان «پیشنهاد ما» برجسته می‌شود.
+                  </span>
+                </span>
+                <Switch
+                  id="item-featured"
+                  checked={item.isFeatured}
+                  onCheckedChange={(checked) =>
+                    onChange({ ...item, isFeatured: checked })
+                  }
+                />
+              </label>
             </div>
           ) : null}
         </div>

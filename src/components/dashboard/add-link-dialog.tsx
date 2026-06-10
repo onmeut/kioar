@@ -20,6 +20,8 @@ import {
   SparklesIcon,
   TagIcon,
   UsersIcon,
+  UtensilsIcon,
+  WrenchIcon,
   XIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -35,7 +37,11 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import type { LinkMetadata } from "@/lib/link-metadata";
 import { detectIconKey, type IconKey } from "@/lib/link-icons";
 import { cn } from "@/lib/utils";
-import { isSafeLinkUrl, normalizeLinkUrl } from "@/lib/validations";
+import {
+  isSafeLinkUrl,
+  normalizeLinkUrl,
+  type ProductBlockPreset,
+} from "@/lib/validations";
 import {
   UpgradePlanModal,
   type UpgradePlanTier,
@@ -213,9 +219,20 @@ const FEATURE_CARDS: Array<{ key: string; label: string; icon: LucideIcon }> = [
   { key: "link", label: "لینک", icon: Link2Icon },
   { key: "bookings", label: "هماهنگ", icon: CalendarIcon },
   { key: "product", label: "محصول", icon: TagIcon },
+  { key: "menu", label: "منو", icon: UtensilsIcon },
+  { key: "services", label: "خدمات", icon: WrenchIcon },
   { key: "form", label: "فرم", icon: FormInputIcon },
   { key: "event", label: "رویداد", icon: CalendarDaysIcon },
 ];
+
+/** The "menu" and "services" cards are product blocks pre-set to a preset.
+ * They share the product entitlement + lock state — only the seeded preset,
+ * default name, and default slug differ. */
+const PRODUCT_PRESET_CARDS: Record<string, ProductBlockPreset> = {
+  product: "shop",
+  menu: "menu",
+  services: "services",
+};
 
 type AddLinkDialogProps = {
   open: boolean;
@@ -232,9 +249,10 @@ type AddLinkDialogProps = {
   /** Invoked when the "form" feature card is picked. The dialog closes
    *  itself; the caller is responsible for opening the form builder. */
   onAddForm?: () => void;
-  /** Invoked when the "product" feature card is picked. The dialog closes
-   *  itself; the caller is responsible for opening the product builder. */
-  onAddProduct?: () => void;
+  /** Invoked when the "product" / "menu" / "services" feature card is picked.
+   *  The dialog closes itself; the caller opens the product builder pre-set to
+   *  the given preset. */
+  onAddProduct?: (preset: ProductBlockPreset) => void;
   /** Invoked when the "event" feature card is picked. The dialog closes
    *  itself; the caller navigates to the event creation route. */
   onAddEvent?: () => void;
@@ -356,7 +374,7 @@ function AddLinkDialogBody({
   fetchMetadataAction: AddLinkDialogProps["fetchMetadataAction"];
   onAddBooking?: () => void;
   onAddForm?: () => void;
-  onAddProduct?: () => void;
+  onAddProduct?: (preset: ProductBlockPreset) => void;
   onAddEvent?: () => void;
   bookingsLocked?: boolean;
   bookingsRequiredPlan?: UpgradePlanTier;
@@ -541,17 +559,18 @@ function AddLinkDialogBody({
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
               {FEATURE_CARDS.map((card) => {
                 const CardIcon = card.icon;
+                const isProductCard = card.key in PRODUCT_PRESET_CARDS;
                 const isLocked =
                   (card.key === "bookings" && bookingsLocked) ||
                   (card.key === "form" && formsLocked) ||
-                  (card.key === "product" && productsLocked) ||
+                  (isProductCard && productsLocked) ||
                   (card.key === "event" && eventsLocked);
                 const lockedPlan =
                   card.key === "bookings"
                     ? bookingsRequiredPlan
                     : card.key === "form"
                       ? formsRequiredPlan
-                      : card.key === "product"
+                      : isProductCard
                         ? productsRequiredPlan
                         : card.key === "event"
                           ? eventsRequiredPlan
@@ -581,15 +600,20 @@ function AddLinkDialogBody({
                           onClose();
                           onAddForm?.();
                         }
-                      } else if (card.key === "product") {
+                      } else if (isProductCard) {
                         if (productsLocked) {
                           setUpgradeModal({
                             plan: productsRequiredPlan ?? "pro",
-                            featureName: "بلاک محصول",
+                            featureName:
+                              card.key === "menu"
+                                ? "بلاک منو"
+                                : card.key === "services"
+                                  ? "بلاک خدمات"
+                                  : "بلاک محصول",
                           });
                         } else {
                           onClose();
-                          onAddProduct?.();
+                          onAddProduct?.(PRODUCT_PRESET_CARDS[card.key]);
                         }
                       } else if (card.key === "event") {
                         if (eventsLocked) {
