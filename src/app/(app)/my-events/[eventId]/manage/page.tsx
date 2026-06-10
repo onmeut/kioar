@@ -1,7 +1,7 @@
 import type { Route } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { PencilIcon, ScanLineIcon } from "lucide-react";
+import { ScanLineIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -15,10 +15,13 @@ import {
   getHostEvent,
   listEventRegistrants,
 } from "@/lib/events/queries";
+import { toEventFormInitial } from "@/lib/events/event-mapper";
 import { toPersianDigits } from "@/lib/date/persian";
 import { formatShamsiDateTimeInZone } from "@/lib/date/timezone";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
+import { saveEventBlockAction } from "@/app/(app)/me/event-actions";
 import { cn } from "@/lib/utils";
+import { EditEventButton } from "./edit-event-button";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +39,7 @@ export default async function ManageEventPage({
   const data = await getHostEvent(eventId, page.id);
   if (!data) notFound();
   const { event, questions } = data;
+  const formInitial = toEventFormInitial(data);
 
   const [registrants, stats] = await Promise.all([
     listEventRegistrants(eventId, page.id),
@@ -81,13 +85,11 @@ export default async function ManageEventPage({
             {formatShamsiDateTimeInZone(event.startsAt, event.timezone)}
           </p>
         </div>
-        <Link
-          href={`/my-events/${event.id}/edit` as Route}
-          className={cn(buttonVariants({ variant: "outline" }), "h-11 shrink-0")}
-        >
-          <PencilIcon className="size-4" />
-          ویرایش
-        </Link>
+        <EditEventButton
+          pageId={page.id}
+          initial={formInitial}
+          saveAction={saveEventBlockAction}
+        />
       </div>
 
       {/* Stats */}

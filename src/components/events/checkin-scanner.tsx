@@ -158,11 +158,14 @@ export function CheckinScanner({
 
       // Decode loop.
       activeRef.current = true;
+      let frameInFlight = false;
       function loop() {
         const v = videoRef.current;
-        if (v && v.readyState >= 2 && activeRef.current) {
+        if (v && v.readyState >= 2 && activeRef.current && !frameInFlight) {
+          frameInFlight = true;
           decodeFrame(v).then((val) => {
-            if (val) handleDecoded(val);
+            frameInFlight = false;
+            if (val && activeRef.current) handleDecoded(val);
           });
         }
         rafRef.current = requestAnimationFrame(loop);

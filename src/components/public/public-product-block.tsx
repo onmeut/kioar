@@ -12,7 +12,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from "react";
 import Image from "next/image";
-import { TagIcon, XIcon } from "lucide-react";
+import { LayoutGridIcon, TagIcon, XIcon } from "lucide-react";
 
 import { LinkIconBubble } from "@/components/dashboard/link-icon-picker";
 import type { IconKey } from "@/lib/link-icons";
@@ -269,6 +269,7 @@ function ProductItemsList({
     orderedActiveSections[0]?.id ?? "",
   );
   const activeSectionRef = useRef(activeSection);
+  const [catPanelOpen, setCatPanelOpen] = useState(false);
 
   const navRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
@@ -317,6 +318,7 @@ function ProductItemsList({
 
       activeSectionRef.current = id;
       setActiveSection(id);
+      setCatPanelOpen(false);
       isScrollingProgrammatically.current = true;
 
       const navHeight = navRef.current?.offsetHeight ?? 48;
@@ -354,22 +356,77 @@ function ProductItemsList({
     <div>
       <div
         ref={navRef}
-        className="no-scrollbar sticky top-0 z-10 flex gap-2 overflow-x-auto border-b border-border/40 bg-background/95 px-4 py-2.5 backdrop-blur-sm touch-pan-x"
-        role="tablist"
-        aria-label="دسته‌بندی محصولات"
+        className="sticky top-0 z-10 border-b border-border/40 bg-background/95 backdrop-blur-sm"
       >
-        {orderedActiveSections.map((s) => (
-          <CategoryChip
-            key={s.id}
-            ref={(el) => {
-              if (el) chipRefs.current.set(s.id, el);
-              else chipRefs.current.delete(s.id);
-            }}
-            label={s.title}
-            selected={activeSection === s.id}
-            onSelect={() => scrollToSection(s.id)}
-          />
-        ))}
+        {/* Category chips row */}
+        <div
+          className="no-scrollbar flex items-center gap-2 overflow-x-auto px-4 py-2.5 touch-pan-x"
+          aria-label="دسته‌بندی محصولات"
+        >
+          <button
+            type="button"
+            onClick={() => setCatPanelOpen((v) => !v)}
+            className={cn(
+              "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors whitespace-nowrap",
+              catPanelOpen
+                ? "border-foreground bg-foreground text-background"
+                : "border-border bg-background text-foreground hover:bg-foreground/4",
+            )}
+            aria-label="همه دسته‌بندی‌ها"
+          >
+            <LayoutGridIcon className="size-3.5 shrink-0" />
+            دسته‌بندی‌ها
+          </button>
+          <div className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto touch-pan-x" role="tablist">
+            {orderedActiveSections.map((s) => (
+              <CategoryChip
+                key={s.id}
+                ref={(el) => {
+                  if (el) chipRefs.current.set(s.id, el);
+                  else chipRefs.current.delete(s.id);
+                }}
+                label={s.title}
+                selected={activeSection === s.id}
+                onSelect={() => scrollToSection(s.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Inline categories dropdown panel */}
+        {catPanelOpen ? (
+          <div className="border-t border-border/40 bg-card px-4 pb-4 pt-3">
+            <div className="mb-3 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setCatPanelOpen(false)}
+                className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-foreground/4"
+                aria-label="بستن"
+              >
+                <XIcon className="size-4" />
+              </button>
+              <p className="flex-1 text-center text-sm font-bold">دسته‌بندی‌ها</p>
+              <div className="size-7" />
+            </div>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+              {orderedActiveSections.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => scrollToSection(s.id)}
+                  className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
+                >
+                  <span className="flex size-14 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
+                    <TagIcon className="size-5" />
+                  </span>
+                  <span className="line-clamp-2 text-xs font-medium leading-snug">
+                    {s.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-8 p-4 pt-4">
@@ -415,7 +472,7 @@ const CategoryChip = forwardRef<
       aria-selected={selected}
       onClick={onSelect}
       className={cn(
-        "shrink-0 rounded-full border px-4 py-2 text-xs font-bold transition-colors",
+        "shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition-colors whitespace-nowrap",
         selected
           ? "border-foreground bg-foreground text-background"
           : "border-border bg-background text-foreground hover:bg-foreground/4",

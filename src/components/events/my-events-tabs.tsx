@@ -28,7 +28,7 @@ export function MyEventsTabs({
           className={cn(
             "h-10 rounded-full text-sm font-medium transition-colors",
             tab === "attending"
-              ? "bg-background text-foreground shadow-sm"
+              ? "bg-foreground text-background shadow-sm"
               : "text-muted-foreground",
           )}
         >
@@ -40,7 +40,7 @@ export function MyEventsTabs({
           className={cn(
             "h-10 rounded-full text-sm font-medium transition-colors",
             tab === "hosting"
-              ? "bg-background text-foreground shadow-sm"
+              ? "bg-foreground text-background shadow-sm"
               : "text-muted-foreground",
           )}
         >

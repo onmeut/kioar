@@ -208,7 +208,7 @@ function TimeSelect({
 
   return (
     <div dir="ltr" className="flex items-center gap-1">
-      <Select value={hStr || undefined} onValueChange={setHour}>
+      <Select value={hStr} onValueChange={setHour}>
         <SelectTrigger
           aria-label={`${ariaLabel} - ساعت`}
           className="h-11 w-[4.25rem] justify-center rounded-2xl text-base"
@@ -224,7 +224,7 @@ function TimeSelect({
         </SelectContent>
       </Select>
       <span className="text-base font-bold text-muted-foreground">:</span>
-      <Select value={mStr || undefined} onValueChange={setMinute}>
+      <Select value={mStr} onValueChange={setMinute}>
         <SelectTrigger
           aria-label={`${ariaLabel} - دقیقه`}
           className="h-11 w-[4.25rem] justify-center rounded-2xl text-base"

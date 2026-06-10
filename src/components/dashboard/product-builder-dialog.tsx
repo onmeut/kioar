@@ -14,12 +14,10 @@
 // Tabs: «موارد» (items) · «چیدمان» (layout) · «تنظیمات» (settings).
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import {
   ChevronDownIcon,
   ArrowLeftIcon,
   GripVerticalIcon,
-  ImageIcon,
   ImageOffIcon,
   LayersIcon,
   Loader2Icon,
@@ -28,7 +26,6 @@ import {
   ShoppingBagIcon,
   TagIcon,
   TrashIcon,
-  UploadIcon,
   XIcon,
 } from "lucide-react";
 import {
@@ -46,14 +43,8 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  Cropper,
-  ImageRestriction,
-  type CropperRef,
-} from "react-advanced-cropper";
-import "react-advanced-cropper/dist/style.css";
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ImageField } from "@/components/shared/image-field";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -1576,11 +1567,17 @@ function SortableBatchRow({
         </Select>
       ) : null}
 
-      <ProductImageField
-        imageUrl={row.imageUrl}
-        onChange={(url) => onUpdate({ imageUrl: url })}
-        onUploadImage={onUploadImage}
-      />
+      {onUploadImage ? (
+        <ImageField
+          mode="immediate"
+          label="تصویر محصول"
+          emptyLabel="افزودن تصویر محصول"
+          aspectRatio="square"
+          imageUrl={row.imageUrl}
+          onChange={(url) => onUpdate({ imageUrl: url })}
+          onUploadImage={onUploadImage}
+        />
+      ) : null}
     </li>
   );
 }
@@ -1809,11 +1806,17 @@ function ItemEditor({
         ) : null}
 
         {/* Image upload */}
-        <ProductImageField
-          imageUrl={item.imageUrl}
-          onChange={(url) => onChange({ ...item, imageUrl: url })}
-          onUploadImage={onUploadImage}
-        />
+        {onUploadImage ? (
+          <ImageField
+            mode="immediate"
+            label="تصویر محصول"
+            emptyLabel="افزودن تصویر محصول"
+            aspectRatio="square"
+            imageUrl={item.imageUrl}
+            onChange={(url) => onChange({ ...item, imageUrl: url })}
+            onUploadImage={onUploadImage}
+          />
+        ) : null}
 
         {/* Advanced collapsible */}
         <div className="rounded-2xl border bg-muted/20">
@@ -1994,198 +1997,6 @@ function ItemEditor({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Image field with built-in 1:1 cropper (react-advanced-cropper)
-// ---------------------------------------------------------------------------
-
-function ProductImageField({
-  imageUrl,
-  onChange,
-  onUploadImage,
-}: {
-  imageUrl: string | null;
-  onChange: (url: string | null) => void;
-  onUploadImage?: (file: File) => Promise<string | null>;
-}) {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const cropperRef = useRef<CropperRef>(null);
-  const [cropSrc, setCropSrc] = useState<string | null>(null);
-  const [cropFileName, setCropFileName] = useState("product.png");
-  const [uploading, setUploading] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      if (cropSrc) URL.revokeObjectURL(cropSrc);
-    };
-  }, [cropSrc]);
-
-  function handleFiles(files: FileList | null) {
-    const file = files?.[0];
-    if (!file || !onUploadImage) return;
-    const src = URL.createObjectURL(file);
-    setCropFileName(file.name || "product.png");
-    setCropSrc(src);
-    if (inputRef.current) inputRef.current.value = "";
-  }
-
-  async function handleCropSave() {
-    if (!onUploadImage) return;
-    const canvas = cropperRef.current?.getCanvas();
-    if (!canvas) return;
-    setUploading(true);
-    canvas.toBlob(
-      async (blob) => {
-        if (!blob) {
-          setUploading(false);
-          return;
-        }
-        const baseName = cropFileName.replace(/\.[^.]+$/, "") || "product";
-        const file = new File([blob], `${baseName}.jpg`, {
-          type: "image/jpeg",
-        });
-        try {
-          const url = await onUploadImage(file);
-          if (cropSrc) URL.revokeObjectURL(cropSrc);
-          setCropSrc(null);
-          if (url) onChange(url);
-        } finally {
-          setUploading(false);
-        }
-      },
-      "image/jpeg",
-      0.9,
-    );
-  }
-
-  function handleCropCancel() {
-    if (cropSrc) URL.revokeObjectURL(cropSrc);
-    setCropSrc(null);
-  }
-
-  const cropOverlay =
-    cropSrc && typeof document !== "undefined"
-      ? createPortal(
-          <div
-            className="fixed inset-0 flex flex-col bg-black"
-            style={{ zIndex: 9999 }}
-            dir="ltr"
-          >
-            <div className="relative min-h-0 flex-1">
-              <Cropper
-                ref={cropperRef}
-                src={cropSrc}
-                stencilProps={{ aspectRatio: 1, grid: true }}
-                imageRestriction={ImageRestriction.fitArea}
-                defaultSize={({ imageSize, visibleArea }) => {
-                  const area = visibleArea ?? imageSize;
-                  const side = Math.min(area.width, area.height);
-                  return { width: side, height: side };
-                }}
-                style={{ width: "100%", height: "100%" }}
-                className="size-full"
-              />
-            </div>
-            <div className="flex flex-col gap-2 bg-black px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleCropSave}
-                disabled={uploading}
-                className="h-11 w-full rounded-full border-white/20 bg-white text-sm font-bold text-black hover:bg-white/90"
-              >
-                {uploading ? (
-                  <Loader2Icon className="size-4 animate-spin" />
-                ) : null}
-                ذخیره
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleCropCancel}
-                disabled={uploading}
-                className="h-11 w-full rounded-full text-sm font-medium text-white hover:bg-white/10 hover:text-white"
-              >
-                انصراف
-              </Button>
-            </div>
-          </div>,
-          document.body,
-        )
-      : null;
-
-  return (
-    <div className="grid gap-1.5">
-      <Label>تصویر محصول</Label>
-      {imageUrl ? (
-        <div className="relative aspect-square w-full max-w-[180px] overflow-hidden rounded-2xl border bg-muted">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt="" className="size-full object-cover" />
-          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/55 px-3 py-2 text-white">
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
-              disabled={uploading || !onUploadImage}
-              className="inline-flex items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold backdrop-blur hover:bg-white/25"
-            >
-              <PencilIcon className="size-3.5" />
-              تغییر
-            </button>
-            <button
-              type="button"
-              onClick={() => onChange(null)}
-              disabled={uploading}
-              className="grid size-7 place-items-center rounded-full bg-white/15 backdrop-blur hover:bg-white/25"
-              aria-label="حذف تصویر"
-            >
-              <TrashIcon className="size-3.5" />
-            </button>
-          </div>
-          {uploading ? (
-            <div className="absolute inset-0 grid place-items-center bg-black/40">
-              <Loader2Icon className="size-6 animate-spin text-white" />
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={!onUploadImage || uploading}
-          className={cn(
-            "flex h-28 w-full flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed text-muted-foreground transition-colors",
-            "hover:border-primary hover:bg-primary/5 hover:text-primary disabled:opacity-50",
-          )}
-        >
-          {uploading ? (
-            <Loader2Icon className="size-6 animate-spin" />
-          ) : (
-            <>
-              <UploadIcon className="size-6" />
-              <span className="text-sm font-bold">افزودن تصویر محصول</span>
-              <span className="text-[11px] text-muted-foreground">
-                نسبت تصویر ۱:۱ — قابل برش پس از انتخاب
-              </span>
-            </>
-          )}
-        </button>
-      )}
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
-      />
-      {cropOverlay}
-      {!onUploadImage ? (
-        <p className="text-[11px] text-muted-foreground">
-          <ImageIcon className="me-1 inline size-3" />
-          آپلود تصویر در حال حاضر در دسترس نیست.
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 // ---------------------------------------------------------------------------
 // Batch items editor — used by both "add multiple at once" and "group edit".

@@ -7,12 +7,4 @@
 -- ON CONFLICT DO NOTHING is safe here: if a page somehow already has the row
 -- (e.g. via admin_grant), it is left untouched.
 
-INSERT INTO "page_entitlements" ("page_id", "feature_key", "source")
-SELECT
-  s."page_id",
-  'business_events',
-  'subscription'
-FROM "page_subscriptions" s
-JOIN "plans" p ON p."id" = s."plan_id"
-WHERE p."key" = 'business'
-ON CONFLICT ("page_id", "feature_key") DO NOTHING;
+w

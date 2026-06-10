@@ -80,7 +80,7 @@ export function KioarBadge({
         ref={ref}
         href="https://kioar.com?ref=profile"
         className={cn(
-          "inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-70",
+          "inline-flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-70",
           isDark
             ? "border-white/10 bg-[#111111] text-white"
             : "border-border bg-background text-foreground",
@@ -93,8 +93,8 @@ export function KioarBadge({
           height={15}
           className="h-[15px] w-auto"
         />
-        <span>پیوستن به کیوآر</span>
-        <ArrowLeftIcon className="size-3.5 shrink-0" aria-hidden />
+        <span>ساخته شده با کیوآر</span>
+        <ArrowLeftIcon className="size-4 shrink-0" aria-hidden />
       </Link>
     </motion.div>
   );

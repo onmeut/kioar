@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Sheet,
   SheetContent,
@@ -25,7 +26,6 @@ import { AddToCalendar } from "@/components/events/add-to-calendar";
 import { userShortUrl } from "@/lib/site";
 import { cn } from "@/lib/utils";
 import { toPersianDigits } from "@/lib/date/persian";
-import { REGISTRATION_STATUS_LABELS } from "@/lib/events/labels";
 import type { PublicEventView } from "@/lib/events/queries";
 import {
   applyDiscountAction,
@@ -315,14 +315,23 @@ function RegisteredState({
     status === "payment_pending" && event.receiptUploadEnabled;
   const confirmed = status === "approved" || status === "attended";
 
+  const statusMessage: Record<string, string> = {
+    approved: "ثبت‌نام شما با موفقیت انجام شد.",
+    attended: "حضور شما در رویداد ثبت شده است.",
+    pending_approval: "ثبت‌نام شما دریافت شد و در انتظار تأیید میزبان است.",
+    payment_pending: "ثبت‌نام شما دریافت شد. لطفاً پرداخت را تکمیل کنید.",
+    payment_submitted: "رسید پرداخت شما ارسال شد و در انتظار تأیید است.",
+    waitlisted: "شما در فهرست انتظار ثبت شدید.",
+  };
+
   return (
     <div className="space-y-3">
       <div
         className={cn(
-          "flex items-center gap-2 rounded-2xl px-4 py-3 text-sm",
+          "flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium",
           confirmed
-            ? "bg-emerald-50 text-emerald-700"
-            : "bg-amber-50 text-amber-800",
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-foreground",
         )}
       >
         {confirmed ? (
@@ -330,9 +339,7 @@ function RegisteredState({
         ) : (
           <ClockIcon className="size-4 shrink-0" />
         )}
-        وضعیت شما: {REGISTRATION_STATUS_LABELS[
-          status as keyof typeof REGISTRATION_STATUS_LABELS
-        ] ?? status}
+        {statusMessage[status] ?? "ثبت‌نام شما ثبت شد."}
       </div>
 
       {/* Paid + receipt OFF: attendee owes money but uploads no receipt; the
@@ -467,12 +474,13 @@ function RegisteredState({
       ) : null}
 
       {!event.isPast && status !== "attended" ? (
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 w-full text-muted-foreground"
-          disabled={pending}
-          onClick={() =>
+        <ConfirmDialog
+          title="لغو ثبت‌نام"
+          description="آیا مطمئن هستید که می‌خواهید ثبت‌نام خود را لغو کنید؟ این عمل قابل بازگشت نیست."
+          confirmLabel="بله، لغو کن"
+          cancelLabel="انصراف"
+          destructive
+          onConfirm={() =>
             startTransition(async () => {
               const r = await cancelRegistrationAction(
                 event.pageSlug,
@@ -487,8 +495,15 @@ function RegisteredState({
             })
           }
         >
-          لغو ثبت‌نام
-        </Button>
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full text-muted-foreground"
+            disabled={pending}
+          >
+            لغو ثبت‌نام
+          </Button>
+        </ConfirmDialog>
       ) : null}
 
       {/* Off-ramp: an attendee who doesn't yet own a Kioar page can spin one

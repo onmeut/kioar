@@ -1,23 +1,20 @@
-import type { Route } from "next";
-import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CalendarPlusIcon, UsersIcon } from "lucide-react";
+import { CalendarPlusIcon } from "lucide-react";
 
 import { EmptyState } from "@/components/shared/empty-state";
 import { MyEventsAttending } from "@/components/events/my-events-attending";
 import { MyEventsTabs } from "@/components/events/my-events-tabs";
-import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { MyEventsHostingPanel } from "@/components/events/my-events-hosting-panel";
 import { requireCompletedProfile } from "@/lib/auth/session";
 import { getDashboardRegistrations } from "@/lib/data";
 import { pageHasFeature } from "@/lib/entitlements";
-import { EVENT_STATUS_LABELS } from "@/lib/events/labels";
-import { listHostEvents } from "@/lib/events/queries";
+import { listHostEvents, getHostEvent } from "@/lib/events/queries";
+import { toEventFormInitial } from "@/lib/events/event-mapper";
 import { formatShamsiDateTimeInZone } from "@/lib/date/timezone";
 import { toPersianDigits } from "@/lib/date/persian";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 import { userShortUrl } from "@/lib/site";
-import { cn } from "@/lib/utils";
+import { saveEventBlockAction } from "@/app/(app)/me/event-actions";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +40,22 @@ export default async function MyEventsPage({
     getDashboardRegistrations(viewer.user.id),
     canHost ? listHostEvents(page.id) : Promise.resolve([]),
   ]);
+
+  // Pre-load full form data for every hosted event so the edit modal can open
+  // without a round-trip. We do this server-side to keep secrets (discount
+  // codes, private URLs) out of client bundles.
+  const eventFormInitials: Record<
+    string,
+    ReturnType<typeof toEventFormInitial>
+  > = {};
+  if (canHost && hostEvents.length > 0) {
+    const fullData = await Promise.all(
+      hostEvents.map((ev) => getHostEvent(ev.id, page.id)),
+    );
+    for (const data of fullData) {
+      if (data) eventFormInitials[data.event.id] = toEventFormInitial(data);
+    }
+  }
 
   const nowMs = new Date().getTime();
   const attendingItems = registrations.map((r) => {
@@ -71,107 +84,39 @@ export default async function MyEventsPage({
     />
   );
 
+  const timezone = page.timezone ?? "Asia/Tehran";
+
   const hosting = canHost ? (
-    <HostingPanel
-      events={hostEvents}
-      timezone={page.timezone ?? "Asia/Tehran"}
+    <MyEventsHostingPanel
+      pageId={page.id}
+      events={hostEvents.map((ev) => ({
+        id: ev.id,
+        slug: ev.slug,
+        title: ev.title,
+        status: ev.status,
+        startsAtLabel: formatShamsiDateTimeInZone(ev.startsAt, timezone),
+        registrantCount: ev.registrantCount,
+        capacity: ev.capacity,
+      }))}
+      eventFormInitials={eventFormInitials}
+      saveAction={saveEventBlockAction}
     />
   ) : (
     <EmptyState
       icon={CalendarPlusIcon}
       title="میزبانی رویداد ویژهٔ پلن Business است"
       description="با ارتقا به Business می‌توانید رویداد بسازید و ثبت‌نام‌ها را مدیریت کنید."
-      cta={{ href: "/pricing" as Route, label: "مشاهدهٔ پلن‌ها" }}
+      cta={{ href: "/pricing", label: "مشاهدهٔ پلن‌ها" }}
     />
   );
 
   return (
     <div className="section-shell space-y-6 py-6">
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl font-bold">رویدادهای من</h1>
-          <p className="text-sm text-muted-foreground">
-            رویدادهایی که در آن‌ها شرکت می‌کنید یا میزبانی‌شان می‌کنید.
-          </p>
-        </div>
-        {canHost ? (
-          <Link
-            href={"/my-events/new" as Route}
-            className={cn(buttonVariants(), "h-11 shrink-0")}
-          >
-            <CalendarPlusIcon className="size-4" />
-            رویداد جدید
-          </Link>
-        ) : null}
-      </header>
-
       <MyEventsTabs
         attending={attending}
         hosting={hosting}
         defaultTab={tab === "hosting" ? "hosting" : "attending"}
       />
     </div>
-  );
-}
-
-function HostingPanel({
-  events,
-  timezone,
-}: {
-  events: Awaited<ReturnType<typeof listHostEvents>>;
-  timezone: string;
-}) {
-  if (events.length === 0) {
-    return (
-      <EmptyState
-        icon={CalendarPlusIcon}
-        title="هنوز رویدادی نساخته‌اید"
-        description="اولین رویداد جامعه‌ات را بساز و ثبت‌نام‌ها را جمع کن."
-        cta={{ href: "/my-events/new" as Route, label: "ساخت رویداد" }}
-      />
-    );
-  }
-
-  return (
-    <ul className="grid gap-3 sm:grid-cols-2">
-      {events.map((ev) => (
-        <li key={ev.id}>
-          <Link
-            href={`/my-events/${ev.id}/manage` as Route}
-            className="group flex h-full flex-col gap-3 rounded-4xl border border-border bg-card p-4 transition-colors hover:bg-muted/40"
-          >
-            <div className="flex items-start justify-between gap-2">
-              <h3 className="min-w-0 flex-1 truncate font-bold">{ev.title}</h3>
-              <Badge
-                className={cn(
-                  "rounded-full",
-                  ev.status === "published"
-                    ? "bg-emerald-500/12 text-emerald-700"
-                    : ev.status === "cancelled"
-                      ? "bg-rose-500/12 text-rose-700"
-                      : "bg-muted text-foreground",
-                )}
-              >
-                {EVENT_STATUS_LABELS[ev.status]}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {formatShamsiDateTimeInZone(ev.startsAt, timezone)}
-            </p>
-            <div className="mt-auto flex items-center gap-3 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <UsersIcon className="size-3.5" />
-                {toPersianDigits(ev.registrantCount)} ثبت‌نام
-              </span>
-              {ev.capacity ? (
-                <span>ظرفیت {toPersianDigits(ev.capacity)} نفر</span>
-              ) : (
-                <span>ظرفیت نامحدود</span>
-              )}
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ul>
   );
 }

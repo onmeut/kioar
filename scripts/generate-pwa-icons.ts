@@ -11,6 +11,7 @@
  *   /public/og-image.png                     (1200x630, centered avatar)
  *   /public/icons/icon-{72,96,128,144,152,192,384,512}.png
  *   /public/icons/maskable-512.png           (with safe-area padding)
+ *   /public/icons/android-splash-1024.png   (for Android Chrome splash)
  *   /public/icons/apple-touch-icon-{120,152,167,180}.png
  *   /public/icons/mstile-150x150.png
  *
@@ -32,6 +33,7 @@ const root = process.cwd();
 const publicDir = path.join(root, "public");
 const iconsDir = path.join(publicDir, "icons");
 const sourceSvgPath = path.join(publicDir, "brand", "brand-avatar.svg");
+const logoSvgPath = path.join(publicDir, "brand", "logo.svg");
 
 // Brand background — matches the avatar SVG.
 const BRAND_GREEN = "#1ED760";
@@ -99,6 +101,38 @@ async function renderMaskable(svg: Buffer, size: number, outFile: string) {
     .toFile(outFile);
 }
 
+async function renderAndroidSplashIcon(
+  logoSvg: Buffer,
+  size: number,
+  outFile: string,
+) {
+  // Android Chrome centers this icon on background_color at ~1/3 screen width.
+  // To match the iOS splash proportions (mark ~18–20% of screen), we size the
+  // mark to ~22% of this canvas — Chrome then renders it at ~7% of screen,
+  // which combined with the seamless green bg looks identical to the iOS design.
+  // We use logo.svg (transparent bg, black mark) composited onto brand green.
+  const LOGO_NATURAL_W = 200;
+  const LOGO_NATURAL_H = 227;
+  const markWidth = Math.round(size * 0.22);
+  const markHeight = Math.round((markWidth * LOGO_NATURAL_H) / LOGO_NATURAL_W);
+  const density = Math.max(72, Math.ceil((markWidth / LOGO_NATURAL_W) * 96));
+
+  const markPng = await sharp(logoSvg, { density })
+    .resize(markWidth, markHeight, { fit: "fill" })
+    .png()
+    .toBuffer();
+
+  const left = Math.round((size - markWidth) / 2);
+  const top = Math.round((size - markHeight) / 2);
+
+  await sharp({
+    create: { width: size, height: size, channels: 3, background: BRAND_GREEN },
+  })
+    .composite([{ input: markPng, left, top }])
+    .png({ compressionLevel: 9 })
+    .toFile(outFile);
+}
+
 async function renderOgImage(svg: Buffer, outFile: string) {
   const W = 1200;
   const H = 630;
@@ -147,6 +181,7 @@ async function renderFaviconIco(svg: Buffer) {
 async function main() {
   await mkdir(iconsDir, { recursive: true });
   const svg = await readFile(sourceSvgPath);
+  const logoSvg = await readFile(logoSvgPath);
 
   await Promise.all(
     squareIcons.map((spec) => renderSquare(svg, spec.size, targetPath(spec))),
@@ -157,6 +192,15 @@ async function main() {
 
   // Maskable PWA icon.
   await renderMaskable(svg, 512, path.join(iconsDir, "maskable-512.png"));
+
+  // Android splash icon: 1024×1024 green canvas + small centered mark, matching
+  // iOS splash proportions. Being the largest "any" icon, Chrome uses it for
+  // the auto-generated splash screen. It blends seamlessly with background_color.
+  await renderAndroidSplashIcon(
+    logoSvg,
+    1024,
+    path.join(iconsDir, "android-splash-1024.png"),
+  );
 
   // Open Graph share image.
   await renderOgImage(svg, path.join(publicDir, "og-image.png"));

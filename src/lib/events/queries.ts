@@ -299,6 +299,9 @@ export type PublicEventView = {
   pageSlug: string;
   pageName: string | null;
   pageAvatarUrl: string | null;
+  pageAppearance: unknown;
+  pageAvatarSeed: string | null;
+  pageQrStyle: unknown;
   title: string;
   description: string | null;
   coverUrl: string | null;
@@ -353,6 +356,9 @@ export async function getPublicEvent(
       pageSlug: profiles.slug,
       pageName: profiles.fullName,
       pageAvatarUrl: profiles.avatarUrl,
+      pageAppearance: profiles.appearance,
+      pageAvatarSeed: profiles.avatarSeed,
+      pageQrStyle: profiles.qrStyle,
     })
     .from(events)
     .innerJoin(profiles, eq(events.pageId, profiles.id))
@@ -396,6 +402,9 @@ export async function getPublicEvent(
     pageSlug: found.pageSlug,
     pageName: found.pageName,
     pageAvatarUrl: found.pageAvatarUrl,
+    pageAppearance: found.pageAppearance,
+    pageAvatarSeed: found.pageAvatarSeed,
+    pageQrStyle: found.pageQrStyle,
     title: ev.title,
     description: ev.description,
     coverUrl: ev.coverUrl,

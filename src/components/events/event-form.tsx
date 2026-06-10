@@ -1,11 +1,10 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import { ImageIcon } from "lucide-react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ImageField } from "@/components/shared/image-field";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -91,9 +90,7 @@ export function EventForm({
   const [coverUrl, setCoverUrl] = useState<string | null>(
     initial?.coverUrl ?? null,
   );
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
+  const coverHiddenInputRef = useRef<HTMLInputElement>(null);
 
   const [locationType, setLocationType] = useState<"physical" | "online">(
     initial?.locationType ?? "physical",
@@ -142,18 +139,14 @@ export function EventForm({
   const [discountCodes, setDiscountCodes] = useState<DraftDiscountCode[]>(
     initial?.discountCodes ?? [],
   );
-  const [publishOnSave, setPublishOnSave] = useState(
-    initial?.status === "published",
+  // statusValue drives the hidden "status" input. Set via onPointerDown so the
+  // DOM value updates synchronously before the form submit fires.
+  const [statusValue, setStatusValue] = useState<"published" | "draft">(
+    initial?.status === "published" ? "published" : "draft",
   );
 
   const tzOptions = buildTimezoneOptions(timezone);
   const fieldError = (k: string) => state.fieldErrors?.[k]?.[0];
-
-  function pickCover(file: File | undefined) {
-    if (!file) return;
-    setCoverFile(file);
-    setCoverPreview(URL.createObjectURL(file));
-  }
 
   return (
     <form action={formAction} className="space-y-6">
@@ -183,11 +176,7 @@ export function EventForm({
         name="waitlistEnabled"
         value={waitlistEnabled ? "true" : "false"}
       />
-      <input
-        type="hidden"
-        name="status"
-        value={publishOnSave ? "published" : "draft"}
-      />
+      <input type="hidden" name="status" value={statusValue} />
       <input
         type="hidden"
         name="questions"
@@ -206,51 +195,33 @@ export function EventForm({
       ) : null}
 
       {/* Cover */}
-      <div className="space-y-2">
-        <Label>تصویر کاور (اختیاری)</Label>
-        <button
-          type="button"
-          onClick={() => coverInputRef.current?.click()}
-          className="relative flex aspect-[16/9] w-full items-center justify-center overflow-hidden rounded-3xl border border-dashed border-border bg-muted/30 transition-colors hover:bg-muted/50"
-        >
-          {coverPreview || coverUrl ? (
-            <Image
-              src={coverPreview ?? coverUrl ?? ""}
-              alt="کاور رویداد"
-              fill
-              className="object-cover"
-              unoptimized={Boolean(coverPreview)}
-            />
-          ) : (
-            <span className="flex flex-col items-center gap-2 text-muted-foreground">
-              <ImageIcon className="size-7" />
-              <span className="text-sm">افزودن تصویر</span>
-            </span>
-          )}
-        </button>
-        <input
-          ref={coverInputRef}
-          type="file"
-          name="cover"
-          accept="image/*"
-          className="hidden"
-          onChange={(e) => pickCover(e.target.files?.[0])}
-        />
-        {coverFile ? (
-          <button
-            type="button"
-            onClick={() => {
-              setCoverFile(null);
-              setCoverPreview(null);
-              setCoverUrl(initial?.coverUrl ?? null);
-              if (coverInputRef.current) coverInputRef.current.value = "";
-            }}
-            className="text-xs text-muted-foreground underline"
-          >
-            حذف تصویر انتخابی
-          </button>
-        ) : null}
-      </div>
+      <ImageField
+        mode="deferred"
+        label="تصویر کاور (اختیاری)"
+        emptyLabel="افزودن تصویر کاور"
+        aspectRatio="free"
+        imageUrl={coverUrl}
+        onChange={setCoverUrl}
+        onFileSelected={(file) => {
+          if (coverHiddenInputRef.current) {
+            if (file) {
+              const dt = new DataTransfer();
+              dt.items.add(file);
+              coverHiddenInputRef.current.files = dt.files;
+            } else {
+              coverHiddenInputRef.current.value = "";
+            }
+          }
+        }}
+      />
+      <input
+        ref={coverHiddenInputRef}
+        type="file"
+        name="cover"
+        accept="image/*"
+        className="hidden"
+        aria-hidden
+      />
 
       {/* Title */}
       <div className="space-y-2">
@@ -499,20 +470,36 @@ export function EventForm({
         />
       </div>
 
-      {/* Publish toggle + submit */}
-      <div className="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between">
-        <ToggleRow
-          label="انتشار رویداد"
-          hint="رویداد منتشرشده روی صفحهٔ عمومی شما نمایش داده می‌شود."
-          checked={publishOnSave}
-          onChange={setPublishOnSave}
-        />
+      {/* Action footer */}
+      <div className="sticky bottom-0 -mx-4 -mb-4 flex flex-row items-center gap-2 border-t bg-background px-4 py-4 sm:-mx-5 sm:-mb-5 sm:px-5">
+        {initial?.status === "published" ? (
+          <SubmitButton
+            type="submit"
+            variant="outline"
+            className="h-11 flex-1 sm:flex-none"
+            pendingLabel="در حال ذخیره…"
+            onPointerDown={() => setStatusValue("draft")}
+          >
+            لغو انتشار
+          </SubmitButton>
+        ) : (
+          <SubmitButton
+            type="submit"
+            variant="outline"
+            className="h-11 flex-1 sm:flex-none"
+            pendingLabel="در حال ذخیره…"
+            onPointerDown={() => setStatusValue("draft")}
+          >
+            ذخیره پیش‌نویس
+          </SubmitButton>
+        )}
         <SubmitButton
           type="submit"
-          className="h-12 w-full sm:w-auto"
-          pendingLabel="در حال ذخیره…"
+          className="h-11 flex-1 sm:flex-none"
+          pendingLabel="در حال انتشار…"
+          onPointerDown={() => setStatusValue("published")}
         >
-          {submitLabel ?? (initial ? "ذخیره تغییرات" : "ساخت رویداد")}
+          {submitLabel ?? "انتشار رویداد"}
         </SubmitButton>
       </div>
     </form>

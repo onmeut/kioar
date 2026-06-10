@@ -341,7 +341,7 @@ export function AddLinkDialog({
         className="w-full max-w-xl p-0 sm:max-w-2xl"
         showCloseButton={false}
       >
-        <DialogTitle className="sr-only">افزودن لینک</DialogTitle>
+        <DialogTitle className="sr-only">افزودن بلوک</DialogTitle>
         <AddLinkDialogBody
           onClose={() => onOpenChange(false)}
           onSubmit={onSubmit}
@@ -556,7 +556,7 @@ function AddLinkDialogBody({
             </button>
           ) : null}
         </div>
-        <h2 className="text-center text-lg font-bold">افزودن لینک</h2>
+        <h2 className="text-center text-lg font-bold">افزودن بلوک</h2>
         <div className="flex justify-end">
           <Button
             type="button"

@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import type { Route } from "next";
 import Link from "next/link";
-import { QrCodeIcon } from "lucide-react";
-import { toast } from "sonner";
+import { CalendarDaysIcon, QrCodeIcon } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,6 @@ import { AddToCalendar } from "@/components/events/add-to-calendar";
 import { REGISTRATION_STATUS_LABELS } from "@/lib/events/labels";
 import { formatShamsiDateTimeInZone } from "@/lib/date/timezone";
 import { cn } from "@/lib/utils";
-import { cancelRegistrationAction } from "@/app/[slug]/e/[eventSlug]/actions";
 
 export type AttendingItem = {
   registrationId: string;
@@ -59,16 +57,6 @@ export function MyEventsAttending({
 
   return (
     <div className="space-y-5">
-      <Button
-        type="button"
-        variant="outline"
-        className="h-12 w-full"
-        onClick={() => setQrOpen(true)}
-      >
-        <QrCodeIcon className="size-5" />
-        نمایش کد QR برای ورود
-      </Button>
-
       {upcoming.length === 0 && past.length === 0 ? (
         <p className="rounded-4xl border border-dashed border-border/70 bg-muted/20 p-8 text-center text-sm text-muted-foreground">
           هنوز در رویدادی ثبت‌نام نکرده‌اید.
@@ -76,9 +64,9 @@ export function MyEventsAttending({
       ) : null}
 
       {upcoming.length > 0 ? (
-        <ul className="space-y-3">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {upcoming.map((item) => (
-            <AttendingCard key={item.registrationId} item={item} />
+            <AttendingCard key={item.registrationId} item={item} onShowQr={() => setQrOpen(true)} />
           ))}
         </ul>
       ) : null}
@@ -88,9 +76,9 @@ export function MyEventsAttending({
           <h2 className="text-sm font-semibold text-muted-foreground">
             رویدادهای گذشته
           </h2>
-          <ul className="space-y-3 opacity-70">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 opacity-70">
             {past.map((item) => (
-              <AttendingCard key={item.registrationId} item={item} />
+              <AttendingCard key={item.registrationId} item={item} onShowQr={() => setQrOpen(true)} />
             ))}
           </ul>
         </div>
@@ -113,68 +101,66 @@ export function MyEventsAttending({
   );
 }
 
-function AttendingCard({ item }: { item: AttendingItem }) {
-  const [pending, start] = useTransition();
-  const confirmed = item.status === "approved" || item.status === "attended";
-  const canCancel =
-    !item.isPast &&
-    item.status !== "attended" &&
-    item.status !== "rejected" &&
-    item.status !== "cancelled";
-
-  function cancel() {
-    if (!window.confirm("ثبت‌نام شما لغو شود؟")) return;
-    start(async () => {
-      const res = await cancelRegistrationAction(item.pageSlug, item.eventSlug);
-      if (res.ok) toast.success("ثبت‌نام لغو شد.");
-      else toast.error(res.message ?? "لغو ناموفق بود.");
-    });
-  }
-
+function AttendingCard({ item, onShowQr }: { item: AttendingItem; onShowQr: () => void }) {
   return (
-    <li className="rounded-4xl border border-border bg-card p-4">
-      <div className="flex items-start justify-between gap-2">
-        <Link
-          href={`/${item.pageSlug}/e/${item.eventSlug}` as Route}
-          className="min-w-0 flex-1"
-        >
-          <h3 className="truncate font-bold hover:underline">{item.title}</h3>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {formatShamsiDateTimeInZone(new Date(item.startsAt), item.timezone)}
-          </p>
-        </Link>
-        <Badge className={cn("rounded-full", STATUS_TONE[item.status] ?? "")}>
-          {REGISTRATION_STATUS_LABELS[item.status]}
-        </Badge>
-      </div>
+    <li className="flex h-full flex-col overflow-hidden rounded-4xl border border-border bg-card">
+      <Link
+        href={`/${item.pageSlug}/e/${item.eventSlug}` as Route}
+        className="flex aspect-[16/9] w-full items-center justify-center bg-muted"
+      >
+        <CalendarDaysIcon className="size-8 text-muted-foreground/50" />
+      </Link>
 
-      {confirmed && !item.isPast ? (
-        <div className="mt-3">
-          <AddToCalendar
-            title={item.title}
-            description={item.description}
-            location={
-              item.locationType === "physical" ? item.locationAddress : null
-            }
-            startsAt={item.startsAt}
-            endsAt={item.endsAt}
-            timezone={item.timezone}
-            uid={item.eventId}
-            url={`https://kioar.com/${item.pageSlug}/e/${item.eventSlug}`}
-          />
+      <div className="flex flex-1 flex-col gap-2 p-4">
+        <div className="flex items-start justify-between gap-2">
+          <Link
+            href={`/${item.pageSlug}/e/${item.eventSlug}` as Route}
+            className="min-w-0 flex-1"
+          >
+            <h3 className="line-clamp-2 font-bold leading-snug hover:underline">
+              {item.title}
+            </h3>
+          </Link>
+          <Badge
+            className={cn("shrink-0 rounded-full", STATUS_TONE[item.status] ?? "")}
+          >
+            {REGISTRATION_STATUS_LABELS[item.status]}
+          </Badge>
         </div>
-      ) : null}
 
-      {canCancel ? (
-        <button
-          type="button"
-          onClick={cancel}
-          disabled={pending}
-          className="mt-3 text-xs text-rose-600 underline-offset-2 hover:underline disabled:opacity-50"
-        >
-          لغو ثبت‌نام
-        </button>
-      ) : null}
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <CalendarDaysIcon className="size-3.5 shrink-0" />
+          {formatShamsiDateTimeInZone(new Date(item.startsAt), item.timezone)}
+        </p>
+
+        <div className="mt-auto flex flex-col gap-2 pt-1">
+          {!item.isPast ? (
+            <AddToCalendar
+              title={item.title}
+              description={item.description}
+              location={
+                item.locationType === "physical" ? item.locationAddress : null
+              }
+              startsAt={item.startsAt}
+              endsAt={item.endsAt}
+              timezone={item.timezone}
+              uid={item.eventId}
+              url={`https://kioar.com/${item.pageSlug}/e/${item.eventSlug}`}
+              className="h-9 w-full text-xs"
+            />
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-9 w-full text-xs"
+            onClick={onShowQr}
+          >
+            <QrCodeIcon className="size-3.5" />
+            نمایش کد QR برای ورود
+          </Button>
+        </div>
+      </div>
     </li>
   );
 }

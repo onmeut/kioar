@@ -19,13 +19,10 @@ import {
   ArrowRightIcon,
   CheckIcon,
   ImageIcon,
-  MonitorIcon,
   PaletteIcon,
   RotateCcwIcon,
-  SmartphoneIcon,
   UploadCloudIcon,
   XIcon,
-  type LucideIcon,
 } from "lucide-react";
 import {
   RectangleStencil,
@@ -34,11 +31,14 @@ import {
 } from "react-mobile-cropper";
 import "react-mobile-cropper/dist/style.css";
 
+import Image from "next/image";
+
 import { Button } from "@/components/ui/button";
 import { ColorPicker } from "@/components/ui/color-picker";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { HalftoneFilter } from "@/components/public-page/halftone-filter";
+import { KioarBadge } from "@/components/public/kioar-badge";
+import { PageThemeProvider } from "@/components/public-page/page-theme-provider";
 import {
   PublicProfileCard,
   type PublicProfileCardData,
@@ -56,7 +56,6 @@ import {
 } from "@/lib/appearance/types";
 import {
   isCustomWallpaper,
-  tintOverlayStyle,
   wallpaperLayerStyle,
 } from "@/lib/appearance/wallpaper";
 import { cn } from "@/lib/utils";
@@ -99,7 +98,6 @@ export function DesignEditor({
   const [draft, setDraft] = useState<PageAppearance>(initial);
   const [savedSnapshot, setSavedSnapshot] = useState<PageAppearance>(initial);
   const [saving, setSaving] = useState(false);
-  const [viewport, setViewport] = useState<"phone" | "desktop">("phone");
 
   const isDirty = useMemo(
     () => JSON.stringify(draft) !== JSON.stringify(savedSnapshot),
@@ -149,12 +147,10 @@ export function DesignEditor({
           onChange={setSection}
           draft={draft}
         />
-        <div className="flex min-w-0 flex-1 flex-col items-center justify-start gap-4 overflow-y-auto bg-muted/30 px-6 py-6">
-          <ViewportToggle value={viewport} onChange={setViewport} />
+        <div className="flex min-w-0 flex-1 flex-col items-center overflow-y-auto bg-muted/30">
           <DesktopPreviewArea
             draft={draft}
             profile={previewProfile}
-            viewport={viewport}
           />
         </div>
         <aside className="hidden w-[400px] shrink-0 flex-col overflow-y-auto border-s bg-background lg:flex">
@@ -173,14 +169,10 @@ export function DesignEditor({
           Preview fills the available area; bottom sheet hosts the controls
           with sticky tab bar pinned to the very bottom (above iOS inset). */}
       <div className="flex min-h-0 flex-1 flex-col md:hidden">
-        <div className="flex shrink-0 items-center justify-center bg-muted/30 px-3 py-1">
-          <ViewportToggle value={viewport} onChange={setViewport} compact />
-        </div>
-        <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 px-2 py-1">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <MobilePreviewArea
             draft={draft}
             profile={previewProfile}
-            viewport={viewport}
           />
         </div>
         <MobileControlsSheet
@@ -209,8 +201,9 @@ function DesignHeader({
   onReset: () => void;
 }) {
   return (
-    <header className="sticky top-0 z-30 flex shrink-0 items-center justify-between gap-2 border-b bg-background px-2 py-1.5 pt-[max(env(safe-area-inset-top),0.375rem)] md:px-6 md:py-4 md:pt-4">
-      <div className="flex items-center gap-1.5 md:gap-2">
+    <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b bg-background px-2 py-1.5 pt-[max(env(safe-area-inset-top),0.375rem)] md:px-6 md:py-4 md:pt-4">
+      {/* Start: back + title */}
+      <div className="flex min-w-0 flex-1 items-center gap-1.5 md:gap-2">
         <Link
           href={"/me" as Route}
           aria-label="بازگشت"
@@ -220,7 +213,8 @@ function DesignHeader({
         </Link>
         <h1 className="text-base font-bold md:text-xl">طراحی</h1>
       </div>
-      <div className="flex items-center gap-2">
+      {/* End: reset + save */}
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
         <Button
           type="button"
           variant="ghost"
@@ -1096,7 +1090,7 @@ function ImageControls({
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => onChange({ ...value, imageUrl: "" })}
+                onClick={() => onChange({ type: "fill", color: "var(--background)" })}
                 disabled={uploading}
                 className="h-9 w-full justify-center gap-2 text-destructive hover:text-destructive"
               >
@@ -1170,285 +1164,72 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/* ─────────────────────────── Viewport toggle ─────────────────────────── */
-
-function ViewportToggle({
-  value,
-  onChange,
-  compact = false,
-}: {
-  value: "phone" | "desktop";
-  onChange: (v: "phone" | "desktop") => void;
-  compact?: boolean;
-}) {
-  return (
-    <div
-      role="tablist"
-      aria-label="نمای پیش‌نمایش"
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full border border-border bg-background p-1",
-        compact ? "" : "shadow-sm",
-      )}
-    >
-      <ViewportChip
-        active={value === "phone"}
-        onClick={() => onChange("phone")}
-        icon={SmartphoneIcon}
-        label="موبایل"
-      />
-      <ViewportChip
-        active={value === "desktop"}
-        onClick={() => onChange("desktop")}
-        icon={MonitorIcon}
-        label="دسکتاپ"
-      />
-    </div>
-  );
-}
-
-function ViewportChip({
-  active,
-  onClick,
-  icon: Icon,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  icon: LucideIcon;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="tab"
-      aria-selected={active}
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold transition-colors",
-        active
-          ? "bg-foreground text-background"
-          : "text-muted-foreground hover:bg-muted hover:text-foreground",
-      )}
-    >
-      <Icon className="size-3.5" aria-hidden />
-      {label}
-    </button>
-  );
-}
-
 /* ─────────────────────────── Preview ─────────────────────────── */
 
-/**
- * Phone preview that matches the /me page mockup chrome exactly:
- * `rounded-[44px]` + `border-2 border-foreground/15`, ~340×690 frame, with
- * the user's theme + wallpaper applied via `PreviewSurface`.
- *
- * Mobile uses `clamp()` widths so the frame scales with viewport without
- * ever growing taller than the available space (`100dvh - chrome`).
- */
-function PhonePreview({
+function PreviewContent({
   draft,
   profile,
-  className,
+  desktop = false,
 }: {
   draft: PageAppearance;
   profile: PublicProfileCardData;
-  className?: string;
+  desktop?: boolean;
 }) {
-  const cssVars = themeToCssVars(draft.theme) as CSSProperties;
-  const layer = wallpaperLayerStyle(draft.wallpaper);
-  const tint = tintOverlayStyle(draft.wallpaper);
-  const themeBg = getTheme(draft.theme).tokens.background;
-  const custom = isCustomWallpaper(draft.wallpaper, themeBg);
-
+  const isDark = draft.theme === "dark";
+  const logoSrc = isDark ? "/brand/logo-white.svg" : "/brand/logo.svg";
   return (
-    <div
-      className={cn(
-        "relative flex aspect-[340/690] max-h-full min-h-0 shrink-0 flex-col overflow-hidden rounded-[44px] border-2 border-foreground/15 shadow-2xl",
-        className,
-      )}
-      style={{ ...cssVars, transform: "translateZ(0)" } as CSSProperties}
-      aria-label="پیش‌نمایش موبایل"
-    >
-      <div className="relative h-full w-full overflow-hidden">
-        <PreviewSurface
-          cssVars={cssVars}
-          themeId={draft.theme}
-          wallpaperKind={draft.wallpaper.type}
-          custom={custom}
-          layer={layer}
-          tint={tint}
+    <PageThemeProvider appearance={draft} preview className="min-h-full w-full">
+      <div className={cn(
+        "relative mx-auto flex min-h-full w-full max-w-145 flex-col px-4 pb-8",
+        desktop ? "pt-4" : "pt-8",
+      )}>
+        <PublicProfileCard
           profile={profile}
-          density="mobile"
+          interactive={false}
+          className="flex-1"
+          flushBottom
+          headerSlot={
+            <div className="flex items-center justify-between">
+              <div className="inline-flex size-10 items-center justify-center rounded-full bg-foreground/[0.07]">
+                <Image src={logoSrc} alt="" width={17} height={19} className="h-[19px] w-auto" />
+              </div>
+            </div>
+          }
+          footerSlot={
+            <div className="flex flex-col items-center gap-3">
+              <KioarBadge variant={isDark ? "dark" : "default"} />
+            </div>
+          }
         />
       </div>
-    </div>
+    </PageThemeProvider>
   );
 }
 
 function MobilePreviewArea({
   draft,
   profile,
-  viewport,
 }: {
   draft: PageAppearance;
   profile: PublicProfileCardData;
-  viewport: "phone" | "desktop";
 }) {
-  if (viewport === "phone") {
-    return (
-      <PhonePreview
-        draft={draft}
-        profile={profile}
-        className="h-full max-h-full w-auto max-w-full"
-      />
-    );
-  }
   return (
-    <DesktopFrame draft={draft} profile={profile} className="w-full max-w-full" />
+    <div className="w-full">
+      <PreviewContent draft={draft} profile={profile} />
+    </div>
   );
 }
 
 function DesktopPreviewArea({
   draft,
   profile,
-  viewport,
 }: {
   draft: PageAppearance;
   profile: PublicProfileCardData;
-  viewport: "phone" | "desktop";
-}) {
-  if (viewport === "phone") {
-    // Phone preview at fixed size — same dimensions as the /me mockup
-    return (
-      <div className="flex min-h-0 flex-1 items-center justify-center">
-        <PhonePreview
-          draft={draft}
-          profile={profile}
-          className="h-[640px] w-auto"
-        />
-      </div>
-    );
-  }
-  return (
-    <div className="flex w-full max-w-[960px] flex-col items-center">
-      <DesktopFrame draft={draft} profile={profile} />
-    </div>
-  );
-}
-
-/**
- * Laptop frame for the desktop viewport. We render a realistic-feeling
- * MacBook silhouette: black bezel + screen (16:10), then a chin and
- * base below. The inner screen is wide enough that visitors can actually
- * read the rendered page — the earlier version was a tiny rectangle.
- */
-function DesktopFrame({
-  draft,
-  profile,
-  className,
-}: {
-  draft: PageAppearance;
-  profile: PublicProfileCardData;
-  className?: string;
-}) {
-  const cssVars = themeToCssVars(draft.theme) as CSSProperties;
-  const layer = wallpaperLayerStyle(draft.wallpaper);
-  const tint = tintOverlayStyle(draft.wallpaper);
-  const themeBg = getTheme(draft.theme).tokens.background;
-  const custom = isCustomWallpaper(draft.wallpaper, themeBg);
-
-  return (
-    <div className={cn("flex w-full flex-col items-center", className)} style={cssVars as CSSProperties}>
-      <div
-        className="relative w-full overflow-hidden rounded-t-2xl border-[10px] border-b-0 border-neutral-900 bg-neutral-900 shadow-2xl"
-        style={{ aspectRatio: "16 / 10" }}
-        aria-label="پیش‌نمایش دسکتاپ"
-      >
-        <PreviewSurface
-          cssVars={cssVars}
-          themeId={draft.theme}
-          wallpaperKind={draft.wallpaper.type}
-          custom={custom}
-          layer={layer}
-          tint={tint}
-          profile={profile}
-          density="desktop"
-        />
-      </div>
-      {/* Laptop chin + base — decorative MacBook-ish silhouette */}
-      <div className="h-3 w-[104%] rounded-b-xl bg-neutral-800 shadow-md" />
-      <div className="h-1.5 w-[40%] rounded-b-md bg-neutral-700" />
-    </div>
-  );
-}
-
-/**
- * Inner themed surface — identical structure to `PageThemeProvider` on the
- * real page so the preview matches /[slug] 1:1.
- *
- * `density="mobile"` flushes the card to the wallpaper-inset rule from
- * globals.css. `density="desktop"` centres a narrower card on the wallpaper
- * canvas, mirroring the real /[slug] desktop layout.
- */
-function PreviewSurface({
-  cssVars,
-  themeId,
-  wallpaperKind,
-  custom,
-  layer,
-  tint,
-  profile,
-  density,
-}: {
-  cssVars: CSSProperties;
-  themeId: PageAppearance["theme"];
-  wallpaperKind: "fill" | "gradient" | "image";
-  custom: boolean;
-  layer: CSSProperties;
-  tint: CSSProperties | null;
-  profile: PublicProfileCardData;
-  density: "mobile" | "desktop";
 }) {
   return (
-    <div
-      className="page-theme-root relative h-full w-full overflow-hidden"
-      style={cssVars}
-      data-page-theme={themeId}
-      data-wallpaper-kind={wallpaperKind}
-      data-custom-wallpaper={custom ? "1" : undefined}
-      data-preview
-    >
-      <div className="page-wallpaper absolute inset-0" style={layer} aria-hidden />
-      {tint ? (
-        <div
-          className="page-wallpaper-tint absolute inset-0"
-          style={tint}
-          aria-hidden
-        />
-      ) : null}
-      <HalftoneFilter />
-
-      <div className="page-theme-content no-scrollbar relative z-[2] h-full w-full overflow-y-auto">
-        {density === "mobile" ? (
-          <div className="relative flex min-h-full w-full flex-col">
-            <PublicProfileCard
-              profile={profile}
-              interactive={false}
-              className="flex-1 !rounded-none !shadow-none"
-              flushBottom
-            />
-          </div>
-        ) : (
-          <div className="mx-auto flex min-h-full w-full max-w-[460px] flex-col px-6 py-8">
-            <PublicProfileCard
-              profile={profile}
-              interactive={false}
-              className="!rounded-3xl !p-6 shadow-card"
-            />
-          </div>
-        )}
-      </div>
+    <div className="w-full overflow-hidden" aria-label="پیش‌نمایش دسکتاپ">
+      <PreviewContent draft={draft} profile={profile} desktop />
     </div>
   );
 }

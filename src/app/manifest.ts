@@ -80,6 +80,15 @@ export default function manifest(): MetadataRoute.Manifest {
         type: "image/png",
         purpose: "maskable",
       },
+      // Android splash icon: 1024×1024 green canvas, mark at ~22% of canvas.
+      // Chrome picks the largest "any" icon for splash; being 1024px it wins
+      // over the 512px home-screen icon. Blends with background_color (#1ED760).
+      {
+        src: "/icons/android-splash-1024.png",
+        sizes: "1024x1024",
+        type: "image/png",
+        purpose: "any",
+      },
     ],
     shortcuts: [
       {
