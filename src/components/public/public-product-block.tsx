@@ -36,6 +36,7 @@ import { cn } from "@/lib/utils";
 export type PublicProductSection = {
   id: string;
   title: string;
+  iconKey: string | null;
 };
 
 export type PublicProductItem = {

@@ -435,6 +435,13 @@
 			"when": 1778901400000,
 			"tag": "0062_seed_link_text_block_feature",
 			"breakpoints": true
+		},
+		{
+			"idx": 63,
+			"version": "7",
+			"when": 1778901500000,
+			"tag": "0063_product_section_icon",
+			"breakpoints": true
 		}
 	]
 }

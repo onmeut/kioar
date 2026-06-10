@@ -81,6 +81,81 @@ export async function listHostEvents(
   }));
 }
 
+export type EventBlockRow = {
+  id: string;
+  slug: string;
+  title: string;
+  coverUrl: string | null;
+  status: "draft" | "published" | "cancelled";
+  startsAt: Date;
+  endsAt: Date | null;
+  timezone: string;
+  capacity: number | null;
+  isActive: boolean;
+  sortOrder: number;
+  spotlight: import("@/lib/block-spotlight").BlockSpotlight;
+  animationStyle: import("@/lib/block-spotlight").BlockAnimationStyle | null;
+  registrantCount: number;
+};
+
+/**
+ * Events as editor blocks for the unified /me list. Ordered by `sort_order`
+ * (the shared block axis) — NOT by start date like {@link listHostEvents},
+ * which powers the standalone /my-events management screen. Carries the
+ * `is_active` / `spotlight` / `animation_style` fields the block row needs.
+ */
+export async function getEventBlocksByPageId(
+  pageId: string,
+): Promise<EventBlockRow[]> {
+  const db = getDb();
+  const rows = await db
+    .select({
+      id: events.id,
+      slug: events.slug,
+      title: events.title,
+      coverUrl: events.coverUrl,
+      status: events.status,
+      startsAt: events.startsAt,
+      endsAt: events.endsAt,
+      timezone: events.timezone,
+      capacity: events.capacity,
+      isActive: events.isActive,
+      sortOrder: events.sortOrder,
+      spotlight: events.spotlight,
+      animationStyle: events.animationStyle,
+    })
+    .from(events)
+    .where(eq(events.pageId, pageId))
+    .orderBy(asc(events.sortOrder), desc(events.startsAt));
+
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((r) => r.id);
+  const counts = await db
+    .select({
+      eventId: eventRegistrations.eventId,
+      status: eventRegistrations.status,
+      n: sql<number>`count(*)::int`,
+    })
+    .from(eventRegistrations)
+    .where(inArray(eventRegistrations.eventId, ids))
+    .groupBy(eventRegistrations.eventId, eventRegistrations.status);
+
+  const total = new Map<string, number>();
+  for (const c of counts) {
+    if (
+      (ACTIVE_REGISTRATION_STATUSES as readonly string[]).includes(c.status)
+    ) {
+      total.set(c.eventId, (total.get(c.eventId) ?? 0) + Number(c.n));
+    }
+  }
+
+  return rows.map((r) => ({
+    ...r,
+    registrantCount: total.get(r.id) ?? 0,
+  }));
+}
+
 /** Full event with questions + discount codes, scoped to its owning page. */
 export async function getHostEvent(eventId: string, pageId: string) {
   const db = getDb();

@@ -11,6 +11,8 @@ import { PublicLinkClickTracker } from "@/components/public/public-link-click-tr
 import { PublicProfileCard } from "@/components/public/public-profile-card";
 import { PublicProfileShareButton } from "@/components/public/public-profile-actions";
 import { PageThemeProvider } from "@/components/public-page/page-theme-provider";
+import { IconNodesProvider } from "@/lib/icons/icon-nodes-context";
+import { resolveProfileIconNodes } from "@/lib/icons/collect-icon-nodes.server";
 import {
   connectToPageAction,
   disconnectFromPageAction,
@@ -161,6 +163,7 @@ export default async function CardResolvePage({
       className="relative min-h-dvh overflow-x-hidden text-foreground"
     >
       <PageThemeProvider appearance={appearance} className="min-h-dvh w-full bg-muted">
+        <IconNodesProvider value={resolveProfileIconNodes(profile)}>
         <div className="relative mx-auto flex min-h-dvh w-full max-w-145 flex-col pt-[env(safe-area-inset-top)] lg:pt-10">
           <PublicProfileCard
             className="flex-1"
@@ -275,6 +278,7 @@ export default async function CardResolvePage({
                 sections: b.sections.map((s) => ({
                   id: s.id,
                   title: s.title,
+                  iconKey: s.iconKey ?? null,
                 })),
                 items: b.items.map((it) => ({
                   id: it.id,
@@ -304,6 +308,7 @@ export default async function CardResolvePage({
           qrStyle={(profile.qrStyle as import("@/lib/qr/types").QrStyle | null) ?? null}
         />
         <PublicLinkClickTracker />
+        </IconNodesProvider>
       </PageThemeProvider>
     </main>
   );

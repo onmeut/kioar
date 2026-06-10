@@ -172,8 +172,8 @@ const profilePreview = {
       spotlight: "none",
       animationStyle: null,
       sections: [
-        { id: "strategy", title: "استراتژی" },
-        { id: "content", title: "محتوا" },
+        { id: "strategy", title: "استراتژی", iconKey: null },
+        { id: "content", title: "محتوا", iconKey: null },
       ],
       items: [
         {

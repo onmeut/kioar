@@ -1,6 +1,5 @@
 "use client";
 
-import type { Route } from "next";
 import {
   useActionState,
   useCallback,
@@ -36,6 +35,7 @@ import {
 import { toast } from "sonner";
 
 import { AddLinkDialog } from "@/components/dashboard/add-link-dialog";
+import { EditLinkDialog } from "@/components/dashboard/edit-link-dialog";
 import { BookingBlockRow } from "@/components/dashboard/booking-block-row";
 import { BlockCard } from "@/components/dashboard/block-card";
 import { BookingFlowDialog } from "@/components/dashboard/booking-flow-dialog";
@@ -67,6 +67,12 @@ import {
   TextBlockRow,
   type EditableTextBlockWithId,
 } from "@/components/dashboard/text-block-row";
+import {
+  EventBlockRow,
+  type EditableEventBlockWithId,
+} from "@/components/dashboard/event-block-row";
+import { EventBuilderDialog } from "@/components/dashboard/event-builder-dialog";
+import type { EventFormInitial } from "@/components/events/event-form";
 import { type LinkIconPickerValue } from "@/components/dashboard/link-icon-picker";
 import { LinkIconPickerButton } from "@/components/dashboard/link-icon-picker-button";
 import { SpotlightStarButton } from "@/components/dashboard/spotlight-star-button";
@@ -86,17 +92,13 @@ import { PageThemeProvider } from "@/components/public-page/page-theme-provider"
 import { coerceAppearance } from "@/lib/appearance/types";
 import { PublicShareBar } from "@/components/dashboard/public-share-bar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import type { Category, Industry } from "@/lib/discover";
 import {
   Sheet,
   SheetContent,
-  SheetDescription,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
 import { idleState, type ActionState } from "@/lib/action-state";
 import type { LinkMetadata } from "@/lib/link-metadata";
 import { submitFormAction as publicSubmitFormAction } from "@/lib/public-form-actions";
@@ -139,6 +141,7 @@ type LinksPageClientProps = {
   initialFormBlocks: EditableFormBlockWithId[];
   initialProductBlocks: EditableProductBlockWithId[];
   initialTextBlocks: EditableTextBlockWithId[];
+  initialEventBlocks: EditableEventBlockWithId[];
   /** All-time click counts keyed by link id. */
   linkClickCounts: Record<string, number>;
   publicUrl: string;
@@ -243,6 +246,23 @@ type LinksPageClientProps = {
     state: ActionState & { url?: string | null },
     formData: FormData,
   ) => Promise<ActionState & { url?: string | null }>;
+  /** Inline event create/update from the builder dialog — returns the event
+   *  id + slug on success instead of redirecting. */
+  saveEventBlockAction: (
+    state: ActionState & { id?: string; slug?: string },
+    formData: FormData,
+  ) => Promise<ActionState & { id?: string; slug?: string }>;
+  deleteEventBlockAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  toggleEventBlockActiveAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  /** Full event data for the edit flow, keyed by event id. Loaded server-side
+   *  so opening "edit" doesn't need a round-trip. */
+  eventFormInitials?: Record<string, EventFormInitial>;
   /** Phase 5: when the page lacks the booking entitlement, render existing
    * booking blocks read-only with an upgrade CTA instead of editable rows. */
   bookingsLocked?: boolean;
@@ -334,6 +354,11 @@ export function LinksPageClient({
   deleteTextBlockAction,
   toggleTextBlockActiveAction,
   uploadTextBlockImageAction,
+  saveEventBlockAction,
+  deleteEventBlockAction,
+  toggleEventBlockActiveAction,
+  eventFormInitials,
+  initialEventBlocks,
   bookingsLocked = false,
   formsLocked = false,
   productsLocked = false,
@@ -368,6 +393,8 @@ export function LinksPageClient({
     useState<EditableProductBlockWithId[]>(initialProductBlocks);
   const [textBlocks, setTextBlocks] =
     useState<EditableTextBlockWithId[]>(initialTextBlocks);
+  const [eventBlocks, setEventBlocks] =
+    useState<EditableEventBlockWithId[]>(initialEventBlocks);
 
   // Re-sync from the server when the parent route revalidates (e.g. after
   // creating a booking block). Without this the UI keeps showing the stale
@@ -384,6 +411,9 @@ export function LinksPageClient({
   useEffect(() => {
     setTextBlocks(initialTextBlocks);
   }, [initialTextBlocks]);
+  useEffect(() => {
+    setEventBlocks(initialEventBlocks);
+  }, [initialEventBlocks]);
   const [wizardOpen, setWizardOpen] = useState(false);
   // Ref to wizard's resetDraft so we can reset its in-memory state without remounting
   const wizardResetDraftRef = useRef<(() => void) | null>(null);
@@ -412,6 +442,10 @@ export function LinksPageClient({
   const [editingTextBlock, setEditingTextBlock] =
     useState<EditableTextBlockWithId | null>(null);
   const [savingText, setSavingText] = useState(false);
+  const [eventBuilderOpen, setEventBuilderOpen] = useState(false);
+  // The event currently being edited (null = creating a new one).
+  const [editingEventInitial, setEditingEventInitial] =
+    useState<EventFormInitial | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
@@ -471,7 +505,7 @@ export function LinksPageClient({
     return () => window.removeEventListener("cmd-palette-action", handler);
   }, [openPaletteAction]);
   const [previewOpen, setPreviewOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingLink, setEditingLink] = useState<EditableLink | null>(null);
 
   const [linksState, linksFormAction] = useActionState(
     autosaveLinksAction,
@@ -546,7 +580,7 @@ export function LinksPageClient({
 
   /* ---------- Unified blocks order (links + bookings + forms + products + text) ---------- */
   type BlockRef = {
-    kind: "link" | "booking" | "form" | "product" | "text";
+    kind: "link" | "booking" | "form" | "product" | "text" | "event";
     id: string;
   };
 
@@ -579,6 +613,11 @@ export function LinksPageClient({
         id: t.id,
         sortOrder: t.sortOrder ?? 5_000_000 + i,
       })),
+      ...eventBlocks.map((e, i) => ({
+        kind: "event" as const,
+        id: e.id,
+        sortOrder: e.sortOrder ?? 6_000_000 + i,
+      })),
     ];
     all.sort((a, b) => a.sortOrder - b.sortOrder);
     return all.map(({ kind, id }) => ({ kind, id }));
@@ -595,6 +634,7 @@ export function LinksPageClient({
       const formIds = new Set(formBlocks.map((f) => f.id));
       const productIds = new Set(productBlocks.map((p) => p.id));
       const textIds = new Set(textBlocks.map((t) => t.id));
+      const eventIds = new Set(eventBlocks.map((e) => e.id));
 
       const seen = new Set<string>();
       const kept: BlockRef[] = [];
@@ -604,7 +644,8 @@ export function LinksPageClient({
           (ref.kind === "booking" && bookingIds.has(ref.id)) ||
           (ref.kind === "form" && formIds.has(ref.id)) ||
           (ref.kind === "product" && productIds.has(ref.id)) ||
-          (ref.kind === "text" && textIds.has(ref.id));
+          (ref.kind === "text" && textIds.has(ref.id)) ||
+          (ref.kind === "event" && eventIds.has(ref.id));
         if (owns) {
           kept.push(ref);
           seen.add(`${ref.kind}:${ref.id}`);
@@ -618,9 +659,10 @@ export function LinksPageClient({
       for (const f of formBlocks) append("form", f.id);
       for (const p of productBlocks) append("product", p.id);
       for (const t of textBlocks) append("text", t.id);
+      for (const e of eventBlocks) append("event", e.id);
       return kept;
     });
-  }, [links, bookingBlocks, formBlocks, productBlocks, textBlocks]);
+  }, [links, bookingBlocks, formBlocks, productBlocks, textBlocks, eventBlocks]);
 
   // Persist global order (debounced). Skip on first run.
   const [, startReorderTransition] = useTransition();
@@ -680,7 +722,7 @@ export function LinksPageClient({
       if (next.length === 0) becameEmpty = true;
       return next;
     });
-    if (editingId === id) setEditingId(null);
+    if (editingLink?.id === id) setEditingLink(null);
     // After the state update is scheduled, reset the wizard draft if the list is now empty.
     if (becameEmpty) {
       clearActivationDraft(profile.id);
@@ -1076,6 +1118,62 @@ export function LinksPageClient({
     }
   }
 
+  /* ---------- Event block handlers ---------- */
+
+  function handleOpenNewEvent() {
+    setEditingEventInitial(null);
+    setEventBuilderOpen(true);
+  }
+
+  function handleEditEvent(id: string) {
+    // Full form data is preloaded server-side keyed by event id. If it's
+    // missing (e.g. created this session before a refresh), fall back to a
+    // refresh so the next open has it.
+    const initial = eventFormInitials?.[id] ?? null;
+    if (!initial) {
+      router.refresh();
+      return;
+    }
+    setEditingEventInitial(initial);
+    setEventBuilderOpen(true);
+  }
+
+  function handleEventSaved() {
+    setEventBuilderOpen(false);
+    setEditingEventInitial(null);
+    // The action revalidated /me; pull the fresh server props so the new /
+    // edited event appears as a row with its real id + counts.
+    router.refresh();
+  }
+
+  async function handleDeleteEvent(id: string) {
+    const prev = eventBlocks;
+    setEventBlocks((curr) => curr.filter((b) => b.id !== id));
+    const fd = new FormData();
+    fd.set("eventId", id);
+    const result = await deleteEventBlockAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "حذف نشد.");
+      setEventBlocks(prev);
+    } else {
+      toast.success("رویداد حذف شد");
+    }
+  }
+
+  async function handleToggleEventActive(id: string, isActive: boolean) {
+    setEventBlocks((curr) =>
+      curr.map((b) => (b.id === id ? { ...b, isActive } : b)),
+    );
+    const fd = new FormData();
+    fd.set("eventId", id);
+    fd.set("isActive", String(isActive));
+    const result = await toggleEventBlockActiveAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "تغییر وضعیت ناموفق بود.");
+      router.refresh();
+    }
+  }
+
   async function handleUploadTextImage(file: File): Promise<string | null> {
     const fd = new FormData();
     fd.set("file", file);
@@ -1200,6 +1298,9 @@ export function LinksPageClient({
   const canAdd = true;
   // The activation CTA is visible only when the user has zero blocks/links.
   const hasAnyBlocks = blocksOrder.length > 0 || links.length > 0;
+  // Captured once on mount so the preview's "upcoming" filter stays pure
+  // across renders (calling Date.now() during render is non-idempotent).
+  const [previewNowMs] = useState(() => Date.now());
   const previewAppearance = {
     ...coerceAppearance(profile.appearance),
     wallpaper: { type: "fill" as const, color: "var(--card)" },
@@ -1291,6 +1392,7 @@ export function LinksPageClient({
         sections: p.sections.map((s) => ({
           id: s.id ?? "",
           title: s.title,
+          iconKey: s.iconKey ?? null,
         })),
         items: p.items.map((it) => ({
           id: it.id ?? "",
@@ -1321,7 +1423,36 @@ export function LinksPageClient({
         spotlight: t.spotlight,
         animationStyle: t.animationStyle,
       })),
-  }), [profile, links, bookingBlocks, formBlocks, productBlocks, textBlocks, liveOrderMap]);
+    // Preview mirrors the public renderer: only published + active +
+    // upcoming events appear. Price fields aren't carried on the editor row,
+    // so the preview card shows them as free/0 — accurate enough for layout
+    // (the real public page reads the full row).
+    eventBlocks: eventBlocks
+      .filter(
+        (e) =>
+          e.isActive &&
+          e.status === "published" &&
+          new Date(e.endsAt ?? e.startsAt).getTime() >= previewNowMs,
+      )
+      .map((e) => ({
+        id: e.id,
+        slug: e.slug,
+        pageSlug: profile.slug,
+        title: e.title,
+        coverUrl: e.coverUrl,
+        locationType: "physical" as const,
+        priceType: "free" as const,
+        priceToman: 0,
+        startsAt: e.startsAt,
+        endsAt: e.endsAt,
+        timezone: e.timezone,
+        spotsRemaining: null,
+        isFull: false,
+        sortOrder: liveOrderMap.get(`event:${e.id}`) ?? e.sortOrder,
+        spotlight: e.spotlight,
+        animationStyle: e.animationStyle,
+      })),
+  }), [profile, links, bookingBlocks, formBlocks, productBlocks, textBlocks, eventBlocks, liveOrderMap, previewNowMs]);
 
   return (
     <div className="grid w-full min-w-0 min-h-[calc(100dvh-var(--header-h,4rem))] lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
@@ -1432,28 +1563,9 @@ export function LinksPageClient({
                           itemId={itemKey(ref)}
                           link={link}
                           clickCount={linkClickCounts[link.id] ?? 0}
-                          isEditing={editingId === link.id}
-                          onToggleEdit={() =>
-                            setEditingId((curr) =>
-                              curr === link.id ? null : link.id,
-                            )
-                          }
-                          onChange={(patch) => updateLink(link.id, patch)}
-                          onRefetch={async () => {
-                            if (!link.url) return;
-                            const result = await fetchMetadataAction(link.url);
-                            if (!result.ok) return;
-                            const patch: Partial<EditableLink> = {};
-                            if (result.data.image)
-                              patch.imageUrl = result.data.image;
-                            if (result.data.title && !link.label)
-                              patch.label = result.data.title;
-                            if (result.data.description && !link.description)
-                              patch.description = result.data.description;
-                            if (Object.keys(patch).length)
-                              updateLink(link.id, patch);
-                          }}
+                          onEdit={() => setEditingLink(link)}
                           onRemove={() => removeLink(link.id)}
+                          onChange={(patch) => updateLink(link.id, patch)}
                           pinAllowed={pinAllowed}
                           animateAllowed={animateAllowed}
                           onSpotlightChange={(next) =>
@@ -1540,28 +1652,48 @@ export function LinksPageClient({
                         />
                       );
                     }
-                    const text = textBlocks.find((t) => t.id === ref.id);
-                    if (!text) return null;
+                    if (ref.kind === "text") {
+                      const text = textBlocks.find((t) => t.id === ref.id);
+                      if (!text) return null;
+                      return (
+                        <SortableTextBlock
+                          key={itemKey(ref)}
+                          itemId={itemKey(ref)}
+                          block={text}
+                          onEdit={() => {
+                            setEditingTextBlock(text);
+                            setTextDialogOpen(true);
+                          }}
+                          onDelete={() => handleDeleteTextBlock(text.id)}
+                          onToggleActive={(v) =>
+                            handleToggleTextActive(text.id, v)
+                          }
+                          locked={textLocked}
+                          lockedPlan={textRequiredPlan}
+                          pinAllowed={pinAllowed}
+                          animateAllowed={animateAllowed}
+                          onSpotlightChange={(next) =>
+                            handleSpotlightChange("text", text.id, next)
+                          }
+                        />
+                      );
+                    }
+                    const eventBlock = eventBlocks.find(
+                      (e) => e.id === ref.id,
+                    );
+                    if (!eventBlock) return null;
                     return (
-                      <SortableTextBlock
+                      <SortableEventBlock
                         key={itemKey(ref)}
                         itemId={itemKey(ref)}
-                        block={text}
-                        onEdit={() => {
-                          setEditingTextBlock(text);
-                          setTextDialogOpen(true);
-                        }}
-                        onDelete={() => handleDeleteTextBlock(text.id)}
+                        block={eventBlock}
+                        onEdit={() => handleEditEvent(eventBlock.id)}
+                        onDelete={() => handleDeleteEvent(eventBlock.id)}
                         onToggleActive={(v) =>
-                          handleToggleTextActive(text.id, v)
+                          handleToggleEventActive(eventBlock.id, v)
                         }
-                        locked={textLocked}
-                        lockedPlan={textRequiredPlan}
-                        pinAllowed={pinAllowed}
-                        animateAllowed={animateAllowed}
-                        onSpotlightChange={(next) =>
-                          handleSpotlightChange("text", text.id, next)
-                        }
+                        locked={eventsLocked}
+                        lockedPlan={eventsRequiredPlan}
                       />
                     );
                   })}
@@ -1648,6 +1780,16 @@ export function LinksPageClient({
         </SheetContent>
       </Sheet>
 
+      <EditLinkDialog
+        open={editingLink !== null}
+        onOpenChange={(o) => { if (!o) setEditingLink(null); }}
+        link={editingLink}
+        fetchMetadataAction={fetchMetadataAction}
+        onSubmit={(patch) => {
+          if (editingLink) updateLink(editingLink.id, patch);
+        }}
+      />
+
       <AddLinkDialog
         open={addOpen}
         onOpenChange={setAddOpen}
@@ -1671,10 +1813,10 @@ export function LinksPageClient({
         }}
         onAddEvent={() => {
           setAddOpen(false);
-          // Events are managed on their own route (richer than an inline
-          // builder): host creation/edit/management + QR check-in live under
-          // /my-events. The picker navigates there rather than opening a modal.
-          router.push("/my-events/new" as Route);
+          // Events are created inline like every other block. Registration
+          // management + QR check-in still live on /my-events (opened from the
+          // event row's manage action), but creation happens right here.
+          handleOpenNewEvent();
         }}
         onAddText={() => {
           setAddOpen(false);
@@ -1714,6 +1856,23 @@ export function LinksPageClient({
         onSubmit={handleSaveText}
         onUploadImage={handleUploadTextImage}
         submitting={savingText}
+      />
+
+      <EventBuilderDialog
+        open={eventBuilderOpen}
+        onOpenChange={(o) => {
+          setEventBuilderOpen(o);
+          if (!o) setEditingEventInitial(null);
+        }}
+        pageId={profile.id}
+        initial={editingEventInitial}
+        saveAction={saveEventBlockAction}
+        onSaved={handleEventSaved}
+        onBack={() => {
+          setEventBuilderOpen(false);
+          setEditingEventInitial(null);
+          setAddOpen(true);
+        }}
       />
 
       <FormBuilderDialog
@@ -1871,19 +2030,13 @@ export function LinksPageClient({
   );
 }
 
-/**
- * Sortable wrapper around a single link block. Uses {@link BlockCard} so
- * its visual matches booking and form blocks. Inline edit form expands
- * below the card when `isEditing` is true.
- */
+/** Sortable wrapper around a single link block. */
 function SortableLinkBlock({
   itemId,
   link,
   clickCount,
-  isEditing,
-  onToggleEdit,
+  onEdit,
   onChange,
-  onRefetch,
   onRemove,
   pinAllowed,
   animateAllowed,
@@ -1892,10 +2045,8 @@ function SortableLinkBlock({
   itemId: string;
   link: EditableLink;
   clickCount: number;
-  isEditing: boolean;
-  onToggleEdit: () => void;
+  onEdit: () => void;
   onChange: (patch: Partial<EditableLink>) => void;
-  onRefetch: () => void;
   onRemove: () => void;
   pinAllowed: boolean;
   animateAllowed: boolean;
@@ -1935,7 +2086,7 @@ function SortableLinkBlock({
             imageUrl={link.imageUrl}
             size={40}
             onChange={(next: LinkIconPickerValue) => onChange(next)}
-            onRefetch={onRefetch}
+            onRefetch={() => {}}
           />
         }
         title={link.label || "بدون عنوان"}
@@ -1961,50 +2112,11 @@ function SortableLinkBlock({
         }
         isActive={link.isActive}
         onToggleActive={(v) => onChange({ isActive: v })}
-        onEdit={onToggleEdit}
+        onEdit={onEdit}
         onDelete={onRemove}
         deleteTitle="حذف لینک؟"
         deleteDescription="این لینک برای همیشه حذف می‌شود."
-      >
-        {isEditing ? (
-          <div className="grid min-w-0 gap-3 border-t border-border/70 p-3">
-            <div className="min-w-0 space-y-1.5">
-              <Label>عنوان</Label>
-              <Input
-                value={link.label}
-                onChange={(event) => onChange({ label: event.target.value })}
-                enterKeyHint="next"
-                className="h-11"
-              />
-            </div>
-            <div className="min-w-0 space-y-1.5">
-              <Label>لینک</Label>
-              <Input
-                value={link.url}
-                onChange={(event) => onChange({ url: event.target.value })}
-                type="url"
-                inputMode="url"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                dir="ltr"
-                className="h-11"
-              />
-            </div>
-            <div className="min-w-0 space-y-1.5">
-              <Label>توضیحات (اختیاری)</Label>
-              <Textarea
-                value={link.description ?? ""}
-                onChange={(event) =>
-                  onChange({ description: event.target.value || null })
-                }
-                className="min-h-16"
-                maxLength={160}
-              />
-            </div>
-          </div>
-        ) : null}
-      </BlockCard>
+      />
     </li>
   );
 }
@@ -2253,6 +2365,55 @@ function SortableTextBlock({
         pinAllowed={pinAllowed}
         animateAllowed={animateAllowed}
         onSpotlightChange={onSpotlightChange}
+      />
+    </li>
+  );
+}
+
+function SortableEventBlock({
+  itemId,
+  block,
+  onEdit,
+  onDelete,
+  onToggleActive,
+  locked,
+  lockedPlan,
+}: {
+  itemId: string;
+  block: EditableEventBlockWithId;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleActive: (next: boolean) => void;
+  locked?: boolean;
+  lockedPlan?: "pro" | "business";
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: itemId });
+  const dragProps = {
+    ...attributes,
+    ...listeners,
+  } as React.HTMLAttributes<HTMLButtonElement>;
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className="min-w-0"
+    >
+      <EventBlockRow
+        block={block}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleActive={onToggleActive}
+        dragProps={dragProps}
+        isDragging={isDragging}
+        locked={locked}
+        lockedPlan={lockedPlan}
       />
     </li>
   );

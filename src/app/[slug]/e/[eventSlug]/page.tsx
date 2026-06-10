@@ -60,22 +60,23 @@ export default async function PublicEventPage({
   return (
     <main className="mx-auto min-h-dvh w-full max-w-2xl px-4 py-6 safe-pb">
       {/* Cover */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-3xl bg-muted">
-        {event.coverUrl ? (
+      {event.coverUrl ? (
+        <div className="w-full overflow-hidden rounded-3xl bg-muted">
           <Image
             src={event.coverUrl}
             alt={event.title}
-            fill
-            className="object-cover"
-            priority
+            width={0}
+            height={0}
             sizes="(min-width: 768px) 42rem, 100vw"
+            className="h-auto w-full"
+            priority
           />
-        ) : (
-          <div className="flex h-full items-center justify-center text-muted-foreground">
-            <TicketIcon className="size-12 opacity-50" />
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="flex h-32 w-full items-center justify-center rounded-3xl bg-muted text-muted-foreground">
+          <TicketIcon className="size-12 opacity-50" />
+        </div>
+      )}
 
       {/* Host */}
       <Link

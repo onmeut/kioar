@@ -12,7 +12,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import { LayoutGridIcon } from "lucide-react";
 
+import { LinkIconBubble } from "@/components/dashboard/link-icon-picker";
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { formatPriceDisplay } from "@/lib/money";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
@@ -132,6 +135,15 @@ export function SharedMenuContent({
   const navGroups = groups.filter((g) => g.title !== null);
   const showNav = navGroups.length > 1;
   const [activeId, setActiveId] = useState<string | null>(groups[0]?.id ?? null);
+  const [catSheetOpen, setCatSheetOpen] = useState(false);
+
+  // Section id → icon key, so the categories sheet can show each category's
+  // chosen icon (falls back to a placeholder bubble when null).
+  const iconBySectionId = useMemo(() => {
+    const map = new Map<string, string | null>();
+    for (const s of block.sections) map.set(s.id, s.iconKey);
+    return map;
+  }, [block.sections]);
   const sectionRefs = useRef<Map<string, HTMLElement>>(new Map());
   const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const rootRef = useRef<HTMLDivElement>(null);
@@ -207,11 +219,20 @@ export function SharedMenuContent({
   return (
     <div ref={rootRef}>
       {showNav ? (
-        <div
-          className="no-scrollbar sticky top-0 z-10 flex gap-2 overflow-x-auto border-b border-border/40 bg-card/95 px-4 py-2.5 backdrop-blur-sm touch-pan-x"
-          role="tablist"
-        >
-          {navGroups.map((g) => (
+        <div className="no-scrollbar sticky top-0 z-10 flex items-center gap-2 border-b border-border/40 bg-card/95 px-4 py-2.5 backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={() => setCatSheetOpen(true)}
+            className="tap-target grid size-9 shrink-0 place-items-center rounded-full border border-border bg-background text-foreground transition-colors hover:bg-foreground/4"
+            aria-label="همه دسته‌بندی‌ها"
+          >
+            <LayoutGridIcon className="size-4" />
+          </button>
+          <div
+            className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto touch-pan-x"
+            role="tablist"
+          >
+            {navGroups.map((g) => (
             <button
               key={g.id}
               ref={(el) => {
@@ -229,9 +250,10 @@ export function SharedMenuContent({
                   : "border-border bg-background text-foreground hover:bg-foreground/4",
               )}
             >
-              {g.title}
-            </button>
-          ))}
+                {g.title}
+              </button>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -247,7 +269,18 @@ export function SharedMenuContent({
             className="scroll-mt-14 pt-5"
           >
             {group.title ? (
-              <h4 className="mb-3 text-sm font-bold">{group.title}</h4>
+              <h4 className="mb-3 flex items-center gap-2 text-sm font-bold">
+                {iconBySectionId.get(group.id) ? (
+                  <LinkIconBubble
+                    iconKey={iconBySectionId.get(group.id) ?? null}
+                    iconUrl={null}
+                    imageUrl={null}
+                    url=""
+                    size={24}
+                  />
+                ) : null}
+                {group.title}
+              </h4>
             ) : null}
             <ul className="divide-y divide-border/70">
               {group.items.map((item) => (
@@ -262,7 +295,77 @@ export function SharedMenuContent({
           </section>
         ))}
       </div>
+
+      {showNav ? (
+        <MenuCategoriesSheet
+          open={catSheetOpen}
+          onOpenChange={setCatSheetOpen}
+          groups={navGroups}
+          iconBySectionId={iconBySectionId}
+          onPick={(id) => {
+            setCatSheetOpen(false);
+            scrollToGroup(id);
+          }}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/**
+ * Bottom-sheet category index for the menu. Shows every named category as an
+ * icon-above-label card; tapping one closes the sheet and scrolls the menu to
+ * that section. Categories without a chosen icon render a placeholder bubble.
+ */
+function MenuCategoriesSheet({
+  open,
+  onOpenChange,
+  groups,
+  iconBySectionId,
+  onPick,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  groups: MenuGroup[];
+  iconBySectionId: Map<string, string | null>;
+  onPick: (id: string) => void;
+}) {
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        className="max-h-[85dvh] gap-0 rounded-t-3xl p-0"
+      >
+        <div className="border-b border-border/60 px-5 py-4">
+          <SheetTitle className="text-end text-base font-bold">
+            دسته‌بندی‌ها
+          </SheetTitle>
+        </div>
+        <div className="overflow-y-auto p-4 safe-pb">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
+            {groups.map((g) => (
+              <button
+                key={g.id}
+                type="button"
+                onClick={() => onPick(g.id)}
+                className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
+              >
+                <LinkIconBubble
+                  iconKey={iconBySectionId.get(g.id) ?? null}
+                  iconUrl={null}
+                  imageUrl={null}
+                  url=""
+                  size={56}
+                />
+                <span className="line-clamp-2 text-xs font-medium leading-snug">
+                  {g.title}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

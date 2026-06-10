@@ -284,6 +284,7 @@ export async function createProductBlockForUser(
           parsed.data.sections.map((s, index) => ({
             blockId: created.id,
             title: s.title,
+            iconKey: s.iconKey ?? null,
             sortOrder: index,
           })),
         )
@@ -399,7 +400,7 @@ export async function updateProductBlockForUser(
       if (s.id) {
         await tx
           .update(productSections)
-          .set({ title: s.title, sortOrder: index })
+          .set({ title: s.title, iconKey: s.iconKey ?? null, sortOrder: index })
           .where(
             and(
               eq(productSections.id, s.id),
@@ -410,7 +411,12 @@ export async function updateProductBlockForUser(
       } else {
         const [inserted] = await tx
           .insert(productSections)
-          .values({ blockId, title: s.title, sortOrder: index })
+          .values({
+            blockId,
+            title: s.title,
+            iconKey: s.iconKey ?? null,
+            sortOrder: index,
+          })
           .returning({ id: productSections.id });
         sectionIdByRef.set(`__new_${index}`, inserted.id);
       }

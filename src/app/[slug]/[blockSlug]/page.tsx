@@ -5,6 +5,8 @@ import { notFound } from "next/navigation";
 import { ArrowRightIcon } from "lucide-react";
 
 import { PageThemeProvider } from "@/components/public-page/page-theme-provider";
+import { IconNodesProvider } from "@/lib/icons/icon-nodes-context";
+import { resolveProfileIconNodes } from "@/lib/icons/collect-icon-nodes.server";
 import { KioarBadge } from "@/components/public/kioar-badge";
 import { PublicMenuPage } from "@/components/public/public-menu-page";
 import { PublicServicesPage } from "@/components/public/public-services-page";
@@ -100,7 +102,11 @@ function toPublicProductBlock(
     iconUrl: block.iconUrl ?? null,
     imageUrl: block.imageUrl ?? null,
     sortOrder: block.sortOrder,
-    sections: block.sections.map((s) => ({ id: s.id, title: s.title })),
+    sections: block.sections.map((s) => ({
+      id: s.id,
+      title: s.title,
+      iconKey: s.iconKey ?? null,
+    })),
     items: block.items.map(
       (it): PublicProductItem => ({
         id: it.id,
@@ -136,14 +142,19 @@ export default async function PublicBlockPage({
   let content: React.ReactNode;
   if (resolved.kind === "product") {
     const data = toPublicProductBlock(resolved.block);
+    // Embed nodes for any non-curated icons on this block (block + sections).
+    const iconNodes = resolveProfileIconNodes({ productBlocks: [data] });
     // Default a slug-bearing product block to the menu layout unless its
     // preset says services; menu is the generic "full list" experience.
-    content =
-      data.preset === "services" ? (
-        <PublicServicesPage block={data} />
-      ) : (
-        <PublicMenuPage block={data} />
-      );
+    content = (
+      <IconNodesProvider value={iconNodes}>
+        {data.preset === "services" ? (
+          <PublicServicesPage block={data} />
+        ) : (
+          <PublicMenuPage block={data} />
+        )}
+      </IconNodesProvider>
+    );
   } else {
     // Booking blocks reuse the inline booking experience full-page. Until a
     // dedicated full-page booking layout exists, send visitors to the main

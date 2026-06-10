@@ -102,7 +102,11 @@ export default async function DesignPage() {
         iconUrl: p.iconUrl ?? null,
         imageUrl: p.imageUrl ?? null,
         sortOrder: p.sortOrder,
-        sections: p.sections.map((s) => ({ id: s.id, title: s.title })),
+        sections: p.sections.map((s) => ({
+          id: s.id,
+          title: s.title,
+          iconKey: s.iconKey ?? null,
+        })),
         items: p.items.map((it) => ({
           id: it.id,
           sectionId: it.sectionId ?? null,

@@ -673,6 +673,11 @@ export const PRODUCT_SECTIONS_MAX = 30;
 export const productSectionInputSchema = z.object({
   id: z.string().uuid().optional().nullable(),
   title: z.string().trim().min(1, "عنوان دسته لازم است.").max(80),
+  iconKey: z
+    .union([z.literal(""), z.string().trim().max(32)])
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
 });
 
 export const productItemInputSchema = z

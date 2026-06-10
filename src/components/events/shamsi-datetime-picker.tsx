@@ -8,6 +8,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   formatShamsiDate,
@@ -155,16 +162,83 @@ export function ShamsiDateTimePicker({
             </div>
           </PopoverContent>
         </Popover>
-        <input
-          type="time"
-          dir="ltr"
+        <TimeSelect
           value={value.time}
-          required={required}
-          onChange={(e) => onChange({ ...value, time: e.target.value })}
-          aria-label={`${label} - ساعت`}
-          className="h-11 w-28 rounded-2xl border border-border bg-transparent px-3 text-base outline-none transition-colors focus:border-ring focus:ring-3 focus:ring-ring/20"
+          onChange={(time) => onChange({ ...value, time })}
+          ariaLabel={`${label} - ساعت`}
         />
       </div>
+    </div>
+  );
+}
+
+const HOURS = Array.from({ length: 24 }, (_, i) => i);
+// 5-minute steps keep the menu short while covering the common cases.
+const MINUTES = Array.from({ length: 12 }, (_, i) => i * 5);
+
+const pad2 = (n: number) => String(n).padStart(2, "0");
+
+/**
+ * Hour + minute dropdowns replacing the native `<input type="time">` (which
+ * renders the OS spinner — clumsy on desktop, jarring on mobile). Two shadcn
+ * `<Select>`s keep the experience consistent with the rest of the app and the
+ * timezone picker right below. Persian digits on display; the emitted value is
+ * always a 24h `HH:mm` string so server parsing is unchanged.
+ */
+function TimeSelect({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (time: string) => void;
+  ariaLabel: string;
+}) {
+  const [hStr, mStr] = value ? value.split(":") : ["", ""];
+  const setHour = (h: string | null) => onChange(`${h ?? "00"}:${mStr || "00"}`);
+  const setMinute = (m: string | null) =>
+    onChange(`${hStr || "00"}:${m ?? "00"}`);
+
+  // An existing event might hold a minute that isn't a 5-step multiple (older
+  // data, or native-input edits). Keep it selectable so editing doesn't snap it.
+  const minuteOptions =
+    mStr && !MINUTES.includes(Number(mStr))
+      ? [...MINUTES, Number(mStr)].sort((a, b) => a - b)
+      : MINUTES;
+
+  return (
+    <div dir="ltr" className="flex items-center gap-1">
+      <Select value={hStr || undefined} onValueChange={setHour}>
+        <SelectTrigger
+          aria-label={`${ariaLabel} - ساعت`}
+          className="h-11 w-[4.25rem] justify-center rounded-2xl text-base"
+        >
+          <SelectValue placeholder="--" />
+        </SelectTrigger>
+        <SelectContent className="min-w-[4.25rem]">
+          {HOURS.map((h) => (
+            <SelectItem key={h} value={pad2(h)} className="justify-center">
+              {toPersianDigits(pad2(h))}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <span className="text-base font-bold text-muted-foreground">:</span>
+      <Select value={mStr || undefined} onValueChange={setMinute}>
+        <SelectTrigger
+          aria-label={`${ariaLabel} - دقیقه`}
+          className="h-11 w-[4.25rem] justify-center rounded-2xl text-base"
+        >
+          <SelectValue placeholder="--" />
+        </SelectTrigger>
+        <SelectContent className="min-w-[4.25rem]">
+          {minuteOptions.map((m) => (
+            <SelectItem key={m} value={pad2(m)} className="justify-center">
+              {toPersianDigits(pad2(m))}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

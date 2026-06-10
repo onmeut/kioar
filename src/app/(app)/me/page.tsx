@@ -56,6 +56,19 @@ import {
   type TextBlockRow,
 } from "@/lib/text-block-service";
 import type { EditableTextBlockWithId } from "@/components/dashboard/text-block-row";
+import type { EditableEventBlockWithId } from "@/components/dashboard/event-block-row";
+import {
+  getEventBlocksByPageId,
+  getHostEvent,
+  type EventBlockRow as EventBlockRowData,
+} from "@/lib/events/queries";
+import { toEventFormInitial } from "@/lib/events/event-mapper";
+import type { EventFormInitial } from "@/components/events/event-form";
+import {
+  saveEventBlockAction,
+  deleteEventBlockAction,
+  toggleEventBlockActiveAction,
+} from "./event-actions";
 import type { IconKey } from "@/lib/link-icons";
 import { getDb } from "@/db";
 import { bookings, formSubmissions } from "@/db/schema";
@@ -119,6 +132,25 @@ function toEditableTextBlock(b: TextBlockRow): EditableTextBlockWithId {
   };
 }
 
+function toEditableEventBlock(b: EventBlockRowData): EditableEventBlockWithId {
+  return {
+    id: b.id,
+    slug: b.slug,
+    title: b.title,
+    coverUrl: b.coverUrl,
+    status: b.status,
+    startsAt: b.startsAt.toISOString(),
+    endsAt: b.endsAt ? b.endsAt.toISOString() : null,
+    timezone: b.timezone,
+    capacity: b.capacity,
+    isActive: b.isActive,
+    sortOrder: b.sortOrder,
+    spotlight: b.spotlight,
+    animationStyle: b.animationStyle,
+    registrantCount: b.registrantCount,
+  };
+}
+
 function toEditableProductBlock(b: FullProductBlock) {
   const currency: ProductBlockCurrency = (
     PRODUCT_BLOCK_CURRENCIES as readonly string[]
@@ -163,6 +195,8 @@ function toEditableProductBlock(b: FullProductBlock) {
       id: s.id,
       _key: s.id,
       title: s.title,
+      iconKey:
+        (s.iconKey as import("@/lib/link-icons").IconKey | null) ?? null,
     })),
     items: b.items.map((it) => {
       const priceType: ProductItemPriceType = (
@@ -382,6 +416,27 @@ export default async function DashboardLinksPage() {
   const textBlocks: EditableTextBlockWithId[] =
     rawTextBlocks.map(toEditableTextBlock);
 
+  // Event blocks for the unified list. Loaded for every page so existing
+  // events still render (read-only when the page lacks `business_events`),
+  // matching how the other gated blocks behave.
+  const rawEventBlocks = pageId
+    ? await getEventBlocksByPageId(pageId)
+    : [];
+  const eventBlocks: EditableEventBlockWithId[] =
+    rawEventBlocks.map(toEditableEventBlock);
+
+  // Preload full form data for each event so the inline builder's "edit"
+  // opens instantly without a round-trip.
+  const eventFormInitials: Record<string, EventFormInitial> = {};
+  if (pageId && rawEventBlocks.length) {
+    const fulls = await Promise.all(
+      rawEventBlocks.map((e) => getHostEvent(e.id, pageId)),
+    );
+    for (const full of fulls) {
+      if (full) eventFormInitials[full.event.id] = toEventFormInitial(full);
+    }
+  }
+
   const productItemsLimit = pageId
     ? await getPageEntitlementLimit(pageId, "products_max_items_per_block")
     : null;
@@ -455,6 +510,8 @@ export default async function DashboardLinksPage() {
       initialFormBlocks={formBlocks}
       initialProductBlocks={productBlocks}
       initialTextBlocks={textBlocks}
+      initialEventBlocks={eventBlocks}
+      eventFormInitials={eventFormInitials}
       linkClickCounts={clickCounts}
       publicUrl={publicUrl}
       fetchMetadataAction={fetchLinkMetadataAction}
@@ -482,6 +539,9 @@ export default async function DashboardLinksPage() {
       deleteTextBlockAction={deleteTextBlockAction}
       toggleTextBlockActiveAction={toggleTextBlockActiveAction}
       uploadTextBlockImageAction={uploadTextBlockImageAction}
+      saveEventBlockAction={saveEventBlockAction}
+      deleteEventBlockAction={deleteEventBlockAction}
+      toggleEventBlockActiveAction={toggleEventBlockActiveAction}
       bookingsLocked={bookingsLocked}
       formsLocked={formsLocked}
       productsLocked={productsLocked}

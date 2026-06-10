@@ -1,0 +1,11 @@
+-- Optional category icon for menu/product sections. Mirrors the icon_key
+-- semantics already used on profile_links and profile_product_blocks: a
+-- built-in registry key ("instagram"), a Tabler key ("t:pizza"), or NULL.
+--
+-- Nullable, no default, no backfill: existing categories stay NULL and render
+-- a fallback placeholder until the owner picks an icon. Metadata-only ADD
+-- COLUMN on Postgres — no table rewrite. IF NOT EXISTS makes re-runs safe.
+--
+-- Hand-written (not drizzle-kit generated) because the meta snapshots are out
+-- of sync past 0044; generating would diff against a stale snapshot.
+ALTER TABLE "product_sections" ADD COLUMN IF NOT EXISTS "icon_key" text;

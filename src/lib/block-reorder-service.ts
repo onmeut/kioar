@@ -17,6 +17,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import { getDb } from "@/db";
 import {
+  events,
   profileBookingBlocks,
   profileFormBlocks,
   profileLinks,
@@ -26,7 +27,13 @@ import {
 import { invalidateProfileCacheBySlug } from "@/lib/cache/profile-cache";
 import { resolveCurrentPageForOwner } from "@/lib/pages";
 
-export type BlockKind = "link" | "booking" | "form" | "product" | "text";
+export type BlockKind =
+  | "link"
+  | "booking"
+  | "form"
+  | "product"
+  | "text"
+  | "event";
 
 export type ReorderItem = { kind: BlockKind; id: string };
 
@@ -64,8 +71,9 @@ export async function reorderBlocksForUser(
   const formIds = items.filter((i) => i.kind === "form").map((i) => i.id);
   const productIds = items.filter((i) => i.kind === "product").map((i) => i.id);
   const textIds = items.filter((i) => i.kind === "text").map((i) => i.id);
+  const eventIds = items.filter((i) => i.kind === "event").map((i) => i.id);
 
-  const [ownLinks, ownBookings, ownForms, ownProducts, ownTexts] =
+  const [ownLinks, ownBookings, ownForms, ownProducts, ownTexts, ownEvents] =
     await Promise.all([
     linkIds.length
       ? db
@@ -122,6 +130,15 @@ export async function reorderBlocksForUser(
             ),
           )
       : Promise.resolve([] as { id: string }[]),
+    // Events hang off `page_id` (== profile id) rather than `profile_id`.
+    eventIds.length
+      ? db
+          .select({ id: events.id })
+          .from(events)
+          .where(
+            and(eq(events.pageId, profile.id), inArray(events.id, eventIds)),
+          )
+      : Promise.resolve([] as { id: string }[]),
   ]);
 
   const ownedLinks = new Set(ownLinks.map((r) => r.id));
@@ -129,6 +146,7 @@ export async function reorderBlocksForUser(
   const ownedForms = new Set(ownForms.map((r) => r.id));
   const ownedProducts = new Set(ownProducts.map((r) => r.id));
   const ownedTexts = new Set(ownTexts.map((r) => r.id));
+  const ownedEvents = new Set(ownEvents.map((r) => r.id));
 
   await db.transaction(async (tx) => {
     let order = 0;
@@ -182,6 +200,13 @@ export async function reorderBlocksForUser(
               eq(profileTextBlocks.profileId, profile.id),
               eq(profileTextBlocks.id, item.id),
             ),
+          );
+      } else if (item.kind === "event" && ownedEvents.has(item.id)) {
+        await tx
+          .update(events)
+          .set({ sortOrder: order })
+          .where(
+            and(eq(events.pageId, profile.id), eq(events.id, item.id)),
           );
       } else {
         // Unknown kind or not owned — skip without bumping the counter so

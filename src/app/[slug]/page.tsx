@@ -10,6 +10,8 @@ import { PublicLinkClickTracker } from "@/components/public/public-link-click-tr
 import { PublicProfileCard } from "@/components/public/public-profile-card";
 import { PublicProfileShareButton } from "@/components/public/public-profile-actions";
 import { PageThemeProvider } from "@/components/public-page/page-theme-provider";
+import { IconNodesProvider } from "@/lib/icons/icon-nodes-context";
+import { resolveProfileIconNodes } from "@/lib/icons/collect-icon-nodes.server";
 import {
   connectToPageAction,
   disconnectFromPageAction,
@@ -300,6 +302,10 @@ export default async function PublicProfilePage({
   const isDarkTheme = appearance.theme === "dark";
   const headerLogoSrc = isDarkTheme ? "/brand/logo-white.svg" : "/brand/logo.svg";
 
+  // Embed raw SVG nodes for any non-curated Tabler icons used on this page so
+  // they render inline without shipping the full icon module to the client.
+  const iconNodes = resolveProfileIconNodes(profile);
+
   return (
     <main
       dir="rtl"
@@ -309,6 +315,7 @@ export default async function PublicProfilePage({
         appearance={appearance}
         className="min-h-dvh w-full bg-muted"
       >
+      <IconNodesProvider value={iconNodes}>
       <div className="relative mx-auto flex min-h-dvh w-full max-w-145 flex-col pt-[env(safe-area-inset-top)] lg:pt-10">
         <PublicProfileCard
           className="flex-1"
@@ -423,6 +430,7 @@ export default async function PublicProfilePage({
               sections: b.sections.map((s) => ({
                 id: s.id,
                 title: s.title,
+                iconKey: s.iconKey ?? null,
               })),
               items: b.items.map((it) => ({
                 id: it.id,
@@ -488,6 +496,7 @@ export default async function PublicProfilePage({
         // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd) }}
       />
+      </IconNodesProvider>
       </PageThemeProvider>
     </main>
   );

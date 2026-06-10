@@ -27,6 +27,8 @@ type Props = {
    * metadata so the cover image reappears.
    */
   onRefetch?: () => void;
+  /** Show the auto-detect-from-URL button. Defaults to true. */
+  showAuto?: boolean;
   className?: string;
 };
 
@@ -44,6 +46,7 @@ export function LinkIconPickerButton({
   size = 40,
   onChange,
   onRefetch,
+  showAuto = true,
   className,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -91,6 +94,7 @@ export function LinkIconPickerButton({
       value={{ iconKey, iconUrl, imageUrl }}
       onChange={handleChange}
       onRefetch={onRefetch}
+      showAuto={showAuto}
     />
   );
 

@@ -1262,6 +1262,9 @@ export const productSections = pgTable(
       .notNull()
       .references(() => profileProductBlocks.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
+    /** Optional category icon. Same key semantics as profile_links.iconKey
+     * (a built-in registry key, a `t:<name>` Tabler key, or NULL for none). */
+    iconKey: text("icon_key"),
     sortOrder: integer("sort_order").default(0).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

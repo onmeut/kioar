@@ -146,6 +146,17 @@ const nextConfig: NextConfig = {
   // node_modules tree. Used by the production Dockerfile to ship a small
   // self-contained image. No-op for `next dev` / `next start`.
   output: "standalone",
+  // The full Tabler icon catalog is read at runtime via fs (see
+  // src/lib/icons/tabler-catalog.server.ts) for icon search + embedding
+  // non-curated icon SVGs into public pages. Next's file tracer can't see a
+  // runtime-computed path, so include the two JSON data files explicitly or
+  // the standalone Docker image would 500 / fall back to placeholder icons.
+  outputFileTracingIncludes: {
+    "/**": [
+      "./node_modules/@tabler/icons/tabler-nodes-outline.json",
+      "./node_modules/@tabler/icons/icons.json",
+    ],
+  },
   typescript: {
     ignoreBuildErrors: true,
   },

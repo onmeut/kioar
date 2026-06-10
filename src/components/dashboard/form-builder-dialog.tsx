@@ -363,6 +363,8 @@ function SortableFieldRow({
     isDragging,
   } = useSortable({ id: dndId });
 
+  const Icon = FIELD_META[field.kind].icon;
+
   return (
     <li
       ref={setNodeRef}
@@ -371,7 +373,7 @@ function SortableFieldRow({
         transition,
         opacity: isDragging ? 0.4 : 1,
       }}
-      className="flex items-center gap-2"
+      className="flex items-center gap-2 rounded-2xl border bg-background px-3 py-3 shadow-sm"
     >
       <span
         className="touch-none cursor-grab text-muted-foreground active:cursor-grabbing"
@@ -380,6 +382,7 @@ function SortableFieldRow({
       >
         <GripVerticalIcon className="size-5" />
       </span>
+      <Icon className="size-4 shrink-0 text-muted-foreground" />
       <button
         type="button"
         onClick={onEdit}
@@ -467,29 +470,24 @@ function MainScreen({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-6 pb-4">
-        <div className="mb-6 space-y-2">
-          <Label htmlFor={nameId} className="text-sm font-bold">
-            عنوان فرم
-          </Label>
-          <Input
-            id={nameId}
-            value={draft.name}
-            onChange={(e) =>
-              setDraft((d) => ({ ...d, name: e.target.value.slice(0, 80) }))
-            }
-            placeholder="مثلاً: فرم ثبت‌نام"
-            className="rounded-2xl bg-muted/40"
-            autoFocus
-          />
-        </div>
-
+        {/* Fields section — primary action, shown first */}
         {draft.fields.length === 0 ? (
-          <p className="text-center text-sm text-muted-foreground">
-            اولین فیلد خود را اضافه کنید
-          </p>
+          <div className="mb-5 flex flex-col items-center gap-4">
+            <p className="text-sm text-muted-foreground">
+              اولین فیلد خود را اضافه کنید
+            </p>
+            <Button
+              type="button"
+              onClick={onAddField}
+              className="h-12 w-full justify-center rounded-full text-sm font-bold"
+            >
+              <PlusIcon className="size-4" />
+              افزودن فیلد
+            </Button>
+          </div>
         ) : (
           <>
-            <div className="mb-3">
+            <div className="mb-3 flex items-center justify-between">
               <span className="text-xs font-bold text-muted-foreground">
                 فیلدها
               </span>
@@ -503,7 +501,7 @@ function MainScreen({
                 items={sortableIds}
                 strategy={verticalListSortingStrategy}
               >
-                <ul className="space-y-3">
+                <ul className="space-y-2">
                   {draft.fields.map((field, index) => {
                     const dndId = field._key ?? field.id ?? `field-${index}`;
                     return (
@@ -519,18 +517,33 @@ function MainScreen({
                 </ul>
               </SortableContext>
             </DndContext>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onAddField}
+              className="mt-3 h-12 w-full justify-center rounded-full text-sm font-bold"
+            >
+              <PlusIcon className="size-4" />
+              افزودن فیلد
+            </Button>
           </>
         )}
 
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onAddField}
-          className="mt-5 h-12 w-full justify-center rounded-full text-sm font-bold"
-        >
-          <PlusIcon className="size-4" />
-          افزودن فیلد
-        </Button>
+        {/* Form metadata — secondary, shown after fields */}
+        <div className="mt-6 space-y-2">
+          <Label htmlFor={nameId} className="text-sm font-bold">
+            عنوان فرم
+          </Label>
+          <Input
+            id={nameId}
+            value={draft.name}
+            onChange={(e) =>
+              setDraft((d) => ({ ...d, name: e.target.value.slice(0, 80) }))
+            }
+            placeholder="مثلاً: فرم ثبت‌نام"
+            className="rounded-2xl bg-muted/40"
+          />
+        </div>
 
         <div className="mt-6 space-y-2">
           <Label htmlFor={introId} className="text-sm font-bold">

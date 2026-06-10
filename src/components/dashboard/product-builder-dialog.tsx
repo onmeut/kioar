@@ -125,6 +125,8 @@ export type ProductSectionDraft = {
   id?: string | null;
   _key: string;
   title: string;
+  /** Optional category icon key (registry key or `t:<name>`). */
+  iconKey: IconKey | null;
 };
 
 export type ProductBlockDraft = {
@@ -163,7 +165,7 @@ export type ProductBlockSubmit = {
   iconKey: string | null;
   iconUrl: string | null;
   imageUrl: string | null;
-  sections: { id?: string | null; title: string }[];
+  sections: { id?: string | null; title: string; iconKey: string | null }[];
   items: {
     id?: string | null;
     sectionRef?: string | null;
@@ -348,6 +350,7 @@ function buildPayload(d: ProductBlockDraft): ProductBlockSubmit {
     sections: d.sections.map((s) => ({
       id: s.id ?? null,
       title: s.title.trim(),
+      iconKey: s.iconKey ?? null,
     })),
     items: d.items.map((it) => ({
       id: it.id ?? null,
@@ -928,7 +931,7 @@ export function ProductBuilderDialog({
                       ...draft,
                       sections: [
                         ...draft.sections,
-                        { id: null, _key: newKey(), title },
+                        { id: null, _key: newKey(), title, iconKey: null },
                       ],
                     });
                   }}
@@ -937,6 +940,14 @@ export function ProductBuilderDialog({
                       ...draft,
                       sections: draft.sections.map((s) =>
                         s._key === key ? { ...s, title } : s,
+                      ),
+                    });
+                  }}
+                  onSetIcon={(key, iconKey) => {
+                    commit({
+                      ...draft,
+                      sections: draft.sections.map((s) =>
+                        s._key === key ? { ...s, iconKey } : s,
                       ),
                     });
                   }}
@@ -1266,6 +1277,7 @@ function CategoriesPane({
   itemsAssignedTo,
   onAdd,
   onRename,
+  onSetIcon,
   onRequestDelete,
   onReorder,
   sensors,
@@ -1276,6 +1288,7 @@ function CategoriesPane({
   itemsAssignedTo: (sectionKey: string) => number;
   onAdd: (title: string) => void;
   onRename: (key: string, title: string) => void;
+  onSetIcon: (key: string, iconKey: IconKey | null) => void;
   onRequestDelete: (index: number) => void;
   onReorder: (oldIndex: number, newIndex: number) => void;
   sensors: ReturnType<typeof useSensors>;
@@ -1368,6 +1381,7 @@ function CategoriesPane({
                   section={s}
                   assignedCount={itemsAssignedTo(s._key)}
                   onRename={(title) => onRename(s._key, title)}
+                  onSetIcon={(iconKey) => onSetIcon(s._key, iconKey)}
                   onDelete={() => onRequestDelete(i)}
                 />
               ))}
@@ -1383,11 +1397,13 @@ function SortableCategoryRow({
   section,
   assignedCount,
   onRename,
+  onSetIcon,
   onDelete,
 }: {
   section: ProductSectionDraft;
   assignedCount: number;
   onRename: (title: string) => void;
+  onSetIcon: (iconKey: IconKey | null) => void;
   onDelete: () => void;
 }) {
   const {
@@ -1416,6 +1432,15 @@ function SortableCategoryRow({
       >
         <GripVerticalIcon className="size-4" />
       </span>
+      <LinkIconPickerButton
+        url=""
+        iconKey={section.iconKey}
+        iconUrl={null}
+        imageUrl={null}
+        size={40}
+        showAuto={false}
+        onChange={(next) => onSetIcon(next.iconKey)}
+      />
       <div className="min-w-0 flex-1">
         <Input
           value={section.title}

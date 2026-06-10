@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { ImageIcon } from "lucide-react";
 
@@ -59,6 +59,8 @@ export function EventForm({
   pageId,
   initial,
   saveAction,
+  onSuccess,
+  submitLabel,
 }: {
   pageId: string;
   initial: EventFormInitial | null;
@@ -66,8 +68,25 @@ export function EventForm({
     state: ActionState,
     formData: FormData,
   ) => Promise<ActionState>;
+  /** Fired after the action returns a success status. The inline builder
+   *  dialog uses this to close itself and refresh the blocks list. When the
+   *  action redirects (the standalone /my-events flow) this never fires. */
+  onSuccess?: (state: ActionState) => void;
+  /** Override the submit button label (defaults to create/save wording). */
+  submitLabel?: string;
 }) {
   const [state, formAction] = useActionState(saveAction, idleState);
+
+  // Fire onSuccess exactly once per successful submit. useActionState keeps
+  // the same state object reference until the next dispatch, so guarding on
+  // identity prevents repeat calls on unrelated re-renders.
+  const lastHandledRef = useRef<ActionState | null>(null);
+  useEffect(() => {
+    if (state.status === "success" && lastHandledRef.current !== state) {
+      lastHandledRef.current = state;
+      onSuccess?.(state);
+    }
+  }, [state, onSuccess]);
 
   const [coverUrl, setCoverUrl] = useState<string | null>(
     initial?.coverUrl ?? null,
@@ -90,6 +109,25 @@ export function EventForm({
   );
   const [waitlistEnabled, setWaitlistEnabled] = useState(
     initial?.waitlistEnabled ?? false,
+  );
+  // Controlled text fields. React 19 auto-resets a `<form action={fn}>` after
+  // the action runs — including the error path — which wipes any uncontrolled
+  // (`defaultValue`) input. Holding these in state preserves what the host
+  // typed when server validation rejects the submission.
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [locationAddress, setLocationAddress] = useState(
+    initial?.locationAddress ?? "",
+  );
+  const [onlineUrl, setOnlineUrl] = useState(initial?.onlineUrl ?? "");
+  const [capacity, setCapacity] = useState(
+    initial?.capacity != null ? String(initial.capacity) : "",
+  );
+  const [priceToman, setPriceToman] = useState(
+    initial?.priceToman ? String(initial.priceToman) : "",
+  );
+  const [paymentInstructions, setPaymentInstructions] = useState(
+    initial?.paymentInstructions ?? "",
   );
   const [timezone, setTimezone] = useState(initial?.timezone ?? "Asia/Tehran");
   const [start, setStart] = useState<ShamsiDateTimeValue>(
@@ -220,7 +258,8 @@ export function EventForm({
         <Input
           id="ev-title"
           name="title"
-          defaultValue={initial?.title ?? ""}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="میت‌آپ ماهانه جامعه…"
           enterKeyHint="next"
           autoFocus={!initial}
@@ -237,7 +276,8 @@ export function EventForm({
         <Textarea
           id="ev-desc"
           name="description"
-          defaultValue={initial?.description ?? ""}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           placeholder="دستور جلسه، چه کسانی بیایند، و چه چیزی یاد می‌گیرند…"
           className="min-h-28"
         />
@@ -306,7 +346,8 @@ export function EventForm({
           <div className="space-y-1">
             <Input
               name="locationAddress"
-              defaultValue={initial?.locationAddress ?? ""}
+              value={locationAddress}
+              onChange={(e) => setLocationAddress(e.target.value)}
               placeholder="آدرس محل برگزاری"
             />
             {fieldError("locationAddress") ? (
@@ -319,7 +360,8 @@ export function EventForm({
           <div className="space-y-1">
             <Input
               name="onlineUrl"
-              defaultValue={initial?.onlineUrl ?? ""}
+              value={onlineUrl}
+              onChange={(e) => setOnlineUrl(e.target.value)}
               placeholder="https://… (فقط برای ثبت‌نام‌های تأییدشده نمایش داده می‌شود)"
               dir="ltr"
               autoCapitalize="none"
@@ -348,7 +390,8 @@ export function EventForm({
           type="number"
           inputMode="numeric"
           dir="ltr"
-          defaultValue={initial?.capacity ?? ""}
+          value={capacity}
+          onChange={(e) => setCapacity(e.target.value)}
           placeholder="نامحدود"
         />
         {fieldError("capacity") ? (
@@ -384,7 +427,8 @@ export function EventForm({
                 type="number"
                 inputMode="numeric"
                 dir="ltr"
-                defaultValue={initial?.priceToman || ""}
+                value={priceToman}
+                onChange={(e) => setPriceToman(e.target.value)}
                 placeholder="مبلغ به تومان"
               />
               {fieldError("priceToman") ? (
@@ -402,7 +446,8 @@ export function EventForm({
               <Textarea
                 name="paymentInstructions"
                 rows={3}
-                defaultValue={initial?.paymentInstructions ?? ""}
+                value={paymentInstructions}
+                onChange={(e) => setPaymentInstructions(e.target.value)}
                 placeholder="نحوهٔ پرداخت را بنویس؛ مثلاً شمارهٔ کارت یا راه تماس."
               />
               <p className="text-xs text-muted-foreground">
@@ -467,7 +512,7 @@ export function EventForm({
           className="h-12 w-full sm:w-auto"
           pendingLabel="در حال ذخیره…"
         >
-          {initial ? "ذخیره تغییرات" : "ساخت رویداد"}
+          {submitLabel ?? (initial ? "ذخیره تغییرات" : "ساخت رویداد")}
         </SubmitButton>
       </div>
     </form>
