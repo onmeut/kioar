@@ -507,10 +507,16 @@ export const events = pgTable(
     capacity: integer("capacity"),
     priceType: eventPriceTypeEnum("price_type").default("free").notNull(),
     priceToman: bigint("price_toman", { mode: "number" }).default(0).notNull(),
-    // For paid events: free-text instructions telling the attendee HOW to pay
-    // (card number, contact, etc.) — there's no real checkout. Shown on the
-    // public payment block. Null for free events or when the host leaves it blank.
+    // For paid events: structured payment method blocks shown on the public
+    // event page. Each method (card-to-card, Sheba) can be toggled independently.
+    // `paymentInstructions` is a free-text description shown below both blocks.
     paymentInstructions: text("payment_instructions"),
+    cardEnabled: boolean("card_enabled").default(false).notNull(),
+    cardNumber: text("card_number"),
+    cardHolderName: text("card_holder_name"),
+    shebaEnabled: boolean("sheba_enabled").default(false).notNull(),
+    shebaNumber: text("sheba_number"),
+    shebaHolderName: text("sheba_holder_name"),
     approvalRequired: boolean("approval_required").default(false).notNull(),
     receiptUploadEnabled: boolean("receipt_upload_enabled")
       .default(false)
@@ -533,6 +539,49 @@ export const events = pgTable(
     uniqueIndex("events_slug_idx").on(table.slug),
     index("events_page_sort_idx").on(table.pageId, table.sortOrder),
     index("events_status_starts_at_idx").on(table.status, table.startsAt),
+  ],
+);
+
+// Per-event TICKET TYPES (Luma-style tiers). An event has 1..N ticket types;
+// each carries its OWN price/approval/capacity/sales-window. The legacy
+// price/approval/capacity/waitlist columns on `events` remain only as the
+// source for the backfill default ticket — the service + renderer read tiers,
+// not the event, once tickets exist. A registration points at exactly one
+// ticket type (`event_registrations.ticket_type_id`); capacity is counted
+// per-tier. Money is bigint toman. Sales windows are UTC `timestamptz`.
+export const eventTicketTypes = pgTable(
+  "event_ticket_types",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => events.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    priceType: eventPriceTypeEnum("price_type").default("free").notNull(),
+    priceToman: bigint("price_toman", { mode: "number" }).default(0).notNull(),
+    approvalRequired: boolean("approval_required").default(false).notNull(),
+    // Per-tier capacity (null = unlimited within the event's own capacity).
+    capacity: integer("capacity"),
+    // Per-tier sales window (UTC). null = open from creation / no end.
+    availableFrom: timestamp("available_from", { withTimezone: true }),
+    availableUntil: timestamp("available_until", { withTimezone: true }),
+    waitlistEnabled: boolean("waitlist_enabled").default(false).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("event_ticket_types_event_sort_idx").on(
+      table.eventId,
+      table.sortOrder,
+    ),
   ],
 );
 
@@ -566,6 +615,14 @@ export const eventRegistrations = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    // The ticket type the user chose. Nullable so pre-feature rows survive the
+    // backfill (which stamps them with the event's default tier). New
+    // registrations always set it. `set null` keeps the registration if a host
+    // deletes a tier — the row stays for history/audit.
+    ticketTypeId: uuid("ticket_type_id").references(
+      () => eventTicketTypes.id,
+      { onDelete: "set null" },
+    ),
     status: eventRegistrationStatusEnum("status")
       .default("pending_approval")
       .notNull(),
@@ -763,10 +820,22 @@ export const eventsRelations = relations(events, ({ one, many }) => ({
     references: [users.id],
   }),
   questions: many(eventQuestions),
+  ticketTypes: many(eventTicketTypes),
   registrations: many(eventRegistrations),
   discountCodes: many(eventDiscountCodes),
   checkins: many(eventCheckins),
 }));
+
+export const eventTicketTypesRelations = relations(
+  eventTicketTypes,
+  ({ one, many }) => ({
+    event: one(events, {
+      fields: [eventTicketTypes.eventId],
+      references: [events.id],
+    }),
+    registrations: many(eventRegistrations),
+  }),
+);
 
 export const eventQuestionsRelations = relations(eventQuestions, ({ one }) => ({
   event: one(events, {
@@ -781,6 +850,10 @@ export const eventRegistrationsRelations = relations(
     event: one(events, {
       fields: [eventRegistrations.eventId],
       references: [events.id],
+    }),
+    ticketType: one(eventTicketTypes, {
+      fields: [eventRegistrations.ticketTypeId],
+      references: [eventTicketTypes.id],
     }),
     user: one(users, {
       fields: [eventRegistrations.userId],

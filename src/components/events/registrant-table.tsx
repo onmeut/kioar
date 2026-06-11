@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import {
   CheckIcon,
   DownloadIcon,
+  FileTextIcon,
   ImageIcon,
   SearchIcon,
   UserCheckIcon,
@@ -42,6 +43,7 @@ type Registrant = {
   receiptKey: string | null;
   discountCode: string | null;
   expectedToman: number;
+  ticketTypeName: string | null;
   registeredAt: string; // ISO
   decidedAt: string | null;
   checkedInAt: string | null;
@@ -124,6 +126,7 @@ export function RegistrantTable({
     const headers = [
       "نام",
       "تلفن",
+      "نوع بلیت",
       "وضعیت",
       "زمان ثبت‌نام",
       "حضور",
@@ -134,6 +137,7 @@ export function RegistrantTable({
     const rows = filtered.map((r) => [
       r.name,
       r.phone,
+      r.ticketTypeName ?? "",
       REGISTRATION_STATUS_LABELS[r.status],
       formatShamsiDateTimeInZone(new Date(r.registeredAt), timezone),
       r.checkedInAt
@@ -234,6 +238,7 @@ export function RegistrantTable({
                 <tr>
                   <th className="p-3 text-start font-medium">نام</th>
                   <th className="p-3 text-start font-medium">تلفن</th>
+                  <th className="p-3 text-start font-medium">نوع بلیت</th>
                   <th className="p-3 text-start font-medium">وضعیت</th>
                   <th className="p-3 text-start font-medium">حضور</th>
                   <th className="p-3 text-start font-medium">اقدام</th>
@@ -258,6 +263,9 @@ export function RegistrantTable({
                       {toPersianDigits(r.phone)}
                     </td>
                     <td className="p-3">
+                      {r.ticketTypeName ?? "—"}
+                    </td>
+                    <td className="p-3">
                       <StatusBadge status={r.status} />
                     </td>
                     <td className="p-3 text-muted-foreground">
@@ -271,7 +279,7 @@ export function RegistrantTable({
                         : "—"}
                     </td>
                     <td className="p-3">
-                      <RowActions eventId={eventId} r={r} />
+                      <RowActions eventId={eventId} r={r} onOpen={() => setDetail(r)} />
                     </td>
                   </tr>
                 ))}
@@ -323,6 +331,11 @@ function RegistrantCard({
           <p className="mt-0.5 text-xs text-muted-foreground" dir="ltr">
             {toPersianDigits(r.phone)}
           </p>
+          {r.ticketTypeName ? (
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {r.ticketTypeName}
+            </p>
+          ) : null}
         </button>
         <StatusBadge status={r.status} />
       </div>
@@ -335,7 +348,7 @@ function RegistrantCard({
         </p>
       ) : null}
       <div className="mt-3">
-        <RowActions eventId={eventId} r={r} />
+        <RowActions eventId={eventId} r={r} onOpen={onOpen} />
       </div>
     </div>
   );
@@ -346,7 +359,7 @@ function RegistrantCard({
  * row reflects pending state without a full form. Actions shown depend on the
  * registrant's current status.
  */
-function RowActions({ eventId, r }: { eventId: string; r: Registrant }) {
+function RowActions({ eventId, r, onOpen }: { eventId: string; r: Registrant; onOpen?: () => void }) {
   const [pending, start] = useTransition();
 
   function run(
@@ -418,6 +431,18 @@ function RowActions({ eventId, r }: { eventId: string; r: Registrant }) {
         >
           <XIcon className="size-4" />
           رد
+        </Button>
+      ) : null}
+      {r.receiptKey && onOpen ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-9"
+          onClick={onOpen}
+        >
+          <FileTextIcon className="size-4" />
+          رسید
         </Button>
       ) : null}
       <Button

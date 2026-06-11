@@ -30,6 +30,11 @@ import {
   DiscountCodesEditor,
   type DraftDiscountCode,
 } from "@/components/events/discount-codes-editor";
+import {
+  TicketTypesEditor,
+  emptyTicketType,
+  type DraftTicketType,
+} from "@/components/events/ticket-types-editor";
 
 export type EventFormInitial = {
   id: string;
@@ -43,15 +48,19 @@ export type EventFormInitial = {
   start: ShamsiDateTimeValue;
   end: ShamsiDateTimeValue;
   capacity: number | null;
-  priceType: "free" | "paid";
-  priceToman: number;
   paymentInstructions: string | null;
+  cardEnabled: boolean;
+  cardNumber: string | null;
+  cardHolderName: string | null;
+  shebaEnabled: boolean;
+  shebaNumber: string | null;
+  shebaHolderName: string | null;
   approvalRequired: boolean;
   receiptUploadEnabled: boolean;
-  waitlistEnabled: boolean;
   status: "draft" | "published" | "cancelled";
   questions: DraftQuestion[];
   discountCodes: DraftDiscountCode[];
+  ticketTypes: DraftTicketType[];
 };
 
 export function EventForm({
@@ -63,10 +72,7 @@ export function EventForm({
 }: {
   pageId: string;
   initial: EventFormInitial | null;
-  saveAction: (
-    state: ActionState,
-    formData: FormData,
-  ) => Promise<ActionState>;
+  saveAction: (state: ActionState, formData: FormData) => Promise<ActionState>;
   /** Fired after the action returns a success status. The inline builder
    *  dialog uses this to close itself and refresh the blocks list. When the
    *  action redirects (the standalone /my-events flow) this never fires. */
@@ -95,17 +101,11 @@ export function EventForm({
   const [locationType, setLocationType] = useState<"physical" | "online">(
     initial?.locationType ?? "physical",
   );
-  const [priceType, setPriceType] = useState<"free" | "paid">(
-    initial?.priceType ?? "free",
-  );
   const [approvalRequired, setApprovalRequired] = useState(
     initial?.approvalRequired ?? false,
   );
   const [receiptUploadEnabled, setReceiptUploadEnabled] = useState(
     initial?.receiptUploadEnabled ?? false,
-  );
-  const [waitlistEnabled, setWaitlistEnabled] = useState(
-    initial?.waitlistEnabled ?? false,
   );
   // Controlled text fields. React 19 auto-resets a `<form action={fn}>` after
   // the action runs — including the error path — which wipes any uncontrolled
@@ -120,11 +120,20 @@ export function EventForm({
   const [capacity, setCapacity] = useState(
     initial?.capacity != null ? String(initial.capacity) : "",
   );
-  const [priceToman, setPriceToman] = useState(
-    initial?.priceToman ? String(initial.priceToman) : "",
-  );
   const [paymentInstructions, setPaymentInstructions] = useState(
     initial?.paymentInstructions ?? "",
+  );
+  const [cardEnabled, setCardEnabled] = useState(initial?.cardEnabled ?? false);
+  const [cardNumber, setCardNumber] = useState(initial?.cardNumber ?? "");
+  const [cardHolderName, setCardHolderName] = useState(
+    initial?.cardHolderName ?? "",
+  );
+  const [shebaEnabled, setShebaEnabled] = useState(
+    initial?.shebaEnabled ?? false,
+  );
+  const [shebaNumber, setShebaNumber] = useState(initial?.shebaNumber ?? "");
+  const [shebaHolderName, setShebaHolderName] = useState(
+    initial?.shebaHolderName ?? "",
   );
   const [timezone, setTimezone] = useState(initial?.timezone ?? "Asia/Tehran");
   const [start, setStart] = useState<ShamsiDateTimeValue>(
@@ -138,6 +147,9 @@ export function EventForm({
   );
   const [discountCodes, setDiscountCodes] = useState<DraftDiscountCode[]>(
     initial?.discountCodes ?? [],
+  );
+  const [ticketTypes, setTicketTypes] = useState<DraftTicketType[]>(
+    initial?.ticketTypes.length ? initial.ticketTypes : [emptyTicketType("بلیت استاندارد")],
   );
   // statusValue drives the hidden "status" input. Set via onPointerDown so the
   // DOM value updates synchronously before the form submit fires.
@@ -156,7 +168,6 @@ export function EventForm({
       <input type="hidden" name="pageId" value={pageId} />
       <input type="hidden" name="timezone" value={timezone} />
       <input type="hidden" name="locationType" value={locationType} />
-      <input type="hidden" name="priceType" value={priceType} />
       <input type="hidden" name="startDate" value={start.date} />
       <input type="hidden" name="startTime" value={start.time} />
       <input type="hidden" name="endDate" value={end.date} />
@@ -173,19 +184,25 @@ export function EventForm({
       />
       <input
         type="hidden"
-        name="waitlistEnabled"
-        value={waitlistEnabled ? "true" : "false"}
+        name="cardEnabled"
+        value={cardEnabled ? "true" : "false"}
       />
-      <input type="hidden" name="status" value={statusValue} />
       <input
         type="hidden"
-        name="questions"
-        value={JSON.stringify(questions)}
+        name="shebaEnabled"
+        value={shebaEnabled ? "true" : "false"}
       />
+      <input type="hidden" name="status" value={statusValue} />
+      <input type="hidden" name="questions" value={JSON.stringify(questions)} />
       <input
         type="hidden"
         name="discountCodes"
         value={JSON.stringify(discountCodes)}
+      />
+      <input
+        type="hidden"
+        name="ticketTypes"
+        value={JSON.stringify(ticketTypes)}
       />
 
       {state.status === "error" && state.message ? (
@@ -262,7 +279,11 @@ export function EventForm({
           onChange={setStart}
           required
         />
-        <ShamsiDateTimePicker label="پایان (اختیاری)" value={end} onChange={setEnd} />
+        <ShamsiDateTimePicker
+          label="پایان (اختیاری)"
+          value={end}
+          onChange={setEnd}
+        />
       </div>
       {fieldError("startDate") || fieldError("startTime") ? (
         <p className="text-xs text-rose-600">
@@ -370,67 +391,6 @@ export function EventForm({
         ) : null}
       </div>
 
-      {/* Pricing */}
-      <div className="space-y-3">
-        <Label>هزینه</Label>
-        <div className="inline-flex rounded-full border border-border p-0.5">
-          {(["free", "paid"] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setPriceType(t)}
-              className={cn(
-                "rounded-full px-4 py-1.5 text-sm font-semibold transition-colors",
-                priceType === t
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground",
-              )}
-            >
-              {t === "free" ? "رایگان" : "پولی"}
-            </button>
-          ))}
-        </div>
-        {priceType === "paid" ? (
-          <div className="space-y-3">
-            <div className="space-y-1">
-              <Input
-                name="priceToman"
-                type="number"
-                inputMode="numeric"
-                dir="ltr"
-                value={priceToman}
-                onChange={(e) => setPriceToman(e.target.value)}
-                placeholder="مبلغ به تومان"
-              />
-              {fieldError("priceToman") ? (
-                <p className="text-xs text-rose-600">
-                  {fieldError("priceToman")}
-                </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  پرداختی واقعی انجام نمی‌شود؛ شرکت‌کننده رسید را آپلود می‌کند و
-                  شما تأیید می‌کنید.
-                </p>
-              )}
-            </div>
-            <div className="space-y-1">
-              <Textarea
-                name="paymentInstructions"
-                rows={3}
-                value={paymentInstructions}
-                onChange={(e) => setPaymentInstructions(e.target.value)}
-                placeholder="نحوهٔ پرداخت را بنویس؛ مثلاً شمارهٔ کارت یا راه تماس."
-              />
-              <p className="text-xs text-muted-foreground">
-                این توضیح روی صفحهٔ رویداد به شرکت‌کننده نشان داده می‌شود.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <input type="hidden" name="priceToman" value="0" />
-        )}
-      </div>
-
       {/* Toggles */}
       <div className="space-y-3 rounded-3xl border border-border p-4">
         <ToggleRow
@@ -439,19 +399,117 @@ export function EventForm({
           checked={approvalRequired}
           onChange={setApprovalRequired}
         />
-        {priceType === "paid" ? (
-          <ToggleRow
-            label="آپلود رسید پرداخت"
-            hint="شرکت‌کننده رسید را آپلود می‌کند تا شما بررسی کنید."
-            checked={receiptUploadEnabled}
-            onChange={setReceiptUploadEnabled}
-          />
-        ) : null}
         <ToggleRow
-          label="فهرست انتظار"
-          hint="پس از تکمیل ظرفیت، ثبت‌نام‌ها به فهرست انتظار می‌روند."
-          checked={waitlistEnabled}
-          onChange={setWaitlistEnabled}
+          label="آپلود رسید پرداخت"
+          hint="شرکت‌کننده رسید را آپلود می‌کند تا شما بررسی کنید."
+          checked={receiptUploadEnabled}
+          onChange={setReceiptUploadEnabled}
+        />
+      </div>
+
+      {/* Payment methods (shown when receipt upload is on) */}
+      {receiptUploadEnabled ? (
+        <div className="space-y-3">
+          <div className="space-y-2 rounded-2xl border border-border p-3">
+            <p className="text-sm font-medium">روش‌های پرداخت</p>
+
+            <div className="space-y-2">
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm">کارت‌به‌کارت</span>
+                <Switch checked={cardEnabled} onCheckedChange={setCardEnabled} />
+              </label>
+              {cardEnabled ? (
+                <div className="space-y-2 rounded-xl bg-muted/50 p-3">
+                  <div className="space-y-1">
+                    <Input
+                      name="cardNumber"
+                      inputMode="numeric"
+                      dir="ltr"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)}
+                      placeholder="شماره کارت (۱۶ رقم)"
+                      autoComplete="off"
+                      enterKeyHint="next"
+                    />
+                    {fieldError("cardNumber") ? (
+                      <p className="text-xs text-rose-600">
+                        {fieldError("cardNumber")}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Input
+                    name="cardHolderName"
+                    value={cardHolderName}
+                    onChange={(e) => setCardHolderName(e.target.value)}
+                    placeholder="نام صاحب کارت"
+                    enterKeyHint="next"
+                  />
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <label className="flex items-center justify-between gap-3">
+                <span className="text-sm">شبا</span>
+                <Switch
+                  checked={shebaEnabled}
+                  onCheckedChange={setShebaEnabled}
+                />
+              </label>
+              {shebaEnabled ? (
+                <div className="space-y-2 rounded-xl bg-muted/50 p-3">
+                  <div className="space-y-1">
+                    <Input
+                      name="shebaNumber"
+                      inputMode="numeric"
+                      dir="ltr"
+                      value={shebaNumber}
+                      onChange={(e) => setShebaNumber(e.target.value)}
+                      placeholder="IR + ۲۴ رقم"
+                      autoComplete="off"
+                      enterKeyHint="next"
+                    />
+                    {fieldError("shebaNumber") ? (
+                      <p className="text-xs text-rose-600">
+                        {fieldError("shebaNumber")}
+                      </p>
+                    ) : null}
+                  </div>
+                  <Input
+                    name="shebaHolderName"
+                    value={shebaHolderName}
+                    onChange={(e) => setShebaHolderName(e.target.value)}
+                    placeholder="نام صاحب حساب"
+                    enterKeyHint="next"
+                  />
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="ev-pay-desc">توضیحات درباره پرداخت</Label>
+            <Textarea
+              id="ev-pay-desc"
+              name="paymentInstructions"
+              rows={2}
+              value={paymentInstructions}
+              onChange={(e) => setPaymentInstructions(e.target.value)}
+              placeholder="توضیحات تکمیلی (اختیاری)"
+            />
+            <p className="text-xs text-muted-foreground">
+              این توضیح زیر روش‌های پرداخت به شرکت‌کننده نشان داده می‌شود.
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Ticket types */}
+      <div className="space-y-2">
+        <Label>انواع بلیت</Label>
+        <TicketTypesEditor
+          ticketTypes={ticketTypes}
+          onChange={setTicketTypes}
         />
       </div>
 

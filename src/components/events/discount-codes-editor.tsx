@@ -33,7 +33,7 @@ export function DiscountCodesEditor({
     <div className="space-y-3">
       {codes.length === 0 ? (
         <p className="rounded-3xl border border-dashed border-border/70 p-4 text-center text-sm text-muted-foreground">
-          کد تخفیفی ندارید. می‌توانید برای رویداد کد تعریف کنید.
+هیچ کد تخفیفی ایجاد نشده.
         </p>
       ) : null}
 

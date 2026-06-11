@@ -58,17 +58,29 @@ function buildInput(formData: FormData): EventFormInput {
     capacity: formData.get("capacity")
       ? Number(formData.get("capacity"))
       : null,
-    priceType: (formData.get("priceType") as "free" | "paid") ?? "free",
-    priceToman: Number(formData.get("priceToman") ?? 0),
     paymentInstructions: formData.get("paymentInstructions")
       ? String(formData.get("paymentInstructions"))
       : null,
+    cardEnabled: formData.get("cardEnabled") === "true",
+    cardNumber: formData.get("cardNumber")
+      ? String(formData.get("cardNumber"))
+      : null,
+    cardHolderName: formData.get("cardHolderName")
+      ? String(formData.get("cardHolderName"))
+      : null,
+    shebaEnabled: formData.get("shebaEnabled") === "true",
+    shebaNumber: formData.get("shebaNumber")
+      ? String(formData.get("shebaNumber"))
+      : null,
+    shebaHolderName: formData.get("shebaHolderName")
+      ? String(formData.get("shebaHolderName"))
+      : null,
     approvalRequired: bool("approvalRequired"),
     receiptUploadEnabled: bool("receiptUploadEnabled"),
-    waitlistEnabled: bool("waitlistEnabled"),
     status: (formData.get("status") as EventFormInput["status"]) ?? "draft",
     questions: parseJsonArray(formData.get("questions")),
     discountCodes: parseJsonArray(formData.get("discountCodes")),
+    ticketTypes: parseJsonArray(formData.get("ticketTypes")),
   };
 }
 

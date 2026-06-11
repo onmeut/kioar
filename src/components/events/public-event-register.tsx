@@ -1,13 +1,16 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   CheckCircle2Icon,
   ClockIcon,
+  CopyIcon,
+  CreditCardIcon,
   QrCodeIcon,
   UploadIcon,
+  XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -15,6 +18,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { formatShamsiDateTimeInZone } from "@/lib/date/timezone";
+import type { PublicTicketType } from "@/lib/events/queries";
 import {
   Sheet,
   SheetContent,
@@ -28,7 +33,7 @@ import { cn } from "@/lib/utils";
 import { toPersianDigits } from "@/lib/date/persian";
 import type { PublicEventView } from "@/lib/events/queries";
 import {
-  applyDiscountAction,
+  applyDiscountToRegistrationAction,
   cancelRegistrationAction,
   registerAction,
   submitReceiptAction,
@@ -60,6 +65,7 @@ export function PublicEventRegister({
         event={event}
         status={reg.status}
         expected={reg.expectedToman}
+        ticketTypeId={reg.ticketTypeId}
         currentUserId={currentUserId}
         viewerHasPage={viewerHasPage}
       />
@@ -80,10 +86,21 @@ export function PublicEventRegister({
       </p>
     );
   }
-  if (event.isFull && !event.waitlistEnabled) {
+
+  // A tier is selectable when on sale and either has remaining capacity or
+  // offers a waitlist. If NO tier is selectable, the event is effectively
+  // closed for registration.
+  const selectableTiers = event.ticketTypes.filter(
+    (t) => t.saleState === "open" && (!t.soldOut || t.waitlistEnabled),
+  );
+  if (selectableTiers.length === 0) {
+    // Distinguish "everything sold out" from "no tiers configured yet".
+    const anyOpenButFull = event.ticketTypes.some(
+      (t) => t.saleState === "open" && t.soldOut,
+    );
     return (
       <p className="rounded-2xl bg-muted px-4 py-3 text-center text-sm text-muted-foreground">
-        ظرفیت تکمیل است.
+        {anyOpenButFull ? "ظرفیت تکمیل است." : "ثبت‌نام در دسترس نیست."}
       </p>
     );
   }
@@ -93,11 +110,11 @@ export function PublicEventRegister({
       event={event}
       isLoggedIn={isLoggedIn}
       pending={pending}
-      onSubmit={(answers, discountCode) =>
+      onSubmit={(ticketTypeId, answers) =>
         startTransition(async () => {
           const result = await registerAction(event.pageSlug, event.slug, {
+            ticketTypeId,
             answers,
-            discountCode,
           });
           if (result.ok) {
             toast.success("ثبت‌نام شما ثبت شد.");
@@ -113,6 +130,115 @@ export function PublicEventRegister({
   );
 }
 
+/** Is a tier selectable (on sale + has room or a waitlist)? */
+function isTierSelectable(t: PublicTicketType): boolean {
+  return t.saleState === "open" && (!t.soldOut || t.waitlistEnabled);
+}
+
+/** One selectable ticket-type card (the Luma-style radio row). */
+function TicketCard({
+  tier,
+  timezone,
+  selected,
+  selectable,
+  onSelect,
+}: {
+  tier: PublicTicketType;
+  timezone: string;
+  selected: boolean;
+  selectable: boolean;
+  onSelect: () => void;
+}) {
+  const priceLabel =
+    tier.priceType === "free"
+      ? "رایگان"
+      : `${toPersianDigits(tier.priceToman.toLocaleString("en-US"))} تومان`;
+
+  // Status line under the card: sold out / waitlist / sale window / closed.
+  let statusLine: { text: string; tone: "muted" | "rose" | "emerald" } | null =
+    null;
+  if (tier.soldOut) {
+    statusLine = tier.waitlistEnabled
+      ? { text: "ظرفیت تکمیل شد — فهرست انتظار باز است", tone: "rose" }
+      : { text: "ظرفیت تکمیل شد", tone: "rose" };
+  } else if (tier.saleState === "ended") {
+    statusLine = { text: "مهلت تهیه به پایان رسید", tone: "rose" };
+  } else if (tier.saleState === "not_started" && tier.availableFrom) {
+    statusLine = {
+      text: `فروش از ${formatShamsiDateTimeInZone(tier.availableFrom, timezone)}`,
+      tone: "muted",
+    };
+  } else if (tier.saleState === "inactive") {
+    statusLine = { text: "در دسترس نیست", tone: "muted" };
+  } else if (tier.availableUntil) {
+    statusLine = {
+      text: `تا ${formatShamsiDateTimeInZone(tier.availableUntil, timezone)}`,
+      tone: "emerald",
+    };
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={!selectable}
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn(
+        "w-full rounded-2xl border p-4 text-start transition-colors",
+        selected
+          ? "border-foreground bg-background"
+          : "border-border bg-muted/40 hover:bg-muted",
+        !selectable && "cursor-not-allowed opacity-60",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-2">
+          <span
+            className={cn(
+              "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border",
+              selected
+                ? "border-foreground bg-foreground text-background"
+                : "border-muted-foreground/40",
+            )}
+          >
+            {selected ? <CheckCircle2Icon className="size-4" /> : null}
+          </span>
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold">{tier.name}</span>
+              {tier.approvalRequired ? (
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                  نیازمند تأیید
+                </span>
+              ) : null}
+            </div>
+            {tier.description ? (
+              <p className="text-sm text-muted-foreground">
+                {tier.description}
+              </p>
+            ) : null}
+            {statusLine ? (
+              <p
+                className={cn(
+                  "text-xs",
+                  statusLine.tone === "rose"
+                    ? "text-rose-600"
+                    : statusLine.tone === "emerald"
+                      ? "text-emerald-600"
+                      : "text-muted-foreground",
+                )}
+              >
+                {statusLine.text}
+              </p>
+            ) : null}
+          </div>
+        </div>
+        <span className="shrink-0 text-sm font-semibold">{priceLabel}</span>
+      </div>
+    </button>
+  );
+}
+
 function RegisterForm({
   event,
   isLoggedIn,
@@ -123,26 +249,51 @@ function RegisterForm({
   isLoggedIn: boolean;
   pending: boolean;
   onSubmit: (
+    ticketTypeId: string,
     answers: Record<string, string | string[]>,
-    discountCode: string | null,
   ) => void;
 }) {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>(
     {},
   );
-  const [code, setCode] = useState("");
-  const [applied, setApplied] = useState<{
-    amount: number;
-    discount: number;
-  } | null>(null);
-  const [applying, startApply] = useTransition();
+
+  // Default-select the first selectable tier so the common single-tier case is
+  // zero-tap. Falls back to the first tier id if (somehow) none are selectable.
+  const [selectedId, setSelectedId] = useState<string>(
+    () =>
+      event.ticketTypes.find(isTierSelectable)?.id ??
+      event.ticketTypes[0]?.id ??
+      "",
+  );
+
+  const selectedTier =
+    event.ticketTypes.find((t) => t.id === selectedId) ?? null;
 
   function setAnswer(id: string, value: string | string[]) {
     setAnswers((p) => ({ ...p, [id]: value }));
   }
 
+  const tierSoldOut = selectedTier?.soldOut ?? false;
+
   return (
     <div className="space-y-4">
+      {/* Ticket-type selector. Single-tier events still render one card so the
+          price/approval terms are always explicit. */}
+      {event.ticketTypes.length > 0 ? (
+        <div className="space-y-2">
+          {event.ticketTypes.map((t) => (
+            <TicketCard
+              key={t.id}
+              tier={t}
+              timezone={event.timezone}
+              selected={t.id === selectedId}
+              selectable={isTierSelectable(t)}
+              onSelect={() => setSelectedId(t.id)}
+            />
+          ))}
+        </div>
+      ) : null}
+
       {event.questions.length > 0 ? (
         <div className="space-y-4">
           {event.questions.map((q) => (
@@ -215,74 +366,21 @@ function RegisterForm({
         </div>
       ) : null}
 
-      {event.priceType === "paid" ? (
-        <div className="space-y-2 rounded-2xl bg-muted/40 p-3">
-          <p className="text-sm font-semibold">
-            مبلغ:{" "}
-            {toPersianDigits(
-              (applied?.amount ?? event.priceToman).toLocaleString("en-US"),
-            )}{" "}
-            تومان
-            {applied ? (
-              <span className="ms-2 text-xs text-emerald-700">
-                ({toPersianDigits(applied.discount.toLocaleString("en-US"))}{" "}
-                تومان تخفیف)
-              </span>
-            ) : null}
-          </p>
-          <div className="flex gap-2">
-            <Input
-              value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="کد تخفیف"
-              dir="ltr"
-              autoCapitalize="characters"
-              className="flex-1 font-mono"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11"
-              disabled={applying || !code.trim()}
-              onClick={() =>
-                startApply(async () => {
-                  const r = await applyDiscountAction(
-                    event.pageSlug,
-                    event.slug,
-                    code.trim(),
-                  );
-                  if (r.ok) {
-                    setApplied({
-                      amount: r.amountToman,
-                      discount: r.discountToman,
-                    });
-                    toast.success("کد تخفیف اعمال شد.");
-                  } else {
-                    setApplied(null);
-                    toast.error(r.message);
-                  }
-                })
-              }
-            >
-              اعمال
-            </Button>
-          </div>
-        </div>
-      ) : null}
-
       <Button
         type="button"
         className="h-12 w-full text-base font-bold"
-        disabled={pending}
-        onClick={() => onSubmit(answers, applied ? code.trim() : null)}
+        disabled={pending || !selectedTier || !isTierSelectable(selectedTier)}
+        onClick={() => selectedTier && onSubmit(selectedTier.id, answers)}
       >
         {pending
           ? "در حال ثبت…"
-          : isLoggedIn
-            ? event.isFull
+          : !isLoggedIn
+            ? "ورود و ثبت‌نام"
+            : tierSoldOut
               ? "افزودن به فهرست انتظار"
-              : "ثبت‌نام در رویداد"
-            : "ورود و ثبت‌نام"}
+              : selectedTier?.approvalRequired
+                ? "درخواست ثبت‌نام"
+                : "ثبت‌نام در رویداد"}
       </Button>
       {!isLoggedIn ? (
         <p className="text-center text-xs text-muted-foreground">
@@ -297,12 +395,14 @@ function RegisteredState({
   event,
   status,
   expected,
+  ticketTypeId,
   currentUserId,
   viewerHasPage,
 }: {
   event: PublicEventView;
   status: string;
   expected: number;
+  ticketTypeId: string | null;
   currentUserId: string | null;
   viewerHasPage: boolean;
 }) {
@@ -311,9 +411,20 @@ function RegisteredState({
   const fileRef = useRef<HTMLInputElement>(null);
   const [qrOpen, setQrOpen] = useState(false);
 
+  // Discount code state for payment_pending step
+  const [discountOpen, setDiscountOpen] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
+  const [appliedDiscount, setAppliedDiscount] = useState<{
+    originalToman: number;
+    amountToman: number;
+    discountToman: number;
+  } | null>(null);
+  const [applyingDiscount, startApplyDiscount] = useTransition();
+
   const needsReceipt =
     status === "payment_pending" && event.receiptUploadEnabled;
   const confirmed = status === "approved" || status === "attended";
+  const receiptSubmitted = status === "payment_submitted";
 
   const statusMessage: Record<string, string> = {
     approved: "ثبت‌نام شما با موفقیت انجام شد.",
@@ -324,6 +435,53 @@ function RegisteredState({
     waitlisted: "شما در فهرست انتظار ثبت شدید.",
   };
 
+  // The selected tier for looking up the original price
+  const selectedTier =
+    ticketTypeId ? event.ticketTypes.find((t) => t.id === ticketTypeId) ?? null : null;
+
+  // Current payable amount: local optimistic state or server-stored amount
+  const currentAmount = appliedDiscount?.amountToman ?? expected;
+  const originalAmount = appliedDiscount?.originalToman ?? selectedTier?.priceToman ?? expected;
+
+  function handleApplyDiscount() {
+    if (!discountCode.trim()) return;
+    startApplyDiscount(async () => {
+      const r = await applyDiscountToRegistrationAction(
+        event.pageSlug,
+        event.slug,
+        discountCode.trim(),
+      );
+      if (r.ok) {
+        setAppliedDiscount({
+          originalToman: r.originalToman,
+          amountToman: r.amountToman,
+          discountToman: r.discountToman,
+        });
+        toast.success("کد تخفیف اعمال شد.");
+      } else {
+        toast.error(r.message);
+      }
+    });
+  }
+
+  function handleRemoveDiscount() {
+    startApplyDiscount(async () => {
+      const r = await applyDiscountToRegistrationAction(
+        event.pageSlug,
+        event.slug,
+        null,
+      );
+      if (r.ok) {
+        setAppliedDiscount(null);
+        setDiscountCode("");
+        setDiscountOpen(false);
+        toast.success("کد تخفیف حذف شد.");
+      } else {
+        toast.error(r.message);
+      }
+    });
+  }
+
   return (
     <div className="space-y-3">
       <div
@@ -331,7 +489,9 @@ function RegisteredState({
           "flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium",
           confirmed
             ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground",
+            : receiptSubmitted
+              ? "bg-foreground text-background"
+              : "bg-muted text-foreground",
         )}
       >
         {confirmed ? (
@@ -342,37 +502,114 @@ function RegisteredState({
         {statusMessage[status] ?? "ثبت‌نام شما ثبت شد."}
       </div>
 
-      {/* Paid + receipt OFF: attendee owes money but uploads no receipt; the
-          host confirms out-of-band. Show amount + how-to-pay so they know
-          where to send it. */}
-      {!confirmed &&
-      !needsReceipt &&
-      event.priceType === "paid" &&
-      expected > 0 ? (
-        <div className="space-y-2 rounded-2xl border border-border p-3">
-          <p className="text-sm">
-            مبلغ قابل پرداخت:{" "}
-            {toPersianDigits(expected.toLocaleString("en-US"))} تومان
-          </p>
-          {event.paymentInstructions ? (
-            <p className="whitespace-pre-line text-xs text-muted-foreground">
-              {event.paymentInstructions}
+      {/* Paid tier + receipt OFF: attendee owes money but uploads no receipt;
+          the host confirms out-of-band. */}
+      {!confirmed && !receiptSubmitted && !needsReceipt && expected > 0 ? (
+        <div className="space-y-3 rounded-2xl border border-border p-3">
+          <div className="space-y-1">
+            <p className="text-sm font-bold">
+              مبلغ قابل پرداخت:{" "}
+              {toPersianDigits(currentAmount.toLocaleString("en-US"))} تومان
             </p>
-          ) : null}
+            {appliedDiscount ? (
+              <p className="text-xs text-muted-foreground line-through">
+                {toPersianDigits(originalAmount.toLocaleString("en-US"))} تومان
+              </p>
+            ) : null}
+          </div>
+          <PaymentMethods event={event} />
         </div>
       ) : null}
 
       {needsReceipt ? (
-        <div className="space-y-2 rounded-2xl border border-border p-3">
-          <p className="text-sm">
-            مبلغ قابل پرداخت:{" "}
-            {toPersianDigits(expected.toLocaleString("en-US"))} تومان
-          </p>
-          {event.paymentInstructions ? (
-            <p className="whitespace-pre-line text-xs text-muted-foreground">
-              {event.paymentInstructions}
+        <div className="space-y-3 rounded-2xl border border-border p-3">
+          {/* Amount block */}
+          <div className="space-y-1">
+            <p className="text-sm font-bold">
+              مبلغ قابل پرداخت:{" "}
+              {toPersianDigits(currentAmount.toLocaleString("en-US"))} تومان
             </p>
+            {appliedDiscount ? (
+              <p className="text-xs text-muted-foreground line-through">
+                {toPersianDigits(originalAmount.toLocaleString("en-US"))} تومان
+              </p>
+            ) : null}
+          </div>
+
+          {/* Discount code toggle */}
+          {selectedTier?.priceType === "paid" ? (
+            <div>
+              {!appliedDiscount && !discountOpen ? (
+                <button
+                  type="button"
+                  className="text-xs text-primary underline-offset-2 hover:underline"
+                  onClick={() => setDiscountOpen(true)}
+                >
+                  کد تخفیف دارید؟
+                </button>
+              ) : null}
+
+              {discountOpen && !appliedDiscount ? (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="shrink-0 text-muted-foreground"
+                    onClick={() => {
+                      setDiscountOpen(false);
+                      setDiscountCode("");
+                    }}
+                    aria-label="بستن"
+                  >
+                    <XIcon className="size-4" />
+                  </button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-11 shrink-0"
+                    disabled={applyingDiscount || !discountCode.trim()}
+                    onClick={handleApplyDiscount}
+                  >
+                    اعمال
+                  </Button>
+                  <Input
+                    value={discountCode}
+                    onChange={(e) =>
+                      setDiscountCode(e.target.value.toUpperCase())
+                    }
+                    placeholder="کد تخفیف"
+                    dir="ltr"
+                    autoCapitalize="characters"
+                    inputMode="text"
+                    autoComplete="off"
+                    enterKeyHint="done"
+                    className="h-11 flex-1 font-mono"
+                    disabled={applyingDiscount}
+                  />
+                </div>
+              ) : null}
+
+              {appliedDiscount ? (
+                <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2">
+                  <span className="text-xs font-medium text-foreground">
+                    {toPersianDigits(
+                      appliedDiscount.discountToman.toLocaleString("en-US"),
+                    )}{" "}
+                    تومان تخفیف اعمال شد
+                  </span>
+                  <button
+                    type="button"
+                    className="text-xs text-foreground hover:underline"
+                    onClick={handleRemoveDiscount}
+                    disabled={applyingDiscount}
+                  >
+                    حذف کد
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : null}
+
+          <PaymentMethods event={event} />
           <p className="text-xs text-muted-foreground">
             پس از پرداخت، تصویر رسید را آپلود کنید تا میزبان تأیید کند.
           </p>
@@ -519,6 +756,92 @@ function RegisteredState({
             ادامه ثبت‌نام
           </Button>
         </div>
+      ) : null}
+    </div>
+  );
+}
+
+function PaymentMethods({ event }: { event: PublicEventView }) {
+  const hasCard = event.cardEnabled && event.cardNumber;
+  const hasSheba = event.shebaEnabled && event.shebaNumber;
+
+  if (!hasCard && !hasSheba && !event.paymentInstructions) return null;
+
+  return (
+    <div className="space-y-2">
+      {hasCard ? (
+        <PaymentMethodBlock
+          label="کارت‌به‌کارت"
+          number={event.cardNumber!}
+          holderName={event.cardHolderName}
+          icon={<CreditCardIcon className="size-4" />}
+        />
+      ) : null}
+      {hasSheba ? (
+        <PaymentMethodBlock
+          label="شبا"
+          number={event.shebaNumber!}
+          holderName={event.shebaHolderName}
+          icon={<span className="text-xs font-bold">IR</span>}
+        />
+      ) : null}
+      {event.paymentInstructions ? (
+        <p className="whitespace-pre-line text-xs text-muted-foreground">
+          {event.paymentInstructions}
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PaymentMethodBlock({
+  label,
+  number,
+  holderName,
+  icon,
+}: {
+  label: string;
+  number: string;
+  holderName: string | null;
+  icon: ReactNode;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(number).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-background p-3">
+      <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        {icon}
+        <span>{label}</span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span
+          dir="ltr"
+          className="font-mono text-base tracking-widest text-foreground"
+        >
+          {number}
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          aria-label="کپی شماره"
+        >
+          {copied ? (
+            <CheckCircle2Icon className="size-4 text-green-600" />
+          ) : (
+            <CopyIcon className="size-4" />
+          )}
+        </button>
+      </div>
+      {holderName ? (
+        <p className="mt-1 text-xs text-muted-foreground">{holderName}</p>
       ) : null}
     </div>
   );

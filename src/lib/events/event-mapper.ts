@@ -13,7 +13,7 @@ type HostEvent = NonNullable<Awaited<ReturnType<typeof getHostEvent>>>;
  * the host edits the same wall-clock they authored — UTC stays the truth.
  */
 export function toEventFormInitial(data: HostEvent): EventFormInitial {
-  const { event, questions, codes } = data;
+  const { event, questions, codes, tiers } = data;
   const tz = event.timezone;
   return {
     id: event.id,
@@ -35,12 +35,15 @@ export function toEventFormInitial(data: HostEvent): EventFormInitial {
         }
       : { date: "", time: "" },
     capacity: event.capacity,
-    priceType: event.priceType,
-    priceToman: event.priceToman,
     paymentInstructions: event.paymentInstructions ?? null,
+    cardEnabled: event.cardEnabled,
+    cardNumber: event.cardNumber ?? null,
+    cardHolderName: event.cardHolderName ?? null,
+    shebaEnabled: event.shebaEnabled,
+    shebaNumber: event.shebaNumber ?? null,
+    shebaHolderName: event.shebaHolderName ?? null,
     approvalRequired: event.approvalRequired,
     receiptUploadEnabled: event.receiptUploadEnabled,
-    waitlistEnabled: event.waitlistEnabled,
     status: event.status,
     questions: questions.map((q) => ({
       id: q.id,
@@ -57,6 +60,14 @@ export function toEventFormInitial(data: HostEvent): EventFormInitial {
       usageLimit: c.usageLimit,
       expiresAt: c.expiresAt ? c.expiresAt.toISOString() : null,
       isActive: c.isActive,
+    })),
+    ticketTypes: tiers.map((t) => ({
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      isFree: t.priceType === "free",
+      priceToman: t.priceToman,
+      capacity: t.capacity,
     })),
   };
 }

@@ -442,6 +442,20 @@
 			"when": 1778901500000,
 			"tag": "0063_product_section_icon",
 			"breakpoints": true
+		},
+		{
+			"idx": 64,
+			"version": "7",
+			"when": 1778901600000,
+			"tag": "0064_event_ticket_types",
+			"breakpoints": true
+		},
+		{
+			"idx": 65,
+			"version": "7",
+			"when": 1778901700000,
+			"tag": "0065_event_payment_methods",
+			"breakpoints": true
 		}
 	]
 }

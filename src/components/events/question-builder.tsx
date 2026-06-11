@@ -39,9 +39,7 @@ export function QuestionBuilder({
   onChange: (next: DraftQuestion[]) => void;
 }) {
   function update(index: number, patch: Partial<DraftQuestion>) {
-    onChange(
-      questions.map((q, i) => (i === index ? { ...q, ...patch } : q)),
-    );
+    onChange(questions.map((q, i) => (i === index ? { ...q, ...patch } : q)));
   }
 
   function addQuestion() {
@@ -61,8 +59,7 @@ export function QuestionBuilder({
     <div className="space-y-3">
       {questions.length === 0 ? (
         <p className="rounded-3xl border border-dashed border-border/70 p-4 text-center text-sm text-muted-foreground">
-          هنوز سؤالی اضافه نکرده‌اید. مثلاً «چه چیزی دوست داری از این جلسه
-          بگیری؟»
+          هنوز سؤالی اضافه نکرده‌اید.
         </p>
       ) : null}
 

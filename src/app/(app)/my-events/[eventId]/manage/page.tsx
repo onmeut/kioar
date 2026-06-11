@@ -57,6 +57,7 @@ export default async function ManageEventPage({
     receiptKey: r.receiptKey,
     discountCode: r.discountCode,
     expectedToman: r.expectedToman,
+    ticketTypeName: r.ticketTypeName,
     registeredAt: r.registeredAt.toISOString(),
     decidedAt: r.decidedAt?.toISOString() ?? null,
     checkedInAt: r.checkedInAt?.toISOString() ?? null,

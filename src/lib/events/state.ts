@@ -63,6 +63,37 @@ export function decideInitialStatus(
 }
 
 /**
+ * Sales-window state for a ticket type at a given instant. Kept separate from
+ * `decideInitialStatus` so the pure approval/capacity logic stays clock-free
+ * and unit-testable; the service checks the window FIRST, then decides status.
+ *
+ *   not_started → now < availableFrom (sales haven't opened)
+ *   ended       → now > availableUntil (sales closed)
+ *   inactive    → host toggled the tier off
+ *   open        → on sale
+ */
+export type TicketSaleState = "open" | "not_started" | "ended" | "inactive";
+
+export function ticketSaleState(
+  tier: {
+    isActive: boolean;
+    availableFrom: Date | null;
+    availableUntil: Date | null;
+  },
+  now: Date = new Date(),
+): TicketSaleState {
+  if (!tier.isActive) return "inactive";
+  const t = now.getTime();
+  if (tier.availableFrom && t < tier.availableFrom.getTime()) {
+    return "not_started";
+  }
+  if (tier.availableUntil && t > tier.availableUntil.getTime()) {
+    return "ended";
+  }
+  return "open";
+}
+
+/**
  * Compute the discounted amount for a (price, code) pair. Percentage codes
  * clamp 1..100; fixed codes subtract toman. Result never goes below zero.
  */

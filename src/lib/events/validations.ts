@@ -73,6 +73,41 @@ export const eventDiscountCodeSchema = z
     }
   });
 
+export const eventTicketTypeSchema = z
+  .object({
+    id: z.string().uuid().nullable().optional(),
+    name: z.string().trim().min(1, "نام بلیت را وارد کنید.").max(80),
+    description: z
+      .string()
+      .trim()
+      .max(300)
+      .nullable()
+      .optional()
+      .transform((v) => (v && v.length ? v : null)),
+    isFree: z.boolean().default(true),
+    priceToman: z.coerce
+      .number()
+      .int()
+      .nonnegative("قیمت نمی‌تواند منفی باشد.")
+      .default(0),
+    capacity: z.coerce
+      .number()
+      .int()
+      .positive("ظرفیت باید بزرگ‌تر از صفر باشد.")
+      .nullable()
+      .optional()
+      .default(null),
+  })
+  .superRefine((t, ctx) => {
+    if (!t.isFree && t.priceToman <= 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "برای بلیت پولی قیمت را وارد کنید.",
+        path: ["priceToman"],
+      });
+    }
+  });
+
 export const eventFormSchema = z
   .object({
     title: z.string().trim().min(2, "عنوان رویداد را وارد کنید.").max(120),
@@ -121,12 +156,6 @@ export const eventFormSchema = z
       .nullable()
       .optional()
       .default(null),
-    priceType: z.enum(["free", "paid"]),
-    priceToman: z.coerce
-      .number()
-      .int()
-      .nonnegative("قیمت نمی‌تواند منفی باشد.")
-      .default(0),
     paymentInstructions: z
       .string()
       .trim()
@@ -134,12 +163,42 @@ export const eventFormSchema = z
       .nullable()
       .optional()
       .default(null),
+    cardEnabled: z.boolean().default(false),
+    cardNumber: z
+      .string()
+      .trim()
+      .max(20)
+      .nullable()
+      .optional()
+      .default(null),
+    cardHolderName: z
+      .string()
+      .trim()
+      .max(80)
+      .nullable()
+      .optional()
+      .default(null),
+    shebaEnabled: z.boolean().default(false),
+    shebaNumber: z
+      .string()
+      .trim()
+      .max(30)
+      .nullable()
+      .optional()
+      .default(null),
+    shebaHolderName: z
+      .string()
+      .trim()
+      .max(80)
+      .nullable()
+      .optional()
+      .default(null),
     approvalRequired: z.boolean().default(false),
     receiptUploadEnabled: z.boolean().default(false),
-    waitlistEnabled: z.boolean().default(false),
     status: z.enum(["draft", "published", "cancelled"]).default("draft"),
     questions: z.array(eventQuestionSchema).max(20).default([]),
     discountCodes: z.array(eventDiscountCodeSchema).max(50).default([]),
+    ticketTypes: z.array(eventTicketTypeSchema).max(20).default([]),
   })
   .superRefine((v, ctx) => {
     // Physical events need an address; online events need a valid URL.
@@ -166,12 +225,20 @@ export const eventFormSchema = z
       }
     }
 
-    // Paid events need a positive price.
-    if (v.priceType === "paid" && v.priceToman <= 0) {
+    // Card-to-card enabled but number missing.
+    if (v.cardEnabled && !v.cardNumber) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "برای رویداد پولی قیمت را وارد کنید.",
-        path: ["priceToman"],
+        message: "شماره کارت را وارد کنید.",
+        path: ["cardNumber"],
+      });
+    }
+    // Sheba enabled but number missing.
+    if (v.shebaEnabled && !v.shebaNumber) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "شماره شبا را وارد کنید.",
+        path: ["shebaNumber"],
       });
     }
 
@@ -202,3 +269,4 @@ export type EventFormInput = z.input<typeof eventFormSchema>;
 export type EventFormValues = z.output<typeof eventFormSchema>;
 export type EventQuestionInput = z.input<typeof eventQuestionSchema>;
 export type EventDiscountCodeInput = z.input<typeof eventDiscountCodeSchema>;
+export type EventTicketTypeInput = z.input<typeof eventTicketTypeSchema>;

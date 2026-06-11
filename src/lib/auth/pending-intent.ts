@@ -38,6 +38,8 @@ const cookieOptions = {
 export type PendingEventRegistration = {
   pageSlug: string;
   eventSlug: string;
+  /** The ticket type the visitor selected before being sent to auth. */
+  ticketTypeId?: string | null;
   answers?: Record<string, string | string[]>;
   discountCode?: string | null;
 };
@@ -49,17 +51,27 @@ export async function setPendingEventRegistration(
   const eventSlug = normalizeSlug(intent.eventSlug);
   if (!pageSlug || !eventSlug) return;
 
+  const ticketTypeId =
+    typeof intent.ticketTypeId === "string" ? intent.ticketTypeId : null;
+
   const payload: PendingEventRegistration = {
     pageSlug,
     eventSlug,
+    ticketTypeId,
     answers: intent.answers,
     discountCode: intent.discountCode ?? null,
   };
 
   let value = JSON.stringify(payload);
   if (Buffer.byteLength(value, "utf8") > MAX_PENDING_EVENT_BYTES) {
-    // Too big with answers — keep the flow alive, drop the answers.
-    value = JSON.stringify({ pageSlug, eventSlug, discountCode: null });
+    // Too big with answers — keep the flow alive, drop the answers but keep the
+    // chosen tier (we can't complete the registration without it).
+    value = JSON.stringify({
+      pageSlug,
+      eventSlug,
+      ticketTypeId,
+      discountCode: null,
+    });
   }
 
   const cookieStore = await cookies();
@@ -88,13 +100,15 @@ export async function getPendingEventRegistration(): Promise<PendingEventRegistr
     if (!eventSlug) return null;
     const pageSlug =
       typeof parsed.pageSlug === "string" ? normalizeSlug(parsed.pageSlug) : "";
+    const ticketTypeId =
+      typeof parsed.ticketTypeId === "string" ? parsed.ticketTypeId : null;
     const answers =
       parsed.answers && typeof parsed.answers === "object"
         ? (parsed.answers as Record<string, string | string[]>)
         : undefined;
     const discountCode =
       typeof parsed.discountCode === "string" ? parsed.discountCode : null;
-    return { pageSlug, eventSlug, answers, discountCode };
+    return { pageSlug, eventSlug, ticketTypeId, answers, discountCode };
   } catch {
     return null;
   }

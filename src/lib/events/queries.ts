@@ -8,12 +8,15 @@ import {
   eventDiscountCodes,
   eventQuestions,
   eventRegistrations,
+  eventTicketTypes,
   events,
   profiles,
   users,
 } from "@/db/schema";
 import { ACTIVE_REGISTRATION_STATUSES } from "@/lib/data";
 import type { EventRegistrationStatus } from "@/lib/events/labels";
+import { SPOT_STATUSES, ticketSaleState } from "@/lib/events/state";
+import type { TicketSaleState } from "@/lib/events/state";
 
 export type HostEventListItem = {
   id: string;
@@ -164,7 +167,7 @@ export async function getHostEvent(eventId: string, pageId: string) {
   });
   if (!event) return null;
 
-  const [questions, codes] = await Promise.all([
+  const [questions, codes, tiers] = await Promise.all([
     db
       .select()
       .from(eventQuestions)
@@ -175,9 +178,14 @@ export async function getHostEvent(eventId: string, pageId: string) {
       .from(eventDiscountCodes)
       .where(eq(eventDiscountCodes.eventId, eventId))
       .orderBy(asc(eventDiscountCodes.createdAt)),
+    db
+      .select()
+      .from(eventTicketTypes)
+      .where(eq(eventTicketTypes.eventId, eventId))
+      .orderBy(asc(eventTicketTypes.sortOrder), asc(eventTicketTypes.createdAt)),
   ]);
 
-  return { event, questions, codes };
+  return { event, questions, codes, tiers };
 }
 
 /** Count registrations that occupy a spot (approved/attended). */
@@ -316,6 +324,12 @@ export type PublicEventView = {
   priceType: "free" | "paid";
   priceToman: number;
   paymentInstructions: string | null;
+  cardEnabled: boolean;
+  cardNumber: string | null;
+  cardHolderName: string | null;
+  shebaEnabled: boolean;
+  shebaNumber: string | null;
+  shebaHolderName: string | null;
   approvalRequired: boolean;
   receiptUploadEnabled: boolean;
   waitlistEnabled: boolean;
@@ -324,6 +338,9 @@ export type PublicEventView = {
   spotsRemaining: number | null;
   isFull: boolean;
   isPast: boolean;
+  /** Selectable ticket tiers, ordered. Each carries its own price/approval/
+   *  capacity/sales-window + a live `saleState` and `soldOut` flag. */
+  ticketTypes: PublicTicketType[];
   questions: Array<{
     id: string;
     kind: "short_text" | "long_text" | "single_select" | "multi_select";
@@ -335,7 +352,27 @@ export type PublicEventView = {
     status: string;
     receiptKey: string | null;
     expectedToman: number;
+    ticketTypeId: string | null;
   } | null;
+};
+
+export type PublicTicketType = {
+  id: string;
+  name: string;
+  description: string | null;
+  priceType: "free" | "paid";
+  priceToman: number;
+  approvalRequired: boolean;
+  capacity: number | null;
+  waitlistEnabled: boolean;
+  availableFrom: Date | null;
+  availableUntil: Date | null;
+  /** Live sales state at query time (open / not_started / ended / inactive). */
+  saleState: TicketSaleState;
+  /** True when a finite capacity is fully consumed by confirmed registrations. */
+  soldOut: boolean;
+  /** Confirmed spots remaining (null = unlimited). */
+  spotsRemaining: number | null;
 };
 
 /**
@@ -369,7 +406,7 @@ export async function getPublicEvent(
   if (!found || found.event.status !== "published") return null;
   const ev = found.event;
 
-  const [questions, viewerReg, spots] = await Promise.all([
+  const [questions, viewerReg, spots, tiers, tierCounts] = await Promise.all([
     db
       .select()
       .from(eventQuestions)
@@ -384,7 +421,59 @@ export async function getPublicEvent(
         })
       : Promise.resolve(null),
     getApprovedCount(ev.id),
+    db
+      .select()
+      .from(eventTicketTypes)
+      .where(eq(eventTicketTypes.eventId, ev.id))
+      .orderBy(asc(eventTicketTypes.sortOrder), asc(eventTicketTypes.createdAt)),
+    // Per-tier confirmed-spot counts (one grouped query).
+    db
+      .select({
+        ticketTypeId: eventRegistrations.ticketTypeId,
+        n: sql<number>`count(*)::int`,
+      })
+      .from(eventRegistrations)
+      .where(
+        and(
+          eq(eventRegistrations.eventId, ev.id),
+          inArray(eventRegistrations.status, [...SPOT_STATUSES]),
+        ),
+      )
+      .groupBy(eventRegistrations.ticketTypeId),
   ]);
+
+  const now = new Date();
+  const countByTier = new Map<string, number>();
+  for (const r of tierCounts) {
+    if (r.ticketTypeId) countByTier.set(r.ticketTypeId, Number(r.n));
+  }
+  const ticketTypes: PublicTicketType[] = tiers.map((t) => {
+    const used = countByTier.get(t.id) ?? 0;
+    const spotsRemaining =
+      t.capacity != null ? Math.max(0, t.capacity - used) : null;
+    return {
+      id: t.id,
+      name: t.name,
+      description: t.description,
+      priceType: t.priceType,
+      priceToman: t.priceToman,
+      approvalRequired: t.approvalRequired,
+      capacity: t.capacity,
+      waitlistEnabled: t.waitlistEnabled,
+      availableFrom: t.availableFrom,
+      availableUntil: t.availableUntil,
+      saleState: ticketSaleState(
+        {
+          isActive: t.isActive,
+          availableFrom: t.availableFrom,
+          availableUntil: t.availableUntil,
+        },
+        now,
+      ),
+      soldOut: t.capacity != null && used >= t.capacity,
+      spotsRemaining,
+    };
+  });
 
   const viewerStatus = viewerReg?.status ?? null;
   const canSeeOnlineUrl =
@@ -418,6 +507,12 @@ export async function getPublicEvent(
     priceType: ev.priceType,
     priceToman: ev.priceToman,
     paymentInstructions: ev.paymentInstructions,
+    cardEnabled: ev.cardEnabled,
+    cardNumber: ev.cardNumber,
+    cardHolderName: ev.cardHolderName,
+    shebaEnabled: ev.shebaEnabled,
+    shebaNumber: ev.shebaNumber,
+    shebaHolderName: ev.shebaHolderName,
     approvalRequired: ev.approvalRequired,
     receiptUploadEnabled: ev.receiptUploadEnabled,
     waitlistEnabled: ev.waitlistEnabled,
@@ -426,6 +521,7 @@ export async function getPublicEvent(
     spotsRemaining,
     isFull,
     isPast,
+    ticketTypes,
     questions: questions.map((q) => ({
       id: q.id,
       kind: q.kind,
@@ -438,6 +534,7 @@ export async function getPublicEvent(
           status: viewerReg.status,
           receiptKey: viewerReg.receiptKey,
           expectedToman: viewerReg.expectedToman,
+          ticketTypeId: viewerReg.ticketTypeId,
         }
       : null,
   };
@@ -457,6 +554,8 @@ export type EventRegistrant = {
   receiptKey: string | null;
   discountCode: string | null;
   expectedToman: number;
+  /** Display name of the chosen ticket type (null for legacy rows). */
+  ticketTypeName: string | null;
   registeredAt: Date;
   decidedAt: Date | null;
   checkedInAt: Date | null;
@@ -491,6 +590,7 @@ export async function listEventRegistrants(
       receiptKey: eventRegistrations.receiptKey,
       discountCode: eventRegistrations.discountCode,
       expectedToman: eventRegistrations.expectedToman,
+      ticketTypeName: eventTicketTypes.name,
       registeredAt: eventRegistrations.createdAt,
       decidedAt: eventRegistrations.decidedAt,
       checkedInAt: eventCheckins.checkedInAt,
@@ -500,6 +600,10 @@ export async function listEventRegistrants(
     .leftJoin(
       eventCheckins,
       eq(eventCheckins.registrationId, eventRegistrations.id),
+    )
+    .leftJoin(
+      eventTicketTypes,
+      eq(eventTicketTypes.id, eventRegistrations.ticketTypeId),
     )
     .where(eq(eventRegistrations.eventId, eventId))
     .orderBy(desc(eventRegistrations.createdAt));
@@ -519,6 +623,7 @@ export async function listEventRegistrants(
       receiptKey: r.receiptKey,
       discountCode: r.discountCode,
       expectedToman: r.expectedToman,
+      ticketTypeName: r.ticketTypeName,
       registeredAt: r.registeredAt,
       decidedAt: r.decidedAt,
       checkedInAt: r.checkedInAt,

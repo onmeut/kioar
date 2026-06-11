@@ -7,6 +7,7 @@ import {
   eventDiscountCodes,
   eventQuestions,
   eventRegistrations,
+  eventTicketTypes,
   events,
 } from "@/db/schema";
 import { civilToUtc } from "@/lib/date/timezone";
@@ -160,6 +161,13 @@ export async function saveEvent(
     };
   }
 
+  // Derive priceType from ticket types: if any ticket is paid, the event is paid.
+  const hasPaidTicket = v.ticketTypes.some((t) => !t.isFree && t.priceToman > 0);
+  const derivedPriceType: "free" | "paid" = hasPaidTicket ? "paid" : "free";
+  const derivedPriceToman = hasPaidTicket
+    ? Math.min(...v.ticketTypes.filter((t) => !t.isFree).map((t) => t.priceToman))
+    : 0;
+
   const baseValues = {
     title: v.title,
     description: v.description,
@@ -174,14 +182,33 @@ export async function saveEvent(
     startsAt,
     endsAt,
     capacity: v.capacity ?? null,
-    priceType: v.priceType,
-    priceToman: v.priceType === "paid" ? v.priceToman : 0,
+    priceType: derivedPriceType,
+    priceToman: derivedPriceToman,
     paymentInstructions:
-      v.priceType === "paid" ? (v.paymentInstructions ?? null) : null,
+      derivedPriceType === "paid" ? (v.paymentInstructions ?? null) : null,
+    cardEnabled: derivedPriceType === "paid" ? (v.cardEnabled ?? false) : false,
+    cardNumber:
+      derivedPriceType === "paid" && v.cardEnabled
+        ? (v.cardNumber ?? null)
+        : null,
+    cardHolderName:
+      derivedPriceType === "paid" && v.cardEnabled
+        ? (v.cardHolderName ?? null)
+        : null,
+    shebaEnabled:
+      derivedPriceType === "paid" ? (v.shebaEnabled ?? false) : false,
+    shebaNumber:
+      derivedPriceType === "paid" && v.shebaEnabled
+        ? (v.shebaNumber ?? null)
+        : null,
+    shebaHolderName:
+      derivedPriceType === "paid" && v.shebaEnabled
+        ? (v.shebaHolderName ?? null)
+        : null,
     approvalRequired: v.approvalRequired,
     receiptUploadEnabled:
-      v.priceType === "paid" ? v.receiptUploadEnabled : false,
-    waitlistEnabled: v.waitlistEnabled,
+      derivedPriceType === "paid" ? v.receiptUploadEnabled : false,
+    waitlistEnabled: false,
     status: v.status,
   };
 
@@ -208,6 +235,12 @@ export async function saveEvent(
 
     await syncQuestions(tx, id, v.questions);
     await syncDiscountCodes(tx, id, v.discountCodes);
+    await syncTicketTypes(tx, id, v.ticketTypes, {
+      timezone: v.timezone,
+      defaultName: "بلیت استاندارد",
+      approvalRequired: v.approvalRequired,
+      capacity: v.capacity ?? null,
+    });
     return id;
   });
 
@@ -330,6 +363,112 @@ async function syncDiscountCodes(
     await tx
       .delete(eventDiscountCodes)
       .where(inArray(eventDiscountCodes.id, toDelete));
+  }
+}
+
+/** Convert a civil date/time pair to a UTC instant, or null when incomplete. */
+/**
+ * Sync an event's ticket types (id-stable upsert + prune). When the host
+ * submitted NO tiers, synthesize exactly one default tier from `fallback` so
+ * every event always has ≥1 tier — the invariant the public renderer + the
+ * registration service rely on. Existing registrations keep their
+ * `ticket_type_id` (FK is `set null`), so we never orphan paid rows on edit.
+ */
+async function syncTicketTypes(
+  tx: Tx,
+  eventId: string,
+  tiers: EventFormValues["ticketTypes"],
+  fallback: {
+    timezone: string;
+    defaultName: string;
+    approvalRequired: boolean;
+    capacity: number | null;
+  },
+): Promise<void> {
+  // No explicit tiers → keep/create a single default tier. If one already
+  // exists (e.g. the backfilled default), update it in place rather than
+  // churning a new id (preserves existing registrations' ticket_type_id).
+  if (tiers.length === 0) {
+    const existing = await tx
+      .select({ id: eventTicketTypes.id })
+      .from(eventTicketTypes)
+      .where(eq(eventTicketTypes.eventId, eventId))
+      .orderBy(eventTicketTypes.sortOrder);
+    const values = {
+      name: fallback.defaultName,
+      description: null,
+      priceType: "free" as const,
+      priceToman: 0,
+      approvalRequired: fallback.approvalRequired,
+      capacity: fallback.capacity,
+      waitlistEnabled: false,
+      availableFrom: null,
+      availableUntil: null,
+      isActive: true,
+      sortOrder: 0,
+    };
+    if (existing.length > 0) {
+      const keepId = existing[0].id;
+      await tx
+        .update(eventTicketTypes)
+        .set(values)
+        .where(eq(eventTicketTypes.id, keepId));
+      const extra = existing.slice(1).map((r) => r.id);
+      if (extra.length) {
+        await tx
+          .delete(eventTicketTypes)
+          .where(inArray(eventTicketTypes.id, extra));
+      }
+    } else {
+      await tx.insert(eventTicketTypes).values({ eventId, ...values });
+    }
+    return;
+  }
+
+  const keepIds: string[] = [];
+  for (let i = 0; i < tiers.length; i++) {
+    const t = tiers[i];
+    const values = {
+      name: t.name,
+      description: t.description ?? null,
+      priceType: t.isFree ? ("free" as const) : ("paid" as const),
+      priceToman: t.isFree ? 0 : t.priceToman,
+      approvalRequired: false,
+      capacity: t.capacity ?? null,
+      waitlistEnabled: false,
+      availableFrom: null,
+      availableUntil: null,
+      isActive: true,
+      sortOrder: i,
+    };
+    if (t.id) {
+      await tx
+        .update(eventTicketTypes)
+        .set(values)
+        .where(
+          and(
+            eq(eventTicketTypes.id, t.id),
+            eq(eventTicketTypes.eventId, eventId),
+          ),
+        );
+      keepIds.push(t.id);
+    } else {
+      const [row] = await tx
+        .insert(eventTicketTypes)
+        .values({ eventId, ...values })
+        .returning({ id: eventTicketTypes.id });
+      keepIds.push(row.id);
+    }
+  }
+  const all = await tx
+    .select({ id: eventTicketTypes.id })
+    .from(eventTicketTypes)
+    .where(eq(eventTicketTypes.eventId, eventId));
+  const toDelete = all.map((r) => r.id).filter((id) => !keepIds.includes(id));
+  if (toDelete.length) {
+    await tx
+      .delete(eventTicketTypes)
+      .where(inArray(eventTicketTypes.id, toDelete));
   }
 }
 

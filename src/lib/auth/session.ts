@@ -478,7 +478,13 @@ export async function continuePendingEventRegistrationOrRedirect(
       eq(events.slug, pending.eventSlug),
       eq(events.status, "published"),
     ),
-    with: { page: { columns: { slug: true } } },
+    with: {
+      page: { columns: { slug: true } },
+      ticketTypes: {
+        columns: { id: true },
+        orderBy: (t, { asc }) => [asc(t.sortOrder), asc(t.createdAt)],
+      },
+    },
   });
 
   await clearPendingEventRegistration();
@@ -487,18 +493,32 @@ export async function continuePendingEventRegistrationOrRedirect(
     redirect("/me");
   }
 
+  // Resolve the chosen tier. Prefer the one the visitor picked pre-auth; fall
+  // back to the event's first (default) tier so a dropped/legacy cookie still
+  // completes rather than dead-ending.
+  const chosenTierId =
+    (pending.ticketTypeId &&
+      event.ticketTypes.find((t) => t.id === pending.ticketTypeId)?.id) ||
+    event.ticketTypes[0]?.id;
+
   // Complete the registration as the now-authenticated user, replaying the
   // answers + discount they entered before auth. Idempotent: if they somehow
   // already have a registration it returns the existing status. We deliberately
   // ignore a failure result (e.g. capacity filled during the auth round-trip)
   // and still land them on the event page, which renders the live state /
   // re-shows the form rather than a dead end.
-  await registerForEvent(
-    event.id,
-    userId,
-    { answers: pending.answers, discountCode: pending.discountCode },
-    event.page.slug,
-  );
+  if (chosenTierId) {
+    await registerForEvent(
+      event.id,
+      userId,
+      {
+        ticketTypeId: chosenTierId,
+        answers: pending.answers,
+        discountCode: pending.discountCode,
+      },
+      event.page.slug,
+    );
+  }
 
   // Canonical event URL is rebuilt in the events feature increments; cast
   // until the typed route exists.

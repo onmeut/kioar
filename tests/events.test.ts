@@ -5,6 +5,7 @@ import {
   canTransition,
   computeDiscountedAmount,
   decideInitialStatus,
+  ticketSaleState,
   type EventConfig,
 } from "@/lib/events/state";
 import { parseQrTarget } from "@/lib/events/qr-target";
@@ -82,6 +83,62 @@ describe("decideInitialStatus", () => {
         1,
       ),
       { status: "waitlisted" },
+    );
+  });
+});
+
+describe("ticketSaleState (per-tier sales window)", () => {
+  const now = new Date("2026-06-11T12:00:00Z");
+  const hourAgo = new Date("2026-06-11T11:00:00Z");
+  const hourAhead = new Date("2026-06-11T13:00:00Z");
+
+  it("open when active and within window", () => {
+    assert.equal(
+      ticketSaleState(
+        { isActive: true, availableFrom: hourAgo, availableUntil: hourAhead },
+        now,
+      ),
+      "open",
+    );
+  });
+
+  it("open when active with no window bounds", () => {
+    assert.equal(
+      ticketSaleState(
+        { isActive: true, availableFrom: null, availableUntil: null },
+        now,
+      ),
+      "open",
+    );
+  });
+
+  it("inactive overrides any window", () => {
+    assert.equal(
+      ticketSaleState(
+        { isActive: false, availableFrom: hourAgo, availableUntil: hourAhead },
+        now,
+      ),
+      "inactive",
+    );
+  });
+
+  it("not_started before availableFrom", () => {
+    assert.equal(
+      ticketSaleState(
+        { isActive: true, availableFrom: hourAhead, availableUntil: null },
+        now,
+      ),
+      "not_started",
+    );
+  });
+
+  it("ended after availableUntil", () => {
+    assert.equal(
+      ticketSaleState(
+        { isActive: true, availableFrom: null, availableUntil: hourAgo },
+        now,
+      ),
+      "ended",
     );
   });
 });

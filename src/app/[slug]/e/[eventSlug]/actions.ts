@@ -3,11 +3,12 @@
 import { and, eq } from "drizzle-orm";
 
 import { getDb } from "@/db";
-import { events, profiles } from "@/db/schema";
+import { events, eventTicketTypes, profiles } from "@/db/schema";
 import { getCurrentViewer } from "@/lib/auth/session";
 import { setPendingEventRegistration } from "@/lib/auth/pending-intent";
 import { validateDiscountCode } from "@/lib/events/discount";
 import {
+  applyDiscountToRegistration,
   cancelOwnRegistration,
   registerForEvent,
   submitReceipt,
@@ -51,6 +52,7 @@ export async function registerAction(
   pageSlug: string,
   eventSlug: string,
   payload: {
+    ticketTypeId: string;
     answers?: Record<string, string | string[]>;
     discountCode?: string | null;
   },
@@ -59,12 +61,16 @@ export async function registerAction(
   if (!event || event.status !== "published") {
     return { ok: false, message: "این رویداد در دسترس نیست." };
   }
+  if (!payload.ticketTypeId) {
+    return { ok: false, message: "لطفاً نوع بلیت را انتخاب کنید." };
+  }
 
   const viewer = await getCurrentViewer();
   if (!viewer) {
     await setPendingEventRegistration({
       pageSlug: event.pageSlug,
       eventSlug,
+      ticketTypeId: payload.ticketTypeId,
       answers: payload.answers,
       discountCode: payload.discountCode ?? null,
     });
@@ -85,23 +91,65 @@ export type ApplyDiscountResult =
   | { ok: true; amountToman: number; discountToman: number }
   | { ok: false; message: string };
 
-/** Live discount validation for the register UI (does not bump usedCount). */
+/**
+ * Live discount validation for the register UI (does not bump usedCount).
+ * Validates against the SELECTED ticket type's price — a tier may be paid even
+ * when other tiers are free. Discount codes remain event-scoped in v1.
+ */
 export async function applyDiscountAction(
   pageSlug: string,
   eventSlug: string,
+  ticketTypeId: string,
   code: string,
 ): Promise<ApplyDiscountResult> {
   const event = await resolveEvent(pageSlug, eventSlug);
-  if (!event || event.priceType !== "paid") {
+  if (!event) {
     return { ok: false, message: "کد تخفیف برای این رویداد کاربرد ندارد." };
   }
-  const v = await validateDiscountCode(event.id, code, event.priceToman);
+  const db = getDb();
+  const [tier] = await db
+    .select({
+      priceType: eventTicketTypes.priceType,
+      priceToman: eventTicketTypes.priceToman,
+    })
+    .from(eventTicketTypes)
+    .where(
+      and(
+        eq(eventTicketTypes.id, ticketTypeId),
+        eq(eventTicketTypes.eventId, event.id),
+      ),
+    )
+    .limit(1);
+  if (!tier || tier.priceType !== "paid") {
+    return { ok: false, message: "کد تخفیف برای این بلیت کاربرد ندارد." };
+  }
+  const v = await validateDiscountCode(event.id, code, tier.priceToman);
   if (!v.ok) return { ok: false, message: v.message };
   return {
     ok: true,
     amountToman: v.amountToman,
     discountToman: v.discountToman,
   };
+}
+
+export type ApplyDiscountToRegistrationResult =
+  | { ok: true; originalToman: number; amountToman: number; discountToman: number }
+  | { ok: false; message: string };
+
+/**
+ * Apply (or remove) a discount code to an existing payment_pending registration.
+ * Pass null to remove the currently applied discount.
+ */
+export async function applyDiscountToRegistrationAction(
+  pageSlug: string,
+  eventSlug: string,
+  code: string | null,
+): Promise<ApplyDiscountToRegistrationResult> {
+  const event = await resolveEvent(pageSlug, eventSlug);
+  if (!event) return { ok: false, message: "رویداد پیدا نشد." };
+  const viewer = await getCurrentViewer();
+  if (!viewer) return { ok: false, message: "ابتدا وارد شوید." };
+  return applyDiscountToRegistration(event.id, viewer.user.id, code);
 }
 
 /** Upload + attach a payment receipt (private storage). */

@@ -5,7 +5,6 @@ import { CalendarDaysIcon, UsersIcon } from "lucide-react";
 import { BlockCard } from "@/components/dashboard/block-card";
 import type { RequiredPlanTier } from "@/lib/block-features";
 import { toPersianDigits } from "@/lib/persian";
-import { formatShamsiDateTimeInZone } from "@/lib/date/timezone";
 import type {
   BlockAnimationStyle,
   BlockSpotlight,
@@ -56,10 +55,6 @@ export function EventBlockRow({
   locked = false,
   lockedPlan = "business",
 }: EventBlockRowProps) {
-  const startLabel = formatShamsiDateTimeInZone(
-    new Date(block.startsAt),
-    block.timezone,
-  );
   const isDraft = block.status === "draft";
   const isCancelled = block.status === "cancelled";
 
@@ -76,19 +71,15 @@ export function EventBlockRow({
       }
       title={block.title || "رویداد"}
       meta={
-        <span className="flex items-center gap-1.5">
-          <span>{startLabel}</span>
-          {isDraft ? (
-            <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
-              پیش‌نویس
-            </span>
-          ) : null}
-          {isCancelled ? (
-            <span className="rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
-              لغو‌شده
-            </span>
-          ) : null}
-        </span>
+        isDraft ? (
+          <span className="rounded-md bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+            پیش‌نویس
+          </span>
+        ) : isCancelled ? (
+          <span className="rounded-md bg-rose-100 px-1.5 py-0.5 text-[10px] font-bold text-rose-700">
+            لغو‌شده
+          </span>
+        ) : undefined
       }
       trailing={
         <span
