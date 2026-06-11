@@ -506,16 +506,16 @@ function RegisteredState({
           the host confirms out-of-band. */}
       {!confirmed && !receiptSubmitted && !needsReceipt && expected > 0 ? (
         <div className="space-y-3 rounded-2xl border border-border p-3">
-          <div className="space-y-1">
-            <p className="text-sm font-bold">
-              مبلغ قابل پرداخت:{" "}
-              {toPersianDigits(currentAmount.toLocaleString("en-US"))} تومان
-            </p>
+          <div className="space-y-1" dir="rtl">
             {appliedDiscount ? (
-              <p className="text-xs text-muted-foreground line-through">
+              <p className="text-sm text-muted-foreground line-through">
                 {toPersianDigits(originalAmount.toLocaleString("en-US"))} تومان
               </p>
             ) : null}
+            <p className="text-base font-bold">
+              مبلغ قابل پرداخت:{" "}
+              {toPersianDigits(currentAmount.toLocaleString("en-US"))} تومان
+            </p>
           </div>
           <PaymentMethods event={event} />
         </div>
@@ -524,16 +524,16 @@ function RegisteredState({
       {needsReceipt ? (
         <div className="space-y-3 rounded-2xl border border-border p-3">
           {/* Amount block */}
-          <div className="space-y-1">
-            <p className="text-sm font-bold">
-              مبلغ قابل پرداخت:{" "}
-              {toPersianDigits(currentAmount.toLocaleString("en-US"))} تومان
-            </p>
+          <div className="space-y-1" dir="rtl">
             {appliedDiscount ? (
-              <p className="text-xs text-muted-foreground line-through">
+              <p className="text-sm text-muted-foreground line-through">
                 {toPersianDigits(originalAmount.toLocaleString("en-US"))} تومان
               </p>
             ) : null}
+            <p className="text-base font-bold">
+              مبلغ قابل پرداخت:{" "}
+              {toPersianDigits(currentAmount.toLocaleString("en-US"))} تومان
+            </p>
           </div>
 
           {/* Discount code toggle */}
@@ -551,17 +551,19 @@ function RegisteredState({
 
               {discountOpen && !appliedDiscount ? (
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    className="shrink-0 text-muted-foreground"
-                    onClick={() => {
-                      setDiscountOpen(false);
-                      setDiscountCode("");
-                    }}
-                    aria-label="بستن"
-                  >
-                    <XIcon className="size-4" />
-                  </button>
+                  <Input
+                    value={discountCode}
+                    onChange={(e) =>
+                      setDiscountCode(e.target.value.toUpperCase())
+                    }
+                    placeholder="کد تخفیف"
+                    autoCapitalize="characters"
+                    inputMode="text"
+                    autoComplete="off"
+                    enterKeyHint="done"
+                    className="h-11 flex-1 rounded-full font-mono md:h-11"
+                    disabled={applyingDiscount}
+                  />
                   <Button
                     type="button"
                     variant="outline"
@@ -571,25 +573,24 @@ function RegisteredState({
                   >
                     اعمال
                   </Button>
-                  <Input
-                    value={discountCode}
-                    onChange={(e) =>
-                      setDiscountCode(e.target.value.toUpperCase())
-                    }
-                    placeholder="کد تخفیف"
-                    dir="ltr"
-                    autoCapitalize="characters"
-                    inputMode="text"
-                    autoComplete="off"
-                    enterKeyHint="done"
-                    className="h-11 flex-1 font-mono"
-                    disabled={applyingDiscount}
-                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    className="shrink-0 text-muted-foreground"
+                    onClick={() => {
+                      setDiscountOpen(false);
+                      setDiscountCode("");
+                    }}
+                    aria-label="بستن"
+                  >
+                    <XIcon className="size-4" />
+                  </Button>
                 </div>
               ) : null}
 
               {appliedDiscount ? (
-                <div className="flex items-center justify-between rounded-xl bg-muted px-3 py-2">
+                <div className="flex items-center justify-between rounded-xl border border-border bg-background px-3 py-2">
                   <span className="text-xs font-medium text-foreground">
                     {toPersianDigits(
                       appliedDiscount.discountToman.toLocaleString("en-US"),
@@ -816,7 +817,7 @@ function PaymentMethodBlock({
 
   return (
     <div className="rounded-xl border border-border bg-background p-3">
-      <div className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         {icon}
         <span>{label}</span>
       </div>
@@ -830,7 +831,7 @@ function PaymentMethodBlock({
         <button
           type="button"
           onClick={handleCopy}
-          className="shrink-0 rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          className="shrink-0 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           aria-label="کپی شماره"
         >
           {copied ? (
@@ -841,7 +842,7 @@ function PaymentMethodBlock({
         </button>
       </div>
       {holderName ? (
-        <p className="mt-1 text-xs text-muted-foreground">{holderName}</p>
+        <p className="text-xs text-muted-foreground">{holderName}</p>
       ) : null}
     </div>
   );
