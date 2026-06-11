@@ -131,6 +131,7 @@ const securityHeaders: { key: string; value: string }[] = [
       "worker-src 'self' blob:",
       "manifest-src 'self'",
       "media-src 'self' data: blob:",
+      "frame-src https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://player.aparat.com https://www.aparat.com",
       "upgrade-insecure-requests",
     ].join("; "),
   },

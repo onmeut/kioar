@@ -1,6 +1,6 @@
 "use client";
 
-import { TagIcon } from "lucide-react";
+import { BriefcaseIcon, ShoppingBagIcon, TagIcon, UtensilsCrossedIcon } from "lucide-react";
 
 import { BlockCard } from "@/components/dashboard/block-card";
 import { SpotlightStarButton } from "@/components/dashboard/spotlight-star-button";
@@ -13,6 +13,8 @@ import type {
 } from "@/lib/block-spotlight";
 
 import type { ProductBlockDraft } from "./product-builder-dialog";
+import { PRESET_DEFAULT_ICON } from "./product-builder-dialog";
+import type { ProductBlockPreset } from "@/lib/validations";
 
 export type EditableProductBlockWithId = ProductBlockDraft & {
   id: string;
@@ -45,6 +47,35 @@ export type ProductBlockRowProps = {
   }) => Promise<void> | void;
 };
 
+function PresetFallbackIcon({ preset }: { preset: ProductBlockPreset | null }) {
+  if (preset === "menu") {
+    return (
+      <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <UtensilsCrossedIcon className="size-5" />
+      </span>
+    );
+  }
+  if (preset === "services" || preset === "packages") {
+    return (
+      <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <BriefcaseIcon className="size-5" />
+      </span>
+    );
+  }
+  if (preset === "shop" || preset === "portfolio") {
+    return (
+      <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
+        <ShoppingBagIcon className="size-5" />
+      </span>
+    );
+  }
+  return (
+    <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
+      <TagIcon className="size-5" />
+    </span>
+  );
+}
+
 export function ProductBlockRow({
   block,
   onEdit,
@@ -65,8 +96,15 @@ export function ProductBlockRow({
       isDragging={isDragging}
       locked={locked}
       lockedPlan={lockedPlan}
-      icon={
-        block.iconKey || block.iconUrl || block.imageUrl ? (
+      icon={(() => {
+        const isPresetDefault =
+          block.iconKey &&
+          Object.values(PRESET_DEFAULT_ICON).includes(block.iconKey);
+        const hasCustomIcon =
+          (block.iconKey && !isPresetDefault) ||
+          block.iconUrl ||
+          block.imageUrl;
+        return hasCustomIcon ? (
           <LinkIconBubble
             iconKey={block.iconKey}
             iconUrl={block.iconUrl}
@@ -76,11 +114,9 @@ export function ProductBlockRow({
             className="rounded-2xl"
           />
         ) : (
-          <span className="grid size-10 place-items-center rounded-2xl bg-primary/10 text-primary">
-            <TagIcon className="size-5" />
-          </span>
-        )
-      }
+          <PresetFallbackIcon preset={block.preset} />
+        );
+      })()}
       title={block.name || "محصولات"}
       meta={undefined}
       trailing={

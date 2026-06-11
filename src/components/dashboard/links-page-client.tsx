@@ -2113,6 +2113,14 @@ export function LinksPageClient({
           setTextDialogOpen(o);
           if (!o) setEditingTextBlock(null);
         }}
+        onBack={
+          editingTextBlock === null
+            ? () => {
+                setTextDialogOpen(false);
+                setAddOpen(true);
+              }
+            : undefined
+        }
         initial={
           editingTextBlock
             ? {
@@ -2139,6 +2147,15 @@ export function LinksPageClient({
             setMediaError(null);
           }
         }}
+        onBack={
+          editingMediaBlock === null
+            ? () => {
+                setMediaDialogOpen(false);
+                setMediaError(null);
+                setAddOpen(true);
+              }
+            : undefined
+        }
         mode={editingMediaBlock?.mode ?? mediaNewMode}
         preset={editingMediaBlock?.preset ?? mediaNewPreset}
         copy={mediaCopy}
@@ -2185,6 +2202,14 @@ export function LinksPageClient({
           setFormBuilderOpen(o);
           if (!o) setEditingFormBlock(null);
         }}
+        onBack={
+          editingFormBlock === null
+            ? () => {
+                setFormBuilderOpen(false);
+                setAddOpen(true);
+              }
+            : undefined
+        }
         initial={
           editingFormBlock
             ? {

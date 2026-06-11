@@ -94,6 +94,8 @@ export type MediaBuilderDialogProps = {
   submitting?: boolean;
   /** Surfaced inline (e.g. a quota error returned from the save action). */
   errorMessage?: string | null;
+  /** If provided, the back button navigates back instead of closing. */
+  onBack?: () => void;
 };
 
 function makeDefaultDraft(
@@ -122,6 +124,7 @@ export function MediaBuilderDialog({
   onUploadFile,
   submitting,
   errorMessage,
+  onBack,
 }: MediaBuilderDialogProps) {
   const isMobile = useIsMobile();
   const [draft, setDraft] = useState<MediaBlockDraft>(
@@ -255,14 +258,15 @@ export function MediaBuilderDialog({
         ...d,
         mode: "file",
         videoUrl: null,
+        // Pre-fill the block title from the file name if not already set.
+        name: d.name?.trim() ? d.name : file.name.replace(/\.[^.]+$/, ""),
         items: [
           {
             kind: "file",
             url: res.url,
             byteSize: res.byteSize,
             mime: res.mime,
-            // Default the display name to the original file name (minus ext).
-            displayName: file.name.replace(/\.[^.]+$/, ""),
+            displayName: null,
             thumbnailUrl: null,
           },
         ],
@@ -313,7 +317,7 @@ export function MediaBuilderDialog({
         <div className="grid shrink-0 grid-cols-[40px_1fr_40px] items-center border-b px-4 py-3 sm:px-5 sm:py-4">
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={() => onBack ? onBack() : onOpenChange(false)}
             aria-label="بازگشت"
             className="tap-target inline-flex size-10 items-center justify-center rounded-2xl border border-border bg-background text-foreground transition-colors hover:bg-muted"
           >
@@ -379,21 +383,28 @@ export function MediaBuilderDialog({
               uploading={uploading}
               canUpload={Boolean(onUploadFile)}
               onPickFile={setDocFile}
-              onNameChange={(name) =>
-                setDraft((d) => ({
-                  ...d,
-                  items: d.items.map((it) =>
-                    it.kind === "file" ? { ...it, displayName: name } : it,
-                  ),
-                }))
-              }
               onClear={() => setDraft((d) => ({ ...d, items: [] }))}
             />
           ) : null}
 
+          {/* Title — shared across modes, appears above توضیحات */}
+          <div className="space-y-1.5">
+            <Label htmlFor="media-title">عنوان (اختیاری)</Label>
+            <Input
+              id="media-title"
+              value={draft.name ?? ""}
+              onChange={(e) =>
+                setDraft((d) => ({ ...d, name: e.target.value }))
+              }
+              enterKeyHint="next"
+              maxLength={80}
+              placeholder="یک عنوان کوتاه"
+            />
+          </div>
+
           {/* Caption — shared across modes */}
           <div className="space-y-1.5">
-            <Label htmlFor="media-caption">توضیح (اختیاری)</Label>
+            <Label htmlFor="media-caption">توضیحات (اختیاری)</Label>
             <Input
               id="media-caption"
               value={draft.caption ?? ""}
@@ -626,7 +637,6 @@ function FileEditor({
   uploading,
   canUpload,
   onPickFile,
-  onNameChange,
   onClear,
 }: {
   fileItem: MediaItemDraft | null;
@@ -634,7 +644,6 @@ function FileEditor({
   uploading: boolean;
   canUpload: boolean;
   onPickFile: (files: FileList | null) => void;
-  onNameChange: (name: string) => void;
   onClear: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -642,36 +651,20 @@ function FileEditor({
     <div className="space-y-3">
       <Label>فایل (PDF)</Label>
       {fileItem ? (
-        <>
-          <div className="flex items-center justify-between gap-3 rounded-2xl border bg-muted/40 px-4 py-3">
-            <span className="flex items-center gap-2 text-sm font-bold">
-              <FileTextIcon className="size-5 text-primary" />
-              فایل بارگذاری شد
-            </span>
-            <button
-              type="button"
-              onClick={onClear}
-              aria-label="حذف فایل"
-              className="grid size-8 place-items-center rounded-full bg-foreground/5 hover:bg-foreground/10"
-            >
-              <TrashIcon className="size-4" />
-            </button>
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="media-file-name">نام نمایشی</Label>
-            <Input
-              id="media-file-name"
-              value={fileItem.displayName ?? ""}
-              onChange={(e) => onNameChange(e.target.value)}
-              enterKeyHint="done"
-              maxLength={120}
-              placeholder="مثلاً منوی کامل"
-            />
-            <p className="text-[11px] text-muted-foreground">
-              نامی که روی کارت دانلود به بازدیدکننده نشان داده می‌شود.
-            </p>
-          </div>
-        </>
+        <div className="flex items-center justify-between gap-3 rounded-2xl border bg-muted/40 px-4 py-3">
+          <span className="flex items-center gap-2 text-sm font-bold">
+            <FileTextIcon className="size-5 text-primary" />
+            فایل بارگذاری شد
+          </span>
+          <button
+            type="button"
+            onClick={onClear}
+            aria-label="حذف فایل"
+            className="grid size-8 place-items-center rounded-full bg-foreground/5 hover:bg-foreground/10"
+          >
+            <TrashIcon className="size-4" />
+          </button>
+        </div>
       ) : (
         <button
           type="button"

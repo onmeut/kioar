@@ -57,6 +57,8 @@ export type TextBlockDialogProps = {
   /** Uploads the optional photo, returning its public URL. */
   onUploadImage?: (file: File) => Promise<string | null>;
   submitting?: boolean;
+  /** If provided, the back button navigates back instead of closing. */
+  onBack?: () => void;
 };
 
 export function TextBlockDialog({
@@ -66,6 +68,7 @@ export function TextBlockDialog({
   onSubmit,
   onUploadImage,
   submitting,
+  onBack,
 }: TextBlockDialogProps) {
   const isMobile = useIsMobile();
   const [draft, setDraft] = useState<TextBlockDraft>(
@@ -117,7 +120,7 @@ export function TextBlockDialog({
           <div className="flex">
             <button
               type="button"
-              onClick={() => onOpenChange(false)}
+              onClick={() => onBack ? onBack() : onOpenChange(false)}
               aria-label="بازگشت"
               className="tap-target inline-flex size-10 items-center justify-center rounded-2xl border border-border bg-background text-foreground transition-colors hover:bg-muted"
             >

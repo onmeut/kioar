@@ -262,6 +262,14 @@ function emptyItem(): ProductItemDraft {
   };
 }
 
+export const PRESET_DEFAULT_ICON: Partial<Record<ProductBlockPreset, string>> = {
+  menu: "t:tools-kitchen-2",
+  shop: "t:shopping-bag",
+  services: "t:briefcase",
+  packages: "t:briefcase",
+  portfolio: "t:shopping-bag",
+};
+
 function defaultDraft(preset: ProductBlockPreset = "shop"): ProductBlockDraft {
   const d = PRESET_DEFAULTS[preset] ?? PRESET_DEFAULTS.shop;
   return {
@@ -1620,33 +1628,45 @@ function SettingsPane({
 }) {
   return (
     <>
-      <div className="flex items-center gap-4">
-        <LinkIconPickerButton
-          url=""
-          iconKey={draft.iconKey}
-          iconUrl={draft.iconUrl}
-          imageUrl={draft.imageUrl}
-          size={52}
-          onChange={(next) => {
-            setDraft((d) => ({
-              ...d,
-              iconKey: next.iconKey,
-              iconUrl: next.iconUrl,
-              imageUrl: next.imageUrl,
-            }));
-          }}
-        />
-        <div className="grid min-w-0 flex-1 gap-1.5">
-          <Label htmlFor="prod-name">عنوان بلوک</Label>
-          <Input
-            id="prod-name"
-            value={draft.name}
-            maxLength={80}
-            placeholder="مثلاً: منوی کافه / خدمات طراحی"
-            enterKeyHint="done"
-            onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+      {/* Icon picker — full row so the tap target breathes */}
+      <div className="grid gap-1.5">
+        <Label>آیکون بلوک</Label>
+        <div className="flex items-center gap-3 rounded-2xl border bg-muted/20 px-4 py-3">
+          <LinkIconPickerButton
+            url=""
+            iconKey={
+              draft.iconKey ??
+              ((PRESET_DEFAULT_ICON[draft.preset ?? "shop"] ?? null) as IconKey | null)
+            }
+            iconUrl={draft.iconUrl}
+            imageUrl={draft.imageUrl}
+            size={52}
+            showAuto={false}
+            onChange={(next) => {
+              setDraft((d) => ({
+                ...d,
+                iconKey: next.iconKey,
+                iconUrl: next.iconUrl,
+                imageUrl: next.imageUrl,
+              }));
+            }}
           />
+          <span className="text-sm text-muted-foreground">
+            انتخاب آیکون دلخواه برای این بلوک
+          </span>
         </div>
+      </div>
+
+      <div className="grid min-w-0 gap-1.5">
+        <Label htmlFor="prod-name">عنوان بلوک</Label>
+        <Input
+          id="prod-name"
+          value={draft.name}
+          maxLength={80}
+          placeholder="مثلاً: منوی کافه / خدمات طراحی"
+          enterKeyHint="done"
+          onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
+        />
       </div>
 
       <div className="grid gap-1.5">

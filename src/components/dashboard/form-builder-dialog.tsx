@@ -184,6 +184,8 @@ export type FormBuilderDialogProps = {
   initial?: FormBlockDraft | null;
   onSubmit: (draft: FormBlockDraft) => Promise<void> | void;
   submitting?: boolean;
+  /** If provided, back button at the main stage navigates back instead of closing. */
+  onBack?: () => void;
 };
 
 export function FormBuilderDialog({
@@ -192,6 +194,7 @@ export function FormBuilderDialog({
   initial,
   onSubmit,
   submitting,
+  onBack,
 }: FormBuilderDialogProps) {
   const isMobile = useIsMobile();
   const [stage, setStage] = useState<Stage>({ kind: "main" });
@@ -247,8 +250,10 @@ export function FormBuilderDialog({
         <BuilderHeader
           stage={stage}
           onBack={() => {
-            if (stage.kind === "main") onOpenChange(false);
-            else if (stage.kind === "pick") setStage({ kind: "main" });
+            if (stage.kind === "main") {
+              if (onBack) onBack();
+              else onOpenChange(false);
+            } else if (stage.kind === "pick") setStage({ kind: "main" });
             else setStage({ kind: "main" });
           }}
           onClose={() => onOpenChange(false)}

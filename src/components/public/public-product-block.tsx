@@ -12,7 +12,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from "react";
 import { flushSync } from "react-dom";
 import Image from "next/image";
-import { LayoutGridIcon, TagIcon, UtensilsCrossedIcon, XIcon } from "lucide-react";
+import { BriefcaseIcon, LayoutGridIcon, ShoppingBagIcon, TagIcon, UtensilsCrossedIcon, XIcon } from "lucide-react";
 
 import { LinkIconBubble } from "@/components/dashboard/link-icon-picker";
 import { TablerNodeIcon } from "@/components/shared/tabler-node-icon";
@@ -93,18 +93,35 @@ export function PublicProductPill({
   const inner = (
     <>
       <span className="absolute inset-s-3 inline-flex size-9 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
-        {block.iconKey || block.iconUrl || block.imageUrl ? (
-          <LinkIconBubble
-            iconKey={(block.iconKey as IconKey | null) ?? "auto"}
-            iconUrl={block.iconUrl ?? null}
-            imageUrl={block.imageUrl ?? null}
-            url=""
-            size={36}
-            className="rounded-2xl"
-          />
-        ) : (
-          <TagIcon className="size-5" />
-        )}
+        {(() => {
+          const PRESET_ICON_KEYS = new Set([
+            "t:tools-kitchen-2",
+            "t:shopping-bag",
+            "t:briefcase",
+          ]);
+          const isPresetDefault =
+            block.iconKey && PRESET_ICON_KEYS.has(block.iconKey as string);
+          const hasCustomIcon =
+            (block.iconKey && !isPresetDefault) ||
+            block.iconUrl ||
+            block.imageUrl;
+          if (hasCustomIcon) {
+            return (
+              <LinkIconBubble
+                iconKey={(block.iconKey as IconKey | null) ?? "auto"}
+                iconUrl={block.iconUrl ?? null}
+                imageUrl={block.imageUrl ?? null}
+                url=""
+                size={36}
+                className="rounded-2xl"
+              />
+            );
+          }
+          if (block.preset === "menu") return <UtensilsCrossedIcon className="size-5" />;
+          if (block.preset === "services" || block.preset === "packages") return <BriefcaseIcon className="size-5" />;
+          if (block.preset === "shop" || block.preset === "portfolio") return <ShoppingBagIcon className="size-5" />;
+          return <TagIcon className="size-5" />;
+        })()}
       </span>
       <span className="block w-full truncate px-10 text-center text-[15px] font-bold">
         {label}

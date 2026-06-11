@@ -36,6 +36,13 @@ function formatFileSize(bytes: number): string {
   return `${toPersianDigits(mb.toFixed(mb < 10 ? 1 : 0))} مگابایت`;
 }
 
+function BlockTitle({ text }: { text: string | null }) {
+  if (!text) return null;
+  return (
+    <p className="mb-2 px-1 text-[15px] font-bold text-foreground">{text}</p>
+  );
+}
+
 function Caption({ text }: { text: string | null }) {
   if (!text) return null;
   return (
@@ -68,6 +75,7 @@ export function PublicMediaBlock({
       const p = photos[0];
       return (
         <div className="w-full">
+          <BlockTitle text={block.name} />
           <span className="block w-full overflow-hidden rounded-2xl bg-muted">
             <Image
               src={p.url}
@@ -86,6 +94,7 @@ export function PublicMediaBlock({
 
     return (
       <div className="w-full">
+        <BlockTitle text={block.name} />
         <div
           className={cn(
             "flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 no-scrollbar touch-pan-y",
@@ -121,6 +130,7 @@ export function PublicMediaBlock({
       if (embed) {
         return (
           <div className="w-full">
+            <BlockTitle text={block.name} />
             <span className="block aspect-video w-full overflow-hidden rounded-2xl bg-black">
               {interactive ? (
                 <iframe
@@ -143,6 +153,7 @@ export function PublicMediaBlock({
     if (!videoItem) return null;
     return (
       <div className="w-full">
+        <BlockTitle text={block.name} />
         <PublicMediaVideo
           src={videoItem.url}
           posterUrl={videoItem.thumbnailUrl}
