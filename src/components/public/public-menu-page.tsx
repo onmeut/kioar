@@ -184,18 +184,26 @@ export function SharedMenuContent({
         setActiveId(id);
         setCatPanelOpen(false);
       });
+      const navHeight = navRef.current?.offsetHeight ?? 48;
       if (scrollContainerRef) {
         const container = scrollContainerRef.current;
         if (!container) return;
-        const navHeight = navRef.current?.offsetHeight ?? 48;
         const containerTop = container.getBoundingClientRect().top;
         const elTop = el.getBoundingClientRect().top;
         const target = container.scrollTop + (elTop - containerTop) - navHeight - 8;
         container.scrollTo({ top: target, behavior: "smooth" });
       } else {
-        const navHeight = navRef.current?.offsetHeight ?? 56;
-        const top = el.getBoundingClientRect().top + window.scrollY - navHeight - 16;
-        window.scrollTo({ top, behavior: "smooth" });
+        // Use offsetTop traversal instead of getBoundingClientRect() + scrollY.
+        // getBoundingClientRect() + scrollY is unreliable on Safari iOS during
+        // touch events because the browser may not have committed the scroll
+        // position yet. Walking offsetTop up to the document root avoids this.
+        let offsetTop = 0;
+        let node: HTMLElement | null = el;
+        while (node && node !== document.documentElement) {
+          offsetTop += node.offsetTop;
+          node = node.offsetParent as HTMLElement | null;
+        }
+        window.scrollTo({ top: offsetTop - navHeight - 8, behavior: "smooth" });
       }
     },
     [scrollContainerRef],
