@@ -1,9 +1,8 @@
 "use client";
 
 // Public product block — renders a "محصول" (Products & Services) block on
-// a profile. By default the block collapses to a single pill that opens a
-// modal listing the items; opt-in via `displayMode === "inline"` renders
-// the items directly inline (no modal).
+// a profile. The pill navigates to the block's dedicated page; inline mode
+// renders items directly on the profile.
 //
 // Universal schema, vertical-specific *presentation*. Restaurant menus,
 // e-commerce catalogs, service lists, package decks, and portfolios all
@@ -11,6 +10,7 @@
 // grid / cards) and the cosmetic itemLabel/pillLabel copy.
 
 import { useState, useRef, useEffect, useCallback, useMemo, forwardRef } from "react";
+import { flushSync } from "react-dom";
 import Image from "next/image";
 import { LayoutGridIcon, TagIcon, UtensilsCrossedIcon, XIcon } from "lucide-react";
 
@@ -20,10 +20,6 @@ import { resolveIconEntry, type IconKey } from "@/lib/link-icons";
 import { useIconNodes } from "@/lib/icons/icon-nodes-context";
 import { TABLER_ICONS, tablerNameOf } from "@/lib/link-icons-tabler";
 
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { useIsInMockup } from "@/components/dashboard/mockup-portal-context";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { formatPriceDisplay } from "@/lib/money";
 import { toPersianDigits } from "@/lib/persian";
 import { SharedMenuContent } from "@/components/public/public-menu-page";
@@ -80,16 +76,15 @@ export type PublicProductBlockData = {
 
 export function PublicProductPill({
   block,
+  profileSlug,
   className,
 }: {
   block: PublicProductBlockData;
-  /** @deprecated Kept for callers that still pass profileSlug; no longer used
-   *  for navigation. All pills now open the in-place modal. */
   profileSlug?: string;
   className?: string;
 }) {
-  const [open, setOpen] = useState(false);
   const label = block.pillLabel || block.name || "مشاهده";
+  const href = profileSlug && block.slug ? `/${profileSlug}/${block.slug}` : null;
 
   const pillClass = cn(
     "relative flex w-full items-center justify-center rounded-full bg-foreground/4 px-4 py-4 transition-colors hover:bg-primary/8 active:bg-primary/12",
@@ -117,13 +112,20 @@ export function PublicProductPill({
     </>
   );
 
-  return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} className={pillClass}>
+  if (href) {
+    return (
+      <a href={href} className={pillClass}>
         {inner}
-      </button>
-      <PublicProductModal open={open} onOpenChange={setOpen} block={block} />
-    </>
+      </a>
+    );
+  }
+
+  // No dedicated page slug — render as a non-interactive pill (block is
+  // inline-only; this branch is a safe fallback, not the normal code path).
+  return (
+    <div className={pillClass} aria-disabled>
+      {inner}
+    </div>
   );
 }
 
@@ -160,57 +162,6 @@ export function PublicProductInline({
         </a>
       ) : null}
     </section>
-  );
-}
-
-function PublicProductModal({
-  open,
-  onOpenChange,
-  block,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  block: PublicProductBlockData;
-}) {
-  const isMobile = useIsMobile();
-  const inMockup = useIsInMockup();
-  const fullscreen = isMobile || inMockup;
-  const Container = fullscreen ? Sheet : Dialog;
-  const Content = fullscreen ? SheetContent : DialogContent;
-  const Title = fullscreen ? SheetTitle : DialogTitle;
-
-  const contentProps = fullscreen
-    ? {
-        side: "bottom" as const,
-        className:
-          "inset-0 h-full max-h-none rounded-none border-0 p-0 sm:max-w-none",
-        showCloseButton: false,
-      }
-    : {
-        className: "max-w-2xl p-0 gap-0 overflow-hidden flex flex-col max-h-[90dvh]",
-        showCloseButton: false,
-      };
-
-  return (
-    <Container open={open} onOpenChange={onOpenChange}>
-      <Content {...contentProps}>
-        <div className="grid shrink-0 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 border-b border-border bg-background px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-          <div />
-          <Title className="text-center text-base font-bold">
-            {block.name}
-          </Title>
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="grid size-8 place-items-center justify-self-end rounded-full text-muted-foreground hover:bg-foreground/4"
-            aria-label="بستن"
-          >
-            <XIcon className="size-4" />
-          </button>
-        </div>
-        <ProductItemsScroller block={block} />
-      </Content>
-    </Container>
   );
 }
 
@@ -323,14 +274,15 @@ function ProductItemsList({
       if (!el || !container) return;
 
       activeSectionRef.current = id;
-      setActiveSection(id);
-      setCatPanelOpen(false);
       isScrollingProgrammatically.current = true;
 
+      flushSync(() => {
+        setActiveSection(id);
+        setCatPanelOpen(false);
+      });
+
       const navHeight = navRef.current?.offsetHeight ?? 48;
-      const containerTop = container.getBoundingClientRect().top;
-      const elTop = el.getBoundingClientRect().top;
-      const target = container.scrollTop + (elTop - containerTop) - navHeight - 8;
+      const target = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - navHeight - 8;
       container.scrollTo({ top: target, behavior: "smooth" });
 
       setTimeout(() => {

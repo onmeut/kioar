@@ -199,7 +199,7 @@ const PRESET_DEFAULTS: Record<
   ProductBlockPreset,
   { name: string; slug: string | null; layout: ProductBlockLayout }
 > = {
-  shop: { name: "محصولات", slug: null, layout: "grid" },
+  shop: { name: "محصولات", slug: "products", layout: "grid" },
   menu: { name: "منو", slug: "menu", layout: "list" },
   services: { name: "خدمات", slug: "services", layout: "cards" },
   packages: { name: "پکیج‌ها", slug: null, layout: "cards" },

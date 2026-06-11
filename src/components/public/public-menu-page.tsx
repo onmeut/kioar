@@ -6,9 +6,6 @@
 // each category, and items as a flat list (name right / price right-aligned /
 // thumbnail end), with greyed-out unavailable rows and a primary-accented
 // featured badge.
-//
-// SharedMenuContent is also used by the modal in public-product-block.tsx so
-// both surfaces render identically.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -122,10 +119,9 @@ export function MenuItemRow({
 }
 
 /**
- * Shared menu body used by both the dedicated /slug/menu page and the
- * in-profile modal. Pass `scrollContainerRef` when rendered inside a scroll
- * container (modal); omit it for the full-page version which uses
- * IntersectionObserver on the window.
+ * Shared menu body. Pass `scrollContainerRef` when rendered inside a custom
+ * scroll container; omit it for the full-page version which scrolls on the
+ * window.
  */
 export function SharedMenuContent({
   block,
@@ -192,9 +188,7 @@ export function SharedMenuContent({
           const container = scrollContainerRef.current;
           if (!container) return;
           const navHeight = navRef.current?.offsetHeight ?? 48;
-          const containerTop = container.getBoundingClientRect().top;
-          const elTop = el.getBoundingClientRect().top;
-          const target = container.scrollTop + (elTop - containerTop) - navHeight - 8;
+          const target = el.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop - navHeight - 8;
           container.scrollTo({ top: target, behavior: "smooth" });
         } else {
           const navHeight = navRef.current?.offsetHeight ?? 56;
