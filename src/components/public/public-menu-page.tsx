@@ -15,6 +15,9 @@ import { flushSync } from "react-dom";
 import Image from "next/image";
 import { LayoutGridIcon, UtensilsCrossedIcon, XIcon } from "lucide-react";
 import { resolveIconEntry, type IconKey } from "@/lib/link-icons";
+import { useIconNodes } from "@/lib/icons/icon-nodes-context";
+import { TABLER_ICONS, tablerNameOf } from "@/lib/link-icons-tabler";
+import { TablerNodeIcon } from "@/components/shared/tabler-node-icon";
 import { formatPriceDisplay } from "@/lib/money";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
@@ -131,6 +134,7 @@ export function SharedMenuContent({
   block: PublicProductBlockData;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 }) {
+  const nodeMap = useIconNodes();
   const groups = useMemo(() => groupItems(block), [block]);
   const navGroups = groups.filter((g) => g.title !== null);
   const showNav = navGroups.length > 1;
@@ -229,7 +233,10 @@ export function SharedMenuContent({
               </div>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
                 {navGroups.map((g) => {
-                  const iconEntry = g.iconKey ? resolveIconEntry(g.iconKey as IconKey, null) : null;
+                  const tablerName = g.iconKey ? tablerNameOf(g.iconKey) : null;
+                  const isNonCurated = tablerName && !(tablerName in TABLER_ICONS);
+                  const iconNode = isNonCurated ? (nodeMap[tablerName] ?? null) : null;
+                  const iconEntry = !iconNode && g.iconKey ? resolveIconEntry(g.iconKey as IconKey, null) : null;
                   const GroupIcon = iconEntry?.Icon;
                   return (
                     <button
@@ -239,7 +246,13 @@ export function SharedMenuContent({
                       className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
                     >
                       <span className="flex size-14 items-center justify-center rounded-2xl border border-border bg-white text-foreground">
-                        {GroupIcon ? <GroupIcon className="size-7" /> : <UtensilsCrossedIcon className="size-7" />}
+                        {iconNode ? (
+                          <TablerNodeIcon nodes={iconNode} size={28} />
+                        ) : GroupIcon ? (
+                          <GroupIcon className="size-7" />
+                        ) : (
+                          <UtensilsCrossedIcon className="size-7" />
+                        )}
                       </span>
                       <span className="line-clamp-2 text-xs font-bold leading-snug">
                         {g.title}
@@ -271,8 +284,12 @@ export function SharedMenuContent({
                 role="tablist"
               >
                 {navGroups.map((g) => {
-                  const iconEntry = g.iconKey ? resolveIconEntry(g.iconKey as IconKey, null) : null;
+                  const tablerName = g.iconKey ? tablerNameOf(g.iconKey) : null;
+                  const isNonCurated = tablerName && !(tablerName in TABLER_ICONS);
+                  const iconNode = isNonCurated ? (nodeMap[tablerName] ?? null) : null;
+                  const iconEntry = !iconNode && g.iconKey ? resolveIconEntry(g.iconKey as IconKey, null) : null;
                   const GroupIcon = iconEntry?.Icon;
+                  const hasIcon = iconNode || GroupIcon;
                   return (
                     <button
                       key={g.id}
@@ -286,13 +303,17 @@ export function SharedMenuContent({
                       onClick={() => scrollToGroup(g.id)}
                       className={cn(
                         "shrink-0 inline-flex items-center gap-1.5 rounded-full border text-xs font-bold transition-colors whitespace-nowrap",
-                        GroupIcon ? "px-2.5 py-1.5" : "px-3 py-2",
+                        hasIcon ? "px-2.5 py-1.5" : "px-3 py-2",
                         activeId === g.id
                           ? "border-foreground bg-foreground text-background"
                           : "border-border bg-background text-foreground hover:bg-foreground/4",
                       )}
                     >
-                      {GroupIcon ? <GroupIcon className="size-5 shrink-0" /> : null}
+                      {iconNode ? (
+                        <TablerNodeIcon nodes={iconNode} size={20} className="shrink-0" />
+                      ) : GroupIcon ? (
+                        <GroupIcon className="size-5 shrink-0" />
+                      ) : null}
                       {g.title}
                     </button>
                   );

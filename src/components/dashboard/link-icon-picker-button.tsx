@@ -20,6 +20,8 @@ type Props = {
   iconKey: IconKey | null;
   iconUrl: string | null;
   imageUrl: string | null;
+  /** Nodes for a non-curated `t:` icon; carried alongside the key so the editor can render it. */
+  iconNodes?: import("@/lib/icons/icon-node").IconNode[] | null;
   size?: number;
   onChange: (next: LinkIconPickerValue) => void;
   /**
@@ -43,6 +45,7 @@ export function LinkIconPickerButton({
   iconKey,
   iconUrl,
   imageUrl,
+  iconNodes,
   size = 40,
   onChange,
   onRefetch,
@@ -72,6 +75,7 @@ export function LinkIconPickerButton({
         iconKey={iconKey}
         iconUrl={iconUrl}
         imageUrl={imageUrl}
+        iconNodes={iconNodes}
         url={url}
         size={size}
         className="rounded-2xl"
@@ -106,6 +110,7 @@ export function LinkIconPickerButton({
           <SheetContent
             side="bottom"
             className="flex h-[80dvh] flex-col gap-0 rounded-t-3xl p-0"
+            showCloseButton={false}
           >
             <div className="grid shrink-0 grid-cols-[40px_1fr_40px] items-center border-b px-4 py-3">
               <div />

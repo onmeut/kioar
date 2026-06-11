@@ -37,6 +37,13 @@ export type LinkIconPickerValue = {
   iconUrl: string | null;
   /** Auto-fetched website cover. Picker can clear / restore this. */
   imageUrl: string | null;
+  /**
+   * SVG nodes for a non-curated `t:` icon picked from remote search results.
+   * Only populated when the key is not in the curated TABLER_ICONS bundle.
+   * Allows the editor to render the icon inline without the server-side
+   * IconNodesContext (which only runs on the public profile page).
+   */
+  iconNodes?: IconNode[] | null;
 };
 
 type Props = {
@@ -308,6 +315,7 @@ export function LinkIconPicker({
                         iconKey: entry.key,
                         iconUrl: null,
                         imageUrl: null,
+                        iconNodes: entry.nodes,
                       })
                     }
                     className={cn(
@@ -341,6 +349,7 @@ export function LinkIconBubble({
   iconKey,
   iconUrl,
   imageUrl,
+  iconNodes,
   url,
   size = 36,
   className,
@@ -348,6 +357,8 @@ export function LinkIconBubble({
   iconKey: IconKey | null;
   iconUrl: string | null;
   imageUrl: string | null;
+  /** Nodes for a non-curated `t:` icon picked from remote search. */
+  iconNodes?: IconNode[] | null;
   url: string;
   size?: number;
   className?: string;
@@ -381,7 +392,7 @@ export function LinkIconBubble({
     );
   }
   return (
-    <BubbleIcon iconKey={iconKey} url={url} size={size} className={className} />
+    <BubbleIcon iconKey={iconKey} iconNodes={iconNodes} url={url} size={size} className={className} />
   );
 }
 
@@ -393,11 +404,14 @@ export function LinkIconBubble({
  */
 function BubbleIcon({
   iconKey,
+  iconNodes: iconNodesProp,
   url,
   size,
   className,
 }: {
   iconKey: IconKey | null;
+  /** Fallback nodes for non-curated icons in editor context (no server-side context). */
+  iconNodes?: IconNode[] | null;
   url: string;
   size: number;
   className?: string;
@@ -407,10 +421,13 @@ function BubbleIcon({
     iconKey && iconKey !== "auto" && !(iconKey in ICON_REGISTRY)
       ? tablerNameOf(iconKey)
       : null;
-  const embedded = tablerName ? nodeMap[tablerName] : undefined;
+  // Prefer server-provided nodes (public page), fall back to picker-carried nodes (editor).
+  const embedded = tablerName
+    ? (nodeMap[tablerName] ?? (iconNodesProp?.length ? iconNodesProp : undefined))
+    : undefined;
 
-  if (embedded && !(tablerName! in TABLER_ICONS)) {
-    // Non-curated icon the page provided nodes for — render inline.
+  if (embedded && tablerName && !(tablerName in TABLER_ICONS)) {
+    // Non-curated icon — render inline via SVG nodes.
     return (
       <span
         className={cn(

@@ -13,6 +13,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { isSafeLinkUrl, normalizeLinkUrl } from "@/lib/validations";
 import { detectIconKey } from "@/lib/link-icons";
+import type { IconNode } from "@/lib/icons/icon-node";
 import type { LinkMetadata } from "@/lib/link-metadata";
 
 import type { EditableLink } from "./links-manager.types";
@@ -96,6 +97,7 @@ function EditLinkBody({
   const [iconKey, setIconKey] = useState<import("@/lib/link-icons").IconKey | null>(link.iconKey ?? detectIconKey(link.url ?? "") ?? "auto");
   const [iconUrl, setIconUrl] = useState(link.iconUrl ?? null);
   const [imageUrl, setImageUrl] = useState(link.imageUrl ?? null);
+  const [iconNodes, setIconNodes] = useState<IconNode[] | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lastFetchedUrl, setLastFetchedUrl] = useState<string | null>(null);
@@ -214,11 +216,13 @@ function EditLinkBody({
               iconKey={iconKey}
               iconUrl={iconUrl}
               imageUrl={imageUrl}
+              iconNodes={iconNodes}
               size={56}
               onChange={(next: LinkIconPickerValue) => {
                 setIconKey(next.iconKey);
                 setIconUrl(next.iconUrl);
                 setImageUrl(next.imageUrl);
+                setIconNodes(next.iconNodes ?? null);
               }}
               onRefetch={() => runMetadataFetch({ force: true })}
             />

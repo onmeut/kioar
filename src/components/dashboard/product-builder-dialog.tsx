@@ -76,6 +76,8 @@ import { normalizeBlockSlug } from "@/lib/slug";
 import { toPersianDigits, toEnglishDigits } from "@/lib/persian";
 import { formatPriceDisplay } from "@/lib/money";
 import type { IconKey } from "@/lib/link-icons";
+import type { IconNode } from "@/lib/icons/icon-node";
+import { TABLER_ICONS, tablerNameOf } from "@/lib/link-icons-tabler";
 import { LinkIconPickerButton } from "@/components/dashboard/link-icon-picker-button";
 import {
   PRODUCT_BLOCK_CURRENCIES,
@@ -119,6 +121,8 @@ export type ProductSectionDraft = {
   title: string;
   /** Optional category icon key (registry key or `t:<name>`). */
   iconKey: IconKey | null;
+  /** SVG nodes for a non-curated `t:` icon — editor-only, never sent to server. */
+  iconNodes?: IconNode[] | null;
 };
 
 export type ProductBlockDraft = {
@@ -469,6 +473,43 @@ export function ProductBuilderDialog({
       if (savedTimer.current) clearTimeout(savedTimer.current);
     };
   }, []);
+
+  // When the dialog opens, hydrate iconNodes for any saved non-curated `t:`
+  // keys so the category icon bubbles render correctly without re-picking.
+  useEffect(() => {
+    if (!open) return;
+    const nonCuratedKeys = draft.sections
+      .map((s) => s.iconKey)
+      .filter((k): k is string => {
+        if (!k) return false;
+        const name = tablerNameOf(k);
+        return !!name && !(name in TABLER_ICONS);
+      });
+    if (nonCuratedKeys.length === 0) return;
+
+    let cancelled = false;
+    fetch("/api/icons/nodes", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ keys: nonCuratedKeys }),
+    })
+      .then((r) => r.json())
+      .then((data: { nodes?: Record<string, IconNode[]> }) => {
+        if (cancelled || !data.nodes) return;
+        setDraft((prev) => ({
+          ...prev,
+          sections: prev.sections.map((s) => {
+            const name = s.iconKey ? tablerNameOf(s.iconKey) : null;
+            const fetched = name ? data.nodes![name] : undefined;
+            if (fetched && !s.iconNodes) return { ...s, iconNodes: fetched };
+            return s;
+          }),
+        }));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   /** Persist `next` immediately and capture the server-assigned id on
    * the first save so subsequent calls update instead of creating. */
@@ -928,11 +969,11 @@ export function ProductBuilderDialog({
                       ),
                     });
                   }}
-                  onSetIcon={(key, iconKey) => {
+                  onSetIcon={(key, iconKey, iconNodes) => {
                     commit({
                       ...draft,
                       sections: draft.sections.map((s) =>
-                        s._key === key ? { ...s, iconKey } : s,
+                        s._key === key ? { ...s, iconKey, iconNodes } : s,
                       ),
                     });
                   }}
@@ -1273,7 +1314,7 @@ function CategoriesPane({
   itemsAssignedTo: (sectionKey: string) => number;
   onAdd: (title: string) => void;
   onRename: (key: string, title: string) => void;
-  onSetIcon: (key: string, iconKey: IconKey | null) => void;
+  onSetIcon: (key: string, iconKey: IconKey | null, iconNodes?: IconNode[] | null) => void;
   onRequestDelete: (index: number) => void;
   onReorder: (oldIndex: number, newIndex: number) => void;
   sensors: ReturnType<typeof useSensors>;
@@ -1359,7 +1400,7 @@ function CategoriesPane({
                   section={s}
                   assignedCount={itemsAssignedTo(s._key)}
                   onRename={(title) => onRename(s._key, title)}
-                  onSetIcon={(iconKey) => onSetIcon(s._key, iconKey)}
+                  onSetIcon={(iconKey, iconNodes) => onSetIcon(s._key, iconKey, iconNodes)}
                   onDelete={() => onRequestDelete(i)}
                 />
               ))}
@@ -1381,7 +1422,7 @@ function SortableCategoryRow({
   section: ProductSectionDraft;
   assignedCount: number;
   onRename: (title: string) => void;
-  onSetIcon: (iconKey: IconKey | null) => void;
+  onSetIcon: (iconKey: IconKey | null, iconNodes?: IconNode[] | null) => void;
   onDelete: () => void;
 }) {
   const {
@@ -1415,9 +1456,10 @@ function SortableCategoryRow({
         iconKey={section.iconKey}
         iconUrl={null}
         imageUrl={null}
+        iconNodes={section.iconNodes}
         size={40}
         showAuto={false}
-        onChange={(next) => onSetIcon(next.iconKey)}
+        onChange={(next) => onSetIcon(next.iconKey, next.iconNodes)}
       />
       <div className="min-w-0 flex-1">
         <Input

@@ -15,7 +15,10 @@ import Image from "next/image";
 import { LayoutGridIcon, TagIcon, UtensilsCrossedIcon, XIcon } from "lucide-react";
 
 import { LinkIconBubble } from "@/components/dashboard/link-icon-picker";
+import { TablerNodeIcon } from "@/components/shared/tabler-node-icon";
 import { resolveIconEntry, type IconKey } from "@/lib/link-icons";
+import { useIconNodes } from "@/lib/icons/icon-nodes-context";
+import { TABLER_ICONS, tablerNameOf } from "@/lib/link-icons-tabler";
 
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -181,9 +184,11 @@ function PublicProductModal({
         side: "bottom" as const,
         className:
           "inset-0 h-full max-h-none rounded-none border-0 p-0 sm:max-w-none",
+        showCloseButton: false,
       }
     : {
         className: "max-w-2xl p-0 gap-0 overflow-hidden flex flex-col max-h-[90dvh]",
+        showCloseButton: false,
       };
 
   return (
@@ -233,6 +238,7 @@ function ProductItemsList({
   block: PublicProductBlockData;
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
 }) {
+  const nodeMap = useIconNodes();
   const visibleItems = useMemo(
     () => block.items.filter((it) => it.availability !== "hidden"),
     [block.items],
@@ -386,7 +392,10 @@ function ProductItemsList({
           </button>
           <div className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto touch-pan-x" role="tablist">
             {orderedActiveSections.map((s) => {
-              const iconEntry = s.iconKey ? resolveIconEntry(s.iconKey as IconKey, null) : null;
+              const tablerName = s.iconKey ? tablerNameOf(s.iconKey) : null;
+              const isNonCurated = tablerName && !(tablerName in TABLER_ICONS);
+              const iconNode = isNonCurated ? (nodeMap[tablerName] ?? null) : null;
+              const iconEntry = !iconNode && s.iconKey ? resolveIconEntry(s.iconKey as IconKey, null) : null;
               return (
                 <CategoryChip
                   key={s.id}
@@ -396,6 +405,7 @@ function ProductItemsList({
                   }}
                   label={s.title}
                   icon={iconEntry?.Icon ?? null}
+                  iconNode={iconNode}
                   selected={activeSection === s.id}
                   onSelect={() => scrollToSection(s.id)}
                 />
@@ -421,7 +431,10 @@ function ProductItemsList({
             </div>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
               {orderedActiveSections.map((s) => {
-                const iconEntry = s.iconKey ? resolveIconEntry(s.iconKey as IconKey, null) : null;
+                const tablerName = s.iconKey ? tablerNameOf(s.iconKey) : null;
+                const isNonCurated = tablerName && !(tablerName in TABLER_ICONS);
+                const iconNode = isNonCurated ? (nodeMap[tablerName] ?? null) : null;
+                const iconEntry = !iconNode && s.iconKey ? resolveIconEntry(s.iconKey as IconKey, null) : null;
                 const SectionIcon = iconEntry?.Icon;
                 return (
                   <button
@@ -431,7 +444,13 @@ function ProductItemsList({
                     className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
                   >
                     <span className="flex size-14 items-center justify-center rounded-2xl border border-border bg-white text-foreground">
-                      {SectionIcon ? <SectionIcon className="size-7" /> : <UtensilsCrossedIcon className="size-7" />}
+                      {iconNode ? (
+                        <TablerNodeIcon nodes={iconNode} size={28} />
+                      ) : SectionIcon ? (
+                        <SectionIcon className="size-7" />
+                      ) : (
+                        <UtensilsCrossedIcon className="size-7" />
+                      )}
                     </span>
                     <span className="line-clamp-2 text-xs font-bold leading-snug">
                       {s.title}
@@ -477,8 +496,15 @@ function ProductItemsList({
 
 const CategoryChip = forwardRef<
   HTMLButtonElement,
-  { label: string; icon?: React.ComponentType<React.SVGProps<SVGSVGElement>> | null; selected: boolean; onSelect: () => void }
->(function CategoryChip({ label, icon: Icon, selected, onSelect }, ref) {
+  {
+    label: string;
+    icon?: React.ComponentType<React.SVGProps<SVGSVGElement>> | null;
+    iconNode?: import("@/lib/icons/icon-node").IconNode[] | null;
+    selected: boolean;
+    onSelect: () => void;
+  }
+>(function CategoryChip({ label, icon: Icon, iconNode, selected, onSelect }, ref) {
+  const hasIcon = Icon || iconNode;
   return (
     <button
       ref={ref}
@@ -488,13 +514,17 @@ const CategoryChip = forwardRef<
       onClick={onSelect}
       className={cn(
         "shrink-0 inline-flex items-center gap-1.5 rounded-full border text-xs font-bold transition-colors whitespace-nowrap",
-        Icon ? "px-2.5 py-1.5" : "px-3 py-2",
+        hasIcon ? "px-2.5 py-1.5" : "px-3 py-2",
         selected
           ? "border-foreground bg-foreground text-background"
           : "border-border bg-background text-foreground hover:bg-foreground/4",
       )}
     >
-      {Icon ? <Icon className="size-5 shrink-0" /> : null}
+      {iconNode ? (
+        <TablerNodeIcon nodes={iconNode} size={20} className="shrink-0" />
+      ) : Icon ? (
+        <Icon className="size-5 shrink-0" />
+      ) : null}
       {label}
     </button>
   );

@@ -37,6 +37,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { LinkMetadata } from "@/lib/link-metadata";
 import { detectIconKey, type IconKey } from "@/lib/link-icons";
+import type { IconNode } from "@/lib/icons/icon-node";
 import { cn } from "@/lib/utils";
 import {
   isSafeLinkUrl,
@@ -418,6 +419,7 @@ function AddLinkDialogBody({
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [iconKey, setIconKey] = useState<IconKey | null>("auto");
   const [iconUrl, setIconUrl] = useState<string | null>(null);
+  const [iconNodes, setIconNodes] = useState<IconNode[] | null>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lastFetchedUrl, setLastFetchedUrl] = useState<string | null>(null);
@@ -777,6 +779,7 @@ function AddLinkDialogBody({
           imageUrl={imageUrl}
           iconKey={iconKey}
           iconUrl={iconUrl}
+          iconNodes={iconNodes}
           isFetching={isFetching}
           fetchError={fetchError}
           onChangeUrl={setUrl}
@@ -786,6 +789,7 @@ function AddLinkDialogBody({
             setIconKey(next.iconKey);
             setIconUrl(next.iconUrl);
             setImageUrl(next.imageUrl);
+            setIconNodes(next.iconNodes ?? null);
           }}
           onRefetch={() => runMetadataFetch(url, { force: true })}
           onCancel={() => {
@@ -816,6 +820,7 @@ function ComposeStep({
   imageUrl,
   iconKey,
   iconUrl,
+  iconNodes,
   isFetching,
   fetchError,
   onChangeUrl,
@@ -833,6 +838,7 @@ function ComposeStep({
   imageUrl: string | null;
   iconKey: IconKey | null;
   iconUrl: string | null;
+  iconNodes?: IconNode[] | null;
   isFetching: boolean;
   fetchError: string | null;
   onChangeUrl: (v: string) => void;
@@ -938,6 +944,7 @@ function ComposeStep({
                     iconKey={iconKey}
                     iconUrl={iconUrl}
                     imageUrl={imageUrl}
+                    iconNodes={iconNodes}
                     size={56}
                     onChange={onChangeIcon}
                     onRefetch={onRefetch}
