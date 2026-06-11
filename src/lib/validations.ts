@@ -865,3 +865,166 @@ export const textBlockInputSchema = z.object({
 });
 
 export type TextBlockInput = z.infer<typeof textBlockInputSchema>;
+
+// ---------------------------------------------------------------------------
+// Media blocks ("مدیا": photos / video / file)
+// ---------------------------------------------------------------------------
+// One engine, three modes. A block holds EITHER many photos, OR one video
+// (pasted embed XOR uploaded file), OR one file. The variant card sets `mode`
+// + `preset`; the editor auto-detects type from what's added. Per-file size /
+// per-gallery count caps are plan-driven and enforced server-side in the
+// service — this schema enforces mode/item-kind consistency + absolute ceilings
+// so a malformed payload can never reach the DB.
+
+export const MEDIA_BLOCK_MODES = ["photos", "video", "file"] as const;
+export const MEDIA_ITEM_KINDS = ["image", "video", "file"] as const;
+export const MEDIA_BLOCK_PRESETS = [
+  "gallery",
+  "video",
+  "resume",
+  "download",
+] as const;
+export type MediaBlockMode = (typeof MEDIA_BLOCK_MODES)[number];
+export type MediaItemKind = (typeof MEDIA_ITEM_KINDS)[number];
+export type MediaBlockPreset = (typeof MEDIA_BLOCK_PRESETS)[number];
+
+/** Absolute ceiling on photos per gallery, regardless of plan limit. The
+ * plan-driven `media_max_gallery_count` is checked in the service. */
+export const MEDIA_GALLERY_HARD_CAP = 50;
+
+export const mediaItemInputSchema = z.object({
+  id: z.string().uuid().optional().nullable(),
+  kind: z.enum(MEDIA_ITEM_KINDS),
+  url: z
+    .string()
+    .trim()
+    .min(1, "نشانی فایل لازم است.")
+    // Both root-relative (/uploads/… in dev) and absolute https (S3) are valid.
+    .refine((v) => v.startsWith("/") || /^https?:\/\//i.test(v), {
+      message: "نشانی فایل معتبر نیست.",
+    }),
+  byteSize: z.number().int().min(0).default(0),
+  mime: z
+    .string()
+    .trim()
+    .max(100)
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  displayName: z
+    .string()
+    .trim()
+    .max(120, "نام نمایشی طولانی‌تر از حد مجاز است.")
+    .optional()
+    .nullable()
+    .transform((v) => (v && v.length ? v : null)),
+  thumbnailUrl: optionalHttpUrlSchema,
+});
+
+export const mediaBlockInputSchema = z
+  .object({
+    id: z.string().uuid().optional().nullable(),
+    mode: z.enum(MEDIA_BLOCK_MODES).default("photos"),
+    preset: z
+      .enum(MEDIA_BLOCK_PRESETS)
+      .optional()
+      .nullable()
+      .transform((v) => (v ? v : null)),
+    name: z
+      .string()
+      .trim()
+      .max(80, "عنوان طولانی‌تر از حد مجاز است.")
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length ? v : null)),
+    caption: z
+      .string()
+      .trim()
+      .max(280, "توضیح طولانی‌تر از حد مجاز است.")
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length ? v : null)),
+    /** Pasted YouTube/Aparat URL (video mode, embed). Null otherwise. */
+    videoUrl: z
+      .string()
+      .trim()
+      .max(2048)
+      .optional()
+      .nullable()
+      .transform((v) => (v && v.length ? v : null)),
+    spotlight: z.enum(["none", "pin", "animate"]).optional().default("none"),
+    animationStyle: z
+      .enum(["buzz", "wobble", "pop", "swipe"])
+      .optional()
+      .nullable()
+      .transform((v) => (v ? v : null)),
+    items: z
+      .array(mediaItemInputSchema)
+      .max(MEDIA_GALLERY_HARD_CAP, "تعداد تصاویر بیش از حد مجاز است.")
+      .default([]),
+  })
+  .superRefine((value, ctx) => {
+    const items = value.items;
+    if (value.mode === "photos") {
+      if (value.videoUrl) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "گالری تصاویر نمی‌تواند لینک ویدئو داشته باشد.",
+          path: ["videoUrl"],
+        });
+      }
+      if (items.some((it) => it.kind !== "image")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "گالری فقط می‌تواند شامل تصویر باشد.",
+          path: ["items"],
+        });
+      }
+      return;
+    }
+    if (value.mode === "video") {
+      const videoItems = items.filter((it) => it.kind === "video");
+      const hasEmbed = Boolean(value.videoUrl);
+      // Exactly one source: an embed URL XOR a single uploaded video item.
+      if (hasEmbed && videoItems.length > 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "هم لینک و هم فایل ویدئو نمی‌توانید اضافه کنید.",
+          path: ["videoUrl"],
+        });
+      }
+      if (!hasEmbed && videoItems.length === 0) {
+        // Allow an empty draft (block not yet populated) — the editor saves
+        // incrementally. A populated video block is validated at publish.
+        return;
+      }
+      if (videoItems.length > 1 || items.some((it) => it.kind === "image")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "بلوک ویدئو فقط یک ویدئو می‌تواند داشته باشد.",
+          path: ["items"],
+        });
+      }
+      return;
+    }
+    // mode === "file"
+    if (value.videoUrl) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "بلوک فایل نمی‌تواند لینک ویدئو داشته باشد.",
+        path: ["videoUrl"],
+      });
+    }
+    const fileItems = items.filter((it) => it.kind === "file");
+    if (items.length > 1 || items.some((it) => it.kind !== "file")) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "بلوک فایل فقط یک فایل می‌تواند داشته باشد.",
+        path: ["items"],
+      });
+    }
+    void fileItems;
+  });
+
+export type MediaBlockInput = z.infer<typeof mediaBlockInputSchema>;
+export type MediaItemInput = z.infer<typeof mediaItemInputSchema>;

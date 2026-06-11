@@ -52,10 +52,23 @@ import {
   uploadTextBlockImageAction,
 } from "@/app/(app)/text-blocks/actions";
 import {
+  createMediaBlockAction,
+  deleteMediaBlockAction,
+  toggleMediaBlockActiveAction,
+  updateMediaBlockAction,
+  uploadMediaFileAction,
+  uploadMediaImageAction,
+} from "@/app/(app)/media/actions";
+import {
   getTextBlocksByUserId,
   type TextBlockRow,
 } from "@/lib/text-block-service";
+import {
+  getMediaBlocksByUserId,
+  type FullMediaBlock,
+} from "@/lib/media-block-service";
 import type { EditableTextBlockWithId } from "@/components/dashboard/text-block-row";
+import type { EditableMediaBlockWithId } from "@/components/dashboard/media-block-row";
 import type { EditableEventBlockWithId } from "@/components/dashboard/event-block-row";
 import {
   getEventBlocksByPageId,
@@ -125,6 +138,31 @@ function toEditableTextBlock(b: TextBlockRow): EditableTextBlockWithId {
     iconUrl: b.iconUrl,
     body: b.body,
     photoUrl: b.photoUrl,
+    isActive: b.isActive,
+    sortOrder: b.sortOrder,
+    spotlight: b.spotlight,
+    animationStyle: b.animationStyle,
+  };
+}
+
+/** Map a server `FullMediaBlock` to the editable client shape. */
+function toEditableMediaBlock(b: FullMediaBlock): EditableMediaBlockWithId {
+  return {
+    id: b.id,
+    mode: b.mode,
+    preset: (b.preset as EditableMediaBlockWithId["preset"]) ?? null,
+    name: b.name,
+    caption: b.caption,
+    videoUrl: b.videoUrl,
+    items: b.items.map((it) => ({
+      id: it.id,
+      kind: it.kind,
+      url: it.url,
+      byteSize: Number(it.byteSize),
+      mime: it.mime,
+      displayName: it.displayName,
+      thumbnailUrl: it.thumbnailUrl,
+    })),
     isActive: b.isActive,
     sortOrder: b.sortOrder,
     spotlight: b.spotlight,
@@ -357,6 +395,7 @@ export default async function DashboardLinksPage() {
   const productFeature = blockKindToFeatureKey("product");
   const eventFeature = blockKindToFeatureKey("event");
   const textFeature = blockKindToFeatureKey("text");
+  const mediaFeature = blockKindToFeatureKey("media");
   const bookingsLocked =
     pageId && bookingFeature
       ? !(await pageHasFeature(pageId, bookingFeature))
@@ -376,6 +415,10 @@ export default async function DashboardLinksPage() {
   const textLocked =
     pageId && textFeature
       ? !(await pageHasFeature(pageId, textFeature))
+      : false;
+  const mediaLocked =
+    pageId && mediaFeature
+      ? !(await pageHasFeature(pageId, mediaFeature))
       : false;
 
   // Phase 5 + admin matrix: each locked block row needs to know which
@@ -404,6 +447,10 @@ export default async function DashboardLinksPage() {
     textLocked && textFeature
       ? ((await getFeatureLockTier(textFeature)) ?? "pro")
       : "pro";
+  const mediaRequiredPlan =
+    mediaLocked && mediaFeature
+      ? ((await getFeatureLockTier(mediaFeature)) ?? "pro")
+      : "pro";
 
   const rawProductBlocks = pageId
     ? await getProductBlocksByUserId(viewer.user.id)
@@ -415,6 +462,12 @@ export default async function DashboardLinksPage() {
     : [];
   const textBlocks: EditableTextBlockWithId[] =
     rawTextBlocks.map(toEditableTextBlock);
+
+  const rawMediaBlocks = pageId
+    ? await getMediaBlocksByUserId(viewer.user.id)
+    : [];
+  const mediaBlocks: EditableMediaBlockWithId[] =
+    rawMediaBlocks.map(toEditableMediaBlock);
 
   // Event blocks for the unified list. Loaded for every page so existing
   // events still render (read-only when the page lacks `business_events`),
@@ -510,6 +563,7 @@ export default async function DashboardLinksPage() {
       initialFormBlocks={formBlocks}
       initialProductBlocks={productBlocks}
       initialTextBlocks={textBlocks}
+      initialMediaBlocks={mediaBlocks}
       initialEventBlocks={eventBlocks}
       eventFormInitials={eventFormInitials}
       linkClickCounts={clickCounts}
@@ -539,6 +593,12 @@ export default async function DashboardLinksPage() {
       deleteTextBlockAction={deleteTextBlockAction}
       toggleTextBlockActiveAction={toggleTextBlockActiveAction}
       uploadTextBlockImageAction={uploadTextBlockImageAction}
+      createMediaBlockAction={createMediaBlockAction}
+      updateMediaBlockAction={updateMediaBlockAction}
+      deleteMediaBlockAction={deleteMediaBlockAction}
+      toggleMediaBlockActiveAction={toggleMediaBlockActiveAction}
+      uploadMediaImageAction={uploadMediaImageAction}
+      uploadMediaFileAction={uploadMediaFileAction}
       saveEventBlockAction={saveEventBlockAction}
       deleteEventBlockAction={deleteEventBlockAction}
       toggleEventBlockActiveAction={toggleEventBlockActiveAction}
@@ -547,11 +607,13 @@ export default async function DashboardLinksPage() {
       productsLocked={productsLocked}
       eventsLocked={eventsLocked}
       textLocked={textLocked}
+      mediaLocked={mediaLocked}
       bookingsRequiredPlan={bookingsRequiredPlan}
       formsRequiredPlan={formsRequiredPlan}
       productsRequiredPlan={productsRequiredPlan}
       eventsRequiredPlan={eventsRequiredPlan}
       textRequiredPlan={textRequiredPlan}
+      mediaRequiredPlan={mediaRequiredPlan}
       productItemsCap={productItemsCap}
       pinAllowed={pinAllowed}
       animateAllowed={animateAllowed}

@@ -11,6 +11,7 @@ import {
   profileBookingBlocks,
   profileFormBlocks,
   profileLinks,
+  profileMediaBlocks,
   profileProductBlocks,
   profileTextBlocks,
 } from "@/db/schema";
@@ -40,7 +41,7 @@ async function getProfileByUserId(userId: string) {
  */
 async function nextBlockSortOrder(profileId: string): Promise<number> {
   const db = getDb();
-  const [links, bookings, forms, products, eventRows, texts] =
+  const [links, bookings, forms, products, eventRows, texts, media] =
     await Promise.all([
       db
         .select({ m: max(profileLinks.sortOrder) })
@@ -66,6 +67,10 @@ async function nextBlockSortOrder(profileId: string): Promise<number> {
         .select({ m: max(profileTextBlocks.sortOrder) })
         .from(profileTextBlocks)
         .where(eq(profileTextBlocks.profileId, profileId)),
+      db
+        .select({ m: max(profileMediaBlocks.sortOrder) })
+        .from(profileMediaBlocks)
+        .where(eq(profileMediaBlocks.profileId, profileId)),
     ]);
   const current = Math.max(
     links[0]?.m ?? -1,
@@ -74,6 +79,7 @@ async function nextBlockSortOrder(profileId: string): Promise<number> {
     products[0]?.m ?? -1,
     eventRows[0]?.m ?? -1,
     texts[0]?.m ?? -1,
+    media[0]?.m ?? -1,
   );
   return current + 1;
 }

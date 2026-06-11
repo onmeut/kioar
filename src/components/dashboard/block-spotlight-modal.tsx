@@ -25,7 +25,13 @@ import {
   type BlockSpotlight,
 } from "@/lib/block-spotlight";
 
-export type BlockKind = "link" | "form" | "booking" | "product" | "text";
+export type BlockKind =
+  | "link"
+  | "form"
+  | "booking"
+  | "product"
+  | "text"
+  | "media";
 
 export type SpotlightModalProps = {
   open: boolean;
@@ -307,6 +313,12 @@ function blockKindCopy(kind: BlockKind): {
         pinTitle: "سنجاق به بالا",
         pinDesc:
           "این بلوک متن همیشه بالای دیگر بلوک‌ها در صفحه عمومی نمایش داده می‌شود.",
+      };
+    case "media":
+      return {
+        pinTitle: "سنجاق به بالا",
+        pinDesc:
+          "این بلوک مدیا همیشه بالای دیگر بلوک‌ها در صفحه عمومی نمایش داده می‌شود.",
       };
     case "link":
     default:

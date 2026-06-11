@@ -157,6 +157,23 @@ export const blockAnimationEnum = pgEnum("block_animation", [
   "swipe",
 ]);
 
+// ---- Media blocks ("مدیا": photos / video / file) ------------------------
+// One engine, three content modes. A single block holds EITHER unlimited
+// photos, OR one video (pasted embed XOR uploaded file), OR one file (PDF).
+// The "preset" column is a UI hint identifying which variant card created the
+// block (gallery / video / resume / download); the
+// data model never branches on it.
+export const mediaBlockModeEnum = pgEnum("media_block_mode", [
+  "photos",
+  "video",
+  "file",
+]);
+export const mediaItemKindEnum = pgEnum("media_item_kind", [
+  "image",
+  "video",
+  "file",
+]);
+
 // ---- Product blocks (universal Linktree-style "products & services") -----
 // Universal schema, vertical-specific presentation. Used for menus,
 // e-commerce items, services, packages, portfolio. The "preset" column is
@@ -790,6 +807,7 @@ export const profilesRelations = relations(profiles, ({ one, many }) => ({
   bookingBlocks: many(profileBookingBlocks),
   productBlocks: many(profileProductBlocks),
   textBlocks: many(profileTextBlocks),
+  mediaBlocks: many(profileMediaBlocks),
   events: many(events),
 }));
 
@@ -1431,6 +1449,100 @@ export const productItemsRelations = relations(productItems, ({ one }) => ({
     references: [productSections.id],
   }),
 }));
+
+// ---- Media blocks ("مدیا") -----------------------------------------------
+// Parent block + child items, mirroring product blocks. A block's `mode`
+// constrains its items: photos→many `image` items; video→one `video` item OR
+// a `videoUrl` embed (no item); file→one `file` item. `byteSize` on each item
+// is the single source of truth for the page's storage quota (summed live, so
+// deleting an item returns quota immediately — no running counter to drift).
+export const profileMediaBlocks = pgTable(
+  "profile_media_blocks",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    profileId: uuid("profile_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    mode: mediaBlockModeEnum("mode").default("photos").notNull(),
+    /** Free-text variant origin: "gallery" | "video" | "resume" | "download".
+     * Drives default copy; data never branches. */
+    preset: text("preset"),
+    /** Optional block name (used as the file-card heading / a11y label). */
+    name: text("name"),
+    /** Optional caption shown under the media. */
+    caption: text("caption"),
+    /** Pasted YouTube/Aparat URL for video mode (embed). Mutually exclusive
+     * with a `video` item (uploaded file). NULL for photos/file modes. */
+    videoUrl: text("video_url"),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    spotlight: blockSpotlightEnum("spotlight").default("none").notNull(),
+    animationStyle: blockAnimationEnum("animation_style"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    index("profile_media_blocks_profile_sort_idx").on(
+      table.profileId,
+      table.sortOrder,
+    ),
+  ],
+);
+
+export const profileMediaItems = pgTable(
+  "profile_media_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    blockId: uuid("block_id")
+      .notNull()
+      .references(() => profileMediaBlocks.id, { onDelete: "cascade" }),
+    kind: mediaItemKindEnum("kind").notNull(),
+    url: text("url").notNull(),
+    /** Bytes stored. Source of truth for the page's media_storage_mb quota. */
+    byteSize: bigint("byte_size", { mode: "number" }).default(0).notNull(),
+    mime: text("mime"),
+    /** Human-friendly label for file mode ("منو کامل" for menu_v3_FINAL.pdf). */
+    displayName: text("display_name"),
+    /** Optional poster/cover for an uploaded video. */
+    thumbnailUrl: text("thumbnail_url"),
+    sortOrder: integer("sort_order").default(0).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("profile_media_items_block_sort_idx").on(
+      table.blockId,
+      table.sortOrder,
+    ),
+  ],
+);
+
+export const profileMediaBlocksRelations = relations(
+  profileMediaBlocks,
+  ({ one, many }) => ({
+    profile: one(profiles, {
+      fields: [profileMediaBlocks.profileId],
+      references: [profiles.id],
+    }),
+    items: many(profileMediaItems),
+  }),
+);
+
+export const profileMediaItemsRelations = relations(
+  profileMediaItems,
+  ({ one }) => ({
+    block: one(profileMediaBlocks, {
+      fields: [profileMediaItems.blockId],
+      references: [profileMediaBlocks.id],
+    }),
+  }),
+);
 
 // ---------------------------------------------------------------------------
 // Plan + feature registry (Phase 2)

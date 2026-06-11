@@ -22,12 +22,71 @@ export type UploadFolder =
   | "link-covers"
   | "link-icons"
   | "product-items"
-  | "products";
+  | "products"
+  | "media";
 
 export type UploadResult = {
   url: string;
   pathname: string;
 };
+
+// ---------- non-image media uploads (video / PDF) ----------------------------
+//
+// The image pipeline above re-encodes every byte through sharp, which is both
+// our normalization step AND our security boundary (a polyglot/JS-in-SVG file
+// can't survive a re-encode). Video and PDF can't be re-encoded without adding
+// ffmpeg / a PDF rasterizer, so for those formats the ONLY boundary is an
+// up-front magic-byte sniff + a hard extension whitelist. Keep this strict.
+
+/** Allowed video kinds the media block accepts. */
+export type MediaFileKind = "video" | "file";
+
+/**
+ * Hardcoded extension whitelist per kind (NOT in the admin panel — these are a
+ * security boundary, per spec). Photos are handled by the image path; listed
+ * here only for reference / shared validation.
+ */
+export const MEDIA_EXTENSION_WHITELIST = {
+  image: ["jpg", "jpeg", "png", "webp", "gif"],
+  video: ["mp4", "mov"],
+  file: ["pdf"],
+} as const;
+
+const MEDIA_VIDEO_CONTENT_TYPE: Record<string, string> = {
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+};
+
+// Generous ceiling for any single non-image upload accepted at the storage
+// layer. Per-plan caps (media_max_video_mb / media_max_file_mb) are enforced
+// earlier in the service against the registry; this is just a hard backstop so
+// a single request can't stream an unbounded body into memory.
+const MAX_MEDIA_FILE_BYTES = 200_000_000;
+
+function fileExtension(name: string): string {
+  const dot = name.lastIndexOf(".");
+  return dot >= 0 ? name.slice(dot + 1).toLowerCase() : "";
+}
+
+/**
+ * Sniff the leading bytes of an uploaded buffer to confirm it really is the
+ * format its extension claims. The client-supplied MIME and extension cannot
+ * be trusted (an executable renamed `.pdf` would otherwise land in the bucket).
+ */
+function detectMediaFormat(input: Buffer): "mp4" | "mov" | "pdf" | null {
+  if (input.byteLength < 12) return null;
+  // PDF: "%PDF-" at the very start.
+  if (input.subarray(0, 5).toString("latin1") === "%PDF-") return "pdf";
+  // MP4 / MOV (QuickTime): ISO-BMFF box — bytes 4..8 are the "ftyp" atom tag.
+  // We treat both as the same container family; the extension disambiguates
+  // the stored content-type. Major brands differ (isom/mp42 vs qt) but for
+  // our purpose "has an ftyp box" is the gate.
+  if (input.subarray(4, 8).toString("latin1") === "ftyp") {
+    const brand = input.subarray(8, 12).toString("latin1");
+    return brand.startsWith("qt") ? "mov" : "mp4";
+  }
+  return null;
+}
 
 // Max bytes accepted from the client. iPhone HEIC photos client-converted to
 // JPEG can grow to ~6-8MB at high quality, so we allow a little more headroom
@@ -343,6 +402,62 @@ export async function uploadPublicImage(
 
   const fileName = `${Date.now()}-${randomUUID()}.${normalized.extension}`;
   return putBuffer(folder, fileName, normalized.buffer, normalized.contentType);
+}
+
+export type MediaUploadResult = UploadResult & { byteSize: number };
+
+/**
+ * Upload a non-image media file (video or PDF) to the public "media" folder.
+ *
+ * Unlike `uploadPublicImage`, the bytes are stored verbatim — there is no
+ * sharp re-encode for video/PDF. Security therefore rests entirely on:
+ *   1. an extension whitelist (executables and anything off-list are rejected),
+ *   2. a magic-byte sniff confirming the bytes match the claimed format, and
+ *   3. a hard byte ceiling (`MAX_MEDIA_FILE_BYTES`) as a backstop.
+ *
+ * Per-plan size caps are enforced earlier (in media-block-service against the
+ * registry); this function is the storage-layer boundary. Returns the stored
+ * URL plus `byteSize` so the caller can account it against the page's quota.
+ * Throws a Persian error on any rejection so the UI can show it directly.
+ */
+export async function uploadPublicFile(
+  file: File,
+  kind: MediaFileKind,
+): Promise<MediaUploadResult | null> {
+  if (file.size === 0) return null;
+  if (file.size > MAX_MEDIA_FILE_BYTES) {
+    throw new Error("حجم فایل بیش از حد مجاز است.");
+  }
+
+  const ext = fileExtension(file.name);
+  const allowed = MEDIA_EXTENSION_WHITELIST[kind] as readonly string[];
+  if (!allowed.includes(ext)) {
+    throw new Error(
+      kind === "video"
+        ? "فقط فایل ویدئویی با فرمت mp4 یا mov پشتیبانی می‌شود."
+        : "فقط فایل PDF پشتیبانی می‌شود.",
+    );
+  }
+
+  const input = Buffer.from(await file.arrayBuffer());
+  const detected = detectMediaFormat(input);
+  if (!detected) {
+    throw new Error("محتوای فایل با فرمت آن مطابقت ندارد.");
+  }
+  // The sniffed format must belong to the requested kind. (mov is sniffed as
+  // either mov or mp4 depending on brand; accept both under the video kind.)
+  const detectedKind: MediaFileKind = detected === "pdf" ? "file" : "video";
+  if (detectedKind !== kind) {
+    throw new Error("محتوای فایل با فرمت آن مطابقت ندارد.");
+  }
+
+  const contentType =
+    detected === "pdf"
+      ? "application/pdf"
+      : (MEDIA_VIDEO_CONTENT_TYPE[ext] ?? "video/mp4");
+  const fileName = `${Date.now()}-${randomUUID()}.${ext}`;
+  const stored = await putBuffer("media", fileName, input, contentType);
+  return { ...stored, byteSize: input.byteLength };
 }
 
 /**

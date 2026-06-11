@@ -101,6 +101,9 @@ export type FeatureKey =
   // packages, portfolio). Boolean grant + numeric cap on items per block.
   | "products_block"
   | "products_max_items_per_block"
+  // media ("مدیا": photos / video / file). Boolean grant on every plan; the
+  // storage quota + per-file/per-gallery caps are numeric limits below.
+  | "media_block"
   // support
   | "support_help_center"
   | "support_email_best_effort"
@@ -109,7 +112,13 @@ export type FeatureKey =
   // limits (numeric — pair with getPageEntitlementLimit)
   | "storage_image_uploads"
   | "form_submissions_unlimited"
-  | "booking_slots_unlimited";
+  | "booking_slots_unlimited"
+  // media limits (numeric — storage in MB, the rest are counts)
+  | "media_storage_mb"
+  | "media_max_photo_mb"
+  | "media_max_video_mb"
+  | "media_max_file_mb"
+  | "media_max_gallery_count";
 
 /**
  * Accepted shape at gate call sites. Prefer the union literal — the

@@ -28,6 +28,7 @@ import { withProfileCache } from "@/lib/cache/profile-cache";
 import { getPageEntitlements } from "@/lib/entitlements";
 import { getPublicActiveFormBlocks } from "@/lib/form-service";
 import { getPublicActiveEventBlocks } from "@/lib/events/queries";
+import { getPublicActiveMediaBlocks } from "@/lib/media-block-service";
 import { getPublicActiveProductBlocks } from "@/lib/product-service";
 import { getPublicActiveTextBlocks } from "@/lib/text-block-service";
 import { isReservedSlug } from "@/lib/slug";
@@ -130,6 +131,7 @@ async function loadPublicProfileBySlug(slug: string) {
   const productKey = blockKindToFeatureKey("product");
   const eventKey = blockKindToFeatureKey("event");
   const textKey = blockKindToFeatureKey("text");
+  const mediaKey = blockKindToFeatureKey("media");
 
   // Wave 2 — all queries that only need profile.id run in parallel.
   // getPageEntitlements fetches the full entitlement map for this page in
@@ -157,17 +159,25 @@ async function loadPublicProfileBySlug(slug: string) {
   const productsGranted = productKey === null || entitlements.has(productKey);
   const eventsGranted = eventKey === null || entitlements.has(eventKey);
   const textGranted = textKey === null || entitlements.has(textKey);
+  const mediaGranted = mediaKey === null || entitlements.has(mediaKey);
 
   // Wave 3 — block content is conditional on entitlements. The fetches are
   // independent of each other so they run in parallel.
-  const [bookingBlocks, formBlocks, productBlocks, eventBlocks, textBlocks] =
-    await Promise.all([
-      bookingsGranted ? getPublicActiveBookingBlocks(profile.id) : [],
-      formsGranted ? getPublicActiveFormBlocks(profile.id) : [],
-      productsGranted ? getPublicActiveProductBlocks(profile.id) : [],
-      eventsGranted ? getPublicActiveEventBlocks(profile.id) : [],
-      textGranted ? getPublicActiveTextBlocks(profile.id) : [],
-    ]);
+  const [
+    bookingBlocks,
+    formBlocks,
+    productBlocks,
+    eventBlocks,
+    textBlocks,
+    mediaBlocks,
+  ] = await Promise.all([
+    bookingsGranted ? getPublicActiveBookingBlocks(profile.id) : [],
+    formsGranted ? getPublicActiveFormBlocks(profile.id) : [],
+    productsGranted ? getPublicActiveProductBlocks(profile.id) : [],
+    eventsGranted ? getPublicActiveEventBlocks(profile.id) : [],
+    textGranted ? getPublicActiveTextBlocks(profile.id) : [],
+    mediaGranted ? getPublicActiveMediaBlocks(profile.id) : [],
+  ]);
 
   return {
     ...profile,
@@ -177,6 +187,7 @@ async function loadPublicProfileBySlug(slug: string) {
     productBlocks,
     eventBlocks,
     textBlocks,
+    mediaBlocks,
     owner,
   };
 }

@@ -23,7 +23,8 @@ export type BlockKind =
   | "link"
   | "product"
   | "event"
-  | "text";
+  | "text"
+  | "media";
 
 /**
  * Feature key required to render / interact with a block of the given
@@ -52,6 +53,11 @@ export function blockKindToFeatureKey(kind: BlockKind): string | null {
       // Text block — Notion-style free text + optional icon/title/photo.
       // Pro+ (link_text_block); non-business prefix → green Pro lock chip.
       return "link_text_block";
+    case "media":
+      // Media block ("مدیا": photos / video / file). Granted on every plan;
+      // the storage quota (media_storage_mb) is the real differentiator, so
+      // this never locks. Listed for completeness in the gating switch.
+      return "media_block";
     case "link":
       // No per-link kind today; the link_url base feature is on every plan.
       return null;

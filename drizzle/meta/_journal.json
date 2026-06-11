@@ -463,6 +463,20 @@
 			"when": 1778901800000,
 			"tag": "0066_backfill_product_block_slugs",
 			"breakpoints": true
+		},
+		{
+			"idx": 67,
+			"version": "7",
+			"when": 1778901900000,
+			"tag": "0067_media_blocks",
+			"breakpoints": true
+		},
+		{
+			"idx": 68,
+			"version": "7",
+			"when": 1778902000000,
+			"tag": "0068_seed_media_features",
+			"breakpoints": true
 		}
 	]
 }

@@ -11,6 +11,7 @@ import {
   bookingTypes,
   profileBookingBlocks,
   profileLinks,
+  profileMediaBlocks,
 } from "@/db/schema";
 import {
   bookingBlockInputSchema,
@@ -34,7 +35,7 @@ async function getProfileByUserId(userId: string) {
 
 async function nextBlockSortOrder(profileId: string): Promise<number> {
   const db = getDb();
-  const [a, b] = await Promise.all([
+  const [a, b, m] = await Promise.all([
     db
       .select({ m: max(profileLinks.sortOrder) })
       .from(profileLinks)
@@ -43,8 +44,12 @@ async function nextBlockSortOrder(profileId: string): Promise<number> {
       .select({ m: max(profileBookingBlocks.sortOrder) })
       .from(profileBookingBlocks)
       .where(eq(profileBookingBlocks.profileId, profileId)),
+    db
+      .select({ m: max(profileMediaBlocks.sortOrder) })
+      .from(profileMediaBlocks)
+      .where(eq(profileMediaBlocks.profileId, profileId)),
   ]);
-  const current = Math.max(a[0]?.m ?? -1, b[0]?.m ?? -1);
+  const current = Math.max(a[0]?.m ?? -1, b[0]?.m ?? -1, m[0]?.m ?? -1);
   return current + 1;
 }
 

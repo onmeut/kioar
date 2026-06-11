@@ -455,6 +455,18 @@ const FEATURES: FeatureSeed[] = [
     pro: true,
     business: true,
   },
+  // media_block: universal "مدیا" block (photos / video / file) surfaced via
+  // thin variant cards (gallery / video / resume / download / menu / portfolio).
+  // Granted on every plan; the real differentiator is the storage quota
+  // (`media_storage_mb` below), so this never locks.
+  {
+    key: "media_block",
+    nameFa: "بلوک مدیا (عکس، ویدئو، فایل)",
+    category: "business_tools",
+    free: true,
+    pro: true,
+    business: true,
+  },
   {
     key: "business_lead_capture_form",
     nameFa: "فرم جذب سرنخ (با فیلدهای دلخواه)",
@@ -590,6 +602,50 @@ const FEATURES: FeatureSeed[] = [
     free: 15,
     pro: 75,
     business: 300,
+  },
+  // ---- media limits
+  // Total media storage quota per page (MB) — the real differentiator across
+  // tiers. The per-file / per-gallery caps below are equal across tiers for
+  // now; they live in the admin matrix so they can change without a deploy.
+  {
+    key: "media_storage_mb",
+    nameFa: "فضای ذخیره‌سازی مدیا",
+    category: "limits",
+    free: 50,
+    pro: 200,
+    business: 500,
+  },
+  {
+    key: "media_max_photo_mb",
+    nameFa: "حداکثر حجم هر عکس",
+    category: "limits",
+    free: 10,
+    pro: 10,
+    business: 10,
+  },
+  {
+    key: "media_max_video_mb",
+    nameFa: "حداکثر حجم هر ویدئو",
+    category: "limits",
+    free: 100,
+    pro: 100,
+    business: 100,
+  },
+  {
+    key: "media_max_file_mb",
+    nameFa: "حداکثر حجم هر فایل",
+    category: "limits",
+    free: 20,
+    pro: 20,
+    business: 20,
+  },
+  {
+    key: "media_max_gallery_count",
+    nameFa: "حداکثر تعداد عکس در هر گالری",
+    category: "limits",
+    free: 20,
+    pro: 20,
+    business: 20,
   },
 ];
 

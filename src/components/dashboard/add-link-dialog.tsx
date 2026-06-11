@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ArrowRightIcon,
   CalendarIcon,
   CalendarDaysIcon,
+  DownloadIcon,
   FileTextIcon,
   FormInputIcon,
   GlobeIcon,
+  ImagesIcon,
   Link2Icon,
   LockIcon,
   Loader2Icon,
@@ -15,6 +17,7 @@ import {
   MusicIcon,
   PhoneIcon,
   PlayIcon,
+  PlayCircleIcon,
   SendIcon,
   ShoppingBagIcon,
   SparklesIcon,
@@ -42,8 +45,11 @@ import { cn } from "@/lib/utils";
 import {
   isSafeLinkUrl,
   normalizeLinkUrl,
+  type MediaBlockMode,
+  type MediaBlockPreset,
   type ProductBlockPreset,
 } from "@/lib/validations";
+import type { MediaPanelCopy } from "@/components/dashboard/media-builder-dialog";
 import {
   UpgradePlanModal,
   type UpgradePlanTier,
@@ -57,7 +63,6 @@ export type LinkPresetKey =
   | "custom"
   | "website"
   | "instagram"
-  | "tiktok"
   | "youtube"
   | "twitter"
   | "telegram"
@@ -66,7 +71,6 @@ export type LinkPresetKey =
   | "spotify"
   | "email"
   | "phone"
-  | "calendar"
   | "shop";
 
 export type LinkPreset = {
@@ -99,16 +103,6 @@ export const LINK_PRESETS: LinkPreset[] = [
     category: "social",
     prefix: "https://instagram.com/",
     defaultLabel: "اینستاگرام",
-    usernameOnly: true,
-  },
-  {
-    key: "tiktok",
-    label: "تیک‌تاک",
-    description: "ویدیوهای تیک\u200cتاکتان را به اشتراک بگذارید",
-    icon: PlayIcon,
-    category: "social",
-    prefix: "https://www.tiktok.com/@",
-    defaultLabel: "تیک\u200cتاک",
     usernameOnly: true,
   },
   {
@@ -186,15 +180,6 @@ export const LINK_PRESETS: LinkPreset[] = [
     defaultLabel: "تماس",
   },
   {
-    key: "calendar",
-    label: "هماهنگ",
-    description: "Cal.com یا Calendly",
-    icon: CalendarIcon,
-    category: "suggested",
-    prefix: "https://cal.com/",
-    defaultLabel: "هماهنگ",
-  },
-  {
     key: "shop",
     label: "فروشگاه",
     description: "محصولات شما",
@@ -203,18 +188,6 @@ export const LINK_PRESETS: LinkPreset[] = [
     prefix: "https://",
     defaultLabel: "فروشگاه",
   },
-];
-
-const CATEGORIES: Array<{
-  key: LinkPreset["category"] | "suggested";
-  label: string;
-  icon: LucideIcon;
-}> = [
-  { key: "suggested", label: "پیشنهادی", icon: SparklesIcon },
-  { key: "social", label: "اجتماعی", icon: UsersIcon },
-  { key: "media", label: "رسانه", icon: PlayIcon },
-  { key: "contact", label: "تماس", icon: MailIcon },
-  { key: "commerce", label: "فروش", icon: ShoppingBagIcon },
 ];
 
 const FEATURE_CARDS: Array<{ key: string; label: string; icon: LucideIcon }> = [
@@ -226,6 +199,11 @@ const FEATURE_CARDS: Array<{ key: string; label: string; icon: LucideIcon }> = [
   { key: "form", label: "فرم", icon: FormInputIcon },
   { key: "event", label: "رویداد", icon: CalendarDaysIcon },
   { key: "text", label: "متن", icon: TypeIcon },
+  // ---- media variants (all share the one media_block entitlement) ----
+  { key: "gallery", label: "گالری", icon: ImagesIcon },
+  { key: "video", label: "ویدئو", icon: PlayCircleIcon },
+  { key: "resume", label: "رزومه", icon: FileTextIcon },
+  { key: "download", label: "فایل", icon: DownloadIcon },
 ];
 
 /** The "menu" and "services" cards are product blocks pre-set to a preset.
@@ -235,6 +213,54 @@ const PRODUCT_PRESET_CARDS: Record<string, ProductBlockPreset> = {
   product: "shop",
   menu: "menu",
   services: "services",
+};
+
+/** Config the chosen media variant card opens the builder with. All variants
+ * are thin wrappers over the same media engine + entitlement — only the
+ * default `mode`, `preset`, and panel `copy` differ. */
+export type MediaCardConfig = {
+  mode: MediaBlockMode;
+  preset: MediaBlockPreset;
+  copy: MediaPanelCopy;
+};
+
+const MEDIA_PRESET_CARDS: Record<string, MediaCardConfig> = {
+  gallery: {
+    mode: "photos",
+    preset: "gallery",
+    copy: {
+      heading: "گالری تصاویر",
+      hint: "عکس‌های خود را اضافه کنید؛ چند عکس به‌صورت اسلایدی نمایش داده می‌شود.",
+      addLabel: "افزودن عکس",
+    },
+  },
+  video: {
+    mode: "video",
+    preset: "video",
+    copy: {
+      heading: "ویدئو",
+      hint: "یک ویدئو آپلود کنید یا لینک یوتیوب/آپارات را بچسبانید.",
+      addLabel: "آپلود ویدئو",
+    },
+  },
+  resume: {
+    mode: "file",
+    preset: "resume",
+    copy: {
+      heading: "رزومه",
+      hint: "فایل رزومه (PDF) خود را بارگذاری کنید تا بازدیدکننده آن را ببیند یا دانلود کند.",
+      addLabel: "آپلود رزومه (PDF)",
+    },
+  },
+  download: {
+    mode: "file",
+    preset: "download",
+    copy: {
+      heading: "فایل",
+      hint: "هر فایل قابل دانلودی را اضافه کنید: راهنما، لیست قیمت، فایل هدیه و…",
+      addLabel: "آپلود فایل (PDF)",
+    },
+  },
 };
 
 type AddLinkDialogProps = {
@@ -277,6 +303,14 @@ type AddLinkDialogProps = {
   /** When true, the text card shows a lock badge and opens upgrade modal on click. */
   textLocked?: boolean;
   textRequiredPlan?: UpgradePlanTier;
+  /** Invoked when any media variant card (gallery/video/resume/…) is picked.
+   *  The dialog closes itself; the caller opens the media builder pre-set to
+   *  the given config. All variants share the one media entitlement. */
+  onAddMedia?: (config: MediaCardConfig) => void;
+  /** When true, media cards show a lock badge and open upgrade modal on click.
+   *  (Media is granted on every plan today, so this is normally false.) */
+  mediaLocked?: boolean;
+  mediaRequiredPlan?: UpgradePlanTier;
 };
 
 export function AddLinkDialog({
@@ -299,6 +333,9 @@ export function AddLinkDialog({
   onAddText,
   textLocked = false,
   textRequiredPlan = "pro",
+  onAddMedia,
+  mediaLocked = false,
+  mediaRequiredPlan = "pro",
 }: AddLinkDialogProps) {
   const isMobile = useIsMobile();
 
@@ -330,6 +367,9 @@ export function AddLinkDialog({
             onAddText={onAddText}
             textLocked={textLocked}
             textRequiredPlan={textRequiredPlan}
+            onAddMedia={onAddMedia}
+            mediaLocked={mediaLocked}
+            mediaRequiredPlan={mediaRequiredPlan}
           />
         </SheetContent>
       </Sheet>
@@ -339,7 +379,7 @@ export function AddLinkDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-full max-w-xl p-0 sm:max-w-2xl"
+        className="flex max-h-[90dvh] w-full max-w-xl flex-col overflow-hidden p-0 sm:max-w-2xl"
         showCloseButton={false}
       >
         <DialogTitle className="sr-only">افزودن بلوک</DialogTitle>
@@ -362,6 +402,9 @@ export function AddLinkDialog({
           onAddText={onAddText}
           textLocked={textLocked}
           textRequiredPlan={textRequiredPlan}
+          onAddMedia={onAddMedia}
+          mediaLocked={mediaLocked}
+          mediaRequiredPlan={mediaRequiredPlan}
         />
       </DialogContent>
     </Dialog>
@@ -389,6 +432,9 @@ function AddLinkDialogBody({
   onAddText,
   textLocked,
   textRequiredPlan,
+  onAddMedia,
+  mediaLocked,
+  mediaRequiredPlan,
 }: {
   onClose: () => void;
   onSubmit: (link: Omit<EditableLink, "id" | "sortOrder">) => void;
@@ -408,10 +454,11 @@ function AddLinkDialogBody({
   onAddText?: () => void;
   textLocked?: boolean;
   textRequiredPlan?: UpgradePlanTier;
+  onAddMedia?: (config: MediaCardConfig) => void;
+  mediaLocked?: boolean;
+  mediaRequiredPlan?: UpgradePlanTier;
 }) {
   const [step, setStep] = useState<Step>("pick");
-  const [activeCategory, setActiveCategory] =
-    useState<LinkPreset["category"]>("suggested");
   const [preset, setPreset] = useState<LinkPreset | null>(null);
   const [url, setUrl] = useState("");
   const [label, setLabel] = useState("");
@@ -428,16 +475,6 @@ function AddLinkDialogBody({
     featureName: string;
   } | null>(null);
 
-  const filteredPresets = useMemo(
-    () =>
-      LINK_PRESETS.filter((item) =>
-        activeCategory === "suggested"
-          ? item.category === "suggested" ||
-            ["instagram", "youtube", "tiktok", "twitter"].includes(item.key)
-          : item.category === activeCategory,
-      ),
-    [activeCategory],
-  );
 
   const runMetadataFetch = useCallback(
     async (value: string, opts: { force?: boolean } = {}) => {
@@ -480,7 +517,6 @@ function AddLinkDialogBody({
 
   function resetState() {
     setStep("pick");
-    setActiveCategory("suggested");
     setPreset(null);
     setUrl("");
     setLabel("");
@@ -540,7 +576,7 @@ function AddLinkDialogBody({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       {/* Header */}
       <div className="grid shrink-0 grid-cols-[40px_1fr_40px] items-center border-b px-4 py-3 sm:px-5 sm:py-4">
         <div className="flex">
@@ -585,12 +621,14 @@ function AddLinkDialogBody({
               {FEATURE_CARDS.map((card) => {
                 const CardIcon = card.icon;
                 const isProductCard = card.key in PRODUCT_PRESET_CARDS;
+                const isMediaCard = card.key in MEDIA_PRESET_CARDS;
                 const isLocked =
                   (card.key === "bookings" && bookingsLocked) ||
                   (card.key === "form" && formsLocked) ||
                   (isProductCard && productsLocked) ||
                   (card.key === "event" && eventsLocked) ||
-                  (card.key === "text" && textLocked);
+                  (card.key === "text" && textLocked) ||
+                  (isMediaCard && mediaLocked);
                 const lockedPlan =
                   card.key === "bookings"
                     ? bookingsRequiredPlan
@@ -602,7 +640,9 @@ function AddLinkDialogBody({
                           ? eventsRequiredPlan
                           : card.key === "text"
                             ? textRequiredPlan
-                            : undefined;
+                            : isMediaCard
+                              ? mediaRequiredPlan
+                              : undefined;
                 return (
                   <button
                     key={card.key}
@@ -663,6 +703,16 @@ function AddLinkDialogBody({
                           onClose();
                           onAddText?.();
                         }
+                      } else if (isMediaCard) {
+                        if (mediaLocked) {
+                          setUpgradeModal({
+                            plan: mediaRequiredPlan ?? "pro",
+                            featureName: MEDIA_PRESET_CARDS[card.key].copy.heading,
+                          });
+                        } else {
+                          onClose();
+                          onAddMedia?.(MEDIA_PRESET_CARDS[card.key]);
+                        }
                       } else {
                         pickCustom();
                       }
@@ -701,47 +751,10 @@ function AddLinkDialogBody({
               })}
             </div>
 
-            {/* Category chips */}
-            <div className="no-scrollbar mt-4 flex gap-2 overflow-x-auto pb-1">
-              {CATEGORIES.map((category) => {
-                const Icon = category.icon;
-                const active = activeCategory === category.key;
-                return (
-                  <button
-                    key={category.key}
-                    type="button"
-                    onClick={() =>
-                      setActiveCategory(category.key as LinkPreset["category"])
-                    }
-                    className={cn(
-                      "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors",
-                      active
-                        ? "border-foreground bg-foreground text-background"
-                        : "border-border bg-background text-muted-foreground hover:bg-muted",
-                    )}
-                  >
-                    <Icon className="size-3.5" />
-                    {category.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Suggested label */}
-            <p className="mt-4 text-xs font-bold text-muted-foreground">
-              {CATEGORIES.find((c) => c.key === activeCategory)?.label ??
-                "پیشنهادی"}
-            </p>
-
             {/* Preset list */}
-            <div className="mt-2">
-              {filteredPresets.length === 0 ? (
-                <div className="rounded-4xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-                  موردی یافت نشد. می‌توانید نشانی لینک را مستقیماً پیست کنید.
-                </div>
-              ) : (
-                <ul className="space-y-1.5">
-                  {filteredPresets.map((preset) => {
+            <div className="mt-4">
+              <ul className="space-y-1.5">
+                  {LINK_PRESETS.map((preset) => {
                     const Icon = preset.icon;
                     return (
                       <li key={preset.key}>
@@ -766,7 +779,6 @@ function AddLinkDialogBody({
                     );
                   })}
                 </ul>
-              )}
             </div>
           </div>
         </>

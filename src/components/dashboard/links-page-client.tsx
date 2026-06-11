@@ -68,6 +68,15 @@ import {
   type EditableTextBlockWithId,
 } from "@/components/dashboard/text-block-row";
 import {
+  MediaBuilderDialog,
+  type MediaBlockDraft,
+  type MediaPanelCopy,
+} from "@/components/dashboard/media-builder-dialog";
+import {
+  MediaBlockRow,
+  type EditableMediaBlockWithId,
+} from "@/components/dashboard/media-block-row";
+import {
   EventBlockRow,
   type EditableEventBlockWithId,
 } from "@/components/dashboard/event-block-row";
@@ -141,6 +150,7 @@ type LinksPageClientProps = {
   initialFormBlocks: EditableFormBlockWithId[];
   initialProductBlocks: EditableProductBlockWithId[];
   initialTextBlocks: EditableTextBlockWithId[];
+  initialMediaBlocks: EditableMediaBlockWithId[];
   initialEventBlocks: EditableEventBlockWithId[];
   /** All-time click counts keyed by link id. */
   linkClickCounts: Record<string, number>;
@@ -246,6 +256,30 @@ type LinksPageClientProps = {
     state: ActionState & { url?: string | null },
     formData: FormData,
   ) => Promise<ActionState & { url?: string | null }>;
+  createMediaBlockAction: (
+    state: ActionState & { id?: string },
+    formData: FormData,
+  ) => Promise<ActionState & { id?: string }>;
+  updateMediaBlockAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  deleteMediaBlockAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  toggleMediaBlockActiveAction: (
+    state: ActionState,
+    formData: FormData,
+  ) => Promise<ActionState>;
+  uploadMediaImageAction: (
+    state: ActionState & { url?: string | null; byteSize?: number },
+    formData: FormData,
+  ) => Promise<ActionState & { url?: string | null; byteSize?: number }>;
+  uploadMediaFileAction: (
+    state: ActionState & { url?: string | null; byteSize?: number },
+    formData: FormData,
+  ) => Promise<ActionState & { url?: string | null; byteSize?: number }>;
   /** Inline event create/update from the builder dialog — returns the event
    *  id + slug on success instead of redirecting. */
   saveEventBlockAction: (
@@ -276,6 +310,10 @@ type LinksPageClientProps = {
   /** Text block gating (`link_text_block`, Pro+). */
   textLocked?: boolean;
   textRequiredPlan?: "pro" | "business";
+  /** Media block gating (`media_block`). Granted on every plan today, so this
+   * is normally false; threaded through for symmetry + future gating. */
+  mediaLocked?: boolean;
+  mediaRequiredPlan?: "pro" | "business";
   /** Lowest paid plan that currently grants the feature — drives the lock
    * chip colour (Pro=emerald, Business=purple). Sourced from the live
    * `plan_features` matrix, not the seed naming convention. */
@@ -354,11 +392,18 @@ export function LinksPageClient({
   deleteTextBlockAction,
   toggleTextBlockActiveAction,
   uploadTextBlockImageAction,
+  createMediaBlockAction,
+  updateMediaBlockAction,
+  deleteMediaBlockAction,
+  toggleMediaBlockActiveAction,
+  uploadMediaImageAction,
+  uploadMediaFileAction,
   saveEventBlockAction,
   deleteEventBlockAction,
   toggleEventBlockActiveAction,
   eventFormInitials,
   initialEventBlocks,
+  initialMediaBlocks,
   bookingsLocked = false,
   formsLocked = false,
   productsLocked = false,
@@ -369,6 +414,8 @@ export function LinksPageClient({
   productsRequiredPlan = "pro",
   eventsRequiredPlan = "business",
   textRequiredPlan = "pro",
+  mediaLocked = false,
+  mediaRequiredPlan = "pro",
   productItemsCap,
   pinAllowed = false,
   animateAllowed = false,
@@ -393,6 +440,8 @@ export function LinksPageClient({
     useState<EditableProductBlockWithId[]>(initialProductBlocks);
   const [textBlocks, setTextBlocks] =
     useState<EditableTextBlockWithId[]>(initialTextBlocks);
+  const [mediaBlocks, setMediaBlocks] =
+    useState<EditableMediaBlockWithId[]>(initialMediaBlocks);
   const [eventBlocks, setEventBlocks] =
     useState<EditableEventBlockWithId[]>(initialEventBlocks);
 
@@ -411,6 +460,9 @@ export function LinksPageClient({
   useEffect(() => {
     setTextBlocks(initialTextBlocks);
   }, [initialTextBlocks]);
+  useEffect(() => {
+    setMediaBlocks(initialMediaBlocks);
+  }, [initialMediaBlocks]);
   useEffect(() => {
     setEventBlocks(initialEventBlocks);
   }, [initialEventBlocks]);
@@ -442,6 +494,20 @@ export function LinksPageClient({
   const [editingTextBlock, setEditingTextBlock] =
     useState<EditableTextBlockWithId | null>(null);
   const [savingText, setSavingText] = useState(false);
+  // Media builder: the variant card sets the initial mode/preset/copy for a
+  // new block; editing pre-fills from the existing block.
+  const [mediaDialogOpen, setMediaDialogOpen] = useState(false);
+  const [editingMediaBlock, setEditingMediaBlock] =
+    useState<EditableMediaBlockWithId | null>(null);
+  const [mediaNewMode, setMediaNewMode] =
+    useState<MediaBlockDraft["mode"]>("photos");
+  const [mediaNewPreset, setMediaNewPreset] =
+    useState<MediaBlockDraft["preset"]>(null);
+  const [mediaCopy, setMediaCopy] = useState<MediaPanelCopy | undefined>(
+    undefined,
+  );
+  const [savingMedia, setSavingMedia] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
   const [eventBuilderOpen, setEventBuilderOpen] = useState(false);
   // The event currently being edited (null = creating a new one).
   const [editingEventInitial, setEditingEventInitial] =
@@ -580,7 +646,14 @@ export function LinksPageClient({
 
   /* ---------- Unified blocks order (links + bookings + forms + products + text) ---------- */
   type BlockRef = {
-    kind: "link" | "booking" | "form" | "product" | "text" | "event";
+    kind:
+      | "link"
+      | "booking"
+      | "form"
+      | "product"
+      | "text"
+      | "media"
+      | "event";
     id: string;
   };
 
@@ -613,10 +686,15 @@ export function LinksPageClient({
         id: t.id,
         sortOrder: t.sortOrder ?? 5_000_000 + i,
       })),
+      ...mediaBlocks.map((m, i) => ({
+        kind: "media" as const,
+        id: m.id,
+        sortOrder: m.sortOrder ?? 6_000_000 + i,
+      })),
       ...eventBlocks.map((e, i) => ({
         kind: "event" as const,
         id: e.id,
-        sortOrder: e.sortOrder ?? 6_000_000 + i,
+        sortOrder: e.sortOrder ?? 7_000_000 + i,
       })),
     ];
     all.sort((a, b) => a.sortOrder - b.sortOrder);
@@ -634,6 +712,7 @@ export function LinksPageClient({
       const formIds = new Set(formBlocks.map((f) => f.id));
       const productIds = new Set(productBlocks.map((p) => p.id));
       const textIds = new Set(textBlocks.map((t) => t.id));
+      const mediaIds = new Set(mediaBlocks.map((m) => m.id));
       const eventIds = new Set(eventBlocks.map((e) => e.id));
 
       const seen = new Set<string>();
@@ -645,6 +724,7 @@ export function LinksPageClient({
           (ref.kind === "form" && formIds.has(ref.id)) ||
           (ref.kind === "product" && productIds.has(ref.id)) ||
           (ref.kind === "text" && textIds.has(ref.id)) ||
+          (ref.kind === "media" && mediaIds.has(ref.id)) ||
           (ref.kind === "event" && eventIds.has(ref.id));
         if (owns) {
           kept.push(ref);
@@ -659,10 +739,19 @@ export function LinksPageClient({
       for (const f of formBlocks) append("form", f.id);
       for (const p of productBlocks) append("product", p.id);
       for (const t of textBlocks) append("text", t.id);
+      for (const m of mediaBlocks) append("media", m.id);
       for (const e of eventBlocks) append("event", e.id);
       return kept;
     });
-  }, [links, bookingBlocks, formBlocks, productBlocks, textBlocks, eventBlocks]);
+  }, [
+    links,
+    bookingBlocks,
+    formBlocks,
+    productBlocks,
+    textBlocks,
+    mediaBlocks,
+    eventBlocks,
+  ]);
 
   // Persist global order (debounced). Skip on first run.
   const [, startReorderTransition] = useTransition();
@@ -733,7 +822,7 @@ export function LinksPageClient({
 
   // -------- Spotlight handler (links + bookings + forms + products + text) --------
   async function handleSpotlightChange(
-    blockKind: "link" | "form" | "booking" | "product" | "text",
+    blockKind: "link" | "form" | "booking" | "product" | "text" | "media",
     blockId: string,
     next: {
       spotlight: import("@/lib/block-spotlight").BlockSpotlight;
@@ -789,6 +878,18 @@ export function LinksPageClient({
                 animationStyle: next.animationStyle,
               }
             : t,
+        ),
+      );
+    } else if (blockKind === "media") {
+      setMediaBlocks((curr) =>
+        curr.map((m) =>
+          m.id === blockId
+            ? {
+                ...m,
+                spotlight: next.spotlight,
+                animationStyle: next.animationStyle,
+              }
+            : m,
         ),
       );
     } else {
@@ -1118,6 +1219,118 @@ export function LinksPageClient({
     }
   }
 
+  /* ---------- Media block handlers ---------- */
+
+  async function handleUploadMediaImage(
+    file: File,
+  ): Promise<{ url: string; byteSize: number } | null> {
+    const fd = new FormData();
+    fd.set("file", file);
+    const result = await uploadMediaImageAction(
+      { status: "idle" as const, url: null },
+      fd,
+    );
+    if (result.status === "error" || !result.url) {
+      toast.error(result.message ?? "آپلود ناموفق بود.");
+      return null;
+    }
+    return { url: result.url, byteSize: result.byteSize ?? file.size };
+  }
+
+  async function handleUploadMediaFile(
+    file: File,
+    kind: "video" | "file",
+  ): Promise<{ url: string; byteSize: number; mime: string | null } | null> {
+    const fd = new FormData();
+    fd.set("file", file);
+    fd.set("kind", kind);
+    const result = await uploadMediaFileAction(
+      { status: "idle" as const, url: null },
+      fd,
+    );
+    if (result.status === "error" || !result.url) {
+      toast.error(result.message ?? "آپلود ناموفق بود.");
+      return null;
+    }
+    return {
+      url: result.url,
+      byteSize: result.byteSize ?? file.size,
+      mime: kind === "video" ? "video/mp4" : "application/pdf",
+    };
+  }
+
+  async function handleSaveMedia(draft: MediaBlockDraft) {
+    setSavingMedia(true);
+    setMediaError(null);
+    try {
+      const payload = {
+        mode: draft.mode,
+        preset: draft.preset,
+        name: draft.name,
+        caption: draft.caption,
+        videoUrl: draft.videoUrl,
+        items: draft.items,
+        // Preserve spotlight/animation on edit; default to none on create.
+        spotlight: editingMediaBlock?.spotlight ?? "none",
+        animationStyle: editingMediaBlock?.animationStyle ?? null,
+      };
+      const fd = new FormData();
+      fd.set("payload", JSON.stringify(payload));
+      if (draft.id) {
+        fd.set("blockId", draft.id);
+        const result = await updateMediaBlockAction(idleState, fd);
+        if (result.status === "error") {
+          setMediaError(result.message ?? "ذخیره نشد.");
+          return;
+        }
+        toast.success("ذخیره شد.");
+      } else {
+        const result = await createMediaBlockAction(
+          { status: "idle" as const },
+          fd,
+        );
+        if (result.status === "error" || !result.id) {
+          setMediaError(result.message ?? "ساخت بلوک با خطا مواجه شد.");
+          return;
+        }
+        toast.success("بلوک مدیا ساخته شد.");
+      }
+      setMediaDialogOpen(false);
+      setEditingMediaBlock(null);
+      router.refresh();
+    } finally {
+      setSavingMedia(false);
+    }
+  }
+
+  async function handleDeleteMediaBlock(id: string) {
+    const prev = mediaBlocks;
+    setMediaBlocks((curr) => curr.filter((b) => b.id !== id));
+    const fd = new FormData();
+    fd.set("blockId", id);
+    const result = await deleteMediaBlockAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "حذف نشد.");
+      setMediaBlocks(prev);
+    } else {
+      toast.success("حذف شد");
+    }
+  }
+
+  async function handleToggleMediaActive(id: string, isActive: boolean) {
+    setMediaBlocks((curr) =>
+      curr.map((b) => (b.id === id ? { ...b, isActive } : b)),
+    );
+    const fd = new FormData();
+    fd.set("blockId", id);
+    fd.set("isActive", String(isActive));
+    const result = await toggleMediaBlockActiveAction(idleState, fd);
+    if (result.status === "error") {
+      toast.error(result.message ?? "تغییر وضعیت ناموفق بود.");
+      router.refresh();
+    }
+  }
+
   /* ---------- Event block handlers ---------- */
 
   function handleOpenNewEvent() {
@@ -1423,6 +1636,27 @@ export function LinksPageClient({
         spotlight: t.spotlight,
         animationStyle: t.animationStyle,
       })),
+    mediaBlocks: mediaBlocks
+      .filter((m) => m.isActive && (m.items.length > 0 || Boolean(m.videoUrl)))
+      .map((m) => ({
+        id: m.id,
+        mode: m.mode,
+        name: m.name,
+        caption: m.caption,
+        videoUrl: m.videoUrl,
+        items: m.items.map((it) => ({
+          id: it.id ?? it.url,
+          kind: it.kind,
+          url: it.url,
+          byteSize: it.byteSize,
+          mime: it.mime,
+          displayName: it.displayName,
+          thumbnailUrl: it.thumbnailUrl,
+        })),
+        sortOrder: liveOrderMap.get(`media:${m.id}`) ?? m.sortOrder,
+        spotlight: m.spotlight,
+        animationStyle: m.animationStyle,
+      })),
     // Preview mirrors the public renderer: only published + active +
     // upcoming events appear. Price fields aren't carried on the editor row,
     // so the preview card shows them as free/0 — accurate enough for layout
@@ -1452,7 +1686,7 @@ export function LinksPageClient({
         spotlight: e.spotlight,
         animationStyle: e.animationStyle,
       })),
-  }), [profile, links, bookingBlocks, formBlocks, productBlocks, textBlocks, eventBlocks, liveOrderMap, previewNowMs]);
+  }), [profile, links, bookingBlocks, formBlocks, productBlocks, textBlocks, mediaBlocks, eventBlocks, liveOrderMap, previewNowMs]);
 
   return (
     <div className="grid w-full min-w-0 min-h-[calc(100dvh-var(--header-h,4rem))] lg:grid-cols-[minmax(0,1fr)_minmax(340px,420px)]">
@@ -1678,6 +1912,33 @@ export function LinksPageClient({
                         />
                       );
                     }
+                    if (ref.kind === "media") {
+                      const media = mediaBlocks.find((m) => m.id === ref.id);
+                      if (!media) return null;
+                      return (
+                        <SortableMediaBlock
+                          key={itemKey(ref)}
+                          itemId={itemKey(ref)}
+                          block={media}
+                          onEdit={() => {
+                            setEditingMediaBlock(media);
+                            setMediaCopy(undefined);
+                            setMediaDialogOpen(true);
+                          }}
+                          onDelete={() => handleDeleteMediaBlock(media.id)}
+                          onToggleActive={(v) =>
+                            handleToggleMediaActive(media.id, v)
+                          }
+                          locked={mediaLocked}
+                          lockedPlan={mediaRequiredPlan}
+                          pinAllowed={pinAllowed}
+                          animateAllowed={animateAllowed}
+                          onSpotlightChange={(next) =>
+                            handleSpotlightChange("media", media.id, next)
+                          }
+                        />
+                      );
+                    }
                     const eventBlock = eventBlocks.find(
                       (e) => e.id === ref.id,
                     );
@@ -1823,6 +2084,15 @@ export function LinksPageClient({
           setEditingTextBlock(null);
           setTextDialogOpen(true);
         }}
+        onAddMedia={(config) => {
+          setAddOpen(false);
+          setEditingMediaBlock(null);
+          setMediaNewMode(config.mode);
+          setMediaNewPreset(config.preset);
+          setMediaCopy(config.copy);
+          setMediaError(null);
+          setMediaDialogOpen(true);
+        }}
         bookingsLocked={bookingsLocked}
         bookingsRequiredPlan={bookingsRequiredPlan}
         formsLocked={formsLocked}
@@ -1833,6 +2103,8 @@ export function LinksPageClient({
         eventsRequiredPlan={eventsRequiredPlan}
         textLocked={textLocked}
         textRequiredPlan={textRequiredPlan}
+        mediaLocked={mediaLocked}
+        mediaRequiredPlan={mediaRequiredPlan}
       />
 
       <TextBlockDialog
@@ -1856,6 +2128,38 @@ export function LinksPageClient({
         onSubmit={handleSaveText}
         onUploadImage={handleUploadTextImage}
         submitting={savingText}
+      />
+
+      <MediaBuilderDialog
+        open={mediaDialogOpen}
+        onOpenChange={(o) => {
+          setMediaDialogOpen(o);
+          if (!o) {
+            setEditingMediaBlock(null);
+            setMediaError(null);
+          }
+        }}
+        mode={editingMediaBlock?.mode ?? mediaNewMode}
+        preset={editingMediaBlock?.preset ?? mediaNewPreset}
+        copy={mediaCopy}
+        initial={
+          editingMediaBlock
+            ? {
+                id: editingMediaBlock.id,
+                mode: editingMediaBlock.mode,
+                preset: editingMediaBlock.preset,
+                name: editingMediaBlock.name,
+                caption: editingMediaBlock.caption,
+                videoUrl: editingMediaBlock.videoUrl,
+                items: editingMediaBlock.items,
+              }
+            : null
+        }
+        onSubmit={handleSaveMedia}
+        onUploadImage={handleUploadMediaImage}
+        onUploadFile={handleUploadMediaFile}
+        submitting={savingMedia}
+        errorMessage={mediaError}
       />
 
       <EventBuilderDialog
@@ -2354,6 +2658,67 @@ function SortableTextBlock({
       className="min-w-0"
     >
       <TextBlockRow
+        block={block}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onToggleActive={onToggleActive}
+        dragProps={dragProps}
+        isDragging={isDragging}
+        locked={locked}
+        lockedPlan={lockedPlan}
+        pinAllowed={pinAllowed}
+        animateAllowed={animateAllowed}
+        onSpotlightChange={onSpotlightChange}
+      />
+    </li>
+  );
+}
+
+function SortableMediaBlock({
+  itemId,
+  block,
+  onEdit,
+  onDelete,
+  onToggleActive,
+  locked,
+  lockedPlan,
+  pinAllowed,
+  animateAllowed,
+  onSpotlightChange,
+}: {
+  itemId: string;
+  block: EditableMediaBlockWithId;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggleActive: (next: boolean) => void;
+  locked?: boolean;
+  lockedPlan?: "pro" | "business";
+  pinAllowed: boolean;
+  animateAllowed: boolean;
+  onSpotlightChange: (next: {
+    spotlight: BlockSpotlight;
+    animationStyle: BlockAnimationStyle | null;
+  }) => Promise<void> | void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: itemId });
+  const dragProps = {
+    ...attributes,
+    ...listeners,
+  } as React.HTMLAttributes<HTMLButtonElement>;
+  return (
+    <li
+      ref={setNodeRef}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
+      className="min-w-0"
+    >
+      <MediaBlockRow
         block={block}
         onEdit={onEdit}
         onDelete={onDelete}

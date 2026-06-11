@@ -477,6 +477,25 @@ export default async function PublicProfilePage({
               spotlight: t.spotlight,
               animationStyle: t.animationStyle,
             })),
+            mediaBlocks: (profile.mediaBlocks ?? []).map((m) => ({
+              id: m.id,
+              mode: m.mode,
+              name: m.name,
+              caption: m.caption,
+              videoUrl: m.videoUrl,
+              items: m.items.map((it) => ({
+                id: it.id,
+                kind: it.kind,
+                url: it.url,
+                byteSize: Number(it.byteSize),
+                mime: it.mime,
+                displayName: it.displayName,
+                thumbnailUrl: it.thumbnailUrl,
+              })),
+              sortOrder: m.sortOrder,
+              spotlight: m.spotlight,
+              animationStyle: m.animationStyle,
+            })),
           }}
           formSubmitAction={submitFormAction}
         />

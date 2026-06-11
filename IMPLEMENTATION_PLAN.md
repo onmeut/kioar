@@ -616,3 +616,9 @@ No new infra (no BullMQ, no pg_cron, no Redis-as-queue). The existing systemd ti
 | ----------------- | ---------------- | ---- | --- | -------- | ----- |
 | `business_events` | `business_tools` | —    | —   | ✓        | Events block: registration, host approval, manual paid-receipt flow, discount codes, QR door check-in. Boolean grant; per-event capacity is host-set, not a plan limit. See `docs/EVENTS_PLAN.md`. |
 | `link_text_block` | `link_types`     | —    | ✓   | ✓        | Text block: Notion-style free text with optional title, optional icon (link icon vocabulary), and optional full-width photo. `body` required (~500 chars). Boolean grant; non-`business_` prefix ⇒ green Pro lock chip. Table `profile_text_blocks`. |
+| `media_block` | `business_tools` | ✓ | ✓ | ✓ | Media block ("مدیا": photos / video / file). One engine, three modes, surfaced via thin variant cards (گالری / ویدئو / رزومه / فایل دانلود / منو فایل / نمونه‌کار). Granted on every plan — the storage quota (`media_storage_mb`) is the real differentiator, so it never locks. Tables `profile_media_blocks` + `profile_media_items`. |
+| `media_storage_mb` | `limits` | 50 | 200 | 500 | Total media storage per page (MB). Numeric limit; usage summed live from `profile_media_items.byte_size` so deletes return quota instantly. |
+| `media_max_photo_mb` | `limits` | 10 | 10 | 10 | Max size per photo upload (MB). Equal across tiers for now; admin-editable. |
+| `media_max_video_mb` | `limits` | 100 | 100 | 100 | Max size per uploaded video (MB). Equal across tiers for now; admin-editable. |
+| `media_max_file_mb` | `limits` | 20 | 20 | 20 | Max size per PDF/file upload (MB). Equal across tiers for now; admin-editable. |
+| `media_max_gallery_count` | `limits` | 20 | 20 | 20 | Max photos per gallery block. Equal across tiers; absolute hard cap of 50 enforced in the validator. |

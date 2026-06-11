@@ -25,6 +25,10 @@ import {
   PublicProductPill,
   type PublicProductBlockData,
 } from "@/components/public/public-product-block";
+import {
+  PublicMediaBlock,
+  type PublicMediaBlockData,
+} from "@/components/public/public-media-block";
 import { PublicAnimatedBlock } from "@/components/public/public-animated-block";
 import { KioarAvatar } from "@/components/shared/kioar-avatar";
 import type { ActionState } from "@/lib/action-state";
@@ -89,6 +93,13 @@ export type PublicProfileCardData = {
   >;
   eventBlocks?: PublicEventCardData[];
   textBlocks?: PublicTextBlockData[];
+  mediaBlocks?: Array<
+    PublicMediaBlockData & {
+      sortOrder?: number;
+      spotlight?: BlockSpotlight;
+      animationStyle?: BlockAnimationStyle | null;
+    }
+  >;
 };
 
 /** Public-page render shape for a text block. */
@@ -325,12 +336,20 @@ export function PublicProfileCard({
                 block: PublicTextBlockData;
                 spotlight: BlockSpotlight;
                 animationStyle: BlockAnimationStyle | null;
+              }
+            | {
+                kind: "media";
+                sortOrder: number;
+                block: PublicMediaBlockData;
+                spotlight: BlockSpotlight;
+                animationStyle: BlockAnimationStyle | null;
               };
           const bookingBlocks = profile.bookingBlocks ?? [];
           const formBlocks = profile.formBlocks ?? [];
           const productBlocks = profile.productBlocks ?? [];
           const eventBlocks = profile.eventBlocks ?? [];
           const textBlocks = profile.textBlocks ?? [];
+          const mediaBlocks = profile.mediaBlocks ?? [];
           const items: Item[] = [
             ...profile.links.map((link, i) => {
               const spotlight = link.spotlight ?? "none";
@@ -392,6 +411,17 @@ export function PublicProfileCard({
               const baseSort = block.sortOrder ?? 5_000_000 + i;
               return {
                 kind: "text" as const,
+                sortOrder: spotlightSortKey(spotlight, baseSort),
+                block,
+                spotlight,
+                animationStyle: block.animationStyle ?? null,
+              };
+            }),
+            ...mediaBlocks.map((block, i) => {
+              const spotlight = block.spotlight ?? "none";
+              const baseSort = block.sortOrder ?? 6_000_000 + i;
+              return {
+                kind: "media" as const,
                 sortOrder: spotlightSortKey(spotlight, baseSort),
                 block,
                 spotlight,
@@ -670,6 +700,21 @@ export function PublicProfileCard({
                       </span>
                     ) : null}
                   </div>
+                </PublicAnimatedBlock>
+              );
+            }
+            if (item.kind === "media") {
+              return (
+                <PublicAnimatedBlock
+                  key={`m-${item.block.id}`}
+                  animClass={animClassOnce}
+                  intervalSec={10}
+                  index={idx}
+                >
+                  <PublicMediaBlock
+                    block={item.block}
+                    interactive={interactive}
+                  />
                 </PublicAnimatedBlock>
               );
             }
