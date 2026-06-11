@@ -616,7 +616,11 @@ export const ICON_KEYS = Object.keys(ICON_REGISTRY) as BuiltInIconKey[];
 export function isIconKey(value: unknown): value is IconKey {
   if (typeof value !== "string") return false;
   if (value in ICON_REGISTRY) return true;
-  return isTablerIconKey(value);
+  // Accept any `t:<name>` key — curated ones render via static components,
+  // non-curated ones render via the IconNodesContext. isTablerIconKey only
+  // validates curated keys so we check the prefix directly here.
+  if (value.startsWith("t:") && value.length > 2) return true;
+  return false;
 }
 
 function safeHost(url: string): string | null {
