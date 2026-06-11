@@ -1001,7 +1001,7 @@
 .page-theme-root {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
+  overflow: clip;
 }
 .page-theme-root > .page-wallpaper {
   position: absolute;

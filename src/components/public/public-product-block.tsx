@@ -15,7 +15,7 @@ import Image from "next/image";
 import { LayoutGridIcon, TagIcon, UtensilsCrossedIcon, XIcon } from "lucide-react";
 
 import { LinkIconBubble } from "@/components/dashboard/link-icon-picker";
-import type { IconKey } from "@/lib/link-icons";
+import { resolveIconEntry, type IconKey } from "@/lib/link-icons";
 
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -189,7 +189,7 @@ function PublicProductModal({
   return (
     <Container open={open} onOpenChange={onOpenChange}>
       <Content {...contentProps}>
-        <div className="grid shrink-0 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 border-b border-border bg-background px-4 py-3">
+        <div className="grid shrink-0 grid-cols-[2.5rem_1fr_2.5rem] items-center gap-2 border-b border-border bg-background px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
           <div />
           <Title className="text-center text-base font-bold">
             {block.name}
@@ -322,13 +322,10 @@ function ProductItemsList({
       isScrollingProgrammatically.current = true;
 
       const navHeight = navRef.current?.offsetHeight ?? 48;
-      let offsetTop = 0;
-      let node: HTMLElement | null = el;
-      while (node && node !== container) {
-        offsetTop += node.offsetTop;
-        node = node.offsetParent as HTMLElement | null;
-      }
-      container.scrollTo({ top: offsetTop - navHeight - 8, behavior: "smooth" });
+      const containerTop = container.getBoundingClientRect().top;
+      const elTop = el.getBoundingClientRect().top;
+      const target = container.scrollTop + (elTop - containerTop) - navHeight - 8;
+      container.scrollTo({ top: target, behavior: "smooth" });
 
       setTimeout(() => {
         isScrollingProgrammatically.current = false;
@@ -388,18 +385,22 @@ function ProductItemsList({
             دسته‌بندی‌ها
           </button>
           <div className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto touch-pan-x" role="tablist">
-            {orderedActiveSections.map((s) => (
-              <CategoryChip
-                key={s.id}
-                ref={(el) => {
-                  if (el) chipRefs.current.set(s.id, el);
-                  else chipRefs.current.delete(s.id);
-                }}
-                label={s.title}
-                selected={activeSection === s.id}
-                onSelect={() => scrollToSection(s.id)}
-              />
-            ))}
+            {orderedActiveSections.map((s) => {
+              const iconEntry = s.iconKey ? resolveIconEntry(s.iconKey as IconKey, null) : null;
+              return (
+                <CategoryChip
+                  key={s.id}
+                  ref={(el) => {
+                    if (el) chipRefs.current.set(s.id, el);
+                    else chipRefs.current.delete(s.id);
+                  }}
+                  label={s.title}
+                  icon={iconEntry?.Icon ?? null}
+                  selected={activeSection === s.id}
+                  onSelect={() => scrollToSection(s.id)}
+                />
+              );
+            })}
           </div>
         </div>
 
@@ -419,21 +420,25 @@ function ProductItemsList({
               </button>
             </div>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-              {orderedActiveSections.map((s) => (
-                <button
-                  key={s.id}
-                  type="button"
-                  onClick={() => scrollToSection(s.id)}
-                  className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
-                >
-                  <span className="flex size-14 items-center justify-center rounded-2xl border border-border bg-white text-muted-foreground">
-                    <UtensilsCrossedIcon className="size-5" />
-                  </span>
-                  <span className="line-clamp-2 text-xs font-bold leading-snug">
-                    {s.title}
-                  </span>
-                </button>
-              ))}
+              {orderedActiveSections.map((s) => {
+                const iconEntry = s.iconKey ? resolveIconEntry(s.iconKey as IconKey, null) : null;
+                const SectionIcon = iconEntry?.Icon;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => scrollToSection(s.id)}
+                    className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
+                  >
+                    <span className="flex size-14 items-center justify-center rounded-2xl border border-border bg-white text-foreground">
+                      {SectionIcon ? <SectionIcon className="size-7" /> : <UtensilsCrossedIcon className="size-7" />}
+                    </span>
+                    <span className="line-clamp-2 text-xs font-bold leading-snug">
+                      {s.title}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : null}
@@ -472,8 +477,8 @@ function ProductItemsList({
 
 const CategoryChip = forwardRef<
   HTMLButtonElement,
-  { label: string; selected: boolean; onSelect: () => void }
->(function CategoryChip({ label, selected, onSelect }, ref) {
+  { label: string; icon?: React.ComponentType<React.SVGProps<SVGSVGElement>> | null; selected: boolean; onSelect: () => void }
+>(function CategoryChip({ label, icon: Icon, selected, onSelect }, ref) {
   return (
     <button
       ref={ref}
@@ -482,12 +487,14 @@ const CategoryChip = forwardRef<
       aria-selected={selected}
       onClick={onSelect}
       className={cn(
-        "shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition-colors whitespace-nowrap",
+        "shrink-0 inline-flex items-center gap-1.5 rounded-full border text-xs font-bold transition-colors whitespace-nowrap",
+        Icon ? "px-2.5 py-1.5" : "px-3 py-2",
         selected
           ? "border-foreground bg-foreground text-background"
           : "border-border bg-background text-foreground hover:bg-foreground/4",
       )}
     >
+      {Icon ? <Icon className="size-5 shrink-0" /> : null}
       {label}
     </button>
   );

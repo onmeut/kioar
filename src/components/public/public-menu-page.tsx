@@ -11,8 +11,10 @@
 // both surfaces render identically.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import Image from "next/image";
 import { LayoutGridIcon, UtensilsCrossedIcon, XIcon } from "lucide-react";
+import { resolveIconEntry, type IconKey } from "@/lib/link-icons";
 import { formatPriceDisplay } from "@/lib/money";
 import { toPersianDigits } from "@/lib/persian";
 import { cn } from "@/lib/utils";
@@ -24,6 +26,7 @@ import type {
 export type MenuGroup = {
   id: string;
   title: string | null;
+  iconKey: string | null;
   items: PublicProductItem[];
 };
 
@@ -38,10 +41,10 @@ export function groupItems(block: PublicProductBlockData): MenuGroup[] {
   }
   const groups: MenuGroup[] = [];
   const ungrouped = bySection.get("");
-  if (ungrouped?.length) groups.push({ id: "_", title: null, items: ungrouped });
+  if (ungrouped?.length) groups.push({ id: "_", title: null, iconKey: null, items: ungrouped });
   for (const section of block.sections) {
     const items = bySection.get(section.id);
-    if (items?.length) groups.push({ id: section.id, title: section.title, items });
+    if (items?.length) groups.push({ id: section.id, title: section.title, iconKey: section.iconKey, items });
   }
   return groups;
 }
@@ -139,40 +142,27 @@ export function SharedMenuContent({
   const chipRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const rootRef = useRef<HTMLDivElement>(null);
 
-  // Scroll-spy: modal uses a scroll container ref; page uses IntersectionObserver on window.
+  // Scroll-spy: find whichever section's top is the last one that passed the nav bottom.
+  // Uses getBoundingClientRect so it works identically for window scroll and modal containers.
   useEffect(() => {
     if (!showNav) return;
 
-    if (scrollContainerRef) {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-      const handleScroll = () => {
-        const navHeight = navRef.current?.offsetHeight ?? 48;
-        const containerTop = container.getBoundingClientRect().top;
-        const threshold = containerTop + navHeight + 8;
-        let found = groups[0]?.id ?? null;
-        for (const g of groups) {
-          const el = sectionRefs.current.get(g.id);
-          if (el && el.getBoundingClientRect().top <= threshold) found = g.id;
-        }
-        setActiveId(found);
-      };
-      container.addEventListener("scroll", handleScroll, { passive: true });
-      handleScroll();
-      return () => container.removeEventListener("scroll", handleScroll);
-    } else {
-      const observer = new IntersectionObserver(
-        (entries) => {
-          const visible = entries
-            .filter((e) => e.isIntersecting)
-            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-          if (visible) setActiveId(visible.target.getAttribute("data-group-id"));
-        },
-        { rootMargin: "-88px 0px -60% 0px", threshold: [0, 0.25, 0.5, 1] },
-      );
-      for (const el of sectionRefs.current.values()) observer.observe(el);
-      return () => observer.disconnect();
-    }
+    const handleScroll = () => {
+      const navHeight = navRef.current?.offsetHeight ?? 48;
+      // A section becomes active once its top edge reaches within `threshold` px of the viewport top.
+      const threshold = navHeight + 16;
+      let found = groups[0]?.id ?? null;
+      for (const g of groups) {
+        const el = sectionRefs.current.get(g.id);
+        if (el && el.getBoundingClientRect().top <= threshold) found = g.id;
+      }
+      setActiveId(found);
+    };
+
+    const target = scrollContainerRef?.current ?? window;
+    target.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+    return () => target.removeEventListener("scroll", handleScroll);
   }, [showNav, groups, scrollContainerRef]);
 
   // Keep the active chip scrolled into view in the nav strip.
@@ -185,22 +175,22 @@ export function SharedMenuContent({
     (id: string) => {
       const el = sectionRefs.current.get(id);
       if (!el) return;
-      setActiveId(id);
-      setCatPanelOpen(false);
+      // Flush panel close synchronously so nav height is correct before we measure.
+      flushSync(() => {
+        setActiveId(id);
+        setCatPanelOpen(false);
+      });
       if (scrollContainerRef) {
         const container = scrollContainerRef.current;
         if (!container) return;
-        // Use offsetTop relative to the scroll container (stable regardless of panel open state)
         const navHeight = navRef.current?.offsetHeight ?? 48;
-        let offsetTop = 0;
-        let node: HTMLElement | null = el;
-        while (node && node !== container) {
-          offsetTop += node.offsetTop;
-          node = node.offsetParent as HTMLElement | null;
-        }
-        container.scrollTo({ top: offsetTop - navHeight - 8, behavior: "smooth" });
+        const containerTop = container.getBoundingClientRect().top;
+        const elTop = el.getBoundingClientRect().top;
+        const target = container.scrollTop + (elTop - containerTop) - navHeight - 8;
+        container.scrollTo({ top: target, behavior: "smooth" });
       } else {
-        const top = el.getBoundingClientRect().top + window.scrollY - 80;
+        const navHeight = navRef.current?.offsetHeight ?? 56;
+        const top = el.getBoundingClientRect().top + window.scrollY - navHeight - 16;
         window.scrollTo({ top, behavior: "smooth" });
       }
     },
@@ -220,95 +210,96 @@ export function SharedMenuContent({
   return (
     <div ref={rootRef}>
       {showNav ? (
-        <div
-          ref={navRef}
-          className="sticky top-0 z-10 border-b border-border/40 bg-card/95 backdrop-blur-sm"
-        >
-          {/* Category chips row */}
-          <div className="no-scrollbar flex items-center gap-2 px-4 py-2.5 touch-pan-x overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => {
-                setCatPanelOpen((v) => {
-                  if (!v && scrollContainerRef?.current) {
-                    scrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
-                  }
-                  return !v;
-                });
-              }}
-              className={cn(
-                "shrink-0 inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-bold transition-colors whitespace-nowrap",
-                catPanelOpen
-                  ? "border-foreground bg-foreground text-background"
-                  : "border-border bg-background text-foreground hover:bg-foreground/4",
-              )}
-              aria-label="همه دسته‌بندی‌ها"
-            >
-              <LayoutGridIcon className="size-3.5 shrink-0" />
-              دسته‌بندی‌ها
-            </button>
-            <div
-              className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto touch-pan-x"
-              role="tablist"
-            >
-              {navGroups.map((g) => (
-                <button
-                  key={g.id}
-                  ref={(el) => {
-                    if (el) chipRefs.current.set(g.id, el);
-                    else chipRefs.current.delete(g.id);
-                  }}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeId === g.id}
-                  onClick={() => scrollToGroup(g.id)}
-                  className={cn(
-                    "shrink-0 rounded-full border px-3 py-2 text-xs font-bold transition-colors whitespace-nowrap",
-                    activeId === g.id
-                      ? "border-foreground bg-foreground text-background"
-                      : "border-border bg-background text-foreground hover:bg-foreground/4",
-                  )}
-                >
-                  {g.title}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Inline categories dropdown panel */}
+        <div ref={navRef} className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm">
           {catPanelOpen ? (
-            <div className="border-t border-border/40 bg-card px-4 pb-4 pt-3">
-              <div className="mb-3 flex items-center justify-between">
-                <div className="size-8" />
-                <p className="flex-1 text-center text-sm font-bold">دسته‌بندی‌ها</p>
+            /* Full-width category panel — replaces the chips bar entirely */
+            <div className="border-b border-border/40 px-4 pb-4 pt-2.5">
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center mb-3">
                 <button
                   type="button"
                   onClick={() => setCatPanelOpen(false)}
-                  className="grid size-8 place-items-center rounded-full text-muted-foreground hover:bg-foreground/4"
+                  className="justify-self-start shrink-0 inline-flex items-center gap-1.5 rounded-full border border-foreground bg-foreground px-3 py-2 text-xs font-bold text-background whitespace-nowrap"
                   aria-label="بستن"
                 >
-                  <XIcon className="size-4" />
+                  <XIcon className="size-3.5 shrink-0" />
+                  بستن
                 </button>
+                <p className="text-sm font-bold">دسته‌بندی‌ها</p>
+                <div />
               </div>
               <div className="grid grid-cols-3 gap-3 sm:grid-cols-4">
-                {navGroups.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => scrollToGroup(g.id)}
-                    className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
-                  >
-                    <span className="flex size-14 items-center justify-center rounded-2xl border border-border bg-white text-muted-foreground">
-                      <UtensilsCrossedIcon className="size-5" />
-                    </span>
-                    <span className="line-clamp-2 text-xs font-bold leading-snug">
-                      {g.title}
-                    </span>
-                  </button>
-                ))}
+                {navGroups.map((g) => {
+                  const iconEntry = g.iconKey ? resolveIconEntry(g.iconKey as IconKey, null) : null;
+                  const GroupIcon = iconEntry?.Icon;
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => scrollToGroup(g.id)}
+                      className="tap-target flex flex-col items-center gap-2 rounded-2xl border border-transparent p-2 text-center transition-colors hover:border-border hover:bg-foreground/4"
+                    >
+                      <span className="flex size-14 items-center justify-center rounded-2xl border border-border bg-white text-foreground">
+                        {GroupIcon ? <GroupIcon className="size-7" /> : <UtensilsCrossedIcon className="size-7" />}
+                      </span>
+                      <span className="line-clamp-2 text-xs font-bold leading-snug">
+                        {g.title}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
-          ) : null}
+          ) : (
+            /* Normal chips bar */
+            <div className="no-scrollbar flex items-center gap-2 border-b border-border/40 px-4 py-2.5 touch-pan-x overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  if (scrollContainerRef?.current) {
+                    scrollContainerRef.current.scrollTo({ top: 0, behavior: "smooth" });
+                  }
+                  setCatPanelOpen(true);
+                }}
+                className="shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-2 text-xs font-bold text-foreground transition-colors whitespace-nowrap hover:bg-foreground/4"
+                aria-label="همه دسته‌بندی‌ها"
+              >
+                <LayoutGridIcon className="size-3.5 shrink-0" />
+                دسته‌بندی‌ها
+              </button>
+              <div
+                className="no-scrollbar flex min-w-0 flex-1 gap-2 overflow-x-auto touch-pan-x"
+                role="tablist"
+              >
+                {navGroups.map((g) => {
+                  const iconEntry = g.iconKey ? resolveIconEntry(g.iconKey as IconKey, null) : null;
+                  const GroupIcon = iconEntry?.Icon;
+                  return (
+                    <button
+                      key={g.id}
+                      ref={(el) => {
+                        if (el) chipRefs.current.set(g.id, el);
+                        else chipRefs.current.delete(g.id);
+                      }}
+                      type="button"
+                      role="tab"
+                      aria-selected={activeId === g.id}
+                      onClick={() => scrollToGroup(g.id)}
+                      className={cn(
+                        "shrink-0 inline-flex items-center gap-1.5 rounded-full border text-xs font-bold transition-colors whitespace-nowrap",
+                        GroupIcon ? "px-2.5 py-1.5" : "px-3 py-2",
+                        activeId === g.id
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border bg-background text-foreground hover:bg-foreground/4",
+                      )}
+                    >
+                      {GroupIcon ? <GroupIcon className="size-5 shrink-0" /> : null}
+                      {g.title}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       ) : null}
 

@@ -186,7 +186,7 @@ export default async function PublicBlockPage({
     return (
       <main
         dir="rtl"
-        className="relative min-h-dvh overflow-x-hidden text-foreground"
+        className="relative min-h-dvh overflow-x-clip text-foreground"
       >
         <PageThemeProvider appearance={appearance}>{content}</PageThemeProvider>
       </main>
@@ -196,7 +196,7 @@ export default async function PublicBlockPage({
   return (
     <main
       dir="rtl"
-      className="relative min-h-dvh overflow-x-hidden text-foreground"
+      className="relative min-h-dvh overflow-x-clip text-foreground"
     >
       <PageThemeProvider
         appearance={appearance}
@@ -204,7 +204,7 @@ export default async function PublicBlockPage({
       >
         <div className="relative mx-auto flex min-h-dvh w-full max-w-145 flex-col pt-[env(safe-area-inset-top)] lg:pt-10">
           {/* Card shell — mirrors PublicProfileCard's outer container */}
-          <div className="relative flex flex-1 flex-col overflow-hidden bg-card pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1.5rem))] lg:rounded-t-[2rem] lg:shadow-card">
+          <div className="relative flex flex-1 flex-col overflow-clip bg-card pb-[max(1.5rem,calc(env(safe-area-inset-bottom)+1.5rem))] lg:rounded-t-[2rem] lg:shadow-card">
             {/* Header: logo + title + share */}
             <div className="relative border-b border-border/40 px-6 pt-6 pb-4 lg:px-8">
               <div className="relative flex items-center justify-between">

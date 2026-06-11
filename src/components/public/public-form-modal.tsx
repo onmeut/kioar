@@ -137,7 +137,7 @@ function PublicFormModal({
     <Container open={open} onOpenChange={onOpenChange}>
       <Content {...contentProps}>
         <Title className="sr-only">{block.name}</Title>
-        <div className="flex shrink-0 items-center justify-between border-b px-3 py-2.5">
+        <div className="flex shrink-0 items-center justify-between border-b px-3 pb-2.5 pt-[calc(0.625rem+env(safe-area-inset-top))]">
           <span className="w-9" />
           <h2 className="text-sm font-bold">{block.name}</h2>
           <Button

@@ -251,7 +251,7 @@ function PublicBookingModal({
   const body = (
     <div className="flex h-full min-h-0 flex-col">
       {/* Header */}
-      <div className="relative flex shrink-0 items-center justify-between border-b px-4 py-3">
+      <div className="relative flex shrink-0 items-center justify-between border-b px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         {canBack ? (
           <button
             type="button"

@@ -248,10 +248,10 @@ export function PublicProfileShareModal({
     return (
       <Sheet open={open} onOpenChange={(v) => !v && onClose()}>
         <SheetContent side="bottom" className="flex flex-col rounded-t-2xl p-0">
-          <SheetTitle className="shrink-0 border-b px-4 py-3 text-center text-base font-semibold">
+          <SheetTitle className="shrink-0 border-b px-4 pb-3 pt-[calc(0.75rem+env(safe-area-inset-top))] text-center text-base font-semibold">
             اشتراک‌گذاری پروفایل
           </SheetTitle>
-          <div className="min-h-0 flex-1 overflow-y-auto px-0 pb-safe-or-6">
+          <div className="min-h-0 flex-1 overflow-y-auto px-0 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
             <ShareModalContent
               url={url}
               title={title}
