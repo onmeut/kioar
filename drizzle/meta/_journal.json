@@ -477,6 +477,13 @@
 			"when": 1778902000000,
 			"tag": "0068_seed_media_features",
 			"breakpoints": true
+		},
+		{
+			"idx": 69,
+			"version": "7",
+			"when": 1778902100000,
+			"tag": "0069_page_transfers",
+			"breakpoints": true
 		}
 	]
 }

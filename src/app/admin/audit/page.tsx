@@ -149,8 +149,20 @@ export default async function AdminAuditPage({
           <Label htmlFor="action" className="text-xs">
             نوع اقدام
           </Label>
-          <Select name="action" defaultValue={actionFilter ?? "all"}>
-            <SelectTrigger id="action" dir="ltr">
+          <Select
+            name="action"
+            defaultValue={actionFilter ?? "all"}
+            items={[
+              { value: "all", label: "همه" },
+              ...actionOptions.map((k) => ({
+                value: k,
+                label: ADMIN_AUDIT_ACTION_LABELS[
+                  k as keyof typeof ADMIN_AUDIT_ACTION_LABELS
+                ] ?? k,
+              })),
+            ]}
+          >
+            <SelectTrigger id="action" dir="ltr" className="w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

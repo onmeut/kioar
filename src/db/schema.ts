@@ -105,6 +105,13 @@ export const subscriptionStatusEnum = pgEnum("subscription_status", [
   "canceled",
 ]);
 export const billingCycleEnum = pgEnum("billing_cycle", ["monthly", "annual"]);
+export const pageTransferStatusEnum = pgEnum("page_transfer_status", [
+  "pending",
+  "accepted",
+  "rejected",
+  "canceled",
+  "expired",
+]);
 export const entitlementSourceEnum = pgEnum("entitlement_source", [
   "subscription",
   "admin_grant",
@@ -3068,3 +3075,94 @@ export const cardEntitlements = pgTable(
     uniqueIndex("card_entitlements_source_key_idx").on(table.sourceKey),
   ],
 );
+
+// ---------------------------------------------------------------------------
+// Page ownership transfers
+// ---------------------------------------------------------------------------
+// A request to move a page (profiles row) from one owner to another phone
+// number. The page + all its page-keyed data (subscription, entitlements,
+// links, blocks, bookings, forms, products, cards) follow the page when the
+// transfer is accepted — we only reassign `profiles.user_id`. User-keyed
+// billing/legal records (invoices, card_orders) intentionally STAY with the
+// original owner.
+//
+// Security model:
+//   - `token` is a single-use locator for the public /transfer/[token]
+//     landing + QR. It routes the recipient to the right transfer; it does
+//     NOT authorize acceptance.
+//   - Acceptance always asserts the authenticated viewer's phone equals
+//     `to_phone`. A leaked link can't hijack a page — phone ownership
+//     (proven via OTP at login) is the real gate.
+//   - `to_user_id` is filled when we can match `to_phone` to an existing
+//     user at creation time (registered recipient → in-app prompt). It stays
+//     null for unregistered recipients until they sign up; acceptance
+//     re-derives the user from the authenticated session regardless.
+//
+// Lifecycle: pending → accepted | rejected | canceled | expired. Expiry is
+// 7 days, enforced by /api/cron/expire-transfers. At most one pending
+// transfer per page (partial unique index).
+export const pageTransfers = pgTable(
+  "page_transfers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    pageId: uuid("page_id")
+      .notNull()
+      .references(() => profiles.id, { onDelete: "cascade" }),
+    fromUserId: uuid("from_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // Normalized recipient phone (via normalizeIranianPhone). The canonical
+    // gate for acceptance — never trust the token or to_user_id alone.
+    toPhone: text("to_phone").notNull(),
+    // Filled when the recipient phone already maps to a user at creation, or
+    // backfilled on accept. Nullable for unregistered recipients.
+    toUserId: uuid("to_user_id").references(() => users.id, {
+      onDelete: "set null",
+    }),
+    // Single-use locator for the public landing / QR link. Random, unguessable.
+    token: text("token").notNull(),
+    status: pageTransferStatusEnum("status").default("pending").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+    canceledAt: timestamp("canceled_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .$onUpdate(() => new Date())
+      .notNull(),
+  },
+  (table) => [
+    uniqueIndex("page_transfers_token_idx").on(table.token),
+    // Recipient lookups by phone for the in-app prompt + notifications list.
+    index("page_transfers_to_phone_status_idx").on(table.toPhone, table.status),
+    // Sender's outgoing list.
+    index("page_transfers_from_user_status_idx").on(
+      table.fromUserId,
+      table.status,
+    ),
+    // At most one open transfer per page.
+    uniqueIndex("page_transfers_page_pending_idx")
+      .on(table.pageId)
+      .where(sql`${table.status} = 'pending'`),
+    // Cron expiry scans pending rows by expiry.
+    index("page_transfers_expires_at_idx").on(table.expiresAt),
+  ],
+);
+
+export const pageTransfersRelations = relations(pageTransfers, ({ one }) => ({
+  page: one(profiles, {
+    fields: [pageTransfers.pageId],
+    references: [profiles.id],
+  }),
+  fromUser: one(users, {
+    fields: [pageTransfers.fromUserId],
+    references: [users.id],
+  }),
+  toUser: one(users, {
+    fields: [pageTransfers.toUserId],
+    references: [users.id],
+  }),
+}));

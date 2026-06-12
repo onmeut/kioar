@@ -27,6 +27,7 @@ All cron routes share the same shape:
 | `/api/cron/billing`          | `0 3 * * *`     | daily 03:00  | POST   | `Authorization: Bearer $CRON_SECRET` | Subscription state machine: trial reminders, period-end → grace, grace → expired, plan-change rollover. |
 | `/api/cron/sms`              | `* * * * *`     | every minute | POST   | `Authorization: Bearer $CRON_SECRET` | Drain `sms_queue`: dispatch transactional SMS via Kavenegar, retry with backoff, give up after 3 tries. |
 | `/api/cron/affiliate-unlock` | `0 4 * * *`     | daily 04:00  | POST   | `Authorization: Bearer $CRON_SECRET` | Unlock matured affiliate commissions past their hold window.                                            |
+| `/api/cron/expire-transfers` | `0 * * * *`     | hourly       | POST   | `Authorization: Bearer $CRON_SECRET` | Expire pending page-ownership transfers past their 7-day window.                                        |
 
 > Cron expressions assume the scheduler runs in UTC. Day-keys inside the routes
 > already anchor to Asia/Tehran via `tehranIsoDate(now)`, so the trigger TZ

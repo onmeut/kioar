@@ -7,6 +7,7 @@ import {
   profileBookingBlocks,
   profileFormBlocks,
 } from "@/db/schema";
+import { countIncomingForViewer } from "@/lib/transfer-service";
 
 export interface SidebarBadgeCounts {
   bookings: number;
@@ -20,11 +21,16 @@ export interface SidebarBadgeCounts {
  *
  * - `bookings`: upcoming confirmed bookings (startsAt ≥ now) on the page.
  * - `forms`: total form submissions on the page.
- * - `notifications`: always 0 (no notifications table yet).
+ * - `notifications`: pending incoming page-transfer offers for the viewer
+ *   (matched by phone). Drives the red dot on the notifications nav item.
+ *
+ * `viewerPhone` is optional so legacy callers that only have `userId` keep
+ * working (notifications falls back to 0).
  */
 export async function getSidebarBadgeCounts(
   pageId: string,
   _userId: string,
+  viewerPhone?: string,
 ): Promise<SidebarBadgeCounts> {
   const db = getDb();
   const now = new Date();
@@ -65,9 +71,13 @@ export async function getSidebarBadgeCounts(
       : Promise.resolve({ n: 0 }),
   ]);
 
+  const notifications = viewerPhone
+    ? await countIncomingForViewer(viewerPhone).catch(() => 0)
+    : 0;
+
   return {
     bookings: bookingCountRow?.n ?? 0,
     forms: formCountRow?.n ?? 0,
-    notifications: 0,
+    notifications,
   };
 }

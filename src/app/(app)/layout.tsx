@@ -18,6 +18,7 @@ import { MobileBottomNav } from "@/components/shared/mobile-bottom-nav";
 import { ProPromoBar } from "@/components/shared/pro-promo-bar";
 import { InstallPrompt } from "@/components/app/install-prompt";
 import { PullToRefresh } from "@/components/app/pull-to-refresh";
+import { TransferPrompt } from "@/components/app/transfer-prompt";
 import {
   Sidebar,
   SidebarContent,
@@ -35,6 +36,7 @@ import { profileShareUrl } from "@/lib/profile-domains";
 import { DEFAULT_QR_STYLE } from "@/lib/qr/types";
 import { getReferralAvailableMonths } from "@/lib/referrals";
 import { getSidebarBadgeCounts } from "@/lib/sidebar-counts";
+import { listIncomingForViewer } from "@/lib/transfer-service";
 import { log } from "@/lib/log";
 import { saveQrStyleAction } from "./me/autosave-actions";
 
@@ -113,7 +115,7 @@ export default async function DashboardLayout({
     csvExportFeature,
     qrCustomizationFeature,
   ] = await Promise.all([
-    getSidebarBadgeCounts(currentPageId, viewer.user.id).catch(
+    getSidebarBadgeCounts(currentPageId, viewer.user.id, viewer.user.phone).catch(
       (err: unknown) => {
         log.error("app_layout.sidebar_counts_failed", {
           pageId: currentPageId,
@@ -141,6 +143,34 @@ export default async function DashboardLayout({
   const publicUrl = profileShareUrl(viewer.profile.slug, viewer.profile.domain);
 
   const isAdmin = viewer.user.role === "admin";
+
+  // Incoming page-transfer offers addressed to this viewer's phone. Surfaced
+  // as a bottom-sheet prompt on app open. Resilient: a failure here must
+  // never blank the shell.
+  const incomingTransfers = await listIncomingForViewer(
+    viewer.user.phone,
+  ).catch((err: unknown) => {
+    log.warn("app_layout.incoming_transfers_failed", {
+      userId: viewer.user.id,
+      error: (err as Error)?.message,
+    });
+    return [];
+  });
+  const transferPrompts = incomingTransfers.map((t) => ({
+    id: t.id,
+    fromPhone: t.fromUser?.phone ?? null,
+    page: t.page
+      ? {
+          slug: t.page.slug,
+          label:
+            t.page.fullName?.trim() ||
+            t.page.title?.trim() ||
+            `/${t.page.slug}`,
+          avatarUrl: t.page.avatarUrl,
+          avatarSeed: t.page.avatarSeed,
+        }
+      : null,
+  }));
 
   // Page-scoped nav.
   //
@@ -357,6 +387,7 @@ export default async function DashboardLayout({
         </SidebarProvider>
       </div>
       <InstallPrompt />
+      <TransferPrompt transfers={transferPrompts} />
     </div>
   );
 }

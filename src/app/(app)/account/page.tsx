@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 
 import { AccountForm } from "@/components/app/account-form";
+import { TransferPageSection } from "@/components/app/transfer-page-section";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { signOutAction } from "@/app/(app)/insights/actions";
@@ -34,6 +35,7 @@ import { getDb } from "@/db";
 import { invoices } from "@/db/schema";
 import { requireUser } from "@/lib/auth/session";
 import { listOwnedPagesWithPlan } from "@/lib/pages";
+import { listOutgoingForUser } from "@/lib/transfer-service";
 import { formatPhoneDisplay } from "@/lib/phone";
 import {
   formatShamsiDate,
@@ -92,7 +94,7 @@ export default async function AccountPage() {
   const { user } = viewer;
 
   const db = getDb();
-  const [pages, recentInvoices] = await Promise.all([
+  const [pages, recentInvoices, outgoingTransfers] = await Promise.all([
     listOwnedPagesWithPlan(user.id),
     db.query.invoices.findMany({
       where: eq(invoices.userId, user.id),
@@ -100,7 +102,24 @@ export default async function AccountPage() {
       limit: 20,
       with: { plan: true, page: true },
     }),
+    listOutgoingForUser(user.id),
   ]);
+
+  const transferPages = pages.map((page) => ({
+    id: page.id,
+    slug: page.slug,
+    label: page.fullName?.trim() || page.title?.trim() || `/${page.slug}`,
+  }));
+
+  const outgoing = outgoingTransfers.map((t) => ({
+    id: t.id,
+    pageLabel:
+      t.page?.fullName?.trim() ||
+      t.page?.title?.trim() ||
+      (t.page ? `/${t.page.slug}` : "صفحه"),
+    pageSlug: t.page?.slug ?? "",
+    toPhone: t.toPhone,
+  }));
 
   // Pin unpaid to the top, then newest-first for everything else, then
   // cap to 5. Live bills should never be pushed below resolved ones in
@@ -213,6 +232,9 @@ export default async function AccountPage() {
           })}
         </div>
       </section>
+
+      {/* ----- Transfer ownership ----- */}
+      <TransferPageSection pages={transferPages} outgoing={outgoing} />
 
       {/* ----- Recent invoices ----- */}
       <section className="space-y-3">

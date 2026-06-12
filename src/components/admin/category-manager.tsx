@@ -285,8 +285,9 @@ function CategoryFormDialog({
                   setAccountType(ind.accountTypes[0] ?? "personal");
                 }
               }}
+              items={industries.map((ind) => ({ value: ind.id, label: ind.titleFa }))}
             >
-              <SelectTrigger>
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="انتخاب صنف" />
               </SelectTrigger>
               <SelectContent>

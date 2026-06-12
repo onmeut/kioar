@@ -51,8 +51,12 @@ export function RepointControl({
     <form action={formAction} className="space-y-3 pt-2">
       <input type="hidden" name="cardId" value={cardId} />
       <input type="hidden" name="pageId" value={pageId} />
-      <Select value={pageId} onValueChange={(v) => setPageId(v ?? "")}>
-        <SelectTrigger>
+      <Select
+        value={pageId}
+        onValueChange={(v) => setPageId(v ?? "")}
+        items={pages.map((p) => ({ value: p.id, label: p.fullName || p.slug }))}
+      >
+        <SelectTrigger className="w-full">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
