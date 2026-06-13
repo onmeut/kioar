@@ -919,6 +919,16 @@ export const mediaItemInputSchema = z.object({
     .nullable()
     .transform((v) => (v && v.length ? v : null)),
   thumbnailUrl: optionalHttpUrlSchema,
+  /** Natural width of the image as an integer (pixels). */
+  aspectRatioW: z.number().int().positive().optional().nullable(),
+  /** Natural height of the image as an integer (pixels). */
+  aspectRatioH: z.number().int().positive().optional().nullable(),
+  /** Crop window — relative coordinates [0, 1]. All four must be present
+   * together or all absent. */
+  cropX: z.number().min(0).max(1).optional().nullable(),
+  cropY: z.number().min(0).max(1).optional().nullable(),
+  cropW: z.number().min(0).max(1).optional().nullable(),
+  cropH: z.number().min(0).max(1).optional().nullable(),
 });
 
 export const mediaBlockInputSchema = z

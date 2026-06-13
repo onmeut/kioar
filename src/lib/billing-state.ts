@@ -348,7 +348,15 @@ export async function transitionForToday(
     JOIN "users"    u  ON u."id"  = pr."user_id"
     LEFT JOIN "subscription_price_locks" l
       ON l."page_id" = s."page_id" AND l."plan_id" = s."plan_id"
-    WHERE s."plan_key" <> 'free'
+    -- Filter on the SOURCE OF TRUTH (plans.key via the join we already do),
+    -- NOT the denormalized s.plan_key. A stale/NULL plan_key (e.g. a write
+    -- path that forgets to co-update it) must never silently hide a paying
+    -- or trialing subscription from the state machine — that is exactly the
+    -- incident that froze ~1400 trials in 'trialing' (see
+    -- drizzle/0071_fix_plan_key_and_unstick_trials.sql). The partial index
+    -- ps_status_plan_key_idx still accelerates the common case; correctness
+    -- no longer depends on the denormalized column being in sync.
+    WHERE p."key" <> 'free'
       AND s."status" IN ('active','trialing','pending_renewal','grace')
   `)) as unknown as SubRow[];
 

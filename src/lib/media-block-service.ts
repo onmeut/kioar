@@ -258,6 +258,12 @@ function buildItemRows(
     mime: it.mime ?? null,
     displayName: it.displayName ?? null,
     thumbnailUrl: it.thumbnailUrl ?? null,
+    aspectRatioW: it.aspectRatioW ?? null,
+    aspectRatioH: it.aspectRatioH ?? null,
+    cropX: it.cropX ?? null,
+    cropY: it.cropY ?? null,
+    cropW: it.cropW ?? null,
+    cropH: it.cropH ?? null,
     sortOrder: index,
   }));
 }

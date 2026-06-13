@@ -14,6 +14,12 @@ export type PublicMediaItemData = {
   mime: string | null;
   displayName: string | null;
   thumbnailUrl: string | null;
+  aspectRatioW: number | null;
+  aspectRatioH: number | null;
+  cropX: number | null;
+  cropY: number | null;
+  cropW: number | null;
+  cropH: number | null;
 };
 
 export type PublicMediaBlockData = {
@@ -53,6 +59,79 @@ function Caption({ text }: { text: string | null }) {
 }
 
 /**
+ * Renders one gallery image inside its fixed-height container.
+ *
+ * The container is `position: relative; overflow: hidden` with a fixed
+ * padding-bottom aspect ratio (set by the caller). This component positions
+ * the image inside that container.
+ *
+ * With a crop: the image is made `1/cropW × 1/cropH` times larger than the
+ * container (so the crop window fills it exactly) and offset so the crop
+ * window's top-left aligns with the container's top-left.
+ *
+ * Without a crop: the image uses object-cover to fill the container
+ * (letterboxed for off-ratio images — the excess is clipped).
+ */
+function GalleryImage({
+  photo,
+  sizes,
+  alt,
+}: {
+  photo: PublicMediaItemData;
+  sizes: string;
+  alt: string;
+}) {
+  const hasCrop =
+    photo.cropX !== null &&
+    photo.cropY !== null &&
+    photo.cropW !== null &&
+    photo.cropH !== null &&
+    (photo.cropW ?? 0) > 0 &&
+    (photo.cropH ?? 0) > 0;
+
+  if (hasCrop) {
+    // Render the full image inside an oversized absolutely-positioned wrapper,
+    // then let the parent's overflow:hidden clip it to the crop window.
+    // scaleW/H = how many times larger than the container the full image is.
+    const scaleW = 1 / photo.cropW!;
+    const scaleH = 1 / photo.cropH!;
+    const leftPct = -(photo.cropX! * scaleW) * 100;
+    const topPct = -(photo.cropY! * scaleH) * 100;
+    return (
+      <span
+        style={{
+          position: "absolute",
+          width: `${scaleW * 100}%`,
+          height: `${scaleH * 100}%`,
+          left: `${leftPct}%`,
+          top: `${topPct}%`,
+        }}
+      >
+        <Image
+          src={photo.url}
+          alt={alt}
+          fill
+          sizes={sizes}
+          style={{ objectFit: "fill" }}
+          unoptimized
+        />
+      </span>
+    );
+  }
+
+  return (
+    <Image
+      src={photo.url}
+      alt={alt}
+      fill
+      sizes={sizes}
+      className="object-cover"
+      unoptimized
+    />
+  );
+}
+
+/**
  * Public renderer for a media block. One component, three modes:
  *  - photos: 1 → full-width image; N → horizontal swipeable gallery (the next
  *    image peeks to signal swipe).
@@ -76,16 +155,11 @@ export function PublicMediaBlock({
       return (
         <div className="w-full">
           <BlockTitle text={block.name} />
-          <span className="block w-full overflow-hidden rounded-2xl bg-muted">
-            <Image
-              src={p.url}
-              alt={block.name ?? ""}
-              width={640}
-              height={640}
-              sizes="(max-width: 640px) 100vw, 640px"
-              className="h-auto w-full object-cover"
-              unoptimized
-            />
+          <span
+            className="relative block w-full overflow-hidden rounded-2xl bg-muted"
+            style={{ aspectRatio: "4 / 5" }}
+          >
+            <GalleryImage photo={p} sizes="(max-width: 640px) 100vw, 640px" alt={block.name ?? ""} />
           </span>
           <Caption text={block.caption} />
         </div>
@@ -95,26 +169,14 @@ export function PublicMediaBlock({
     return (
       <div className="w-full">
         <BlockTitle text={block.name} />
-        <div
-          className={cn(
-            "flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 no-scrollbar touch-pan-y",
-            // The trailing padding lets the last slide rest with a hint of
-            // empty space; each slide is 82% so the next image peeks.
-          )}
-        >
+        <div className="flex snap-x snap-mandatory gap-2.5 overflow-x-auto pb-1 no-scrollbar touch-pan-x">
           {photos.map((p) => (
             <span
               key={p.id}
-              className="relative aspect-square w-[82%] shrink-0 snap-start overflow-hidden rounded-2xl bg-muted"
+              className="relative w-[82%] shrink-0 snap-start overflow-hidden rounded-2xl bg-muted"
+              style={{ aspectRatio: "4 / 5" }}
             >
-              <Image
-                src={p.url}
-                alt=""
-                fill
-                sizes="82vw"
-                className="object-cover"
-                unoptimized
-              />
+              <GalleryImage photo={p} sizes="82vw" alt="" />
             </span>
           ))}
         </div>

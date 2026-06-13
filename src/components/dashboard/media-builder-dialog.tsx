@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowRightIcon,
+  CropIcon,
   FileTextIcon,
   ImageIcon,
   Loader2Icon,
@@ -23,6 +24,8 @@ import {
   VideoIcon,
   XIcon,
 } from "lucide-react";
+import { Cropper, type CropperRef } from "react-mobile-cropper";
+import "react-mobile-cropper/dist/style.css";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -45,6 +48,12 @@ export type MediaItemDraft = {
   mime: string | null;
   displayName: string | null;
   thumbnailUrl: string | null;
+  aspectRatioW: number | null;
+  aspectRatioH: number | null;
+  cropX: number | null;
+  cropY: number | null;
+  cropW: number | null;
+  cropH: number | null;
 };
 
 export type MediaBlockDraft = {
@@ -133,12 +142,32 @@ export function MediaBuilderDialog({
   const [uploading, setUploading] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  // Crop modal state — set after each photo upload to offer optional crop.
+  type CropPending = {
+    /** object URL of the uploaded image (for the cropper src). */
+    src: string;
+    /** The uploaded item's URL (used to identify which item to update). */
+    itemUrl: string;
+    naturalW: number;
+    naturalH: number;
+  };
+  const [cropPending, setCropPending] = useState<CropPending | null>(null);
+  const cropperRef = useRef<CropperRef>(null);
+
   useEffect(() => {
     if (open) {
       setDraft(initial ?? makeDefaultDraft(mode, preset));
       setLocalError(null);
     }
   }, [open, initial, mode, preset]);
+
+  // Revoke object URL when crop modal closes.
+  useEffect(() => {
+    if (!cropPending) return;
+    return () => {
+      if (cropPending.src.startsWith("blob:")) URL.revokeObjectURL(cropPending.src);
+    };
+  }, [cropPending]);
 
   const Container = isMobile ? Sheet : Dialog;
   const Content = isMobile ? SheetContent : DialogContent;
@@ -180,32 +209,98 @@ export function MediaBuilderDialog({
     setUploading(true);
     try {
       for (const file of Array.from(files)) {
+        // Read natural dimensions before upload so we can store the ratio and
+        // optionally offer the crop tool.
+        let naturalW = 0;
+        let naturalH = 0;
+        let blobSrc: string | null = null;
+        try {
+          blobSrc = URL.createObjectURL(file);
+          await new Promise<void>((resolve, reject) => {
+            const img = new window.Image();
+            img.onload = () => {
+              naturalW = img.naturalWidth;
+              naturalH = img.naturalHeight;
+              resolve();
+            };
+            img.onerror = () => reject(new Error("invalid image"));
+            img.src = blobSrc!;
+          });
+        } catch {
+          if (blobSrc) URL.revokeObjectURL(blobSrc);
+          blobSrc = null;
+        }
+
         const res = await onUploadImage(file);
         if (!res) {
+          if (blobSrc) URL.revokeObjectURL(blobSrc);
           setError("آپلود تصویر ناموفق بود.");
           continue;
         }
+
+        const newItem: MediaItemDraft = {
+          kind: "image",
+          url: res.url,
+          byteSize: res.byteSize,
+          mime: null,
+          displayName: null,
+          thumbnailUrl: null,
+          aspectRatioW: naturalW || null,
+          aspectRatioH: naturalH || null,
+          cropX: null,
+          cropY: null,
+          cropW: null,
+          cropH: null,
+        };
+
         setDraft((d) => ({
           ...d,
           mode: "photos",
-          items: [
-            ...d.items,
-            {
-              kind: "image",
-              url: res.url,
-              byteSize: res.byteSize,
-              mime: null,
-              displayName: null,
-              thumbnailUrl: null,
-            },
-          ],
+          items: [...d.items, newItem],
         }));
+
+        // Always open the crop tool — every image must be cropped to 4:5.
+        if (blobSrc && naturalW > 0 && naturalH > 0) {
+          setCropPending({
+            src: blobSrc,
+            itemUrl: res.url,
+            naturalW,
+            naturalH,
+          });
+          // Pause processing remaining files until the user crops this one.
+          break;
+        } else {
+          if (blobSrc) URL.revokeObjectURL(blobSrc);
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "آپلود تصویر با خطا مواجه شد.");
     } finally {
       setUploading(false);
     }
+  }
+
+  // Apply the crop coordinates from the modal to the matching item.
+  function applyCrop() {
+    if (!cropPending || !cropperRef.current) return;
+    const coords = cropperRef.current.getCoordinates();
+    if (!coords) {
+      setCropPending(null);
+      return;
+    }
+    const { left, top, width, height } = coords;
+    const { naturalW, naturalH, itemUrl } = cropPending;
+    const cropX = left / naturalW;
+    const cropY = top / naturalH;
+    const cropW = width / naturalW;
+    const cropH = height / naturalH;
+    setDraft((d) => ({
+      ...d,
+      items: d.items.map((it) =>
+        it.url === itemUrl ? { ...it, cropX, cropY, cropW, cropH } : it,
+      ),
+    }));
+    setCropPending(null);
   }
 
   // ---- video file handler ---------------------------------------------
@@ -232,6 +327,12 @@ export function MediaBuilderDialog({
             mime: res.mime,
             displayName: null,
             thumbnailUrl: null,
+            aspectRatioW: null,
+            aspectRatioH: null,
+            cropX: null,
+            cropY: null,
+            cropW: null,
+            cropH: null,
           },
         ],
       }));
@@ -268,6 +369,12 @@ export function MediaBuilderDialog({
             mime: res.mime,
             displayName: null,
             thumbnailUrl: null,
+            aspectRatioW: null,
+            aspectRatioH: null,
+            cropX: null,
+            cropY: null,
+            cropW: null,
+            cropH: null,
           },
         ],
       }));
@@ -309,6 +416,7 @@ export function MediaBuilderDialog({
   const shownError = localError ?? errorMessage ?? null;
 
   return (
+    <>
     <Container open={open} onOpenChange={onOpenChange}>
       <Content {...contentProps}>
         <Title className="sr-only">{copy.heading}</Title>
@@ -446,6 +554,41 @@ export function MediaBuilderDialog({
         </div>
       </Content>
     </Container>
+
+    {/* Crop modal — always shown after upload, locked to 4:5, no skip. */}
+    {cropPending ? (
+      <Dialog open onOpenChange={() => {}} disablePointerDismissal>
+        <DialogContent
+          className="flex max-h-[92dvh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+          showCloseButton={false}
+        >
+          <DialogTitle className="sr-only">برش تصویر</DialogTitle>
+          <div className="flex shrink-0 items-center justify-between border-b px-4 py-3">
+            <p className="font-bold">موقعیت تصویر را تنظیم کنید</p>
+            <p className="text-[12px] text-muted-foreground">نسبت ۴:۵</p>
+          </div>
+          <div className="relative min-h-0 flex-1 overflow-hidden bg-black" style={{ height: 380 }}>
+            <Cropper
+              ref={cropperRef}
+              src={cropPending.src}
+              className="h-full w-full"
+              stencilProps={{ aspectRatio: 4 / 5 }}
+            />
+          </div>
+          <div className="shrink-0 border-t p-4">
+            <Button
+              type="button"
+              className="h-11 w-full gap-2"
+              onClick={applyCrop}
+            >
+              <CropIcon className="size-4" />
+              تأیید
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    ) : null}
+    </>
   );
 }
 

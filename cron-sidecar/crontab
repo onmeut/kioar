@@ -1,0 +1,14 @@
+# Kioar cron schedule — mirrors docs/cron.md. Times are UTC (the container's
+# default); the app's day-keys anchor to Asia/Tehran internally, so the trigger
+# zone does not affect correctness.
+#
+# Each job sources /etc/cron-env (written by entrypoint.sh at startup) so BASE_URL
+# and CRON_SECRET from the Hamravesh service env reach the job process — Alpine
+# crond does NOT inherit the container env into jobs by default.
+#
+# m   h   dom mon dow   command
+*/15  *   *   *   *      . /etc/cron-env; /usr/local/bin/run-cron.sh cleanup
+0     3   *   *   *      . /etc/cron-env; /usr/local/bin/run-cron.sh billing
+*     *   *   *   *      . /etc/cron-env; /usr/local/bin/run-cron.sh sms
+0     4   *   *   *      . /etc/cron-env; /usr/local/bin/run-cron.sh affiliate-unlock
+0     *   *   *   *      . /etc/cron-env; /usr/local/bin/run-cron.sh expire-transfers

@@ -3,6 +3,7 @@ import {
   bigint,
   boolean,
   date,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -1517,6 +1518,16 @@ export const profileMediaItems = pgTable(
     displayName: text("display_name"),
     /** Optional poster/cover for an uploaded video. */
     thumbnailUrl: text("thumbnail_url"),
+    /** Natural image dimensions as integer ratio (width:height). NULL for
+     * non-image items or items added before this column existed. */
+    aspectRatioW: integer("aspect_ratio_w"),
+    aspectRatioH: integer("aspect_ratio_h"),
+    /** Crop window in relative coordinates [0,1]. NULL = no crop applied
+     * (render the full image, letterboxed if needed). */
+    cropX: doublePrecision("crop_x"),
+    cropY: doublePrecision("crop_y"),
+    cropW: doublePrecision("crop_w"),
+    cropH: doublePrecision("crop_h"),
     sortOrder: integer("sort_order").default(0).notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .defaultNow()

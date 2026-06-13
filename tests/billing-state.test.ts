@@ -78,6 +78,20 @@ describe("evaluateTransitions — trialing branch", () => {
       ["trial_ending_today", "pending_plan_change_applied"],
     );
   });
+
+  // Regression guard for the "stuck trial" incident (drizzle/0071): a trial
+  // that elapsed days/weeks ago must STILL be actionable — the decision
+  // function was never the bug (a stale plan_key hid these rows from the
+  // scan), but we lock in that an overdue trial always yields the grace
+  // transition so a future refactor of this branch can't silently freeze
+  // trials again. The trial-end reminder/invoice only fires ON the end day,
+  // so an 8-day-overdue trial produces grace alone.
+  it("fires period_ended_to_grace for a trial that ended days ago", () => {
+    const now = new Date(Date.UTC(2026, 4, 18, 1)); // 8 days past trialEnd
+    assert.deepEqual(types(evaluateTransitions(sub(), now)), [
+      "period_ended_to_grace",
+    ]);
+  });
 });
 
 describe("evaluateTransitions — paid branch", () => {
