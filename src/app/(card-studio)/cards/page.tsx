@@ -93,6 +93,7 @@ export default async function CardsPage() {
         materialEnabled: settings.materialEnabled,
         copyCardIncludesPlan: settings.copyCardIncludesPlan,
         purchaseGrantsPlan: settings.purchaseGrantsPlan,
+        offerCardGrantsPlan: settings.offerCardGrantsPlan,
         shippingCost: settings.shippingCost,
       }}
       entitlements={entitlements.map((e) => ({
